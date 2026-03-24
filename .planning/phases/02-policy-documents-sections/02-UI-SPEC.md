@@ -210,7 +210,7 @@ Same structure as Create Policy dialog, pre-populated with current values. Submi
 | Alert Dialog | `AlertDialog` | -- | max-width 420px |
 | Title | `AlertDialogTitle` | Heading (20px/600) | "Delete Policy" |
 | Description | `AlertDialogDescription` | Body (14px/400) | "This will permanently delete \"{policy title}\" and all {N} sections within it. This action cannot be undone." |
-| Cancel button | `AlertDialogCancel` | outline | "Cancel" |
+| Cancel button | `AlertDialogCancel` | outline | "Keep Policy" |
 | Confirm button | `AlertDialogAction` | destructive | "Delete Policy" |
 
 ### Dialog: Add Section
@@ -236,7 +236,7 @@ Same as Add Section dialog. Title: "Rename Section". Pre-populated with current 
 | Alert Dialog | `AlertDialog` | -- | max-width 420px |
 | Title | `AlertDialogTitle` | Heading (20px/600) | "Delete Section" |
 | Description | `AlertDialogDescription` | Body (14px/400) | "This will permanently delete the section \"{section title}\" and all its content. This action cannot be undone." |
-| Cancel button | `AlertDialogCancel` | outline | "Cancel" |
+| Cancel button | `AlertDialogCancel` | outline | "Keep Section" |
 | Confirm button | `AlertDialogAction` | destructive | "Delete Section" |
 
 ### Flow: Markdown Import
