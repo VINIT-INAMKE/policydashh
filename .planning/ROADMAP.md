@@ -27,21 +27,21 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Foundation & Auth
-**Goal**: Users can authenticate, receive role assignments, and all API endpoints enforce default-deny permissions with audit logging from day one
+**Goal**: Users can authenticate via phone number through Clerk, receive role assignments, and all API endpoints enforce default-deny permissions with audit logging from day one
 **Depends on**: Nothing (first phase)
 **Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-06, AUTH-07, AUDIT-01, AUDIT-02, AUDIT-03
 **Success Criteria** (what must be TRUE):
   1. User can sign up and log in via Clerk, and session persists across browser refresh
-  2. Admin can invite a user via email and the invited user arrives with the correct role pre-assigned
+  2. Admin can invite a user via phone number and the invited user arrives with the correct role pre-assigned
   3. User's organization type (Government, Industry, Legal, Academia, Civil Society, Internal) is stored and visible in their profile
   4. An unauthenticated or unauthorized API request is rejected with 403 (default-deny enforced on every endpoint)
   5. Every create, update, and delete action produces an immutable audit log entry with actor, action, object, and timestamp
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md -- Dependencies, database schema (users, audit, workflow), Drizzle + Neon setup, Vitest config
+- [ ] 01-02-PLAN.md -- tRPC init with default-deny middleware, Clerk proxy.ts, auth pages, webhook handler, layout providers
+- [ ] 01-03-PLAN.md -- tRPC routers (user, audit), audit log service, unit tests for permissions/audit/webhook
 
 ### Phase 2: Policy Documents & Sections
 **Goal**: Policy Leads can create and structure policy documents with sections that carry stable identities for all downstream workflow references
@@ -219,7 +219,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Auth | 0/3 | Not started | - |
+| 1. Foundation & Auth | 0/3 | Planning complete | - |
 | 2. Policy Documents & Sections | 0/2 | Not started | - |
 | 3. Block Editor | 0/2 | Not started | - |
 | 4. Feedback System | 0/3 | Not started | - |
