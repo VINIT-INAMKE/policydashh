@@ -14,8 +14,9 @@ Deliver the complete project scaffolding: Next.js 16 App Router with Clerk auth,
 ## Implementation Decisions
 
 ### Auth & Role Architecture
+- **Phone number only** for signup/login via Clerk (no email auth)
 - Roles modeled via Clerk publicMetadata + mirrored in Drizzle users table for queryability
-- Invite flow uses Clerk Invitations API — admin creates invite with role in metadata, user arrives pre-configured
+- Invite flow uses Clerk Invitations API with phone number — admin creates invite with role in metadata, user arrives pre-configured
 - Org type (Government, Industry, Legal, Academia, Civil Society, Internal) stored in app DB users table only (not Clerk)
 - Session validation via Clerk middleware + tRPC context — Clerk middleware validates JWT, tRPC context extracts user+role for every procedure
 
