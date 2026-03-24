@@ -58,7 +58,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md -- Backend: DB schema (policy_documents + policy_sections), migration, permissions, audit actions, tRPC document router, markdown parser, Tiptap renderer, tests
 - [x] 02-02-PLAN.md -- UI setup: shadcn init, install dependencies, policy list page with card grid, create/edit/delete policy dialogs, workspace nav
-- [ ] 02-03-PLAN.md -- Policy detail page with section sidebar (drag-and-drop), section CRUD dialogs, read-only content view, markdown import flow
+- [x] 02-03-PLAN.md -- Policy detail page with section sidebar (drag-and-drop), section CRUD dialogs, read-only content view, markdown import flow
 
 ### Phase 3: Block Editor
 **Goal**: Users editing policy sections have a Notion-quality block editing experience with all core block types, formatting, and media support
