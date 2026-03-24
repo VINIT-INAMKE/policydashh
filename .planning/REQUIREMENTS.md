@@ -9,8 +9,8 @@
 
 - [ ] **AUTH-01**: User can sign up / log in via Clerk auth provider (email-based)
 - [ ] **AUTH-02**: Admin can invite users via email with pre-assigned role
-- [ ] **AUTH-03**: User is assigned one of 7 roles: Admin, Policy Lead, Research Lead, Workshop Moderator, Stakeholder, Observer, Auditor
-- [ ] **AUTH-04**: User's organization type is tagged: Government, Industry, Legal, Academia, Civil Society, Internal
+- [x] **AUTH-03**: User is assigned one of 7 roles: Admin, Policy Lead, Research Lead, Workshop Moderator, Stakeholder, Observer, Auditor
+- [x] **AUTH-04**: User's organization type is tagged: Government, Industry, Legal, Academia, Civil Society, Internal
 - [ ] **AUTH-05**: Stakeholder can only view and interact with sections they are assigned to (section-level scoping)
 - [ ] **AUTH-06**: Each role has a defined permission set enforced on every API endpoint (default-deny)
 - [ ] **AUTH-07**: User session persists across browser refresh
@@ -127,9 +127,9 @@
 
 ### Audit & Compliance
 
-- [ ] **AUDIT-01**: Immutable append-only audit log recording every action (create, update, publish, merge, decision)
-- [ ] **AUDIT-02**: Audit log captures: actor, action, object type, object ID, timestamp, metadata
-- [ ] **AUDIT-03**: Audit log is partitioned for performance (monthly or quarterly)
+- [x] **AUDIT-01**: Immutable append-only audit log recording every action (create, update, publish, merge, decision)
+- [x] **AUDIT-02**: Audit log captures: actor, action, object type, object ID, timestamp, metadata
+- [x] **AUDIT-03**: Audit log is partitioned for performance (monthly or quarterly)
 - [ ] **AUDIT-04**: Auditor can view full audit trail with filtering
 - [ ] **AUDIT-05**: Milestone evidence pack export: stakeholder list, feedback matrix, version history, workshop evidence, decision logs
 - [ ] **AUDIT-06**: Evidence pack exportable as structured ZIP with index
@@ -179,8 +179,8 @@
 |-------------|-------|--------|
 | AUTH-01 | Phase 1 | Pending |
 | AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
-| AUTH-04 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Complete |
+| AUTH-04 | Phase 1 | Complete |
 | AUTH-05 | Phase 4 | Pending |
 | AUTH-06 | Phase 1 | Pending |
 | AUTH-07 | Phase 1 | Pending |
@@ -258,9 +258,9 @@
 | SRCH-02 | Phase 7 | Pending |
 | SRCH-03 | Phase 7 | Pending |
 | SRCH-04 | Phase 7 | Pending |
-| AUDIT-01 | Phase 1 | Pending |
-| AUDIT-02 | Phase 1 | Pending |
-| AUDIT-03 | Phase 1 | Pending |
+| AUDIT-01 | Phase 1 | Complete |
+| AUDIT-02 | Phase 1 | Complete |
+| AUDIT-03 | Phase 1 | Complete |
 | AUDIT-04 | Phase 9 | Pending |
 | AUDIT-05 | Phase 9 | Pending |
 | AUDIT-06 | Phase 9 | Pending |
