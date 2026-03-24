@@ -1,5 +1,5 @@
 {
-  "model_profile": "quality",
+  "model_profile": "custom",
   "commit_docs": true,
   "parallelization": true,
   "search_gitignored": false,
@@ -32,5 +32,22 @@
     "context_warnings": true
   },
   "mode": "yolo",
-  "granularity": "fine"
+  "granularity": "fine",
+  "model_overrides": {
+    "gsd-planner": "opus",
+    "gsd-executor": "opus",
+    "gsd-roadmapper": "sonnet",
+    "gsd-phase-researcher": "sonnet",
+    "gsd-project-researcher": "sonnet",
+    "gsd-research-synthesizer": "sonnet",
+    "gsd-debugger": "sonnet",
+    "gsd-codebase-mapper": "sonnet",
+    "gsd-verifier": "sonnet",
+    "gsd-plan-checker": "sonnet",
+    "gsd-integration-checker": "sonnet",
+    "gsd-nyquist-auditor": "sonnet",
+    "gsd-ui-researcher": "sonnet",
+    "gsd-ui-checker": "sonnet",
+    "gsd-ui-auditor": "sonnet"
+  }
 }
