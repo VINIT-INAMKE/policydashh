@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-03-24T19:54:00.680Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-03-24T20:06:25.789Z"
 progress:
   total_phases: 11
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 01 (Foundation & Auth) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Plan: 2 of 3
 
 *Updated after each plan completion*
 | Phase 01-foundation-auth P01 | 8min | 2 tasks | 15 files |
+| Phase 01-foundation-auth P02 | 7min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-auth]: Hand-written initial migration for partition DDL (Drizzle cannot generate PARTITION BY RANGE)
 - [Phase 01-foundation-auth]: Composite PK on audit_events (id, timestamp) required for PostgreSQL partitioned tables
 - [Phase 01-foundation-auth]: Phone-first auth: users.phone is primary, users.email is optional (Clerk phone-only auth)
+- [Phase 01-foundation-auth]: tRPC v11 uses createTRPCReact (not createReactTRPCContext) and t.createCallerFactory (not @trpc/server export)
+- [Phase 01-foundation-auth]: Phone-only auth configured in Clerk Dashboard settings, not in code-level component props
+- [Phase 01-foundation-auth]: proxy.ts uses default export per Next.js 16 convention; Clerk clerkMiddleware returns NextMiddleware compatible with this
 
 ### Pending Todos
 
@@ -75,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T19:54:00.674Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-03-24T20:06:25.783Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None

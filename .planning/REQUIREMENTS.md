@@ -7,13 +7,13 @@
 
 ### Authentication & Access Control
 
-- [ ] **AUTH-01**: User can sign up / log in via Clerk auth provider (email-based)
-- [ ] **AUTH-02**: Admin can invite users via email with pre-assigned role
+- [x] **AUTH-01**: User can sign up / log in via Clerk auth provider (email-based)
+- [x] **AUTH-02**: Admin can invite users via email with pre-assigned role
 - [x] **AUTH-03**: User is assigned one of 7 roles: Admin, Policy Lead, Research Lead, Workshop Moderator, Stakeholder, Observer, Auditor
 - [x] **AUTH-04**: User's organization type is tagged: Government, Industry, Legal, Academia, Civil Society, Internal
 - [ ] **AUTH-05**: Stakeholder can only view and interact with sections they are assigned to (section-level scoping)
-- [ ] **AUTH-06**: Each role has a defined permission set enforced on every API endpoint (default-deny)
-- [ ] **AUTH-07**: User session persists across browser refresh
+- [x] **AUTH-06**: Each role has a defined permission set enforced on every API endpoint (default-deny)
+- [x] **AUTH-07**: User session persists across browser refresh
 - [ ] **AUTH-08**: Privacy preferences: user can choose named or anonymous attribution for public outputs
 
 ### Policy Documents & Sections
@@ -177,13 +177,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Complete |
 | AUTH-05 | Phase 4 | Pending |
-| AUTH-06 | Phase 1 | Pending |
-| AUTH-07 | Phase 1 | Pending |
+| AUTH-06 | Phase 1 | Complete |
+| AUTH-07 | Phase 1 | Complete |
 | AUTH-08 | Phase 4 | Pending |
 | DOC-01 | Phase 2 | Pending |
 | DOC-02 | Phase 2 | Pending |
