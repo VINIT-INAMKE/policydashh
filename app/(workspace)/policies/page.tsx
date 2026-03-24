@@ -1,14 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import { FileText, Upload } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
 import { PolicyCard } from './_components/policy-card'
 import { PolicyListSkeleton } from './_components/policy-list-skeleton'
 import { CreatePolicyDialog } from './_components/create-policy-dialog'
+import { ImportMarkdownDialog } from './_components/import-markdown-dialog'
 
 export default function PoliciesPage() {
   const { data: policies, isLoading } = trpc.document.list.useQuery()
+  const [importOpen, setImportOpen] = useState(false)
 
   return (
     <div>
@@ -16,7 +19,7 @@ export default function PoliciesPage() {
         <h1 className="text-xl font-semibold">Policies</h1>
         <div className="flex items-center gap-2">
           <CreatePolicyDialog />
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="size-4" />
             Import Markdown
           </Button>
@@ -43,6 +46,8 @@ export default function PoliciesPage() {
           ))}
         </div>
       )}
+
+      <ImportMarkdownDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   )
 }
