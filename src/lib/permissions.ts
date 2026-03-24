@@ -12,6 +12,15 @@ export const PERMISSIONS = {
 
   // Audit log access
   'audit:read':           [ROLES.ADMIN, ROLES.AUDITOR] as readonly Role[],
+
+  // Document management
+  'document:create':      [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+  'document:read':        [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
+  'document:update':      [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+  'document:delete':      [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+
+  // Section management
+  'section:manage':       [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
 } as const
 
 export type Permission = keyof typeof PERMISSIONS

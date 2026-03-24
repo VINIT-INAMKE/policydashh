@@ -32,6 +32,14 @@ export const ACTIONS = {
   USER_INVITE: 'user.invite',
   USER_ORG_TYPE_SET: 'user.org_type_set',
   USER_UPDATE: 'user.update',
+  DOCUMENT_CREATE: 'document.create',
+  DOCUMENT_UPDATE: 'document.update',
+  DOCUMENT_DELETE: 'document.delete',
+  SECTION_CREATE: 'section.create',
+  SECTION_DELETE: 'section.delete',
+  SECTION_REORDER: 'section.reorder',
+  SECTION_RENAME: 'section.rename',
+  DOCUMENT_IMPORT: 'document.import',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]
