@@ -76,11 +76,13 @@ Exceptions:
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px | 400 (regular) | 1.5 | Descriptions, metadata, section content preview |
-| Label | 12px | 500 (medium) | 1.4 | Form labels, badges, timestamps, metadata labels |
+| Label | 12px | 400 (regular) | 1.4 | Form labels, badges, timestamps, metadata labels |
 | Heading | 20px | 600 (semibold) | 1.2 | Page titles, policy titles, dialog headings |
 | Display | 28px | 600 (semibold) | 1.2 | Policy document title on detail page |
 
 Font family: `var(--font-geist-sans)` for all text. `var(--font-geist-mono)` reserved for code blocks and section UUIDs in dev/debug views only.
+
+**Declared weights: 400 (regular) and 600 (semibold) only.** Body and Label use 400. Heading and Display use 600.
 
 ---
 
@@ -121,13 +123,17 @@ Uses shadcn Zinc-based CSS variable palette. All values reference CSS custom pro
 
 **Layout:** Full-width within workspace layout. Header row with title + actions. Content area with policy cards.
 
+**Focal point declaration:**
+- Empty state: the eye should land first on the FileText icon (48px, muted-foreground, centered), then read down to the "No policies yet" heading and body copy, then to the "Create Policy" CTA button. The icon anchors the empty-state composition.
+- Populated view: the eye should land first on the "Create Policy" button (top-right, filled accent), then scan the policy card grid left-to-right. Each card's focal point is the policy title (16px/600), then description (truncated, muted), then the footer badge+timestamp row.
+
 | Element | Component | Variant | Notes |
 |---------|-----------|---------|-------|
 | Page heading | `<h1>` | Heading (20px/600) | "Policies" |
 | Create button | `Button` | default, size="default" | "Create Policy" with Plus icon (16px) |
 | Import button | `Button` | outline, size="default" | "Import Markdown" with Upload icon (16px) |
 | Policy card | `Card` | default | Title (16px/600), description truncated 2 lines (14px/400), section count badge, updated-at timestamp |
-| Card actions | `DropdownMenu` | -- | Trigger: MoreHorizontal icon button. Items: "Edit Details", separator, "Delete Policy" (destructive text) |
+| Card actions | `DropdownMenu` | -- | Trigger: MoreHorizontal icon button (`aria-label="More options for {policy title}"`). Items: "Edit Details", separator, "Delete Policy" (destructive text) |
 | Empty state | Custom div | -- | Centered, icon (FileText, 48px, muted-foreground), heading + body copy |
 | Loading state | `Skeleton` | -- | 3 skeleton cards matching card dimensions |
 | Section count | `Badge` | secondary | "{N} sections" inside each policy card |
@@ -153,11 +159,11 @@ Uses shadcn Zinc-based CSS variable palette. All values reference CSS custom pro
 | Policy metadata | Custom row | -- | Status badge, created date, updated date |
 | Edit metadata button | `Button` | outline, size="sm" | Pencil icon + "Edit" |
 | Section sidebar | `ScrollArea` + custom list | -- | 280px wide, border-r, bg muted |
-| Sidebar heading | `<h2>` | Label (12px/500), uppercase tracking-wide | "SECTIONS" |
+| Sidebar heading | `<h2>` | Label (12px/400), uppercase tracking-wide | "SECTIONS" |
 | Add section button | `Button` | default, size="sm" | Plus icon + "Add Section" in sidebar header |
-| Section list item | Custom button | -- | 14px/400, px-3 py-2, rounded-md. Active: bg-background, font-medium. Hover: bg-background/50 |
+| Section list item | Custom button | -- | 14px/400, px-3 py-2, rounded-md. Active: bg-background, font-semibold. Hover: bg-background/50 |
 | Drag handle | GripVertical icon | -- | 16px, muted-foreground, visible on hover, cursor-grab |
-| Section actions | `DropdownMenu` | -- | Trigger: MoreHorizontal (visible on hover). Items: "Rename", separator, "Delete Section" (destructive) |
+| Section actions | `DropdownMenu` | -- | Trigger: MoreHorizontal (visible on hover), `aria-label="More options for {section title}"`. Items: "Rename", separator, "Delete Section" (destructive) |
 | Content area (no section selected) | Custom div | -- | Centered prompt: "Select a section from the sidebar" |
 | Content area (section selected) | Custom div | -- | Section title (Heading 20px/600), content preview as read-only rendered Tiptap JSON. Placeholder if empty: "This section has no content yet. Content editing will be available in the block editor phase." |
 
@@ -185,7 +191,7 @@ Row (hover group):
 | Description | `DialogDescription` | Body (14px/400) | "Add a new policy document to your workspace." |
 | Title field | `Input` | -- | Label: "Title", placeholder: "e.g., Data Protection Policy", required, autofocus |
 | Description field | `Textarea` | -- | Label: "Description", placeholder: "Brief summary of this policy's scope and purpose", rows: 3, optional |
-| Cancel button | `Button` | outline | "Cancel" |
+| Discard button | `Button` | outline | "Discard" |
 | Submit button | `Button` | default | "Create Policy" -- disabled until title is non-empty |
 
 **Validation:**
@@ -214,14 +220,14 @@ Same structure as Create Policy dialog, pre-populated with current values. Submi
 | Dialog | `Dialog` | -- | max-width 420px |
 | Title | `DialogTitle` | Heading (20px/600) | "Add Section" |
 | Title field | `Input` | -- | Label: "Section Title", placeholder: "e.g., Scope and Applicability", required, autofocus |
-| Cancel button | `Button` | outline | "Cancel" |
+| Discard button | `Button` | outline | "Discard" |
 | Submit button | `Button` | default | "Add Section" -- disabled until title is non-empty |
 
 **On submit:** New section appended at end of list, sidebar scrolls to new section, section becomes active/selected, success toast shown.
 
 ### Dialog: Rename Section
 
-Same as Add Section dialog. Title: "Rename Section". Pre-populated with current title. Submit label: "Save".
+Same as Add Section dialog. Title: "Rename Section". Pre-populated with current title. Discard button: "Discard". Submit label: "Rename Section".
 
 ### Dialog: Delete Section (Alert Dialog)
 
@@ -246,7 +252,7 @@ Same as Add Section dialog. Title: "Rename Section". Pre-populated with current 
 | Drop zone text | -- | -- | "Drag and drop a .md file here, or click to browse" (14px/400, muted-foreground) |
 | File input | Hidden `<input type="file">` | -- | accept=".md,.markdown,text/markdown" |
 | Selected file indicator | Custom row | -- | FileText icon + filename + file size + Remove button (X icon) |
-| Cancel button | `Button` | outline | "Cancel" |
+| Discard button | `Button` | outline | "Discard" |
 | Next button | `Button` | default | "Preview Import" -- disabled until file selected |
 
 **Step 2 -- Preview & Confirm (same dialog, replaces step 1):**
@@ -257,7 +263,7 @@ Same as Add Section dialog. Title: "Rename Section". Pre-populated with current 
 | Description | `DialogDescription` | Body (14px/400) | "Review the detected structure before importing." |
 | Policy title field | `Input` | -- | Label: "Policy Title", pre-filled from first H1 or filename, editable |
 | Detected sections list | Custom list | -- | Numbered list of detected section titles with section icon. Each item: "{index}. {heading text}" (14px/400). Shows content preview truncated to 2 lines below each heading (12px/400, muted-foreground) |
-| Section count summary | -- | -- | "{N} sections detected" (Label 12px/500) above the list |
+| Section count summary | -- | -- | "{N} sections detected" (Label 12px/400) above the list |
 | Back button | `Button` | outline | "Back" (returns to step 1) |
 | Confirm button | `Button` | default | "Import Policy" |
 
@@ -297,6 +303,11 @@ Same as Add Section dialog. Title: "Rename Section". Pre-populated with current 
 | Success: policy imported | "Policy imported with {N} sections." |
 | Destructive: delete policy | "Delete Policy": "This will permanently delete \"{title}\" and all {N} sections within it. This action cannot be undone." |
 | Destructive: delete section | "Delete Section": "This will permanently delete the section \"{title}\" and all its content. This action cannot be undone." |
+| Dialog dismiss: Create Policy | "Discard" |
+| Dialog dismiss: Add Section | "Discard" |
+| Dialog dismiss: Rename Section | "Discard" |
+| Dialog dismiss: Import Markdown Step 1 | "Discard" |
+| Dialog submit: Rename Section | "Rename Section" |
 
 ---
 
@@ -327,7 +338,7 @@ Same as Add Section dialog. Title: "Rename Section". Pre-populated with current 
 |-------|-----------------|
 | Default | bg-transparent, text-foreground |
 | Hover | bg-background/50, drag handle + actions visible |
-| Active/Selected | bg-background, font-medium, left border 2px primary |
+| Active/Selected | bg-background, font-semibold, left border 2px primary |
 | Dragging | opacity-80, shadow-md, scale(1.02) |
 | Drop target | 2px primary horizontal line at insertion point |
 
@@ -383,7 +394,7 @@ Policy list cards: single column on mobile, 2 columns on md, 3 columns on lg+. U
 | Keyboard navigation | All interactive elements reachable via Tab. Sidebar sections navigable with Arrow Up/Down. |
 | Focus management | Dialog auto-focuses first input. On dialog close, focus returns to trigger. After section delete, focus moves to adjacent section. |
 | Drag and drop keyboard | Section reorder accessible via keyboard: select item, use Alt+Arrow Up/Down to move. Announce position changes via aria-live. |
-| Screen reader | Drag handles: `aria-label="Reorder {section title}"`. Policy cards: `aria-label="{title}, {N} sections, updated {date}"`. |
+| Screen reader | Drag handles: `aria-label="Reorder {section title}"`. Policy cards: `aria-label="{title}, {N} sections, updated {date}"`. MoreHorizontal on policy cards: `aria-label="More options for {policy title}"`. MoreHorizontal on section items: `aria-label="More options for {section title}"`. |
 | Color contrast | All text meets WCAG 2.1 AA (4.5:1 for body, 3:1 for large text). shadcn default palette satisfies this. |
 | Motion | Drag animations respect `prefers-reduced-motion`: disable scale/shadow transitions, keep only position changes. |
 | File upload | Drop zone has `role="button"` and `aria-label="Upload markdown file"`. File input is keyboard-accessible via Enter/Space on drop zone. |
@@ -424,7 +435,7 @@ Add to workspace header navigation:
 - "Dashboard" link (existing, `/dashboard`)
 - "Policies" link (new, `/policies`)
 
-Use active state: font-medium + underline or primary color indicator for current page.
+Use active state: font-semibold + underline or primary color indicator for current page.
 
 ### Route Structure
 
