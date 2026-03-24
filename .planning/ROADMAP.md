@@ -41,7 +41,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md -- Dependencies, database schema (users, audit, workflow), Drizzle + Neon setup, Vitest config
 - [x] 01-02-PLAN.md -- tRPC init with default-deny middleware, Clerk proxy.ts, auth pages, webhook handler, layout providers
-- [ ] 01-03-PLAN.md -- tRPC routers (user, audit), audit log service, unit tests for permissions/audit/webhook
+- [x] 01-03-PLAN.md -- tRPC routers (user, audit), audit log service, unit tests for permissions/audit/webhook
 
 ### Phase 2: Policy Documents & Sections
 **Goal**: Policy Leads can create and structure policy documents with sections that carry stable identities for all downstream workflow references
