@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch",
+      "Bash(node \".claude/get-shit-done/bin/gsd-tools.cjs\" config-set workflow.skip_discuss true)",
+      "Bash(node \".claude/get-shit-done/bin/gsd-tools.cjs\" config-set workflow.auto_advance true)",
+      "Skill(gsd:plan-phase)",
+      "Skill(gsd:execute-phase)"
+    ]
+  }
+}
