@@ -56,7 +56,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01-PLAN.md -- Backend: DB schema (policy_documents + policy_sections), migration, permissions, audit actions, tRPC document router, markdown parser, Tiptap renderer, tests
+- [x] 02-01-PLAN.md -- Backend: DB schema (policy_documents + policy_sections), migration, permissions, audit actions, tRPC document router, markdown parser, Tiptap renderer, tests
 - [ ] 02-02-PLAN.md -- UI setup: shadcn init, install dependencies, policy list page with card grid, create/edit/delete policy dialogs, workspace nav
 - [ ] 02-03-PLAN.md -- Policy detail page with section sidebar (drag-and-drop), section CRUD dialogs, read-only content view, markdown import flow
 

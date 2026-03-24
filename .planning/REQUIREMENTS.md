@@ -18,12 +18,12 @@
 
 ### Policy Documents & Sections
 
-- [ ] **DOC-01**: Admin/Policy Lead can create a new policy document with title and description
-- [ ] **DOC-02**: Policy document contains ordered sections with stable UUIDs (identity persists across versions)
-- [ ] **DOC-03**: Policy Lead can create, reorder, and delete sections within a document
-- [ ] **DOC-04**: Section content is stored as block-based structure (Tiptap JSON)
-- [ ] **DOC-05**: Existing policy content can be imported from markdown files
-- [ ] **DOC-06**: Multiple policy documents can exist in the workspace simultaneously
+- [x] **DOC-01**: Admin/Policy Lead can create a new policy document with title and description
+- [x] **DOC-02**: Policy document contains ordered sections with stable UUIDs (identity persists across versions)
+- [x] **DOC-03**: Policy Lead can create, reorder, and delete sections within a document
+- [x] **DOC-04**: Section content is stored as block-based structure (Tiptap JSON)
+- [x] **DOC-05**: Existing policy content can be imported from markdown files
+- [x] **DOC-06**: Multiple policy documents can exist in the workspace simultaneously
 
 ### Block Editor
 
@@ -185,12 +185,12 @@
 | AUTH-06 | Phase 1 | Complete |
 | AUTH-07 | Phase 1 | Complete |
 | AUTH-08 | Phase 4 | Pending |
-| DOC-01 | Phase 2 | Pending |
-| DOC-02 | Phase 2 | Pending |
-| DOC-03 | Phase 2 | Pending |
-| DOC-04 | Phase 2 | Pending |
-| DOC-05 | Phase 2 | Pending |
-| DOC-06 | Phase 2 | Pending |
+| DOC-01 | Phase 2 | Complete |
+| DOC-02 | Phase 2 | Complete |
+| DOC-03 | Phase 2 | Complete |
+| DOC-04 | Phase 2 | Complete |
+| DOC-05 | Phase 2 | Complete |
+| DOC-06 | Phase 2 | Complete |
 | EDIT-01 | Phase 3 | Pending |
 | EDIT-02 | Phase 3 | Pending |
 | EDIT-03 | Phase 3 | Pending |
