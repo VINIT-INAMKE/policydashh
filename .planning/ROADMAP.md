@@ -52,12 +52,13 @@ Plans:
   2. Policy Lead can add, reorder, and delete sections within a document, and each section has a stable UUID that persists across operations
   3. Section content is stored as block-based Tiptap JSON structure in the database
   4. An existing markdown policy file can be imported and converted into a structured document with sections
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- Backend: DB schema (policy_documents + policy_sections), migration, permissions, audit actions, tRPC document router, markdown parser, Tiptap renderer, tests
+- [ ] 02-02-PLAN.md -- UI setup: shadcn init, install dependencies, policy list page with card grid, create/edit/delete policy dialogs, workspace nav
+- [ ] 02-03-PLAN.md -- Policy detail page with section sidebar (drag-and-drop), section CRUD dialogs, read-only content view, markdown import flow
 
 ### Phase 3: Block Editor
 **Goal**: Users editing policy sections have a Notion-quality block editing experience with all core block types, formatting, and media support
@@ -220,7 +221,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 0/3 | Planning complete | - |
-| 2. Policy Documents & Sections | 0/2 | Not started | - |
+| 2. Policy Documents & Sections | 0/3 | Planning complete | - |
 | 3. Block Editor | 0/2 | Not started | - |
 | 4. Feedback System | 0/3 | Not started | - |
 | 5. Change Requests | 0/2 | Not started | - |
