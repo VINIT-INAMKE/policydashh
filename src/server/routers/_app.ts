@@ -1,7 +1,10 @@
 import { router } from '@/src/trpc/init'
+import { userRouter } from './user'
+import { auditRouter } from './audit'
 
 export const appRouter = router({
-  // Routers added in Plan 03
+  user: userRouter,
+  audit: auditRouter,
 })
 
 export type AppRouter = typeof appRouter
