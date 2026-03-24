@@ -1,7 +1,7 @@
 # Requirements: PolicyDash
 
 **Defined:** 2026-03-25
-**Core Value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced — or recorded with rationale for why it wasn't adopted.
+**Core Value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
 
 ## v1 Requirements
 
@@ -32,9 +32,9 @@
 - [ ] **EDIT-03**: Drag-and-drop reordering of blocks within a section
 - [ ] **EDIT-04**: Rich text formatting within blocks (bold, italic, underline, strikethrough, links, inline code)
 - [ ] **EDIT-05**: Embeds and media support (images, file attachments, rich link previews)
-- [ ] **EDIT-06**: Real-time collaborative editing — multiple users can edit the same section simultaneously via Yjs/Hocuspocus
+- [ ] **EDIT-06**: Real-time collaborative editing -- multiple users can edit the same section simultaneously via Yjs/Hocuspocus
 - [ ] **EDIT-07**: Presence indicators showing who is currently viewing/editing a section
-- [ ] **EDIT-08**: Inline comments — user can select text and leave a comment anchored to that selection
+- [ ] **EDIT-08**: Inline comments -- user can select text and leave a comment anchored to that selection
 
 ### Feedback System
 
@@ -43,7 +43,7 @@
 - [ ] **FB-03**: Feedback captures: type (Issue, Suggestion, Endorsement, Evidence, Question), priority (Low, Medium, High), impact category (Legal, Security, Tax, Consumer, Innovation, Clarity, Governance, Other)
 - [ ] **FB-04**: Feedback captures: title, body text, and optional suggested change
 - [ ] **FB-05**: Feedback can have evidence artifacts attached (files or links)
-- [ ] **FB-06**: Feedback lifecycle: Submitted → Under Review → Accepted / Partially Accepted / Rejected → Closed
+- [ ] **FB-06**: Feedback lifecycle: Submitted -> Under Review -> Accepted / Partially Accepted / Rejected -> Closed
 - [ ] **FB-07**: Every accept/reject/partial decision requires a mandatory rationale (decision log)
 - [ ] **FB-08**: Stakeholder can choose anonymous or named attribution per feedback item
 - [ ] **FB-09**: Stakeholder can view the status and outcome of their own feedback items
@@ -54,7 +54,7 @@
 - [ ] **CR-01**: Policy Lead can create a Change Request (CR-XXX) from one or more feedback items
 - [ ] **CR-02**: CR links to affected policy sections and source feedback items
 - [ ] **CR-03**: CR has an assigned owner (Policy Lead) and title/description
-- [ ] **CR-04**: CR lifecycle managed by state machine: Drafting → In Review → Approved → Merged → Closed
+- [ ] **CR-04**: CR lifecycle managed by state machine: Drafting -> In Review -> Approved -> Merged -> Closed
 - [ ] **CR-05**: CR approval requires human sign-off (Policy Lead or Admin)
 - [ ] **CR-06**: Merging a CR atomically creates a new document version with merge summary
 - [ ] **CR-07**: All feedback items linked to a merged CR are automatically updated to reflect the version they influenced
@@ -72,8 +72,8 @@
 
 ### Traceability
 
-- [ ] **TRACE-01**: Full traceability chain: Feedback → Change Request → Section → Version
-- [ ] **TRACE-02**: Traceability matrix view: grid of FB → CR → Section → Version with decision rationale
+- [ ] **TRACE-01**: Full traceability chain: Feedback -> Change Request -> Section -> Version
+- [ ] **TRACE-02**: Traceability matrix view: grid of FB -> CR -> Section -> Version with decision rationale
 - [ ] **TRACE-03**: Filter traceability by stakeholder org type, section, decision outcome, version range
 - [ ] **TRACE-04**: Per-section "What changed and why" view showing feedback that drove changes
 - [ ] **TRACE-05**: Per-stakeholder "Your feedback outcomes" view showing how each feedback item was handled
@@ -177,13 +177,99 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated during roadmap creation) | | |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 4 | Pending |
+| AUTH-06 | Phase 1 | Pending |
+| AUTH-07 | Phase 1 | Pending |
+| AUTH-08 | Phase 4 | Pending |
+| DOC-01 | Phase 2 | Pending |
+| DOC-02 | Phase 2 | Pending |
+| DOC-03 | Phase 2 | Pending |
+| DOC-04 | Phase 2 | Pending |
+| DOC-05 | Phase 2 | Pending |
+| DOC-06 | Phase 2 | Pending |
+| EDIT-01 | Phase 3 | Pending |
+| EDIT-02 | Phase 3 | Pending |
+| EDIT-03 | Phase 3 | Pending |
+| EDIT-04 | Phase 3 | Pending |
+| EDIT-05 | Phase 3 | Pending |
+| EDIT-06 | Phase 11 | Pending |
+| EDIT-07 | Phase 11 | Pending |
+| EDIT-08 | Phase 11 | Pending |
+| FB-01 | Phase 4 | Pending |
+| FB-02 | Phase 4 | Pending |
+| FB-03 | Phase 4 | Pending |
+| FB-04 | Phase 4 | Pending |
+| FB-05 | Phase 4 | Pending |
+| FB-06 | Phase 4 | Pending |
+| FB-07 | Phase 4 | Pending |
+| FB-08 | Phase 4 | Pending |
+| FB-09 | Phase 4 | Pending |
+| FB-10 | Phase 4 | Pending |
+| CR-01 | Phase 5 | Pending |
+| CR-02 | Phase 5 | Pending |
+| CR-03 | Phase 5 | Pending |
+| CR-04 | Phase 5 | Pending |
+| CR-05 | Phase 5 | Pending |
+| CR-06 | Phase 5 | Pending |
+| CR-07 | Phase 5 | Pending |
+| CR-08 | Phase 5 | Pending |
+| VER-01 | Phase 6 | Pending |
+| VER-02 | Phase 6 | Pending |
+| VER-03 | Phase 6 | Pending |
+| VER-04 | Phase 6 | Pending |
+| VER-05 | Phase 6 | Pending |
+| VER-06 | Phase 6 | Pending |
+| VER-07 | Phase 6 | Pending |
+| TRACE-01 | Phase 7 | Pending |
+| TRACE-02 | Phase 7 | Pending |
+| TRACE-03 | Phase 7 | Pending |
+| TRACE-04 | Phase 7 | Pending |
+| TRACE-05 | Phase 7 | Pending |
+| TRACE-06 | Phase 7 | Pending |
+| WS-01 | Phase 10 | Pending |
+| WS-02 | Phase 10 | Pending |
+| WS-03 | Phase 10 | Pending |
+| WS-04 | Phase 10 | Pending |
+| WS-05 | Phase 10 | Pending |
+| EV-01 | Phase 4 | Pending |
+| EV-02 | Phase 4 | Pending |
+| EV-03 | Phase 10 | Pending |
+| EV-04 | Phase 10 | Pending |
+| PUB-01 | Phase 9 | Pending |
+| PUB-02 | Phase 9 | Pending |
+| PUB-03 | Phase 9 | Pending |
+| PUB-04 | Phase 9 | Pending |
+| PUB-05 | Phase 9 | Pending |
+| UX-01 | Phase 8 | Pending |
+| UX-02 | Phase 8 | Pending |
+| UX-03 | Phase 8 | Pending |
+| UX-04 | Phase 8 | Pending |
+| UX-05 | Phase 8 | Pending |
+| UX-06 | Phase 8 | Pending |
+| UX-07 | Phase 8 | Pending |
+| NOTIF-01 | Phase 8 | Pending |
+| NOTIF-02 | Phase 8 | Pending |
+| NOTIF-03 | Phase 8 | Pending |
+| SRCH-01 | Phase 7 | Pending |
+| SRCH-02 | Phase 7 | Pending |
+| SRCH-03 | Phase 7 | Pending |
+| SRCH-04 | Phase 7 | Pending |
+| AUDIT-01 | Phase 1 | Pending |
+| AUDIT-02 | Phase 1 | Pending |
+| AUDIT-03 | Phase 1 | Pending |
+| AUDIT-04 | Phase 9 | Pending |
+| AUDIT-05 | Phase 9 | Pending |
+| AUDIT-06 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 74 total
-- Mapped to phases: 0
-- Unmapped: 74
+- v1 requirements: 87 total
+- Mapped to phases: 87
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after initial definition*
+*Last updated: 2026-03-25 after roadmap creation*
