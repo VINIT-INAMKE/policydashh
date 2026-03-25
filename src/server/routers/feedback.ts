@@ -7,7 +7,8 @@ import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { users } from '@/src/db/schema/users'
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { workflowTransitions } from '@/src/db/schema/workflow'
+import { eq, and, desc, asc, sql } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 const FEEDBACK_TYPES = ['issue', 'suggestion', 'endorsement', 'evidence', 'question'] as const
@@ -282,5 +283,32 @@ export const feedbackRouter = router({
       })
 
       return updated
+    }),
+
+  // List workflow transitions (decision log) for a feedback item
+  listTransitions: requirePermission('feedback:read_own')
+    .input(z.object({ feedbackId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const rows = await db
+        .select({
+          id: workflowTransitions.id,
+          fromState: workflowTransitions.fromState,
+          toState: workflowTransitions.toState,
+          actorId: workflowTransitions.actorId,
+          timestamp: workflowTransitions.timestamp,
+          metadata: workflowTransitions.metadata,
+          actorName: users.name,
+        })
+        .from(workflowTransitions)
+        .leftJoin(users, eq(workflowTransitions.actorId, users.id))
+        .where(
+          and(
+            eq(workflowTransitions.entityType, 'feedback'),
+            eq(workflowTransitions.entityId, input.feedbackId),
+          ),
+        )
+        .orderBy(asc(workflowTransitions.timestamp))
+
+      return rows
     }),
 })
