@@ -26,7 +26,7 @@ describe('buildExtensions', () => {
       'details',
       'detailsSummary',
       'detailsContent',
-      'codeBlockLowlight',
+      'codeBlock', // CodeBlockLowlight registers as 'codeBlock'
       'nodeRange',
       'callout',
       'slashCommands',
