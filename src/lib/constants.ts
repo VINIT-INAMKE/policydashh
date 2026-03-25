@@ -51,6 +51,13 @@ export const ACTIONS = {
   EVIDENCE_UPLOAD: 'evidence.upload',
   EVIDENCE_ATTACH: 'evidence.attach',
   PRIVACY_PREF_UPDATE: 'user.privacy_pref_update',
+  CR_CREATE:          'cr.create',
+  CR_UPDATE:          'cr.update',
+  CR_SUBMIT_REVIEW:   'cr.submit_for_review',
+  CR_APPROVE:         'cr.approve',
+  CR_REQUEST_CHANGES: 'cr.request_changes',
+  CR_MERGE:           'cr.merge',
+  CR_CLOSE:           'cr.close',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]

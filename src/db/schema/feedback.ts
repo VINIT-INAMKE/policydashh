@@ -35,6 +35,7 @@ export const feedbackItems = pgTable('feedback', {
   decisionRationale: text('decision_rationale'),
   reviewedBy:        uuid('reviewed_by').references(() => users.id),
   reviewedAt:        timestamp('reviewed_at', { withTimezone: true }),
+  resolvedInVersionId: uuid('resolved_in_version_id'),  // FK to documentVersions — constraint in SQL migration only (avoids circular import)
   xstateSnapshot:    jsonb('xstate_snapshot').$type<Record<string, unknown> | null>(),
   createdAt:         timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:         timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
