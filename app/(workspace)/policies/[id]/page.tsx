@@ -102,7 +102,11 @@ export default function PolicyDetailPage() {
 
           {/* Section content or empty prompt */}
           {selectedSection ? (
-            <SectionContentView section={selectedSection} />
+            <SectionContentView
+              section={selectedSection}
+              canEdit={true}
+              documentId={id}
+            />
           ) : (
             <div className="flex items-center justify-center py-24">
               <p className="text-sm text-muted-foreground">
