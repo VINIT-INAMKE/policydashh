@@ -146,7 +146,7 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md -- Backend: traceability tRPC router (matrix, sectionChain, stakeholderOutcomes, search), permissions, feedback/CR router extensions, CSV/PDF export Route Handlers
 - [x] 07-02-PLAN.md -- Traceability page with matrix table, filter panel, by-section view, by-stakeholder view, export buttons, workspace nav
-- [ ] 07-03-PLAN.md -- Search tab with debounced cross-entity search, scope tabs (Feedback/Content/CRs), result cards with match highlighting, CR inline filters
+- [x] 07-03-PLAN.md -- Search tab with debounced cross-entity search, scope tabs (Feedback/Content/CRs), result cards with match highlighting, CR inline filters
 
 ### Phase 8: Dashboards & Notifications
 **Goal**: Every role has a tailored dashboard showing relevant content and tasks, and users are notified of important events in-app and via email
