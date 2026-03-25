@@ -176,12 +176,12 @@ Plans:
   3. User can download a PDF export of any published policy version
   4. Auditor can view the full audit trail with filtering by action type, actor, object, and date range
   5. Admin/Auditor can export a milestone evidence pack (stakeholder list, feedback matrix, version history, workshop evidence, decision logs) as a structured ZIP
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md -- Public portal: (public) route group, proxy.ts whitelist, Tiptap HTML renderer, portal home, policy detail with version selector/section nav, public changelog, sanitized consultation summary, PDF export route
+- [ ] 09-02-PLAN.md -- Audit viewer: /audit page with filter panel and paginated event table, evidence pack service + ZIP export route, workspace-nav audit link, auditor dashboard wiring
 
 ### Phase 10: Workshops & Evidence Management
 **Goal**: Workshop Moderators can manage consultation events as first-class entities with artifacts and insight linking, and Research Leads can identify claims lacking evidence
@@ -231,6 +231,6 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 6. Versioning | 0/2 | Planning complete | - |
 | 7. Traceability & Search | 2/3 | Executing | - |
 | 8. Dashboards & Notifications | 0/3 | Planning complete | - |
-| 9. Public Portal & Compliance | 0/2 | Not started | - |
+| 9. Public Portal & Compliance | 0/2 | Planning complete | - |
 | 10. Workshops & Evidence Management | 0/2 | Not started | - |
 | 11. Real-Time Collaboration | 0/2 | Not started | - |
