@@ -40,6 +40,17 @@ export const ACTIONS = {
   SECTION_REORDER: 'section.reorder',
   SECTION_RENAME: 'section.rename',
   DOCUMENT_IMPORT: 'document.import',
+  SECTION_ASSIGN: 'section.assign',
+  SECTION_UNASSIGN: 'section.unassign',
+  FEEDBACK_SUBMIT: 'feedback.submit',
+  FEEDBACK_START_REVIEW: 'feedback.start_review',
+  FEEDBACK_ACCEPT: 'feedback.accept',
+  FEEDBACK_PARTIAL: 'feedback.partially_accept',
+  FEEDBACK_REJECT: 'feedback.reject',
+  FEEDBACK_CLOSE: 'feedback.close',
+  EVIDENCE_UPLOAD: 'evidence.upload',
+  EVIDENCE_ATTACH: 'evidence.attach',
+  PRIVACY_PREF_UPDATE: 'user.privacy_pref_update',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]

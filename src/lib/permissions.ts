@@ -21,6 +21,20 @@ export const PERMISSIONS = {
 
   // Section management
   'section:manage':       [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+
+  // Section assignments (Phase 4)
+  'section:assign':            [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+  'section:read_assignments':  [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+
+  // Feedback (Phase 4)
+  'feedback:submit':           [ROLES.STAKEHOLDER, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR] as readonly Role[],
+  'feedback:read_own':         [ROLES.STAKEHOLDER, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.OBSERVER] as readonly Role[],
+  'feedback:read_all':         [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR] as readonly Role[],
+  'feedback:review':           [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+
+  // Evidence (Phase 4)
+  'evidence:upload':           [ROLES.STAKEHOLDER, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+  'evidence:read':             [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
 } as const
 
 export type Permission = keyof typeof PERMISSIONS
