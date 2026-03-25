@@ -96,11 +96,11 @@
 
 ### Public Portal
 
-- [ ] **PUB-01**: Published policy versions are viewable on a public read-only page (no auth required)
-- [ ] **PUB-02**: Public changelog showing version history and what changed
-- [ ] **PUB-03**: Sanitized consultation summaries (no stakeholder identities unless explicitly opted in)
-- [ ] **PUB-04**: PDF export of published policy versions
-- [ ] **PUB-05**: Public portal does NOT expose: raw feedback threads, stakeholder identities, internal deliberations
+- [x] **PUB-01**: Published policy versions are viewable on a public read-only page (no auth required)
+- [x] **PUB-02**: Public changelog showing version history and what changed
+- [x] **PUB-03**: Sanitized consultation summaries (no stakeholder identities unless explicitly opted in)
+- [x] **PUB-04**: PDF export of published policy versions
+- [x] **PUB-05**: Public portal does NOT expose: raw feedback threads, stakeholder identities, internal deliberations
 
 ### Dashboards & UX
 
@@ -239,11 +239,11 @@
 | EV-02 | Phase 4 | Complete |
 | EV-03 | Phase 10 | Pending |
 | EV-04 | Phase 10 | Pending |
-| PUB-01 | Phase 9 | Pending |
-| PUB-02 | Phase 9 | Pending |
-| PUB-03 | Phase 9 | Pending |
-| PUB-04 | Phase 9 | Pending |
-| PUB-05 | Phase 9 | Pending |
+| PUB-01 | Phase 9 | Complete |
+| PUB-02 | Phase 9 | Complete |
+| PUB-03 | Phase 9 | Complete |
+| PUB-04 | Phase 9 | Complete |
+| PUB-05 | Phase 9 | Complete |
 | UX-01 | Phase 8 | Complete |
 | UX-02 | Phase 8 | Complete |
 | UX-03 | Phase 8 | Complete |
