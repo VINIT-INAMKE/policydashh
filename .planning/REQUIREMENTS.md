@@ -27,11 +27,11 @@
 
 ### Block Editor
 
-- [ ] **EDIT-01**: Notion-style block editor with slash commands for inserting block types
-- [ ] **EDIT-02**: Supported block types: text, heading (H1-H3), callout, table, toggle/collapsible, quote, divider, code block
-- [ ] **EDIT-03**: Drag-and-drop reordering of blocks within a section
-- [ ] **EDIT-04**: Rich text formatting within blocks (bold, italic, underline, strikethrough, links, inline code)
-- [ ] **EDIT-05**: Embeds and media support (images, file attachments, rich link previews)
+- [x] **EDIT-01**: Notion-style block editor with slash commands for inserting block types
+- [x] **EDIT-02**: Supported block types: text, heading (H1-H3), callout, table, toggle/collapsible, quote, divider, code block
+- [x] **EDIT-03**: Drag-and-drop reordering of blocks within a section
+- [x] **EDIT-04**: Rich text formatting within blocks (bold, italic, underline, strikethrough, links, inline code)
+- [x] **EDIT-05**: Embeds and media support (images, file attachments, rich link previews)
 - [ ] **EDIT-06**: Real-time collaborative editing -- multiple users can edit the same section simultaneously via Yjs/Hocuspocus
 - [ ] **EDIT-07**: Presence indicators showing who is currently viewing/editing a section
 - [ ] **EDIT-08**: Inline comments -- user can select text and leave a comment anchored to that selection
@@ -191,11 +191,11 @@
 | DOC-04 | Phase 2 | Complete |
 | DOC-05 | Phase 2 | Complete |
 | DOC-06 | Phase 2 | Complete |
-| EDIT-01 | Phase 3 | Pending |
-| EDIT-02 | Phase 3 | Pending |
-| EDIT-03 | Phase 3 | Pending |
-| EDIT-04 | Phase 3 | Pending |
-| EDIT-05 | Phase 3 | Pending |
+| EDIT-01 | Phase 3 | Complete |
+| EDIT-02 | Phase 3 | Complete |
+| EDIT-03 | Phase 3 | Complete |
+| EDIT-04 | Phase 3 | Complete |
+| EDIT-05 | Phase 3 | Complete |
 | EDIT-06 | Phase 11 | Pending |
 | EDIT-07 | Phase 11 | Pending |
 | EDIT-08 | Phase 11 | Pending |
