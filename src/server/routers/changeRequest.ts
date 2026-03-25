@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { router, requirePermission } from '@/src/trpc/init'
-import { transitionCR, mergeCR, getNextVersionLabel } from '@/src/server/services/changeRequest.service'
+import { transitionCR, mergeCR } from '@/src/server/services/changeRequest.service'
+import { getNextVersionLabel } from '@/src/server/services/version.service'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'

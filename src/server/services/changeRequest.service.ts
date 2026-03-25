@@ -4,8 +4,12 @@ import { db } from '@/src/db'
 import { changeRequests, documentVersions, crFeedbackLinks } from '@/src/db/schema/changeRequests'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { workflowTransitions } from '@/src/db/schema/workflow'
-import { eq, desc, inArray, sql } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
+import { getNextVersionLabel, snapshotSections, buildChangelog } from '@/src/server/services/version.service'
+
+// Re-export getNextVersionLabel for backward compatibility
+export { getNextVersionLabel } from '@/src/server/services/version.service'
 
 /**
  * Transitions a change request through the XState state machine.
@@ -120,37 +124,8 @@ export async function transitionCR(
 }
 
 /**
- * Helper: Get the next version label for a document.
- * Queries the latest documentVersions row and increments the minor version.
- */
-export async function getNextVersionLabel(
-  txOrDb: typeof db,
-  documentId: string,
-): Promise<string> {
-  const [latest] = await txOrDb
-    .select({ versionLabel: documentVersions.versionLabel })
-    .from(documentVersions)
-    .where(eq(documentVersions.documentId, documentId))
-    .orderBy(desc(documentVersions.createdAt))
-    .limit(1)
-
-  if (!latest) {
-    return 'v0.1'
-  }
-
-  // Parse "v0.N" pattern and increment
-  const match = latest.versionLabel.match(/^v0\.(\d+)$/)
-  if (!match) {
-    return 'v0.1'
-  }
-
-  const nextMinor = parseInt(match[1], 10) + 1
-  return `v0.${nextMinor}`
-}
-
-/**
  * Merges a change request atomically:
- * 1. Creates a document_versions row
+ * 1. Creates a document_versions row with section snapshot and changelog
  * 2. Updates the CR status to 'merged'
  * 3. Bulk-updates linked feedback with resolvedInVersionId
  * 4. Logs the workflow transition
@@ -187,7 +162,11 @@ export async function mergeCR(
     // 2. Generate next version label
     const versionLabel = await getNextVersionLabel(tx as unknown as typeof db, cr.documentId)
 
-    // 3. Insert document_versions row
+    // 3. Capture section snapshot and build changelog INSIDE the transaction
+    const sectionsSnapshot = await snapshotSections(tx as unknown as typeof db, cr.documentId)
+    const changelog = await buildChangelog(tx as unknown as typeof db, crId, cr)
+
+    // 4. Insert document_versions row with snapshot and changelog
     const [version] = await tx
       .insert(documentVersions)
       .values({
@@ -196,10 +175,12 @@ export async function mergeCR(
         mergeSummary,
         createdBy: actorId,
         crId,
+        sectionsSnapshot,
+        changelog,
       })
       .returning()
 
-    // 4. Update CR to merged
+    // 5. Update CR to merged
     const [updatedCR] = await tx
       .update(changeRequests)
       .set({
@@ -213,7 +194,7 @@ export async function mergeCR(
       .where(eq(changeRequests.id, crId))
       .returning()
 
-    // 5. Bulk-update linked feedback with resolvedInVersionId
+    // 6. Bulk-update linked feedback with resolvedInVersionId
     const linkedFeedback = await tx
       .select({ feedbackId: crFeedbackLinks.feedbackId })
       .from(crFeedbackLinks)
@@ -228,7 +209,7 @@ export async function mergeCR(
         .where(inArray(feedbackItems.id, feedbackIds))
     }
 
-    // 6. Insert workflow transition
+    // 7. Insert workflow transition
     await tx.insert(workflowTransitions).values({
       entityType: 'change_request',
       entityId: crId,
@@ -242,7 +223,7 @@ export async function mergeCR(
       },
     })
 
-    // 7. Return updated CR and version
+    // 8. Return updated CR and version
     return { cr: updatedCR, version }
   })
 }

@@ -1,22 +1,26 @@
-import { pgTable, uuid, text, timestamp, jsonb, pgEnum, unique } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, jsonb, boolean, pgEnum, unique } from 'drizzle-orm/pg-core'
 import { users } from './users'
 import { policyDocuments, policySections } from './documents'
 import { feedbackItems } from './feedback'
+import type { SectionSnapshot, ChangelogEntry } from '@/src/server/services/version.service'
 
 export const crStatusEnum = pgEnum('cr_status', [
   'drafting', 'in_review', 'approved', 'merged', 'closed',
 ])
 
-// Minimal stub for Phase 6 — only columns needed for merge.
-// Phase 6 extends this table with content snapshots, diff data, etc.
+// Document versions with section snapshots and publish support
 export const documentVersions = pgTable('document_versions', {
-  id:            uuid('id').primaryKey().defaultRandom(),
-  documentId:    uuid('document_id').notNull().references(() => policyDocuments.id),
-  versionLabel:  text('version_label').notNull(),
-  mergeSummary:  text('merge_summary'),
-  createdBy:     uuid('created_by').notNull().references(() => users.id),
-  crId:          uuid('cr_id'),  // FK added after changeRequests defined (avoid circular)
-  createdAt:     timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  id:                uuid('id').primaryKey().defaultRandom(),
+  documentId:        uuid('document_id').notNull().references(() => policyDocuments.id),
+  versionLabel:      text('version_label').notNull(),
+  mergeSummary:      text('merge_summary'),
+  createdBy:         uuid('created_by').notNull().references(() => users.id),
+  crId:              uuid('cr_id'),  // FK added after changeRequests defined (avoid circular)
+  createdAt:         timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  sectionsSnapshot:  jsonb('sections_snapshot').$type<SectionSnapshot[] | null>(),
+  changelog:         jsonb('changelog').$type<ChangelogEntry[] | null>(),
+  publishedAt:       timestamp('published_at', { withTimezone: true }),
+  isPublished:       boolean('is_published').notNull().default(false),
 }, (t) => [
   unique('uq_document_version').on(t.documentId, t.versionLabel),
 ])

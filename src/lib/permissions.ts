@@ -40,6 +40,11 @@ export const PERMISSIONS = {
   'cr:create':                 [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
   'cr:read':                   [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR] as readonly Role[],
   'cr:manage':                 [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+
+  // Versioning (Phase 6)
+  'version:read':              [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR, ROLES.OBSERVER, ROLES.RESEARCH_LEAD, ROLES.STAKEHOLDER] as readonly Role[],
+  'version:manage':            [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+  'version:publish':           [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
 } as const
 
 export type Permission = keyof typeof PERMISSIONS

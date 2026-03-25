@@ -58,6 +58,8 @@ export const ACTIONS = {
   CR_REQUEST_CHANGES: 'cr.request_changes',
   CR_MERGE:           'cr.merge',
   CR_CLOSE:           'cr.close',
+  VERSION_CREATE:     'version.create',
+  VERSION_PUBLISH:    'version.publish',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]
