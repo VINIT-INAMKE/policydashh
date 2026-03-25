@@ -12,6 +12,7 @@ import { users } from '@/src/db/schema/users'
 import { workflowTransitions } from '@/src/db/schema/workflow'
 import { eq, and, desc, asc, sql, inArray, ilike } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
+import { createNotification } from '@/src/lib/notifications'
 
 const CR_STATUSES = ['drafting', 'in_review', 'approved', 'merged', 'closed'] as const
 
@@ -269,6 +270,17 @@ export const changeRequestRouter = router({
         entityId: input.id,
       })
 
+      // Fire-and-forget notification to CR owner
+      createNotification({
+        userId: updated.ownerId,
+        type: 'cr_status_changed',
+        title: 'CR sent for review',
+        body: `Change request ${updated.readableId} is now in review.`,
+        entityType: 'cr',
+        entityId: updated.id,
+        linkHref: `/change-requests/${updated.id}`,
+      }).catch(console.error)
+
       return updated
     }),
 
@@ -289,6 +301,17 @@ export const changeRequestRouter = router({
         entityType: 'change_request',
         entityId: input.id,
       })
+
+      // Fire-and-forget notification to CR owner
+      createNotification({
+        userId: updated.ownerId,
+        type: 'cr_status_changed',
+        title: 'CR approved',
+        body: `Change request ${updated.readableId} has been approved.`,
+        entityType: 'cr',
+        entityId: updated.id,
+        linkHref: `/change-requests/${updated.id}`,
+      }).catch(console.error)
 
       return updated
     }),
@@ -334,6 +357,17 @@ export const changeRequestRouter = router({
           mergeSummary: input.mergeSummary,
         },
       })
+
+      // Fire-and-forget notification to CR owner
+      createNotification({
+        userId: result.cr.ownerId,
+        type: 'cr_status_changed',
+        title: 'CR merged',
+        body: `Change request ${result.cr.readableId} was merged into version ${result.version.versionLabel}.`,
+        entityType: 'cr',
+        entityId: result.cr.id,
+        linkHref: `/change-requests/${result.cr.id}`,
+      }).catch(console.error)
 
       return result
     }),

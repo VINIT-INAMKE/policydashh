@@ -3,6 +3,8 @@ import { router, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
 import { documentVersions } from '@/src/db/schema/changeRequests'
 import { users } from '@/src/db/schema/users'
+import { sectionAssignments } from '@/src/db/schema/sectionAssignments'
+import { policySections, policyDocuments } from '@/src/db/schema/documents'
 import {
   computeSectionDiff,
   publishVersion,
@@ -10,8 +12,10 @@ import {
 } from '@/src/server/services/version.service'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
+import { createNotification } from '@/src/lib/notifications'
+import { sendVersionPublishedEmail } from '@/src/lib/email'
 
 export const versionRouter = router({
   // List versions for a document (omit large fields)
@@ -122,6 +126,55 @@ export const versionRouter = router({
           documentId: version.documentId,
         },
       })
+
+      // Fire-and-forget: notify all assigned stakeholders + send emails
+      // Look up policy name
+      const [doc] = await db
+        .select({ title: policyDocuments.title })
+        .from(policyDocuments)
+        .where(eq(policyDocuments.id, version.documentId))
+        .limit(1)
+
+      const policyName = doc?.title ?? 'A policy'
+
+      // Find all unique users assigned to sections in this document
+      const assignedUsers = await db
+        .select({ userId: sectionAssignments.userId })
+        .from(sectionAssignments)
+        .innerJoin(policySections, eq(sectionAssignments.sectionId, policySections.id))
+        .where(eq(policySections.documentId, version.documentId))
+        .groupBy(sectionAssignments.userId)
+
+      // Fire-and-forget notification per assigned user
+      for (const { userId } of assignedUsers) {
+        createNotification({
+          userId,
+          type: 'version_published',
+          title: 'New version published',
+          body: `${policyName} has a new version: ${version.versionLabel}.`,
+          entityType: 'version',
+          entityId: version.id,
+          linkHref: `/policies/${version.documentId}/versions/${version.id}`,
+        }).catch(console.error)
+      }
+
+      // Look up emails for assigned users and send fire-and-forget
+      if (assignedUsers.length > 0) {
+        const userIds = assignedUsers.map((u) => u.userId)
+        const usersWithEmail = await db
+          .select({ id: users.id, email: users.email })
+          .from(users)
+          .where(inArray(users.id, userIds))
+
+        for (const user of usersWithEmail) {
+          if (user.email) {
+            sendVersionPublishedEmail(user.email, {
+              policyName,
+              versionLabel: version.versionLabel,
+            }).catch(console.error)
+          }
+        }
+      }
 
       return version
     }),

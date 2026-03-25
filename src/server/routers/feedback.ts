@@ -7,9 +7,12 @@ import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { users } from '@/src/db/schema/users'
+import { policySections } from '@/src/db/schema/documents'
 import { workflowTransitions } from '@/src/db/schema/workflow'
 import { eq, and, desc, asc, sql } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
+import { createNotification } from '@/src/lib/notifications'
+import { sendFeedbackReviewedEmail } from '@/src/lib/email'
 
 const FEEDBACK_TYPES = ['issue', 'suggestion', 'endorsement', 'evidence', 'question'] as const
 const PRIORITIES = ['low', 'medium', 'high'] as const
@@ -220,6 +223,25 @@ export const feedbackRouter = router({
         entityId: input.id,
       })
 
+      // Fire-and-forget notification to feedback submitter
+      const [section] = await db
+        .select({ title: policySections.title })
+        .from(policySections)
+        .where(eq(policySections.id, updated.sectionId))
+        .limit(1)
+
+      const sectionName = section?.title ?? 'a section'
+
+      createNotification({
+        userId: updated.submitterId,
+        type: 'feedback_status_changed',
+        title: 'Feedback under review',
+        body: `Your feedback on \u201c${sectionName}\u201d is now being reviewed.`,
+        entityType: 'feedback',
+        entityId: updated.id,
+        linkHref: `/feedback/${updated.id}`,
+      }).catch(console.error)
+
       return updated
     }),
 
@@ -263,6 +285,60 @@ export const feedbackRouter = router({
         payload: { decision: input.decision, rationale: input.rationale },
       })
 
+      // Fire-and-forget notification + email to feedback submitter
+      const [section] = await db
+        .select({ title: policySections.title })
+        .from(policySections)
+        .where(eq(policySections.id, updated.sectionId))
+        .limit(1)
+
+      const sectionName = section?.title ?? 'a section'
+      const truncatedRationale = input.rationale.length > 80
+        ? input.rationale.slice(0, 80) + '\u2026'
+        : input.rationale
+
+      const notifCopyMap: Record<string, { title: string; body: string }> = {
+        accept: {
+          title: 'Feedback accepted',
+          body: `Your feedback on \u201c${sectionName}\u201d was accepted. ${truncatedRationale}`,
+        },
+        partially_accept: {
+          title: 'Feedback partially accepted',
+          body: `Your feedback on \u201c${sectionName}\u201d was partially accepted.`,
+        },
+        reject: {
+          title: 'Feedback not accepted',
+          body: `Your feedback on \u201c${sectionName}\u201d was not accepted. ${truncatedRationale}`,
+        },
+      }
+
+      const copy = notifCopyMap[input.decision]
+
+      createNotification({
+        userId: updated.submitterId,
+        type: 'feedback_status_changed',
+        title: copy.title,
+        body: copy.body,
+        entityType: 'feedback',
+        entityId: updated.id,
+        linkHref: `/feedback/${updated.id}`,
+      }).catch(console.error)
+
+      // Fire-and-forget email for decision outcomes
+      const [submitterUser] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, updated.submitterId))
+        .limit(1)
+
+      if (submitterUser?.email) {
+        sendFeedbackReviewedEmail(submitterUser.email, {
+          feedbackReadableId: updated.readableId,
+          decision: input.decision,
+          rationale: input.rationale,
+        }).catch(console.error)
+      }
+
       return updated
     }),
 
@@ -283,6 +359,25 @@ export const feedbackRouter = router({
         entityType: 'feedback',
         entityId: input.id,
       })
+
+      // Fire-and-forget notification to feedback submitter
+      const [section] = await db
+        .select({ title: policySections.title })
+        .from(policySections)
+        .where(eq(policySections.id, updated.sectionId))
+        .limit(1)
+
+      const sectionName = section?.title ?? 'a section'
+
+      createNotification({
+        userId: updated.submitterId,
+        type: 'feedback_status_changed',
+        title: 'Feedback closed',
+        body: `Your feedback on \u201c${sectionName}\u201d has been closed.`,
+        entityType: 'feedback',
+        entityId: updated.id,
+        linkHref: `/feedback/${updated.id}`,
+      }).catch(console.error)
 
       return updated
     }),
