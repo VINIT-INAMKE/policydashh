@@ -105,12 +105,13 @@ Plans:
   3. CR transitions through lifecycle states (Drafting, In Review, Approved, Merged, Closed) enforced by a state machine with human approval required
   4. Merging a CR atomically creates a new document version, and all linked feedback items are updated to reflect the version they influenced
   5. A CR can be closed without merging, and the closure rationale is recorded
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md -- CR schema (change_requests, join tables, document_versions stub), XState 5 machine, transitionCR + mergeCR services, tRPC router, permissions, migration, unit tests
+- [ ] 05-02-PLAN.md -- CR list page with filter panel, CR status badge, CR cards, Create CR two-step dialog, CSS variables
+- [ ] 05-03-PLAN.md -- CR detail page with lifecycle actions, merge dialog, close dialog, linked feedback list, affected sections table, decision log
 
 ### Phase 6: Versioning
 **Goal**: Policy documents have a complete version history with diffs, changelogs, and immutable archives so any stakeholder can see exactly what changed and why
@@ -225,7 +226,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 2. Policy Documents & Sections | 0/3 | Planning complete | - |
 | 3. Block Editor | 0/3 | Planning complete | - |
 | 4. Feedback System | 3/3 | Complete | 2026-03-25 |
-| 5. Change Requests | 0/2 | Not started | - |
+| 5. Change Requests | 0/3 | Planning complete | - |
 | 6. Versioning | 0/2 | Not started | - |
 | 7. Traceability & Search | 0/2 | Not started | - |
 | 8. Dashboards & Notifications | 0/3 | Not started | - |
