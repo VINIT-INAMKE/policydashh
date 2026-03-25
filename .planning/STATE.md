@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-25T04:17:23.034Z"
+status: Ready to execute
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-25T04:50:31.346Z"
 progress:
   total_phases: 11
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 15
+  completed_plans: 13
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 04 — Feedback System
+**Current focus:** Phase 05 — Change Requests
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05 (Change Requests) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Plan: Not started
 | Phase 03-block-editor P03 | 6min | 2 tasks | 11 files |
 | Phase 04-feedback-system P03 | 8min | 2 tasks | 8 files |
 | Phase 04 P02 | 15min | 2 tasks | 17 files |
+| Phase 05-change-requests P01 | 6min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,10 @@ Recent decisions affecting current work:
 - [Phase 04]: Select.Root.Props requires generic type argument in base-ui -- typed as string for feedback select components
 - [Phase 04]: Client-side multi-filter for checkbox groups (server API accepts single value; client filters for multi-select)
 - [Phase 04]: Outcomes page uses inline accordion pattern for decision log (click to expand, no separate page)
+- [Phase 05-change-requests]: documentVersions defined before changeRequests in schema to allow mergedVersionId FK without forward-reference
+- [Phase 05-change-requests]: resolvedInVersionId on feedback as plain uuid (no .references()) to avoid circular import; FK in SQL migration only
+- [Phase 05-change-requests]: mergeCR uses db.transaction for atomic version create + CR update + feedback bulk-update + transition log
+- [Phase 05-change-requests]: getNextVersionLabel parses v0.N pattern from documentVersions table; defaults to v0.1 for first version
 
 ### Pending Todos
 
@@ -114,6 +119,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T03:59:54.398Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-25T04:50:31.338Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None

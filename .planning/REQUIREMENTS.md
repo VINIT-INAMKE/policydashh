@@ -51,14 +51,14 @@
 
 ### Change Request Workflow
 
-- [ ] **CR-01**: Policy Lead can create a Change Request (CR-XXX) from one or more feedback items
-- [ ] **CR-02**: CR links to affected policy sections and source feedback items
-- [ ] **CR-03**: CR has an assigned owner (Policy Lead) and title/description
-- [ ] **CR-04**: CR lifecycle managed by state machine: Drafting -> In Review -> Approved -> Merged -> Closed
-- [ ] **CR-05**: CR approval requires human sign-off (Policy Lead or Admin)
-- [ ] **CR-06**: Merging a CR atomically creates a new document version with merge summary
-- [ ] **CR-07**: All feedback items linked to a merged CR are automatically updated to reflect the version they influenced
-- [ ] **CR-08**: CR can be closed without merging (with rationale)
+- [x] **CR-01**: Policy Lead can create a Change Request (CR-XXX) from one or more feedback items
+- [x] **CR-02**: CR links to affected policy sections and source feedback items
+- [x] **CR-03**: CR has an assigned owner (Policy Lead) and title/description
+- [x] **CR-04**: CR lifecycle managed by state machine: Drafting -> In Review -> Approved -> Merged -> Closed
+- [x] **CR-05**: CR approval requires human sign-off (Policy Lead or Admin)
+- [x] **CR-06**: Merging a CR atomically creates a new document version with merge summary
+- [x] **CR-07**: All feedback items linked to a merged CR are automatically updated to reflect the version they influenced
+- [x] **CR-08**: CR can be closed without merging (with rationale)
 
 ### Versioning & Publishing
 
@@ -209,14 +209,14 @@
 | FB-08 | Phase 4 | Complete |
 | FB-09 | Phase 4 | Complete |
 | FB-10 | Phase 4 | Complete |
-| CR-01 | Phase 5 | Pending |
-| CR-02 | Phase 5 | Pending |
-| CR-03 | Phase 5 | Pending |
-| CR-04 | Phase 5 | Pending |
-| CR-05 | Phase 5 | Pending |
-| CR-06 | Phase 5 | Pending |
-| CR-07 | Phase 5 | Pending |
-| CR-08 | Phase 5 | Pending |
+| CR-01 | Phase 5 | Complete |
+| CR-02 | Phase 5 | Complete |
+| CR-03 | Phase 5 | Complete |
+| CR-04 | Phase 5 | Complete |
+| CR-05 | Phase 5 | Complete |
+| CR-06 | Phase 5 | Complete |
+| CR-07 | Phase 5 | Complete |
+| CR-08 | Phase 5 | Complete |
 | VER-01 | Phase 6 | Pending |
 | VER-02 | Phase 6 | Pending |
 | VER-03 | Phase 6 | Pending |
