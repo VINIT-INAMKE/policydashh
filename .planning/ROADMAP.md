@@ -91,9 +91,9 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 04-01-PLAN.md -- Schema + XState 5 machine + tRPC routers (feedback, sectionAssignment, evidence), section-access middleware, permissions, migration, unit tests
-- [ ] 04-02-PLAN.md -- Feedback submission form, inbox page with filter panel, stakeholder outcomes view, shadcn components, workspace nav update
-- [ ] 04-03-PLAN.md -- Feedback detail sheet with triage actions, rationale dialog, decision log, evidence attachment and list components
+- [x] 04-01-PLAN.md -- Schema + XState 5 machine + tRPC routers (feedback, sectionAssignment, evidence), section-access middleware, permissions, migration, unit tests
+- [x] 04-02-PLAN.md -- Feedback submission form, inbox page with filter panel, stakeholder outcomes view, shadcn components, workspace nav update
+- [x] 04-03-PLAN.md -- Feedback detail sheet with triage actions, rationale dialog, decision log, evidence attachment and list components
 
 ### Phase 5: Change Requests
 **Goal**: Policy Leads can create governed change requests from feedback, manage them through a PR-style lifecycle, and link them to affected sections
@@ -224,7 +224,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 1. Foundation & Auth | 0/3 | Planning complete | - |
 | 2. Policy Documents & Sections | 0/3 | Planning complete | - |
 | 3. Block Editor | 0/3 | Planning complete | - |
-| 4. Feedback System | 0/3 | Planning complete | - |
+| 4. Feedback System | 3/3 | Complete | 2026-03-25 |
 | 5. Change Requests | 0/2 | Not started | - |
 | 6. Versioning | 0/2 | Not started | - |
 | 7. Traceability & Search | 0/2 | Not started | - |

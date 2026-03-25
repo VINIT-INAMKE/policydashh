@@ -11,10 +11,10 @@
 - [x] **AUTH-02**: Admin can invite users via email with pre-assigned role
 - [x] **AUTH-03**: User is assigned one of 7 roles: Admin, Policy Lead, Research Lead, Workshop Moderator, Stakeholder, Observer, Auditor
 - [x] **AUTH-04**: User's organization type is tagged: Government, Industry, Legal, Academia, Civil Society, Internal
-- [ ] **AUTH-05**: Stakeholder can only view and interact with sections they are assigned to (section-level scoping)
+- [x] **AUTH-05**: Stakeholder can only view and interact with sections they are assigned to (section-level scoping)
 - [x] **AUTH-06**: Each role has a defined permission set enforced on every API endpoint (default-deny)
 - [x] **AUTH-07**: User session persists across browser refresh
-- [ ] **AUTH-08**: Privacy preferences: user can choose named or anonymous attribution for public outputs
+- [x] **AUTH-08**: Privacy preferences: user can choose named or anonymous attribution for public outputs
 
 ### Policy Documents & Sections
 
@@ -38,16 +38,16 @@
 
 ### Feedback System
 
-- [ ] **FB-01**: Authenticated user (with permission) can submit feedback tied to a specific policy section
-- [ ] **FB-02**: Feedback has a human-readable ID (FB-001, FB-002, etc.)
-- [ ] **FB-03**: Feedback captures: type (Issue, Suggestion, Endorsement, Evidence, Question), priority (Low, Medium, High), impact category (Legal, Security, Tax, Consumer, Innovation, Clarity, Governance, Other)
-- [ ] **FB-04**: Feedback captures: title, body text, and optional suggested change
-- [ ] **FB-05**: Feedback can have evidence artifacts attached (files or links)
-- [ ] **FB-06**: Feedback lifecycle: Submitted -> Under Review -> Accepted / Partially Accepted / Rejected -> Closed
-- [ ] **FB-07**: Every accept/reject/partial decision requires a mandatory rationale (decision log)
-- [ ] **FB-08**: Stakeholder can choose anonymous or named attribution per feedback item
-- [ ] **FB-09**: Stakeholder can view the status and outcome of their own feedback items
-- [ ] **FB-10**: Policy Lead can filter feedback by section, stakeholder org type, priority, status, impact, and feedback type
+- [x] **FB-01**: Authenticated user (with permission) can submit feedback tied to a specific policy section
+- [x] **FB-02**: Feedback has a human-readable ID (FB-001, FB-002, etc.)
+- [x] **FB-03**: Feedback captures: type (Issue, Suggestion, Endorsement, Evidence, Question), priority (Low, Medium, High), impact category (Legal, Security, Tax, Consumer, Innovation, Clarity, Governance, Other)
+- [x] **FB-04**: Feedback captures: title, body text, and optional suggested change
+- [x] **FB-05**: Feedback can have evidence artifacts attached (files or links)
+- [x] **FB-06**: Feedback lifecycle: Submitted -> Under Review -> Accepted / Partially Accepted / Rejected -> Closed
+- [x] **FB-07**: Every accept/reject/partial decision requires a mandatory rationale (decision log)
+- [x] **FB-08**: Stakeholder can choose anonymous or named attribution per feedback item
+- [x] **FB-09**: Stakeholder can view the status and outcome of their own feedback items
+- [x] **FB-10**: Policy Lead can filter feedback by section, stakeholder org type, priority, status, impact, and feedback type
 
 ### Change Request Workflow
 
@@ -89,8 +89,8 @@
 
 ### Evidence & Documents
 
-- [ ] **EV-01**: User can upload evidence artifacts (files) or add links as evidence
-- [ ] **EV-02**: Evidence can be attached to feedback items and policy sections
+- [x] **EV-01**: User can upload evidence artifacts (files) or add links as evidence
+- [x] **EV-02**: Evidence can be attached to feedback items and policy sections
 - [ ] **EV-03**: Research Lead has "Claims without evidence" view surfacing feedback lacking supporting evidence
 - [ ] **EV-04**: Evidence artifacts have metadata: title, type (Link, File), uploader, timestamp
 
@@ -181,10 +181,10 @@
 | AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Complete |
-| AUTH-05 | Phase 4 | Pending |
+| AUTH-05 | Phase 4 | Complete |
 | AUTH-06 | Phase 1 | Complete |
 | AUTH-07 | Phase 1 | Complete |
-| AUTH-08 | Phase 4 | Pending |
+| AUTH-08 | Phase 4 | Complete |
 | DOC-01 | Phase 2 | Complete |
 | DOC-02 | Phase 2 | Complete |
 | DOC-03 | Phase 2 | Complete |
@@ -199,16 +199,16 @@
 | EDIT-06 | Phase 11 | Pending |
 | EDIT-07 | Phase 11 | Pending |
 | EDIT-08 | Phase 11 | Pending |
-| FB-01 | Phase 4 | Pending |
-| FB-02 | Phase 4 | Pending |
-| FB-03 | Phase 4 | Pending |
-| FB-04 | Phase 4 | Pending |
-| FB-05 | Phase 4 | Pending |
-| FB-06 | Phase 4 | Pending |
-| FB-07 | Phase 4 | Pending |
-| FB-08 | Phase 4 | Pending |
-| FB-09 | Phase 4 | Pending |
-| FB-10 | Phase 4 | Pending |
+| FB-01 | Phase 4 | Complete |
+| FB-02 | Phase 4 | Complete |
+| FB-03 | Phase 4 | Complete |
+| FB-04 | Phase 4 | Complete |
+| FB-05 | Phase 4 | Complete |
+| FB-06 | Phase 4 | Complete |
+| FB-07 | Phase 4 | Complete |
+| FB-08 | Phase 4 | Complete |
+| FB-09 | Phase 4 | Complete |
+| FB-10 | Phase 4 | Complete |
 | CR-01 | Phase 5 | Pending |
 | CR-02 | Phase 5 | Pending |
 | CR-03 | Phase 5 | Pending |
@@ -235,8 +235,8 @@
 | WS-03 | Phase 10 | Pending |
 | WS-04 | Phase 10 | Pending |
 | WS-05 | Phase 10 | Pending |
-| EV-01 | Phase 4 | Pending |
-| EV-02 | Phase 4 | Pending |
+| EV-01 | Phase 4 | Complete |
+| EV-02 | Phase 4 | Complete |
 | EV-03 | Phase 10 | Pending |
 | EV-04 | Phase 10 | Pending |
 | PUB-01 | Phase 9 | Pending |
