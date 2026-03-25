@@ -73,11 +73,11 @@
 ### Traceability
 
 - [ ] **TRACE-01**: Full traceability chain: Feedback -> Change Request -> Section -> Version
-- [ ] **TRACE-02**: Traceability matrix view: grid of FB -> CR -> Section -> Version with decision rationale
-- [ ] **TRACE-03**: Filter traceability by stakeholder org type, section, decision outcome, version range
-- [ ] **TRACE-04**: Per-section "What changed and why" view showing feedback that drove changes
-- [ ] **TRACE-05**: Per-stakeholder "Your feedback outcomes" view showing how each feedback item was handled
-- [ ] **TRACE-06**: Export traceability matrix as CSV and PDF
+- [x] **TRACE-02**: Traceability matrix view: grid of FB -> CR -> Section -> Version with decision rationale
+- [x] **TRACE-03**: Filter traceability by stakeholder org type, section, decision outcome, version range
+- [x] **TRACE-04**: Per-section "What changed and why" view showing feedback that drove changes
+- [x] **TRACE-05**: Per-stakeholder "Your feedback outcomes" view showing how each feedback item was handled
+- [x] **TRACE-06**: Export traceability matrix as CSV and PDF
 
 ### Workshop Module
 
@@ -225,11 +225,11 @@
 | VER-06 | Phase 6 | Complete |
 | VER-07 | Phase 6 | Complete |
 | TRACE-01 | Phase 7 | Pending |
-| TRACE-02 | Phase 7 | Pending |
-| TRACE-03 | Phase 7 | Pending |
-| TRACE-04 | Phase 7 | Pending |
-| TRACE-05 | Phase 7 | Pending |
-| TRACE-06 | Phase 7 | Pending |
+| TRACE-02 | Phase 7 | Complete |
+| TRACE-03 | Phase 7 | Complete |
+| TRACE-04 | Phase 7 | Complete |
+| TRACE-05 | Phase 7 | Complete |
+| TRACE-06 | Phase 7 | Complete |
 | WS-01 | Phase 10 | Pending |
 | WS-02 | Phase 10 | Pending |
 | WS-03 | Phase 10 | Pending |

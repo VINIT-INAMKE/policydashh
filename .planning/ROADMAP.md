@@ -144,8 +144,8 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 07-01-PLAN.md -- Backend: traceability tRPC router (matrix, sectionChain, stakeholderOutcomes, search), permissions, feedback/CR router extensions, CSV/PDF export Route Handlers
-- [ ] 07-02-PLAN.md -- Traceability page with matrix table, filter panel, by-section view, by-stakeholder view, export buttons, workspace nav
+- [x] 07-01-PLAN.md -- Backend: traceability tRPC router (matrix, sectionChain, stakeholderOutcomes, search), permissions, feedback/CR router extensions, CSV/PDF export Route Handlers
+- [x] 07-02-PLAN.md -- Traceability page with matrix table, filter panel, by-section view, by-stakeholder view, export buttons, workspace nav
 - [ ] 07-03-PLAN.md -- Search tab with debounced cross-entity search, scope tabs (Feedback/Content/CRs), result cards with match highlighting, CR inline filters
 
 ### Phase 8: Dashboards & Notifications
@@ -229,7 +229,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 4. Feedback System | 3/3 | Complete | 2026-03-25 |
 | 5. Change Requests | 0/3 | Planning complete | - |
 | 6. Versioning | 0/2 | Planning complete | - |
-| 7. Traceability & Search | 0/3 | Planning complete | - |
+| 7. Traceability & Search | 2/3 | Executing | - |
 | 8. Dashboards & Notifications | 0/3 | Not started | - |
 | 9. Public Portal & Compliance | 0/2 | Not started | - |
 | 10. Workshops & Evidence Management | 0/2 | Not started | - |
