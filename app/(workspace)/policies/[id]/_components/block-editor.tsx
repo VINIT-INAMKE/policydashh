@@ -1,16 +1,22 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react'
+import { useEditor, EditorContent, ReactNodeViewRenderer, ReactRenderer } from '@tiptap/react'
 import { DragHandle } from '@tiptap/extension-drag-handle-react'
 import { useDebouncedCallback } from 'use-debounce'
 import { GripVertical, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/src/trpc/client'
 import { buildExtensions } from '@/src/lib/tiptap-extensions/build-extensions'
+import { getSlashCommandItems } from '@/src/lib/tiptap-extensions/slash-command-extension'
 import { Callout } from '@/src/lib/tiptap-extensions/callout-node'
 import { CalloutBlockView } from './callout-block-view'
+import { EditorToolbar } from './editor-toolbar'
+import { FloatingLinkEditor } from './floating-link-editor'
+import { SlashCommandMenu, type SlashCommandMenuRef } from './slash-command-menu'
 import type { Editor } from '@tiptap/core'
+import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
+import type { SlashCommandItem } from '@/src/lib/tiptap-extensions/slash-command-extension'
 
 // Extend Callout with React NodeView
 const CalloutWithView = Callout.extend({
@@ -58,7 +64,7 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
         updateSaveState('idle')
       }, 3000)
     },
-    onError: (error) => {
+    onError: () => {
       updateSaveState('error')
       toast.error("Couldn't save your changes. Check your connection and try again.")
     },
@@ -92,14 +98,56 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
     [debouncedSave],
   )
 
+  // Build extensions with slash command suggestion render wired
+  const extensions = buildExtensions({
+    onSlashCommand: {
+      items: ({ query }: { query: string }) => getSlashCommandItems(query),
+      render: () => {
+        let component: ReactRenderer<SlashCommandMenuRef> | null = null
+
+        return {
+          onStart: (props: SuggestionProps<SlashCommandItem>) => {
+            component = new ReactRenderer(SlashCommandMenu, {
+              props: {
+                items: props.items,
+                command: props.command,
+                clientRect: props.clientRect,
+              },
+              editor: props.editor,
+            })
+          },
+          onUpdate: (props: SuggestionProps<SlashCommandItem>) => {
+            component?.updateProps({
+              items: props.items,
+              command: props.command,
+              clientRect: props.clientRect,
+            })
+          },
+          onKeyDown: (props: SuggestionKeyDownProps) => {
+            if (props.event.key === 'Escape') {
+              component?.destroy()
+              component = null
+              return true
+            }
+            return (component?.ref as SlashCommandMenuRef)?.onKeyDown?.(props) ?? false
+          },
+          onExit: () => {
+            component?.destroy()
+            component = null
+          },
+        }
+      },
+    },
+  }).map((ext) => {
+    // Replace the base Callout with the React NodeView version
+    if (ext.name === 'callout') return CalloutWithView
+    return ext
+  })
+
   const editor = useEditor(
     {
       immediatelyRender: false,
-      extensions: buildExtensions().map((ext) => {
-        // Replace the base Callout with the React NodeView version
-        if (ext.name === 'callout') return CalloutWithView
-        return ext
-      }),
+      extensions,
       content: section.content ?? {
         type: 'doc',
         content: [{ type: 'paragraph' }],
@@ -181,6 +229,9 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
         )}
       </div>
 
+      {/* Toolbar */}
+      <EditorToolbar editor={editor} onLinkClick={() => setLinkEditorOpen(true)} />
+
       {/* DragHandle */}
       <DragHandle editor={editor}>
         <div
@@ -196,6 +247,17 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
         editor={editor}
         className="mx-auto max-w-[768px] px-6 py-8 [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:focus:outline-none"
       />
+
+      {/* Floating link editor */}
+      {linkEditorOpen && (
+        <div className="absolute left-1/2 top-16 z-50 -translate-x-1/2">
+          <FloatingLinkEditor
+            editor={editor}
+            isOpen={linkEditorOpen}
+            onClose={() => setLinkEditorOpen(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }
