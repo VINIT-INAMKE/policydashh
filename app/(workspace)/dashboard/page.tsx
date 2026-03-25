@@ -11,6 +11,7 @@ import { ResearchLeadDashboard } from './_components/research-lead-dashboard'
 import { AuditorDashboard } from './_components/auditor-dashboard'
 import { WorkshopModeratorDashboard } from './_components/workshop-moderator-dashboard'
 import { ObserverDashboard } from './_components/observer-dashboard'
+import { LastVisitTracker } from './_components/last-visit-tracker'
 
 const ROLE_DISPLAY_NAMES: Record<string, string> = {
   admin: 'Admin',
@@ -72,6 +73,7 @@ export default async function DashboardPage() {
         {greeting}, {firstName}.
       </p>
       {renderDashboard()}
+      <LastVisitTracker />
     </div>
   )
 }
