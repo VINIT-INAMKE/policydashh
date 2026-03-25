@@ -225,6 +225,33 @@ export const documentRouter = router({
       return updated
     }),
 
+  // Update section content (Tiptap JSON)
+  // No audit log for content edits -- high-frequency auto-saves (every 1.5s idle)
+  // would flood the audit table. Phase 6 (Versioning) creates explicit version
+  // snapshots as the auditable content events.
+  updateSectionContent: requirePermission('section:manage')
+    .input(z.object({
+      id: z.string().uuid(),
+      documentId: z.string().uuid(),
+      content: z.record(z.string(), z.unknown()),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const [updated] = await db
+        .update(policySections)
+        .set({ content: input.content, updatedAt: new Date() })
+        .where(and(
+          eq(policySections.id, input.id),
+          eq(policySections.documentId, input.documentId),
+        ))
+        .returning()
+
+      if (!updated) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Section not found' })
+      }
+
+      return updated
+    }),
+
   // Delete a section
   deleteSection: requirePermission('section:manage')
     .input(z.object({
