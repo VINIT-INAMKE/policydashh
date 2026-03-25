@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { ArrowLeft, Pencil, MessageSquare, GitPullRequest, Network, History } from 'lucide-react'
+import Link from 'next/link'
 import { SectionSidebar } from './_components/section-sidebar'
 import { SectionContentView } from './_components/section-content-view'
 import { EditPolicyDialog } from '../_components/edit-policy-dialog'
@@ -98,6 +99,34 @@ export default function PolicyDetailPage() {
                 Edit
               </Button>
             </div>
+          </div>
+
+          {/* Sub-page navigation */}
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <Link href={`/policies/${id}/feedback`}>
+              <Button variant="outline" size="sm">
+                <MessageSquare className="mr-1 h-4 w-4" />
+                Feedback
+              </Button>
+            </Link>
+            <Link href={`/policies/${id}/change-requests`}>
+              <Button variant="outline" size="sm">
+                <GitPullRequest className="mr-1 h-4 w-4" />
+                Change Requests
+              </Button>
+            </Link>
+            <Link href={`/policies/${id}/traceability`}>
+              <Button variant="outline" size="sm">
+                <Network className="mr-1 h-4 w-4" />
+                Traceability
+              </Button>
+            </Link>
+            <Link href={`/policies/${id}/versions`}>
+              <Button variant="outline" size="sm">
+                <History className="mr-1 h-4 w-4" />
+                Versions
+              </Button>
+            </Link>
           </div>
 
           {/* Section content or empty prompt */}
