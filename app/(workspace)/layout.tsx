@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import { WorkspaceNav } from './_components/workspace-nav'
+import { NotificationBell } from './_components/notification-bell'
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth()
@@ -15,7 +16,10 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           <h1 className="text-lg font-semibold">PolicyDash</h1>
           <WorkspaceNav />
         </div>
-        <UserButton />
+        <div className="flex items-center gap-4">
+          <NotificationBell />
+          <UserButton />
+        </div>
       </header>
       <main className="p-6">
         {children}
