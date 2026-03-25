@@ -17,6 +17,7 @@ export const users = pgTable('users', {
   name:      text('name'),           // Display name from Clerk profile
   role:      roleEnum('role').notNull().default('stakeholder'),
   orgType:   orgTypeEnum('org_type'),   // nullable until user sets profile
+  lastVisitedAt: timestamp('last_visited_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
