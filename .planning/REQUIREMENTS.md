@@ -114,9 +114,9 @@
 
 ### Notifications
 
-- [ ] **NOTIF-01**: In-app notifications for: feedback status changes, new version published, section assignment, CR status changes
-- [ ] **NOTIF-02**: Email notifications for key events: feedback reviewed, version published, workshop upcoming
-- [ ] **NOTIF-03**: "What changed since last visit" indicators on dashboard and section views
+- [x] **NOTIF-01**: In-app notifications for: feedback status changes, new version published, section assignment, CR status changes
+- [x] **NOTIF-02**: Email notifications for key events: feedback reviewed, version published, workshop upcoming
+- [x] **NOTIF-03**: "What changed since last visit" indicators on dashboard and section views
 
 ### Search & Filtering
 
@@ -251,9 +251,9 @@
 | UX-05 | Phase 8 | Pending |
 | UX-06 | Phase 8 | Pending |
 | UX-07 | Phase 8 | Pending |
-| NOTIF-01 | Phase 8 | Pending |
-| NOTIF-02 | Phase 8 | Pending |
-| NOTIF-03 | Phase 8 | Pending |
+| NOTIF-01 | Phase 8 | Complete |
+| NOTIF-02 | Phase 8 | Complete |
+| NOTIF-03 | Phase 8 | Complete |
 | SRCH-01 | Phase 7 | Pending |
 | SRCH-02 | Phase 7 | Pending |
 | SRCH-03 | Phase 7 | Pending |
