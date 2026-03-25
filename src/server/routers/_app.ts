@@ -8,6 +8,7 @@ import { evidenceRouter } from './evidence'
 import { changeRequestRouter } from './changeRequest'
 import { versionRouter } from './version'
 import { traceabilityRouter } from './traceability'
+import { notificationRouter } from './notification'
 
 export const appRouter = router({
   user: userRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   changeRequest: changeRequestRouter,
   version: versionRouter,
   traceability: traceabilityRouter,
+  notification: notificationRouter,
 })
 
 export type AppRouter = typeof appRouter

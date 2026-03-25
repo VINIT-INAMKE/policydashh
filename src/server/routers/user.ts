@@ -92,6 +92,18 @@ export const userRouter = router({
       return { invitedUserId: createdUser.id, phone: input.phone, role: input.role }
     }),
 
+  // Any authenticated user can update their own last visited timestamp
+  // No audit log -- operational, not a business event
+  updateLastVisited: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      await db
+        .update(users)
+        .set({ lastVisitedAt: new Date() })
+        .where(eq(users.id, ctx.user.id))
+
+      return { success: true }
+    }),
+
   // Admin only: list all users
   listUsers: requirePermission('user:list')
     .query(async () => {
