@@ -45,6 +45,10 @@ export const PERMISSIONS = {
   'version:read':              [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR, ROLES.OBSERVER, ROLES.RESEARCH_LEAD, ROLES.STAKEHOLDER] as readonly Role[],
   'version:manage':            [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
   'version:publish':           [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+
+  // Traceability (Phase 7)
+  'trace:read':                [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR] as readonly Role[],
+  'trace:export':              [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR] as readonly Role[],
 } as const
 
 export type Permission = keyof typeof PERMISSIONS

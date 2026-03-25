@@ -10,7 +10,7 @@ import { feedbackItems } from '@/src/db/schema/feedback'
 import { policySections } from '@/src/db/schema/documents'
 import { users } from '@/src/db/schema/users'
 import { workflowTransitions } from '@/src/db/schema/workflow'
-import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm'
+import { eq, and, desc, asc, sql, inArray, ilike } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 const CR_STATUSES = ['drafting', 'in_review', 'approved', 'merged', 'closed'] as const
@@ -90,12 +90,28 @@ export const changeRequestRouter = router({
       documentId: z.string().uuid(),
       status: z.enum(CR_STATUSES).optional(),
       sectionId: z.string().uuid().optional(),
+      feedbackQuery: z.string().max(200).optional(),
     }))
     .query(async ({ input }) => {
       const conditions = [eq(changeRequests.documentId, input.documentId)]
 
       if (input.status) {
         conditions.push(eq(changeRequests.status, input.status))
+      }
+
+      // If feedbackQuery, find CRs linked to matching feedback
+      if (input.feedbackQuery) {
+        const term = `%${input.feedbackQuery.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`
+        const matchingFeedback = await db
+          .select({ crId: crFeedbackLinks.crId })
+          .from(crFeedbackLinks)
+          .innerJoin(feedbackItems, eq(crFeedbackLinks.feedbackId, feedbackItems.id))
+          .where(ilike(feedbackItems.title, term))
+        const crIds = [...new Set(matchingFeedback.map((r) => r.crId))]
+        if (crIds.length === 0) {
+          return []
+        }
+        conditions.push(inArray(changeRequests.id, crIds))
       }
 
       // If sectionId filter, find CRs linked to that section

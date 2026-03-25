@@ -7,6 +7,7 @@ import { sectionAssignmentRouter } from './sectionAssignment'
 import { evidenceRouter } from './evidence'
 import { changeRequestRouter } from './changeRequest'
 import { versionRouter } from './version'
+import { traceabilityRouter } from './traceability'
 
 export const appRouter = router({
   user: userRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   evidence: evidenceRouter,
   changeRequest: changeRequestRouter,
   version: versionRouter,
+  traceability: traceabilityRouter,
 })
 
 export type AppRouter = typeof appRouter

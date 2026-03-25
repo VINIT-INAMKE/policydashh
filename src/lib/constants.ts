@@ -60,6 +60,7 @@ export const ACTIONS = {
   CR_CLOSE:           'cr.close',
   VERSION_CREATE:     'version.create',
   VERSION_PUBLISH:    'version.publish',
+  TRACE_EXPORT:       'trace.export',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]

@@ -80,6 +80,7 @@ export const feedbackRouter = router({
       feedbackType: z.enum(FEEDBACK_TYPES).optional(),
       priority: z.enum(PRIORITIES).optional(),
       impactCategory: z.enum(IMPACT_CATEGORIES).optional(),
+      orgType: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal'] as const).optional(),
     }))
     .query(async ({ ctx, input }) => {
       const conditions = [eq(feedbackItems.documentId, input.documentId)]
@@ -89,6 +90,7 @@ export const feedbackRouter = router({
       if (input.feedbackType) conditions.push(eq(feedbackItems.feedbackType, input.feedbackType))
       if (input.priority) conditions.push(eq(feedbackItems.priority, input.priority))
       if (input.impactCategory) conditions.push(eq(feedbackItems.impactCategory, input.impactCategory))
+      if (input.orgType) conditions.push(eq(users.orgType, input.orgType))
 
       const rows = await db
         .select({
