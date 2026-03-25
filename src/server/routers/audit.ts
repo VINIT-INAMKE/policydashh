@@ -12,6 +12,7 @@ export const auditRouter = router({
       offset: z.number().min(0).default(0),
       entityType: z.string().optional(),
       actorId: z.string().optional(),
+      actorRole: z.string().optional(),
       action: z.string().optional(),
       from: z.string().datetime().optional(),
       to: z.string().datetime().optional(),
@@ -22,6 +23,7 @@ export const auditRouter = router({
 
       if (filters.entityType) conditions.push(eq(auditEvents.entityType, filters.entityType))
       if (filters.actorId) conditions.push(eq(auditEvents.actorId, filters.actorId))
+      if (filters.actorRole) conditions.push(eq(auditEvents.actorRole, filters.actorRole))
       if (filters.action) conditions.push(eq(auditEvents.action, filters.action))
       if (filters.from) conditions.push(gte(auditEvents.timestamp, new Date(filters.from)))
       if (filters.to) conditions.push(lte(auditEvents.timestamp, new Date(filters.to)))

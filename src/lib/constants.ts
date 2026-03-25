@@ -61,6 +61,7 @@ export const ACTIONS = {
   VERSION_CREATE:     'version.create',
   VERSION_PUBLISH:    'version.publish',
   TRACE_EXPORT:       'trace.export',
+  EVIDENCE_PACK_EXPORT: 'evidence_pack.export',
   NOTIFICATION_READ:  'notification.read',
   NOTIFICATION_MARK_READ: 'notification.mark_read',
 } as const

@@ -1,7 +1,8 @@
+import Link from 'next/link'
 import { db } from '@/src/db'
 import { auditEvents, users } from '@/src/db/schema'
 import { count, desc, sql, gt } from 'drizzle-orm'
-import { Activity, Shield, Download, Info } from 'lucide-react'
+import { Activity, Shield, Download, FileArchive } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -54,7 +55,7 @@ export async function AuditorDashboard({ userId }: AuditorDashboardProps) {
             <CardTitle>
               <h2 className="text-xl font-semibold">Recent Audit Activity</h2>
             </CardTitle>
-            <Button size="sm" disabled>
+            <Button size="sm" render={<Link href="/audit" />}>
               View Full Audit Trail
             </Button>
           </div>
@@ -96,13 +97,15 @@ export async function AuditorDashboard({ userId }: AuditorDashboardProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Button variant="outline" size="sm">
-            <Download className="size-4" />
-            Export Audit Log (CSV)
-          </Button>
-          <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <Info className="mt-0.5 size-4 shrink-0" />
-            <p>Evidence pack export (ZIP) is available in the compliance module.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm">
+              <Download className="size-4" />
+              Export Audit Log (CSV)
+            </Button>
+            <Button variant="outline" size="sm" render={<Link href="/audit" />}>
+              <FileArchive className="size-4" />
+              Export Evidence Pack (ZIP)
+            </Button>
           </div>
         </CardContent>
       </Card>
