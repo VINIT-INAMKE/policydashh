@@ -11,6 +11,7 @@ import type { SuggestionOptions } from '@tiptap/suggestion'
 import type { Extension } from '@tiptap/core'
 
 import { Callout } from './callout-node'
+import { FileAttachment } from './file-attachment-node'
 import { LinkPreview } from './link-preview-node'
 import { SlashCommands } from './slash-command-extension'
 
@@ -32,7 +33,7 @@ export interface BuildExtensionsOptions {
  * - CodeBlockLowlight (replaces StarterKit codeBlock)
  * - Image, FileHandler, Table suite, Details suite
  * - NodeRange (required by DragHandle in Plan 02)
- * - Custom: Callout, LinkPreview, SlashCommands
+ * - Custom: Callout, FileAttachment, LinkPreview, SlashCommands
  * - Placeholder
  *
  * CRITICAL: Do NOT add @tiptap/extension-link or @tiptap/extension-underline
@@ -92,6 +93,7 @@ export function buildExtensions(options?: BuildExtensionsOptions): Extension[] {
 
     // Custom extensions
     Callout,
+    FileAttachment,
     LinkPreview,
     SlashCommands.configure({
       suggestion: options?.onSlashCommand ?? {},

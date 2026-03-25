@@ -165,9 +165,12 @@ export function getSlashCommandItems(query: string): SlashCommandItem[] {
       description: 'Upload a file attachment.',
       searchTerms: ['file', 'attachment', 'upload', 'document', 'pdf'],
       command: ({ editor, range }) => {
-        // File upload is handled by the UI component (Plan 03)
-        // For now, just clear the slash command range
-        editor.chain().focus().deleteRange(range).run()
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({ type: 'fileAttachment', attrs: { url: null } })
+          .run()
       },
     },
     {

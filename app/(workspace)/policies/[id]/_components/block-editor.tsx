@@ -10,7 +10,14 @@ import { trpc } from '@/src/trpc/client'
 import { buildExtensions } from '@/src/lib/tiptap-extensions/build-extensions'
 import { getSlashCommandItems } from '@/src/lib/tiptap-extensions/slash-command-extension'
 import { Callout } from '@/src/lib/tiptap-extensions/callout-node'
+import { FileAttachment } from '@/src/lib/tiptap-extensions/file-attachment-node'
+import { LinkPreview } from '@/src/lib/tiptap-extensions/link-preview-node'
+import { uploadFiles } from '@/src/lib/uploadthing'
 import { CalloutBlockView } from './callout-block-view'
+import { ImageBlockView } from './image-block-view'
+import { FileAttachmentView } from './file-attachment-view'
+import { LinkPreviewView } from './link-preview-view'
+import { CodeBlockView } from './code-block-view'
 import { EditorToolbar } from './editor-toolbar'
 import { FloatingLinkEditor } from './floating-link-editor'
 import { SlashCommandMenu, type SlashCommandMenuRef } from './slash-command-menu'
@@ -22,6 +29,20 @@ import type { SlashCommandItem } from '@/src/lib/tiptap-extensions/slash-command
 const CalloutWithView = Callout.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CalloutBlockView)
+  },
+})
+
+// Extend FileAttachment with React NodeView
+const FileAttachmentWithView = FileAttachment.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(FileAttachmentView)
+  },
+})
+
+// Extend LinkPreview with React NodeView
+const LinkPreviewWithView = LinkPreview.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(LinkPreviewView)
   },
 })
 
@@ -139,8 +160,69 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
       },
     },
   }).map((ext) => {
-    // Replace the base Callout with the React NodeView version
+    // Replace headless extensions with React NodeView versions
     if (ext.name === 'callout') return CalloutWithView
+    if (ext.name === 'fileAttachment') return FileAttachmentWithView
+    if (ext.name === 'linkPreview') return LinkPreviewWithView
+    // Add React NodeView to Image extension
+    if (ext.name === 'image') {
+      return ext.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(ImageBlockView)
+        },
+      })
+    }
+    // Add React NodeView to CodeBlockLowlight extension
+    if (ext.name === 'codeBlock') {
+      return ext.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlockView)
+        },
+      })
+    }
+    // Wire FileHandler onDrop/onPaste to upload files
+    if (ext.name === 'fileHandler') {
+      return ext.configure({
+        allowedMimeTypes: [
+          'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+          'application/pdf', 'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ],
+        onDrop: (currentEditor: Editor, files: File[], pos: number) => {
+          for (const file of files) {
+            if (file.type.startsWith('image/')) {
+              // Insert empty image node, then upload fills it
+              currentEditor.chain().focus().insertContentAt(pos, {
+                type: 'image',
+                attrs: { src: '' },
+              }).run()
+              // The ImageBlockView NodeView will handle showing upload state
+              // via its idle -> uploading flow when src is empty
+            } else {
+              currentEditor.chain().focus().insertContentAt(pos, {
+                type: 'fileAttachment',
+                attrs: { url: null, filename: file.name, filesize: file.size },
+              }).run()
+            }
+          }
+        },
+        onPaste: (currentEditor: Editor, files: File[]) => {
+          for (const file of files) {
+            if (file.type.startsWith('image/')) {
+              currentEditor.chain().focus().insertContent({
+                type: 'image',
+                attrs: { src: '' },
+              }).run()
+            } else {
+              currentEditor.chain().focus().insertContent({
+                type: 'fileAttachment',
+                attrs: { url: null, filename: file.name, filesize: file.size },
+              }).run()
+            }
+          }
+        },
+      })
+    }
     return ext
   })
 
