@@ -140,12 +140,13 @@ Plans:
   3. User can view per-section "What changed and why" and per-stakeholder "Your feedback outcomes" views
   4. User can export the traceability matrix as CSV and PDF
   5. User can search feedback content (full-text), policy document content, and filter CRs by status, section, and linked feedback
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md -- Backend: traceability tRPC router (matrix, sectionChain, stakeholderOutcomes, search), permissions, feedback/CR router extensions, CSV/PDF export Route Handlers
+- [ ] 07-02-PLAN.md -- Traceability page with matrix table, filter panel, by-section view, by-stakeholder view, export buttons, workspace nav
+- [ ] 07-03-PLAN.md -- Search tab with debounced cross-entity search, scope tabs (Feedback/Content/CRs), result cards with match highlighting, CR inline filters
 
 ### Phase 8: Dashboards & Notifications
 **Goal**: Every role has a tailored dashboard showing relevant content and tasks, and users are notified of important events in-app and via email
@@ -228,7 +229,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 4. Feedback System | 3/3 | Complete | 2026-03-25 |
 | 5. Change Requests | 0/3 | Planning complete | - |
 | 6. Versioning | 0/2 | Planning complete | - |
-| 7. Traceability & Search | 0/2 | Not started | - |
+| 7. Traceability & Search | 0/3 | Planning complete | - |
 | 8. Dashboards & Notifications | 0/3 | Not started | - |
 | 9. Public Portal & Compliance | 0/2 | Not started | - |
 | 10. Workshops & Evidence Management | 0/2 | Not started | - |
