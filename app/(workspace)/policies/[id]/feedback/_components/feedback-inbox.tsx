@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { FeedbackCard, type FeedbackItem } from './feedback-card'
 import { FilterPanel, EMPTY_FILTERS, type FilterState } from './filter-panel'
+import { FeedbackDetailSheet } from './feedback-detail-sheet'
 
 interface FeedbackInboxProps {
   documentId: string
@@ -166,6 +167,13 @@ export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
           )}
         </div>
       </div>
+
+      {/* Feedback detail sheet */}
+      <FeedbackDetailSheet
+        feedbackId={selectedFeedbackId}
+        open={!!selectedFeedbackId}
+        onOpenChange={(o) => { if (!o) setSelectedFeedbackId(null) }}
+      />
 
       {/* Mobile filter sheet */}
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
