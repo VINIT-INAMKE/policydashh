@@ -208,12 +208,13 @@ Plans:
   1. Two or more users can edit the same section simultaneously and see each other's changes in real time via Yjs/Hocuspocus CRDT sync
   2. Users can see presence indicators showing who is currently viewing or editing a section
   3. User can select text within a section and leave an inline comment anchored to that selection
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 11-01: TBD
-- [ ] 11-02: TBD
+- [ ] 11-01-PLAN.md -- Backend foundation: DB schema (ydoc_snapshots, comment_threads, comment_replies), Hocuspocus server, InlineComment mark, comments tRPC router, buildExtensions collaboration option
+- [ ] 11-02-PLAN.md -- Client collaboration: HocuspocusProvider in BlockEditor, PresenceBar avatars, ConnectionStatus indicator, remote cursor CSS, auto-save fallback
+- [ ] 11-03-PLAN.md -- Inline comments UI: CommentBubble floating trigger, CommentPanel with open/resolved tabs, CommentThread with replies, resolve/reopen workflow, comment anchor highlighting
 
 ## Progress
 
@@ -234,4 +235,4 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 8. Dashboards & Notifications | 0/3 | Planning complete | - |
 | 9. Public Portal & Compliance | 0/2 | Planning complete | - |
 | 10. Workshops & Evidence Management | 0/3 | Planning complete | - |
-| 11. Real-Time Collaboration | 0/2 | Not started | - |
+| 11. Real-Time Collaboration | 0/3 | Planning complete | - |
