@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-03-25T05:12:11.506Z"
+status: Ready to execute
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-25T06:07:52.992Z"
 progress:
   total_phases: 11
   completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 17
+  completed_plans: 16
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 05 — Change Requests
+**Current focus:** Phase 06 — Versioning
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (Versioning) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Plan: Not started
 | Phase 04 P02 | 15min | 2 tasks | 17 files |
 | Phase 05-change-requests P01 | 6min | 2 tasks | 12 files |
 | Phase 05-change-requests P03 | 6min | 2 tasks | 9 files |
+| Phase 06 P01 | 9min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,10 @@ Recent decisions affecting current work:
 - [Phase 05-change-requests]: getNextVersionLabel parses v0.N pattern from documentVersions table; defaults to v0.1 for first version
 - [Phase 05-change-requests]: Import Phase 4 StatusBadge directly for feedback status in LinkedFeedbackList (visual consistency)
 - [Phase 05-change-requests]: CRDecisionLog encapsulated data fetching via useQuery rather than props pattern
+- [Phase 06]: getNextVersionLabel moved to version.service.ts with backward-compat re-export from changeRequest.service.ts
+- [Phase 06]: computeSectionDiff uses JSON.stringify content comparison + diffWords for word-level diff
+- [Phase 06]: Published versions immutable: publishVersion idempotent (returns as-is if already published)
+- [Phase 06]: version:read includes STAKEHOLDER role for section-scoped version history access
 
 ### Pending Todos
 
@@ -122,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T05:02:19.310Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-03-25T06:07:52.984Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

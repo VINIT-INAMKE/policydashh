@@ -127,7 +127,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 06-01-PLAN.md -- Backend: extend documentVersions schema (snapshot, changelog, publish), version.service.ts, tRPC router, mergeCR extension, migration, permissions, unit tests
+- [x] 06-01-PLAN.md -- Backend: extend documentVersions schema (snapshot, changelog, publish), version.service.ts, tRPC router, mergeCR extension, migration, permissions, unit tests
 - [ ] 06-02-PLAN.md -- Version history page with list/detail panels, changelog, section diff view, publish dialog, create version dialog
 
 ### Phase 7: Traceability & Search

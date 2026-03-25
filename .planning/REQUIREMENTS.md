@@ -62,13 +62,13 @@
 
 ### Versioning & Publishing
 
-- [ ] **VER-01**: Policy documents use semantic versioning (v0.1, v0.2, etc.)
-- [ ] **VER-02**: New version is created when a CR is merged or manually by Admin/Policy Lead
-- [ ] **VER-03**: Auto-generated changelog for each version: what changed, why, linked feedback IDs
-- [ ] **VER-04**: Section-level diff view comparing any two versions of a document
+- [x] **VER-01**: Policy documents use semantic versioning (v0.1, v0.2, etc.)
+- [x] **VER-02**: New version is created when a CR is merged or manually by Admin/Policy Lead
+- [x] **VER-03**: Auto-generated changelog for each version: what changed, why, linked feedback IDs
+- [x] **VER-04**: Section-level diff view comparing any two versions of a document
 - [ ] **VER-05**: Previous versions are archived and accessible as read-only
-- [ ] **VER-06**: Admin/Policy Lead can publish a version, making it visible on the public portal
-- [ ] **VER-07**: Version snapshots are immutable once published
+- [x] **VER-06**: Admin/Policy Lead can publish a version, making it visible on the public portal
+- [x] **VER-07**: Version snapshots are immutable once published
 
 ### Traceability
 
@@ -217,13 +217,13 @@
 | CR-06 | Phase 5 | Complete |
 | CR-07 | Phase 5 | Complete |
 | CR-08 | Phase 5 | Complete |
-| VER-01 | Phase 6 | Pending |
-| VER-02 | Phase 6 | Pending |
-| VER-03 | Phase 6 | Pending |
-| VER-04 | Phase 6 | Pending |
+| VER-01 | Phase 6 | Complete |
+| VER-02 | Phase 6 | Complete |
+| VER-03 | Phase 6 | Complete |
+| VER-04 | Phase 6 | Complete |
 | VER-05 | Phase 6 | Pending |
-| VER-06 | Phase 6 | Pending |
-| VER-07 | Phase 6 | Pending |
+| VER-06 | Phase 6 | Complete |
+| VER-07 | Phase 6 | Complete |
 | TRACE-01 | Phase 7 | Pending |
 | TRACE-02 | Phase 7 | Pending |
 | TRACE-03 | Phase 7 | Pending |
