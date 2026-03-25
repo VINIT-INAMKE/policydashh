@@ -158,13 +158,13 @@ Plans:
   3. Stakeholder dashboard shows assigned sections, pending feedback requests, upcoming workshops, and "what changed since last visit" indicators
   4. User receives in-app notifications for feedback status changes, new version published, section assignment, and CR status changes
   5. User receives email notifications for key events: feedback reviewed, version published, workshop upcoming
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
-- [ ] 08-03: TBD
+- [ ] 08-01-PLAN.md -- Backend: notifications schema + migration, notification tRPC router, createNotification helper, Resend email service, permissions, last_visited_at on users
+- [ ] 08-02-PLAN.md -- Dashboard page with role-switch dispatcher, all 7 role dashboards (Policy Lead, Stakeholder, Admin, Research Lead, Auditor, Workshop Moderator, Observer), notification bell in header
+- [ ] 08-03-PLAN.md -- Wire createNotification + email into existing routers (feedback, CR, version, sectionAssignment), /notifications full page, lastVisitedAt tracking
 
 ### Phase 9: Public Portal & Compliance
 **Goal**: Published policies are publicly accessible with full privacy controls, and auditors can review the complete audit trail and export governance evidence packs
@@ -230,7 +230,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 5. Change Requests | 0/3 | Planning complete | - |
 | 6. Versioning | 0/2 | Planning complete | - |
 | 7. Traceability & Search | 2/3 | Executing | - |
-| 8. Dashboards & Notifications | 0/3 | Not started | - |
+| 8. Dashboards & Notifications | 0/3 | Planning complete | - |
 | 9. Public Portal & Compliance | 0/2 | Not started | - |
 | 10. Workshops & Evidence Management | 0/2 | Not started | - |
 | 11. Real-Time Collaboration | 0/2 | Not started | - |
