@@ -69,12 +69,13 @@ Plans:
   2. User can drag and drop blocks to reorder them within a section
   3. User can apply rich text formatting (bold, italic, underline, strikethrough, links, inline code) within any block
   4. User can embed images, attach files, and insert rich link previews into a section
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md -- Install Tiptap 3 deps, custom extensions (callout, slash commands, link preview), extension builder, updateSectionContent tRPC mutation, unit tests
+- [ ] 03-02-PLAN.md -- Core editor UI: BlockEditor component, EditorToolbar, SlashCommandMenu, FloatingLinkEditor, DragHandle, auto-save, policy page integration
+- [ ] 03-03-PLAN.md -- Media blocks: Uploadthing setup, image upload, file attachment, link preview OG fetch, code block language selector/copy, final verification
 
 ### Phase 4: Feedback System
 **Goal**: Stakeholders can submit structured, traceable feedback on policy sections with full lifecycle management, evidence support, and privacy controls
@@ -222,7 +223,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 0/3 | Planning complete | - |
 | 2. Policy Documents & Sections | 0/3 | Planning complete | - |
-| 3. Block Editor | 0/2 | Not started | - |
+| 3. Block Editor | 0/3 | Planning complete | - |
 | 4. Feedback System | 0/3 | Not started | - |
 | 5. Change Requests | 0/2 | Not started | - |
 | 6. Versioning | 0/2 | Not started | - |
