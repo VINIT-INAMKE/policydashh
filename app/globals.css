@@ -47,6 +47,12 @@
   --status-priority-high-bg: oklch(0.95 0.04 27);
   --status-priority-medium-bg: oklch(0.92 0.07 85);
   --status-priority-medium-text: oklch(0.5 0.1 85);
+
+  /* CR status semantic colors */
+  --status-cr-approved-bg: oklch(0.9 0.08 145);
+  --status-cr-approved-text: oklch(0.4 0.12 145);
+  --status-cr-merged-bg: oklch(0.88 0.07 265);
+  --status-cr-merged-text: oklch(0.4 0.12 265);
 }
 
 @theme inline {
@@ -135,6 +141,12 @@
   --status-priority-high-bg: oklch(0.95 0.04 27);
   --status-priority-medium-bg: oklch(0.92 0.07 85);
   --status-priority-medium-text: oklch(0.5 0.1 85);
+
+  /* CR status semantic colors */
+  --status-cr-approved-bg: oklch(0.9 0.08 145);
+  --status-cr-approved-text: oklch(0.4 0.12 145);
+  --status-cr-merged-bg: oklch(0.88 0.07 265);
+  --status-cr-merged-text: oklch(0.4 0.12 265);
 }
 
 @layer base {
