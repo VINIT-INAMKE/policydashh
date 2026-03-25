@@ -110,7 +110,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md -- CR schema (change_requests, join tables, document_versions stub), XState 5 machine, transitionCR + mergeCR services, tRPC router, permissions, migration, unit tests
-- [ ] 05-02-PLAN.md -- CR list page with filter panel, CR status badge, CR cards, Create CR two-step dialog, CSS variables
+- [x] 05-02-PLAN.md -- CR list page with filter panel, CR status badge, CR cards, Create CR two-step dialog, CSS variables
 - [x] 05-03-PLAN.md -- CR detail page with lifecycle actions, merge dialog, close dialog, linked feedback list, affected sections table, decision log
 
 ### Phase 6: Versioning
