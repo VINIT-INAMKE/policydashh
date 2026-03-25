@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/policies', label: 'Policies' },
+  { href: '/feedback', label: 'Feedback' },
 ]
 
 export function WorkspaceNav() {
