@@ -123,12 +123,12 @@ Plans:
   3. User can view a section-level diff between any two versions of a document
   4. Previous versions are archived as read-only and accessible for review
   5. Admin/Policy Lead can publish a version, and published version snapshots are immutable
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md -- Backend: extend documentVersions schema (snapshot, changelog, publish), version.service.ts, tRPC router, mergeCR extension, migration, permissions, unit tests
+- [ ] 06-02-PLAN.md -- Version history page with list/detail panels, changelog, section diff view, publish dialog, create version dialog
 
 ### Phase 7: Traceability & Search
 **Goal**: The full feedback-to-version traceability chain is visible, queryable, and exportable -- proving the platform's core value proposition
@@ -227,7 +227,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 3. Block Editor | 0/3 | Planning complete | - |
 | 4. Feedback System | 3/3 | Complete | 2026-03-25 |
 | 5. Change Requests | 0/3 | Planning complete | - |
-| 6. Versioning | 0/2 | Not started | - |
+| 6. Versioning | 0/2 | Planning complete | - |
 | 7. Traceability & Search | 0/2 | Not started | - |
 | 8. Dashboards & Notifications | 0/3 | Not started | - |
 | 9. Public Portal & Compliance | 0/2 | Not started | - |
