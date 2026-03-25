@@ -66,7 +66,7 @@
 - [x] **VER-02**: New version is created when a CR is merged or manually by Admin/Policy Lead
 - [x] **VER-03**: Auto-generated changelog for each version: what changed, why, linked feedback IDs
 - [x] **VER-04**: Section-level diff view comparing any two versions of a document
-- [ ] **VER-05**: Previous versions are archived and accessible as read-only
+- [x] **VER-05**: Previous versions are archived and accessible as read-only
 - [x] **VER-06**: Admin/Policy Lead can publish a version, making it visible on the public portal
 - [x] **VER-07**: Version snapshots are immutable once published
 
@@ -221,7 +221,7 @@
 | VER-02 | Phase 6 | Complete |
 | VER-03 | Phase 6 | Complete |
 | VER-04 | Phase 6 | Complete |
-| VER-05 | Phase 6 | Pending |
+| VER-05 | Phase 6 | Complete |
 | VER-06 | Phase 6 | Complete |
 | VER-07 | Phase 6 | Complete |
 | TRACE-01 | Phase 7 | Pending |
