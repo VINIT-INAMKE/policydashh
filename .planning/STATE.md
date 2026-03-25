@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-25T02:04:19.415Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-25T02:19:33.338Z"
 progress:
   total_phases: 11
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 03 (Block Editor) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Plan: 2 of 3
 | Phase 02 P02 | 13min | 2 tasks | 20 files |
 | Phase 02 P03 | 18min | 3 tasks | 9 files |
 | Phase 03-block-editor P01 | 7min | 2 tasks | 7 files |
+| Phase 03 P02 | 9min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 03-block-editor]: Zod v4 requires z.record(z.string(), z.unknown()) -- single-arg z.record(z.unknown()) crashes
 - [Phase 03-block-editor]: lowlight v3 createLowlight(common) provides ~35 languages; no manual registration needed
 - [Phase 03-block-editor]: No audit log for updateSectionContent -- high-frequency saves; Phase 6 versioning as audit
+- [Phase 03]: Callout.extend() used to add ReactNodeViewRenderer in block-editor rather than modifying headless callout-node.ts
+- [Phase 03]: Portal-based slash command menu via createPortal + clientRect instead of tippy.js (not installed)
+- [Phase 03]: Auto-save fires on every editor update with 1.5s debounce, flushes on blur
 
 ### Pending Todos
 
@@ -97,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T02:04:19.407Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-03-25T02:19:33.330Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None

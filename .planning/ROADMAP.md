@@ -74,7 +74,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md -- Install Tiptap 3 deps, custom extensions (callout, slash commands, link preview), extension builder, updateSectionContent tRPC mutation, unit tests
-- [ ] 03-02-PLAN.md -- Core editor UI: BlockEditor component, EditorToolbar, SlashCommandMenu, FloatingLinkEditor, DragHandle, auto-save, policy page integration
+- [x] 03-02-PLAN.md -- Core editor UI: BlockEditor component, EditorToolbar, SlashCommandMenu, FloatingLinkEditor, DragHandle, auto-save, policy page integration
 - [ ] 03-03-PLAN.md -- Media blocks: Uploadthing setup, image upload, file attachment, link preview OG fetch, code block language selector/copy, final verification
 
 ### Phase 4: Feedback System
