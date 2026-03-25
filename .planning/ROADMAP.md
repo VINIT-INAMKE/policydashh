@@ -180,8 +180,8 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 09-01-PLAN.md -- Public portal: (public) route group, proxy.ts whitelist, Tiptap HTML renderer, portal home, policy detail with version selector/section nav, public changelog, sanitized consultation summary, PDF export route
-- [ ] 09-02-PLAN.md -- Audit viewer: /audit page with filter panel and paginated event table, evidence pack service + ZIP export route, workspace-nav audit link, auditor dashboard wiring
+- [x] 09-01-PLAN.md -- Public portal: (public) route group, proxy.ts whitelist, Tiptap HTML renderer, portal home, policy detail with version selector/section nav, public changelog, sanitized consultation summary, PDF export route
+- [x] 09-02-PLAN.md -- Audit viewer: /audit page with filter panel and paginated event table, evidence pack service + ZIP export route, workspace-nav audit link, auditor dashboard wiring
 
 ### Phase 10: Workshops & Evidence Management
 **Goal**: Workshop Moderators can manage consultation events as first-class entities with artifacts and insight linking, and Research Leads can identify claims lacking evidence

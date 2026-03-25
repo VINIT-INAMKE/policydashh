@@ -130,9 +130,9 @@
 - [x] **AUDIT-01**: Immutable append-only audit log recording every action (create, update, publish, merge, decision)
 - [x] **AUDIT-02**: Audit log captures: actor, action, object type, object ID, timestamp, metadata
 - [x] **AUDIT-03**: Audit log is partitioned for performance (monthly or quarterly)
-- [ ] **AUDIT-04**: Auditor can view full audit trail with filtering
-- [ ] **AUDIT-05**: Milestone evidence pack export: stakeholder list, feedback matrix, version history, workshop evidence, decision logs
-- [ ] **AUDIT-06**: Evidence pack exportable as structured ZIP with index
+- [x] **AUDIT-04**: Auditor can view full audit trail with filtering
+- [x] **AUDIT-05**: Milestone evidence pack export: stakeholder list, feedback matrix, version history, workshop evidence, decision logs
+- [x] **AUDIT-06**: Evidence pack exportable as structured ZIP with index
 
 ## v2 Requirements
 
@@ -261,9 +261,9 @@
 | AUDIT-01 | Phase 1 | Complete |
 | AUDIT-02 | Phase 1 | Complete |
 | AUDIT-03 | Phase 1 | Complete |
-| AUDIT-04 | Phase 9 | Pending |
-| AUDIT-05 | Phase 9 | Pending |
-| AUDIT-06 | Phase 9 | Pending |
+| AUDIT-04 | Phase 9 | Complete |
+| AUDIT-05 | Phase 9 | Complete |
+| AUDIT-06 | Phase 9 | Complete |
 
 **Coverage:**
 - v1 requirements: 87 total
