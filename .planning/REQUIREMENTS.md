@@ -104,13 +104,13 @@
 
 ### Dashboards & UX
 
-- [ ] **UX-01**: Role-aware dashboard: each role sees relevant content, tasks, metrics on login
-- [ ] **UX-02**: Policy Lead dashboard: feedback inbox (filterable), active CRs, section health indicators
-- [ ] **UX-03**: Research Lead dashboard: evidence repository, "claims without evidence", research tasks
-- [ ] **UX-04**: Stakeholder dashboard: assigned sections, pending feedback requests, upcoming workshops, "what changed since last visit"
-- [ ] **UX-05**: Admin dashboard: user management, publish controls, system overview
-- [ ] **UX-06**: Auditor dashboard: audit trail viewer, export controls
-- [ ] **UX-07**: Workshop Moderator dashboard: workshop management, artifact uploads, section linking
+- [x] **UX-01**: Role-aware dashboard: each role sees relevant content, tasks, metrics on login
+- [x] **UX-02**: Policy Lead dashboard: feedback inbox (filterable), active CRs, section health indicators
+- [x] **UX-03**: Research Lead dashboard: evidence repository, "claims without evidence", research tasks
+- [x] **UX-04**: Stakeholder dashboard: assigned sections, pending feedback requests, upcoming workshops, "what changed since last visit"
+- [x] **UX-05**: Admin dashboard: user management, publish controls, system overview
+- [x] **UX-06**: Auditor dashboard: audit trail viewer, export controls
+- [x] **UX-07**: Workshop Moderator dashboard: workshop management, artifact uploads, section linking
 
 ### Notifications
 
@@ -244,13 +244,13 @@
 | PUB-03 | Phase 9 | Pending |
 | PUB-04 | Phase 9 | Pending |
 | PUB-05 | Phase 9 | Pending |
-| UX-01 | Phase 8 | Pending |
-| UX-02 | Phase 8 | Pending |
-| UX-03 | Phase 8 | Pending |
-| UX-04 | Phase 8 | Pending |
-| UX-05 | Phase 8 | Pending |
-| UX-06 | Phase 8 | Pending |
-| UX-07 | Phase 8 | Pending |
+| UX-01 | Phase 8 | Complete |
+| UX-02 | Phase 8 | Complete |
+| UX-03 | Phase 8 | Complete |
+| UX-04 | Phase 8 | Complete |
+| UX-05 | Phase 8 | Complete |
+| UX-06 | Phase 8 | Complete |
+| UX-07 | Phase 8 | Complete |
 | NOTIF-01 | Phase 8 | Complete |
 | NOTIF-02 | Phase 8 | Complete |
 | NOTIF-03 | Phase 8 | Complete |

@@ -163,7 +163,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md -- Backend: notifications schema + migration, notification tRPC router, createNotification helper, Resend email service, permissions, last_visited_at on users
-- [ ] 08-02-PLAN.md -- Dashboard page with role-switch dispatcher, all 7 role dashboards (Policy Lead, Stakeholder, Admin, Research Lead, Auditor, Workshop Moderator, Observer), notification bell in header
+- [x] 08-02-PLAN.md -- Dashboard page with role-switch dispatcher, all 7 role dashboards (Policy Lead, Stakeholder, Admin, Research Lead, Auditor, Workshop Moderator, Observer), notification bell in header
 - [ ] 08-03-PLAN.md -- Wire createNotification + email into existing routers (feedback, CR, version, sectionAssignment), /notifications full page, lastVisitedAt tracking
 
 ### Phase 9: Public Portal & Compliance

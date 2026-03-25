@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-25T09:29:47.071Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-25T09:56:25.265Z"
 progress:
   total_phases: 11
   completed_phases: 7
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 08 (Dashboards & Notifications) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Plan: 2 of 3
 | Phase 06-versioning P02 | 11min | 2 tasks | 10 files |
 | Phase 07-traceability-search P02 | 12min | 2 tasks | 7 files |
 | Phase 08 P01 | 19min | 2 tasks | 13 files |
+| Phase 08 P02 | 18min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ Recent decisions affecting current work:
 - [Phase 08]: Notification inserts are fire-and-forget outside transaction boundaries; email sends gracefully no-op when RESEND_API_KEY missing or user email null
 - [Phase 08]: Plain text emails for now; React Email templates can be enhanced later with @react-email/components
 - [Phase 08]: No audit log for markRead/markAllRead/updateLastVisited (operational, not business events)
+- [Phase 08]: Role-switch via switch in async Server Component; each dashboard does direct DB queries with Promise.all
+- [Phase 08]: Workshop Moderator dashboard is explicit stub (Phase 10); Auditor View Full Audit Trail disabled (Phase 9)
+- [Phase 08]: NotificationBell: tRPC client hooks with 10s refetchInterval for unread count; popover list only fetched when open
 
 ### Pending Todos
 
@@ -139,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T09:29:47.057Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-03-25T09:56:25.252Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
