@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 10-03-PLAN.md
-last_updated: "2026-03-26T08:21:46.096Z"
+status: Ready to execute
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-03-26T08:46:17.512Z"
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 31
-  completed_plans: 28
+  completed_plans: 29
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 10 — Workshops & Evidence Management
+**Current focus:** Phase 11 — Real-Time Collaboration
 
 ## Current Position
 
-Phase: 11
-Plan: Not started
+Phase: 11 (Real-Time Collaboration) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Plan: Not started
 | Phase 09 P01 | 17min | 2 tasks | 15 files |
 | Phase 10 P01 | 4min | 2 tasks | 8 files |
 | Phase 10 P03 | 3min | 1 tasks | 3 files |
+| Phase 11 P01 | 19min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,10 @@ Recent decisions affecting current work:
 - [Phase 10]: removeArtifact preserves evidenceArtifacts record; only deletes workshop link
 - [Phase 10]: Client-side multi-filter for evidence-gaps page (fetch all, filter locally) matching Phase 4 pattern
 - [Phase 10]: Role-gated client page via trpc.user.getMe with router.replace redirect for evidence-gaps
+- [Phase 11]: Hocuspocus runs as standalone Node.js process (hocuspocus-server/) not inside Next.js -- Vercel cannot hold WebSocket connections
+- [Phase 11]: Y.Doc persistence uses BYTEA custom type for binary Uint8Array storage, not JSON reconstruction
+- [Phase 11]: InlineComment mark always included in buildExtensions (not gated on collaboration) -- comments work in single-user mode
+- [Phase 11]: JSON bootstrap from policySections.content happens once in onLoadDocument when Y.Doc is empty (first-time migration)
 
 ### Pending Todos
 
@@ -160,6 +165,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T07:52:50.325Z
-Stopped at: Completed 10-03-PLAN.md
+Last session: 2026-03-26T08:46:17.499Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None

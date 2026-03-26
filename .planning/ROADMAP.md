@@ -212,7 +212,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 11-01-PLAN.md -- Backend foundation: DB schema (ydoc_snapshots, comment_threads, comment_replies), Hocuspocus server, InlineComment mark, comments tRPC router, buildExtensions collaboration option
+- [x] 11-01-PLAN.md -- Backend foundation: DB schema (ydoc_snapshots, comment_threads, comment_replies), Hocuspocus server, InlineComment mark, comments tRPC router, buildExtensions collaboration option
 - [ ] 11-02-PLAN.md -- Client collaboration: HocuspocusProvider in BlockEditor, PresenceBar avatars, ConnectionStatus indicator, remote cursor CSS, auto-save fallback
 - [ ] 11-03-PLAN.md -- Inline comments UI: CommentBubble floating trigger, CommentPanel with open/resolved tabs, CommentThread with replies, resolve/reopen workflow, comment anchor highlighting
 
@@ -235,4 +235,4 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 8. Dashboards & Notifications | 0/3 | Planning complete | - |
 | 9. Public Portal & Compliance | 0/2 | Planning complete | - |
 | 10. Workshops & Evidence Management | 3/3 | Complete    | 2026-03-26 |
-| 11. Real-Time Collaboration | 0/3 | Planning complete | - |
+| 11. Real-Time Collaboration | 1/3 | In Progress|  |

@@ -32,9 +32,9 @@
 - [x] **EDIT-03**: Drag-and-drop reordering of blocks within a section
 - [x] **EDIT-04**: Rich text formatting within blocks (bold, italic, underline, strikethrough, links, inline code)
 - [x] **EDIT-05**: Embeds and media support (images, file attachments, rich link previews)
-- [ ] **EDIT-06**: Real-time collaborative editing -- multiple users can edit the same section simultaneously via Yjs/Hocuspocus
-- [ ] **EDIT-07**: Presence indicators showing who is currently viewing/editing a section
-- [ ] **EDIT-08**: Inline comments -- user can select text and leave a comment anchored to that selection
+- [x] **EDIT-06**: Real-time collaborative editing -- multiple users can edit the same section simultaneously via Yjs/Hocuspocus
+- [x] **EDIT-07**: Presence indicators showing who is currently viewing/editing a section
+- [x] **EDIT-08**: Inline comments -- user can select text and leave a comment anchored to that selection
 
 ### Feedback System
 
@@ -196,9 +196,9 @@
 | EDIT-03 | Phase 3 | Complete |
 | EDIT-04 | Phase 3 | Complete |
 | EDIT-05 | Phase 3 | Complete |
-| EDIT-06 | Phase 11 | Pending |
-| EDIT-07 | Phase 11 | Pending |
-| EDIT-08 | Phase 11 | Pending |
+| EDIT-06 | Phase 11 | Complete |
+| EDIT-07 | Phase 11 | Complete |
+| EDIT-08 | Phase 11 | Complete |
 | FB-01 | Phase 4 | Complete |
 | FB-02 | Phase 4 | Complete |
 | FB-03 | Phase 4 | Complete |
