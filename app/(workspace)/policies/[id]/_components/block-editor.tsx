@@ -6,8 +6,9 @@ import { DragHandle } from '@tiptap/extension-drag-handle-react'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import { useDebouncedCallback } from 'use-debounce'
 import { useSession, useUser } from '@clerk/nextjs'
-import { GripVertical, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { GripVertical, Loader2, CheckCircle2, AlertCircle, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { trpc } from '@/src/trpc/client'
 import { buildExtensions } from '@/src/lib/tiptap-extensions/build-extensions'
 import { getSlashCommandItems } from '@/src/lib/tiptap-extensions/slash-command-extension'
@@ -26,6 +27,8 @@ import { FloatingLinkEditor } from './floating-link-editor'
 import { SlashCommandMenu, type SlashCommandMenuRef } from './slash-command-menu'
 import { PresenceBar } from './presence-bar'
 import { ConnectionStatus } from './connection-status'
+import { CommentBubble, type PendingComment } from './comment-bubble'
+import { CommentPanel } from './comment-panel'
 import type { Editor } from '@tiptap/core'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import type { SlashCommandItem } from '@/src/lib/tiptap-extensions/slash-command-extension'
@@ -74,6 +77,11 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
   const isDirtyRef = useRef(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [linkEditorOpen, setLinkEditorOpen] = useState(false)
+
+  // Comment state
+  const [commentPanelOpen, setCommentPanelOpen] = useState(false)
+  const [pendingComment, setPendingComment] = useState<PendingComment | null>(null)
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null)
 
   // Collaboration state
   const providerRef = useRef<HocuspocusProvider | null>(null)
@@ -381,6 +389,47 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
     }
   }, [editor, mutation, section.id, section.documentId])
 
+  // Comment handlers
+  const handleCreateComment = useCallback(
+    (pending: PendingComment) => {
+      setPendingComment(pending)
+      setCommentPanelOpen(true)
+    },
+    [],
+  )
+
+  const handleCloseCommentPanel = useCallback(() => {
+    setCommentPanelOpen(false)
+    setPendingComment(null)
+    setActiveCommentId(null)
+  }, [])
+
+  const handleClearPending = useCallback(() => {
+    setPendingComment(null)
+  }, [])
+
+  // Comment anchor click handler: clicking on inline-comment-mark opens the panel
+  useEffect(() => {
+    if (!editor) return
+
+    const handleCommentClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      const commentMark = target.closest('.inline-comment-mark')
+      if (commentMark) {
+        const commentId = commentMark.getAttribute('data-comment-id')
+        if (commentId) {
+          setActiveCommentId(commentId)
+          setCommentPanelOpen(true)
+        }
+      }
+    }
+
+    editor.view.dom.addEventListener('click', handleCommentClick)
+    return () => {
+      editor.view.dom.removeEventListener('click', handleCommentClick)
+    }
+  }, [editor])
+
   if (!editor) {
     return (
       <div className="mx-auto max-w-[768px] px-6 py-8">
@@ -396,76 +445,110 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
   }
 
   return (
-    <div className="relative">
-      {/* Header bar: presence + connection status + save indicator */}
-      <div className="flex items-center justify-between px-6 py-1">
-        {/* Left side: presence avatars (only in collab mode) */}
-        <div className="flex items-center gap-2">
-          {providerRef.current && (
-            <PresenceBar
-              provider={providerRef.current}
-              currentUserId={user?.id ?? ''}
+    <div className="flex">
+      {/* Main editor area */}
+      <div className="relative flex-1">
+        {/* Header bar: presence + connection status + comment toggle + save indicator */}
+        <div className="flex items-center justify-between px-6 py-1">
+          {/* Left side: presence avatars (only in collab mode) */}
+          <div className="flex items-center gap-2">
+            {providerRef.current && (
+              <PresenceBar
+                provider={providerRef.current}
+                currentUserId={user?.id ?? ''}
+              />
+            )}
+          </div>
+
+          {/* Right side: connection status + comment toggle + save state */}
+          <div className="flex items-center gap-2">
+            {providerRef.current && (
+              <ConnectionStatus status={connectionStatus} />
+            )}
+
+            {/* Comment panel toggle */}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => {
+                if (commentPanelOpen) {
+                  handleCloseCommentPanel()
+                } else {
+                  setCommentPanelOpen(true)
+                }
+              }}
+              aria-label="Toggle comments panel"
+            >
+              <MessageSquare className="size-4" />
+            </Button>
+
+            {/* Save state indicator */}
+            {saveState === 'saving' && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+                Saving...
+              </span>
+            )}
+            {saveState === 'saved' && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CheckCircle2 className="size-3" />
+                Saved
+              </span>
+            )}
+            {saveState === 'error' && (
+              <span className="flex items-center gap-1 text-xs text-destructive">
+                <AlertCircle className="size-3" />
+                Error saving
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Toolbar */}
+        <EditorToolbar editor={editor} onLinkClick={() => setLinkEditorOpen(true)} />
+
+        {/* DragHandle */}
+        <DragHandle editor={editor}>
+          <div
+            className="flex cursor-grab items-center justify-center rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground active:cursor-grabbing"
+            aria-label="Drag to reorder block"
+          >
+            <GripVertical className="size-4" />
+          </div>
+        </DragHandle>
+
+        {/* Editor content */}
+        <EditorContent
+          editor={editor}
+          className="mx-auto max-w-[768px] px-6 py-8 [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:focus:outline-none [&_.inline-comment-mark]:bg-primary/15 [&_.inline-comment-mark.active]:bg-primary/25"
+        />
+
+        {/* CommentBubble: floating trigger above text selection */}
+        <CommentBubble editor={editor} onCreateComment={handleCreateComment} />
+
+        {/* Floating link editor */}
+        {linkEditorOpen && (
+          <div className="absolute left-1/2 top-16 z-50 -translate-x-1/2">
+            <FloatingLinkEditor
+              editor={editor}
+              isOpen={linkEditorOpen}
+              onClose={() => setLinkEditorOpen(false)}
             />
-          )}
-        </div>
-
-        {/* Right side: connection status + save state */}
-        <div className="flex items-center gap-2">
-          {providerRef.current && (
-            <ConnectionStatus status={connectionStatus} />
-          )}
-
-          {/* Save state indicator */}
-          {saveState === 'saving' && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Loader2 className="size-3 animate-spin" />
-              Saving...
-            </span>
-          )}
-          {saveState === 'saved' && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <CheckCircle2 className="size-3" />
-              Saved
-            </span>
-          )}
-          {saveState === 'error' && (
-            <span className="flex items-center gap-1 text-xs text-destructive">
-              <AlertCircle className="size-3" />
-              Error saving
-            </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Toolbar */}
-      <EditorToolbar editor={editor} onLinkClick={() => setLinkEditorOpen(true)} />
-
-      {/* DragHandle */}
-      <DragHandle editor={editor}>
-        <div
-          className="flex cursor-grab items-center justify-center rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground active:cursor-grabbing"
-          aria-label="Drag to reorder block"
-        >
-          <GripVertical className="size-4" />
-        </div>
-      </DragHandle>
-
-      {/* Editor content */}
-      <EditorContent
+      {/* CommentPanel: 320px right side panel */}
+      <CommentPanel
         editor={editor}
-        className="mx-auto max-w-[768px] px-6 py-8 [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:focus:outline-none"
+        sectionId={section.id}
+        isOpen={commentPanelOpen}
+        onClose={handleCloseCommentPanel}
+        activeCommentId={activeCommentId}
+        pendingComment={pendingComment}
+        onCommentCreated={() => setPendingComment(null)}
+        onClearPending={handleClearPending}
       />
-
-      {/* Floating link editor */}
-      {linkEditorOpen && (
-        <div className="absolute left-1/2 top-16 z-50 -translate-x-1/2">
-          <FloatingLinkEditor
-            editor={editor}
-            isOpen={linkEditorOpen}
-            onClose={() => setLinkEditorOpen(false)}
-          />
-        </div>
-      )}
     </div>
   )
 }

@@ -87,9 +87,9 @@ export function SectionContentView({
         </div>
       </div>
 
-      {/* Content area */}
+      {/* Content area -- no max-width here so CommentPanel can expand into flex layout */}
       {canEdit && isEditing ? (
-        <div className="mt-4">
+        <div className="mt-4 overflow-visible">
           <BlockEditor
             section={{ ...section, documentId }}
             onSaveStateChange={handleSaveStateChange}
