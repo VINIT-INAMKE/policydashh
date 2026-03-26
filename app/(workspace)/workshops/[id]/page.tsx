@@ -82,7 +82,7 @@ export default function WorkshopDetailPage() {
 
   const dateStr = typeof workshop.scheduledAt === 'string'
     ? workshop.scheduledAt
-    : workshop.scheduledAt.toISOString()
+    : (workshop.scheduledAt as unknown as Date).toISOString()
   const formattedDate = format(parseISO(dateStr), 'MMM d, yyyy \u00b7 h:mm a')
 
   return (

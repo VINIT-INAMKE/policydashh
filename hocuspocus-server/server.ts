@@ -7,10 +7,10 @@ import * as Y from 'yjs'
 
 const sql = neon(process.env.DATABASE_URL!)
 
-const server = Server.configure({
+const server = new Server({
   port: Number(process.env.PORT) || 1234,
 
-  async onAuthenticate({ token }) {
+  async onAuthenticate({ token }: { token: string }) {
     // Validate Clerk session JWT
     const payload = await verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY!,
@@ -19,7 +19,7 @@ const server = Server.configure({
     return { userId: payload.sub }
   },
 
-  async onLoadDocument({ documentName, document }) {
+  async onLoadDocument({ documentName, document }: { documentName: string; document: any }) {
     // documentName = "section-{uuid}"
     const sectionId = documentName.replace('section-', '')
 

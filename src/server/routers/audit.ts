@@ -18,7 +18,7 @@ export const auditRouter = router({
       to: z.string().datetime().optional(),
     }).optional())
     .query(async ({ input }) => {
-      const filters = input ?? {}
+      const filters = input ?? {} as NonNullable<typeof input>
       const conditions = []
 
       if (filters.entityType) conditions.push(eq(auditEvents.entityType, filters.entityType))

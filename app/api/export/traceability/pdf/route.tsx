@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
     payload: { format: 'pdf' },
   })
 
-  return new Response(buffer, {
+  return new Response(buffer as unknown as BodyInit, {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="traceability-${documentId}.pdf"`,

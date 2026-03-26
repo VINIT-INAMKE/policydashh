@@ -15,26 +15,30 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
-interface SectionLinkPickerProps {
+export interface SectionLinkPickerProps {
   workshopId: string
   linkedSectionIds: string[]
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function SectionLinkPicker({ workshopId, linkedSectionIds }: SectionLinkPickerProps) {
-  const [open, setOpen] = useState(false)
+export function SectionLinkPicker({ workshopId, linkedSectionIds, open: controlledOpen, onOpenChange }: SectionLinkPickerProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = onOpenChange ?? setInternalOpen
   const [selected, setSelected] = useState<string[]>([])
   const utils = trpc.useUtils()
 
   const documentsQuery = trpc.document.list.useQuery()
   const linkMutation = trpc.workshop.linkSection.useMutation({
     onSuccess: () => {
-      utils.workshop.getById.invalidate({ id: workshopId })
+      utils.workshop.getById.invalidate({ workshopId })
       toast.success('Section linked to workshop')
     },
   })
   const unlinkMutation = trpc.workshop.unlinkSection.useMutation({
     onSuccess: () => {
-      utils.workshop.getById.invalidate({ id: workshopId })
+      utils.workshop.getById.invalidate({ workshopId })
       toast.success('Section unlinked from workshop')
     },
   })
@@ -74,11 +78,9 @@ export function SectionLinkPicker({ workshopId, linkedSectionIds }: SectionLinkP
           Linked Sections
         </span>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Link2 className="mr-1 h-4 w-4" />
-              Link Section
-            </Button>
+          <DialogTrigger render={<Button variant="outline" size="sm" />}>
+            <Link2 className="mr-1 h-4 w-4" />
+            Link Section
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>

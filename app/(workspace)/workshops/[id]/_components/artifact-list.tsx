@@ -83,7 +83,7 @@ export function ArtifactList({ workshopId, canManage }: ArtifactListProps) {
           const dateStr =
             typeof artifact.createdAt === 'string'
               ? artifact.createdAt
-              : artifact.createdAt.toISOString()
+              : (artifact.createdAt as unknown as Date).toISOString()
           const relativeTime = formatDistanceToNow(parseISO(dateStr), {
             addSuffix: true,
           })

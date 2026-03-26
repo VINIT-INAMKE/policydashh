@@ -20,12 +20,16 @@ const TYPE_LABELS: Record<ArtifactType, string> = {
   other: 'Other',
 }
 
-interface ArtifactAttachDialogProps {
+export interface ArtifactAttachDialogProps {
   workshopId: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function ArtifactAttachDialog({ workshopId }: ArtifactAttachDialogProps) {
-  const [open, setOpen] = useState(false)
+export function ArtifactAttachDialog({ workshopId, open: controlledOpen, onOpenChange }: ArtifactAttachDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = onOpenChange ?? setInternalOpen
   const [artifactType, setArtifactType] = useState<ArtifactType>('summary')
   const [title, setTitle] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -34,7 +38,7 @@ export function ArtifactAttachDialog({ workshopId }: ArtifactAttachDialogProps) 
 
   const attachMutation = trpc.workshop.attachArtifact.useMutation({
     onSuccess: () => {
-      utils.workshop.getById.invalidate({ id: workshopId })
+      utils.workshop.getById.invalidate({ workshopId })
       toast.success('Artifact attached to workshop')
       resetAndClose()
     },
@@ -64,6 +68,7 @@ export function ArtifactAttachDialog({ workshopId }: ArtifactAttachDialogProps) 
         workshopId,
         artifactType,
         title: title.trim() || result.name,
+        type: 'file',
         url: result.url,
         fileName: result.name,
       })
@@ -75,11 +80,9 @@ export function ArtifactAttachDialog({ workshopId }: ArtifactAttachDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); else setOpen(true) }}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Upload className="mr-1 h-4 w-4" />
-          Attach Artifact
-        </Button>
+      <DialogTrigger render={<Button size="sm" />}>
+        <Upload className="mr-1 h-4 w-4" />
+        Attach Artifact
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>

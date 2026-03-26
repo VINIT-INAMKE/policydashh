@@ -19,7 +19,7 @@ export const BYPASS_SECTION_SCOPE: Role[] = ['admin', 'auditor', 'policy_lead']
  * Usage: requirePermission('feedback:submit').use(requireSectionAccess('sectionId'))
  */
 export const requireSectionAccess = (inputKey = 'sectionId') =>
-  t.middleware(async ({ ctx, rawInput, next }) => {
+  t.middleware(async ({ ctx, getRawInput, next }) => {
     const user = ctx.user as { id: string; role: string } | null
     if (!user) {
       throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' })
@@ -31,6 +31,7 @@ export const requireSectionAccess = (inputKey = 'sectionId') =>
     }
 
     // Extract sectionId from rawInput
+    const rawInput = await getRawInput()
     const input = rawInput as Record<string, unknown> | undefined
     const sectionId = input?.[inputKey]
 

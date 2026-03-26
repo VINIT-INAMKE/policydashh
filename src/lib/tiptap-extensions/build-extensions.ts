@@ -10,7 +10,7 @@ import { Collaboration } from '@tiptap/extension-collaboration'
 import { CollaborationCaret } from '@tiptap/extension-collaboration-caret'
 import { common, createLowlight } from 'lowlight'
 import type { SuggestionOptions } from '@tiptap/suggestion'
-import type { Extension } from '@tiptap/core'
+import type { AnyExtension } from '@tiptap/core'
 import type { HocuspocusProvider } from '@hocuspocus/provider'
 import type * as Y from 'yjs'
 
@@ -49,8 +49,8 @@ export interface BuildExtensionsOptions {
  * CRITICAL: Do NOT add @tiptap/extension-link or @tiptap/extension-underline
  * separately -- they are bundled in StarterKit v3 and will conflict.
  */
-export function buildExtensions(options?: BuildExtensionsOptions): Extension[] {
-  const extensions: Extension[] = [
+export function buildExtensions(options?: BuildExtensionsOptions): AnyExtension[] {
+  const extensions: AnyExtension[] = [
     // StarterKit with plain codeBlock disabled (replaced by CodeBlockLowlight)
     // When collaboration is active, disable undoRedo (Collaboration extension provides its own undo/redo)
     StarterKit.configure({
@@ -133,5 +133,5 @@ export function buildExtensions(options?: BuildExtensionsOptions): Extension[] {
     )
   }
 
-  return extensions as Extension[]
+  return extensions
 }

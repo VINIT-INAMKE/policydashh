@@ -333,7 +333,7 @@ export const documentRouter = router({
       description: z.string().max(1000).optional(),
       sections: z.array(z.object({
         title: z.string().min(1).max(200),
-        content: z.record(z.unknown()),
+        content: z.record(z.string(), z.unknown()),
       })),
     }))
     .mutation(async ({ ctx, input }) => {

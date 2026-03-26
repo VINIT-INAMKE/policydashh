@@ -105,10 +105,8 @@ export function AffectedSectionsTable({
                 </TableCell>
                 <TableCell>
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="font-mono text-[12px] text-muted-foreground">
-                        {section.id.slice(0, 8)}
-                      </span>
+                    <TooltipTrigger render={<span className="font-mono text-[12px] text-muted-foreground" />}>
+                      {section.id.slice(0, 8)}
                     </TooltipTrigger>
                     <TooltipContent>{section.id}</TooltipContent>
                   </Tooltip>

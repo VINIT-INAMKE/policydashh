@@ -27,8 +27,9 @@ export const changeRequestRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       // Generate human-readable CR-NNN ID via PostgreSQL sequence
-      const [seqResult] = await db.execute(sql`SELECT nextval('cr_id_seq') AS seq`)
-      const num = Number((seqResult as Record<string, unknown>).seq)
+      const seqRows = await db.execute(sql`SELECT nextval('cr_id_seq') AS seq`)
+      const seqResult = seqRows.rows[0] as Record<string, unknown>
+      const num = Number(seqResult.seq)
       const readableId = `CR-${String(num).padStart(3, '0')}`
 
       // Insert the change request

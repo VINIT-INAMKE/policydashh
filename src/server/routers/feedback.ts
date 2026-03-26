@@ -36,8 +36,9 @@ export const feedbackRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       // Generate human-readable ID via PostgreSQL sequence
-      const [seqResult] = await db.execute(sql`SELECT nextval('feedback_id_seq') AS seq`)
-      const num = Number((seqResult as Record<string, unknown>).seq)
+      const seqRows = await db.execute(sql`SELECT nextval('feedback_id_seq') AS seq`)
+      const seqResult = seqRows.rows[0] as Record<string, unknown>
+      const num = Number(seqResult.seq)
       const readableId = `FB-${String(num).padStart(3, '0')}`
 
       const [feedback] = await db
@@ -46,7 +47,7 @@ export const feedbackRouter = router({
           readableId,
           sectionId: input.sectionId,
           documentId: input.documentId,
-          submitterId: ctx.user.id,
+          submitterId: ctx.user!.id,
           feedbackType: input.feedbackType,
           priority: input.priority,
           impactCategory: input.impactCategory,
@@ -58,8 +59,8 @@ export const feedbackRouter = router({
         .returning()
 
       await writeAuditLog({
-        actorId: ctx.user.id,
-        actorRole: ctx.user.role,
+        actorId: ctx.user!.id,
+        actorRole: ctx.user!.role,
         action: ACTIONS.FEEDBACK_SUBMIT,
         entityType: 'feedback',
         entityId: feedback.id,

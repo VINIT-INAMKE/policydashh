@@ -71,18 +71,16 @@ export function CreateCRDialog({ documentId }: CreateCRDialogProps) {
     createMutation.mutate({
       documentId,
       title: title.trim(),
-      description: description.trim() || undefined,
+      description: description.trim(),
       feedbackIds: selectedFeedbackIds,
     })
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); else setOpen(true) }}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="mr-1 h-4 w-4" />
-          Create Change Request
-        </Button>
+      <DialogTrigger render={<Button size="sm" />}>
+        <Plus className="mr-1 h-4 w-4" />
+        Create Change Request
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         {step === 1 ? (

@@ -14,18 +14,22 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
-interface FeedbackLinkPickerProps {
+export interface FeedbackLinkPickerProps {
   workshopId: string
   linkedFeedbackIds: string[]
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function FeedbackLinkPicker({ workshopId, linkedFeedbackIds }: FeedbackLinkPickerProps) {
-  const [open, setOpen] = useState(false)
+export function FeedbackLinkPicker({ workshopId, linkedFeedbackIds, open: controlledOpen, onOpenChange }: FeedbackLinkPickerProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = onOpenChange ?? setInternalOpen
   const utils = trpc.useUtils()
 
   const unlinkMutation = trpc.workshop.unlinkFeedback.useMutation({
     onSuccess: () => {
-      utils.workshop.getById.invalidate({ id: workshopId })
+      utils.workshop.getById.invalidate({ workshopId })
       toast.success('Feedback unlinked from workshop')
     },
   })
@@ -41,11 +45,9 @@ export function FeedbackLinkPicker({ workshopId, linkedFeedbackIds }: FeedbackLi
           Linked Feedback
         </span>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <MessageSquare className="mr-1 h-4 w-4" />
-              Link Feedback
-            </Button>
+          <DialogTrigger render={<Button variant="outline" size="sm" />}>
+            <MessageSquare className="mr-1 h-4 w-4" />
+            Link Feedback
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>

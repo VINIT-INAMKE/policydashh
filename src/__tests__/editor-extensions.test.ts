@@ -56,6 +56,7 @@ describe('Callout node', () => {
   })
 
   it('parseHTML recognizes div[data-type="callout"]', () => {
+    // @ts-expect-error -- test-only: calling config method without full Tiptap `this` context
     const parseRules = Callout.config.parseHTML!()
     expect(parseRules).toEqual(
       expect.arrayContaining([
@@ -65,12 +66,14 @@ describe('Callout node', () => {
   })
 
   it('has type attribute with default "info"', () => {
-    const attrs = Callout.config.addAttributes!()
+    // @ts-expect-error -- test-only: calling config method without full Tiptap `this` context
+    const attrs = Callout.config.addAttributes!() as Record<string, any>
     expect(attrs.type.default).toBe('info')
   })
 
   it('has emoji attribute with default lightbulb', () => {
-    const attrs = Callout.config.addAttributes!()
+    // @ts-expect-error -- test-only: calling config method without full Tiptap `this` context
+    const attrs = Callout.config.addAttributes!() as Record<string, any>
     expect(attrs.emoji.default).toBe('\u{1F4A1}')
   })
 })
@@ -120,6 +123,7 @@ describe('LinkPreview node', () => {
   })
 
   it('parseHTML recognizes div[data-type="link-preview"]', () => {
+    // @ts-expect-error -- test-only: calling config method without full Tiptap `this` context
     const parseRules = LinkPreview.config.parseHTML!()
     expect(parseRules).toEqual(
       expect.arrayContaining([
@@ -129,7 +133,8 @@ describe('LinkPreview node', () => {
   })
 
   it('has url attribute with default null', () => {
-    const attrs = LinkPreview.config.addAttributes!()
+    // @ts-expect-error -- test-only: calling config method without full Tiptap `this` context
+    const attrs = LinkPreview.config.addAttributes!() as Record<string, any>
     expect(attrs.url.default).toBeNull()
   })
 })

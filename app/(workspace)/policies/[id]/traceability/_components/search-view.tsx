@@ -279,7 +279,7 @@ export function SearchView({ documentId }: { documentId: string }) {
                 <Select
                   value={crSectionId ?? ''}
                   onValueChange={(val) =>
-                    setCrSectionId(val === '' ? undefined : val)
+                    setCrSectionId(val === '' || val == null ? undefined : val)
                   }
                 >
                   <SelectTrigger>

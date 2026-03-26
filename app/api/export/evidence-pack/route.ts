@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     payload: { format: 'zip' },
   })
 
-  return new Response(zipped, {
+  return new Response(zipped as unknown as BodyInit, {
     headers: {
       'Content-Type': 'application/zip',
       'Content-Disposition': `attachment; filename="evidence-pack-${documentId}.zip"`,
