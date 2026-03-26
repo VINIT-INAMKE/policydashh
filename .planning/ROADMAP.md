@@ -198,7 +198,7 @@ Plans:
 Plans:
 - [x] 10-01-PLAN.md -- Backend: workshop schema (4 tables), migration, permissions, audit constants, workshop tRPC router (CRUD + artifacts + links), evidence router enhancements (EV-03 claimsWithoutEvidence query, EV-04 uploader name join)
 - [ ] 10-02-PLAN.md -- Workshop UI: list page with upcoming/past tabs, create/edit forms, detail page with artifacts + section/feedback link pickers, workspace nav, dashboard replacement
-- [ ] 10-03-PLAN.md -- Evidence UI: Claims Without Evidence full page with filters and table, evidence list metadata enhancement (uploader name + timestamp), research lead dashboard link update
+- [x] 10-03-PLAN.md -- Evidence UI: Claims Without Evidence full page with filters and table, evidence list metadata enhancement (uploader name + timestamp), research lead dashboard link update
 
 ### Phase 11: Real-Time Collaboration
 **Goal**: Multiple users can simultaneously edit the same policy section with live presence awareness and inline discussion via comments
@@ -234,5 +234,5 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 7. Traceability & Search | 2/3 | Executing | - |
 | 8. Dashboards & Notifications | 0/3 | Planning complete | - |
 | 9. Public Portal & Compliance | 0/2 | Planning complete | - |
-| 10. Workshops & Evidence Management | 1/3 | In Progress|  |
+| 10. Workshops & Evidence Management | 2/3 | In Progress|  |
 | 11. Real-Time Collaboration | 0/3 | Planning complete | - |
