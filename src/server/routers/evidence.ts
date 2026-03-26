@@ -4,7 +4,10 @@ import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'
 import { evidenceArtifacts, feedbackEvidence, sectionEvidence } from '@/src/db/schema/evidence'
-import { eq } from 'drizzle-orm'
+import { users } from '@/src/db/schema/users'
+import { feedbackItems } from '@/src/db/schema/feedback'
+import { policySections, policyDocuments } from '@/src/db/schema/documents'
+import { eq, and, isNull, desc } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 export const evidenceRouter = router({
@@ -72,7 +75,7 @@ export const evidenceRouter = router({
       return artifact
     }),
 
-  // List evidence attached to a feedback item
+  // List evidence attached to a feedback item (EV-04: includes uploaderName)
   listByFeedback: requirePermission('evidence:read')
     .input(z.object({ feedbackId: z.string().uuid() }))
     .query(async ({ input }) => {
@@ -86,15 +89,17 @@ export const evidenceRouter = router({
           fileSize: evidenceArtifacts.fileSize,
           uploaderId: evidenceArtifacts.uploaderId,
           createdAt: evidenceArtifacts.createdAt,
+          uploaderName: users.name,
         })
         .from(feedbackEvidence)
         .innerJoin(evidenceArtifacts, eq(feedbackEvidence.artifactId, evidenceArtifacts.id))
+        .innerJoin(users, eq(evidenceArtifacts.uploaderId, users.id))
         .where(eq(feedbackEvidence.feedbackId, input.feedbackId))
 
       return rows
     }),
 
-  // List evidence attached to a section
+  // List evidence attached to a section (EV-04: includes uploaderName)
   listBySection: requirePermission('evidence:read')
     .input(z.object({ sectionId: z.string().uuid() }))
     .query(async ({ input }) => {
@@ -108,9 +113,11 @@ export const evidenceRouter = router({
           fileSize: evidenceArtifacts.fileSize,
           uploaderId: evidenceArtifacts.uploaderId,
           createdAt: evidenceArtifacts.createdAt,
+          uploaderName: users.name,
         })
         .from(sectionEvidence)
         .innerJoin(evidenceArtifacts, eq(sectionEvidence.artifactId, evidenceArtifacts.id))
+        .innerJoin(users, eq(evidenceArtifacts.uploaderId, users.id))
         .where(eq(sectionEvidence.sectionId, input.sectionId))
 
       return rows
@@ -139,5 +146,47 @@ export const evidenceRouter = router({
       })
 
       return { success: true }
+    }),
+
+  // EV-03: Feedback items that have no evidence artifacts attached
+  claimsWithoutEvidence: requirePermission('evidence:read')
+    .input(z.object({
+      documentId: z.string().uuid().optional(),
+      sectionId: z.string().uuid().optional(),
+      feedbackType: z.enum(['issue', 'suggestion', 'endorsement', 'evidence', 'question']).optional(),
+    }))
+    .query(async ({ input }) => {
+      const conditions = [isNull(feedbackEvidence.artifactId)]
+
+      if (input.documentId) {
+        conditions.push(eq(policySections.documentId, input.documentId))
+      }
+      if (input.sectionId) {
+        conditions.push(eq(feedbackItems.sectionId, input.sectionId))
+      }
+      if (input.feedbackType) {
+        conditions.push(eq(feedbackItems.feedbackType, input.feedbackType))
+      }
+
+      const rows = await db
+        .select({
+          id: feedbackItems.id,
+          readableId: feedbackItems.readableId,
+          title: feedbackItems.title,
+          feedbackType: feedbackItems.feedbackType,
+          sectionId: feedbackItems.sectionId,
+          sectionName: policySections.title,
+          documentId: policySections.documentId,
+          documentTitle: policyDocuments.title,
+          createdAt: feedbackItems.createdAt,
+        })
+        .from(feedbackItems)
+        .leftJoin(feedbackEvidence, eq(feedbackItems.id, feedbackEvidence.feedbackId))
+        .innerJoin(policySections, eq(feedbackItems.sectionId, policySections.id))
+        .innerJoin(policyDocuments, eq(policySections.documentId, policyDocuments.id))
+        .where(and(...conditions))
+        .orderBy(desc(feedbackItems.createdAt))
+
+      return rows
     }),
 })

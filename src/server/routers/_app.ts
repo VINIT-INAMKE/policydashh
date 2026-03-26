@@ -9,6 +9,7 @@ import { changeRequestRouter } from './changeRequest'
 import { versionRouter } from './version'
 import { traceabilityRouter } from './traceability'
 import { notificationRouter } from './notification'
+import { workshopRouter } from './workshop'
 
 export const appRouter = router({
   user: userRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   version: versionRouter,
   traceability: traceabilityRouter,
   notification: notificationRouter,
+  workshop: workshopRouter,
 })
 
 export type AppRouter = typeof appRouter
