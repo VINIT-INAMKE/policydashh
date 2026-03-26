@@ -78,7 +78,7 @@ export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardPro
                   {noEvidenceCount} items
                 </span>
               </div>
-              <Button size="sm" render={<Link href="/feedback?evidence=none" />}>
+              <Button size="sm" render={<Link href="/feedback/evidence-gaps" />}>
                 Review Evidence
               </Button>
             </div>
@@ -115,7 +115,7 @@ export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardPro
           </CardContent>
           {noEvidenceCount > 5 && (
             <div className="border-t px-4 py-2">
-              <Button variant="ghost" size="sm" render={<Link href="/feedback?evidence=none" />}>
+              <Button variant="ghost" size="sm" render={<Link href="/feedback/evidence-gaps" />}>
                 View all evidence gaps
               </Button>
             </div>
