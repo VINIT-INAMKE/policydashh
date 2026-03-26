@@ -20,6 +20,9 @@ export function WorkspaceNav({ userRole }: WorkspaceNavProps) {
 
   const navItems = useMemo(() => {
     const items = [...baseNavItems]
+    if (userRole === 'workshop_moderator' || userRole === 'admin') {
+      items.push({ href: '/workshops', label: 'Workshops' })
+    }
     if (userRole === 'admin' || userRole === 'auditor') {
       items.push({ href: '/audit', label: 'Audit' })
     }
