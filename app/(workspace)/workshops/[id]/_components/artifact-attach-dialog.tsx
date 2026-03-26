@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 import { Loader2, Upload } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
-import { useUploadThing } from '@/src/lib/uploadthing'
+import { uploadFile } from '@/src/lib/uploadthing'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,24 +43,6 @@ export function ArtifactAttachDialog({ workshopId }: ArtifactAttachDialogProps) 
     },
   })
 
-  const { startUpload } = useUploadThing('evidenceUploader', {
-    onClientUploadComplete: (res) => {
-      if (res?.[0]) {
-        attachMutation.mutate({
-          workshopId,
-          artifactType,
-          title: title.trim() || res[0].name,
-          url: res[0].ufsUrl,
-          fileName: res[0].name,
-        })
-      }
-    },
-    onUploadError: (err) => {
-      setUploading(false)
-      toast.error(err.message || 'Upload failed')
-    },
-  })
-
   function resetAndClose() {
     setOpen(false)
     setTitle('')
@@ -76,7 +58,19 @@ export function ArtifactAttachDialog({ workshopId }: ArtifactAttachDialogProps) 
       return
     }
     setUploading(true)
-    await startUpload([file])
+    try {
+      const result = await uploadFile(file, { category: 'evidence' })
+      attachMutation.mutate({
+        workshopId,
+        artifactType,
+        title: title.trim() || result.name,
+        url: result.url,
+        fileName: result.name,
+      })
+    } catch (err) {
+      setUploading(false)
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
+    }
   }
 
   return (

@@ -5,7 +5,7 @@ import { NodeViewWrapper } from '@tiptap/react'
 import type { NodeViewProps } from '@tiptap/react'
 import { Paperclip, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
-import { useUploadThing } from '@/src/lib/uploadthing'
+import { uploadFile } from '@/src/lib/uploadthing'
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB
 
@@ -29,26 +29,8 @@ export function FileAttachmentView({ node, updateAttributes }: NodeViewProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { startUpload } = useUploadThing('documentUploader', {
-    onUploadProgress: (p) => setProgress(p),
-    onClientUploadComplete: (res) => {
-      if (res?.[0]) {
-        updateAttributes({
-          url: res[0].ufsUrl ?? res[0].url,
-          filename: res[0].name,
-          filesize: res[0].size,
-        })
-        setUploadState('uploaded')
-      }
-    },
-    onUploadError: () => {
-      setUploadState('idle')
-      toast.error("Couldn't upload the file. Maximum file size is 25 MB.")
-    },
-  })
-
   const handleFiles = useCallback(
-    (files: FileList | File[]) => {
+    async (files: FileList | File[]) => {
       const file = files[0]
       if (!file) return
 
@@ -59,9 +41,20 @@ export function FileAttachmentView({ node, updateAttributes }: NodeViewProps) {
 
       setUploadState('uploading')
       setProgress(0)
-      startUpload([file])
+
+      try {
+        const result = await uploadFile(file, {
+          category: 'document',
+          onProgress: (p) => setProgress(p),
+        })
+        updateAttributes({ url: result.url, filename: result.name, filesize: file.size })
+        setUploadState('uploaded')
+      } catch {
+        setUploadState('idle')
+        toast.error("Couldn't upload the file. Maximum file size is 25 MB.")
+      }
     },
-    [startUpload],
+    [updateAttributes],
   )
 
   const handleDrop = useCallback(

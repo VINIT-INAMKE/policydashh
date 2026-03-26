@@ -5,7 +5,7 @@ import { NodeViewWrapper } from '@tiptap/react'
 import type { NodeViewProps } from '@tiptap/react'
 import { ImageIcon, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
-import { useUploadThing } from '@/src/lib/uploadthing'
+import { uploadFile } from '@/src/lib/uploadthing'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
@@ -24,49 +24,21 @@ export function ImageBlockView({ node, updateAttributes }: NodeViewProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { startUpload } = useUploadThing('imageUploader', {
-    onUploadProgress: (p) => setProgress(p),
-    onClientUploadComplete: (res) => {
-      if (res?.[0]) {
-        updateAttributes({
-          src: res[0].ufsUrl ?? res[0].url,
-          alt: alt || res[0].name,
-        })
-        setUploadState('uploaded')
-      }
-    },
-    onUploadError: (error) => {
-      setUploadState('error')
-      setErrorMsg(
-        "Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.",
-      )
-      toast.error(
-        "Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.",
-      )
-    },
-  })
-
   const handleFiles = useCallback(
-    (files: FileList | File[]) => {
+    async (files: FileList | File[]) => {
       const file = files[0]
       if (!file) return
 
       if (file.size > MAX_FILE_SIZE) {
         setUploadState('error')
-        setErrorMsg(
-          "Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.",
-        )
-        toast.error(
-          "Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.",
-        )
+        setErrorMsg("Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.")
+        toast.error("Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.")
         return
       }
 
       if (!file.type.startsWith('image/')) {
         setUploadState('error')
-        setErrorMsg(
-          "Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.",
-        )
+        setErrorMsg("Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.")
         toast.error('Please select an image file.')
         return
       }
@@ -74,9 +46,21 @@ export function ImageBlockView({ node, updateAttributes }: NodeViewProps) {
       setUploadState('uploading')
       setProgress(0)
       setErrorMsg(null)
-      startUpload([file])
+
+      try {
+        const result = await uploadFile(file, {
+          category: 'image',
+          onProgress: (p) => setProgress(p),
+        })
+        updateAttributes({ src: result.url, alt: alt || result.name })
+        setUploadState('uploaded')
+      } catch (err) {
+        setUploadState('error')
+        setErrorMsg("Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.")
+        toast.error("Couldn't upload the image. Maximum file size is 10 MB. Try a JPEG or PNG.")
+      }
     },
-    [startUpload],
+    [alt, updateAttributes],
   )
 
   const handleDrop = useCallback(

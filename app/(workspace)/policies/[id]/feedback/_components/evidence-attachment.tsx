@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { trpc } from '@/src/trpc/client'
-import { useUploadThing } from '@/src/lib/uploadthing'
+import { uploadFile } from '@/src/lib/uploadthing'
 import { toast } from 'sonner'
 import { Paperclip, Link2, X, Loader2 } from 'lucide-react'
 
@@ -63,49 +63,40 @@ export function EvidenceAttachment({
     },
   })
 
-  const { startUpload } = useUploadThing('evidenceUploader', {
-    onUploadProgress: (p) => setUploadProgress(p),
-    onClientUploadComplete: (res) => {
-      setIsUploading(false)
+  const handleFileSelect = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return
+      setIsUploading(true)
       setUploadProgress(0)
-      if (res?.[0]) {
-        const file = res[0]
-        // Attach evidence via tRPC
+
+      try {
+        const file = files[0]
+        const result = await uploadFile(file, {
+          category: 'evidence',
+          onProgress: (p) => setUploadProgress(p),
+        })
+        setIsUploading(false)
+        setUploadProgress(0)
         attachMutation.mutate({
-          title: file.name,
+          title: result.name,
           type: 'file',
-          url: (file as Record<string, unknown>).ufsUrl as string ?? file.url,
-          fileName: file.name,
+          url: result.url,
+          fileName: result.name,
           fileSize: file.size,
           ...(feedbackId ? { feedbackId } : {}),
           ...(sectionId ? { sectionId } : {}),
         })
         setUploadedFiles((prev) => [
           ...prev,
-          {
-            id: crypto.randomUUID(),
-            name: file.name,
-            size: file.size,
-            url: (file as Record<string, unknown>).ufsUrl as string ?? file.url,
-          },
+          { id: crypto.randomUUID(), name: result.name, size: file.size, url: result.url },
         ])
+      } catch {
+        setIsUploading(false)
+        setUploadProgress(0)
+        toast.error("Couldn't upload the file. Maximum file size is 25 MB.")
       }
     },
-    onUploadError: () => {
-      setIsUploading(false)
-      setUploadProgress(0)
-      toast.error("Couldn't upload the file. Maximum file size is 25 MB.")
-    },
-  })
-
-  const handleFileSelect = useCallback(
-    (files: FileList | null) => {
-      if (!files || files.length === 0) return
-      setIsUploading(true)
-      setUploadProgress(0)
-      startUpload(Array.from(files))
-    },
-    [startUpload],
+    [attachMutation, feedbackId, sectionId],
   )
 
   const handleDrop = useCallback(
