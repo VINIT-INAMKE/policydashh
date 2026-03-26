@@ -64,6 +64,15 @@ export const ACTIONS = {
   EVIDENCE_PACK_EXPORT: 'evidence_pack.export',
   NOTIFICATION_READ:  'notification.read',
   NOTIFICATION_MARK_READ: 'notification.mark_read',
+  WORKSHOP_CREATE:          'workshop.create',
+  WORKSHOP_UPDATE:          'workshop.update',
+  WORKSHOP_DELETE:          'workshop.delete',
+  WORKSHOP_ARTIFACT_ATTACH: 'workshop.artifact_attach',
+  WORKSHOP_ARTIFACT_REMOVE: 'workshop.artifact_remove',
+  WORKSHOP_SECTION_LINK:    'workshop.section_link',
+  WORKSHOP_SECTION_UNLINK:  'workshop.section_unlink',
+  WORKSHOP_FEEDBACK_LINK:   'workshop.feedback_link',
+  WORKSHOP_FEEDBACK_UNLINK: 'workshop.feedback_unlink',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]
