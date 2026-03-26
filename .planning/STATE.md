@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-03-25T11:31:46.643Z"
+status: Ready to execute
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-03-26T07:46:29.061Z"
 progress:
   total_phases: 11
   completed_phases: 9
-  total_plans: 25
-  completed_plans: 25
+  total_plans: 31
+  completed_plans: 26
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 09 — Public Portal & Compliance
+**Current focus:** Phase 10 — Workshops & Evidence Management
 
 ## Current Position
 
-Phase: 10
-Plan: Not started
+Phase: 10 (Workshops & Evidence Management) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Plan: Not started
 | Phase 08 P03 | 14min | 2 tasks | 7 files |
 | Phase 09 P02 | 15min | 2 tasks | 14 files |
 | Phase 09 P01 | 17min | 2 tasks | 15 files |
+| Phase 10 P01 | 4min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [Phase 09]: Tiptap HTML renderer is a pure string-concatenation function with no React dependencies
 - [Phase 09]: Public portal uses (public) route group with zero Clerk/auth imports, standalone layout
 - [Phase 09]: Privacy enforcement: unconditionally null identity for anonymous on public routes, never render CR/feedback IDs in changelog
+- [Phase 10]: Ownership check on workshop update/delete: creator or admin only
+- [Phase 10]: onConflictDoNothing for idempotent workshop section/feedback linking
+- [Phase 10]: removeArtifact preserves evidenceArtifacts record; only deletes workshop link
 
 ### Pending Todos
 
@@ -153,6 +157,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T11:08:07.552Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-03-26T07:46:29.051Z
+Stopped at: Completed 10-01-PLAN.md
 Resume file: None

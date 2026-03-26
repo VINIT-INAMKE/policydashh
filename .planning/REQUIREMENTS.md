@@ -81,18 +81,18 @@
 
 ### Workshop Module
 
-- [ ] **WS-01**: Workshop Moderator can create workshop events with title, description, date, duration, registration link
-- [ ] **WS-02**: Workshop artifacts: upload/attach promo materials, recordings, summaries, attendance records
-- [ ] **WS-03**: Link workshop insights to specific policy sections
-- [ ] **WS-04**: Link feedback items to workshops (feedback originating from workshop sessions)
-- [ ] **WS-05**: Workshop list view with upcoming/past filtering
+- [x] **WS-01**: Workshop Moderator can create workshop events with title, description, date, duration, registration link
+- [x] **WS-02**: Workshop artifacts: upload/attach promo materials, recordings, summaries, attendance records
+- [x] **WS-03**: Link workshop insights to specific policy sections
+- [x] **WS-04**: Link feedback items to workshops (feedback originating from workshop sessions)
+- [x] **WS-05**: Workshop list view with upcoming/past filtering
 
 ### Evidence & Documents
 
 - [x] **EV-01**: User can upload evidence artifacts (files) or add links as evidence
 - [x] **EV-02**: Evidence can be attached to feedback items and policy sections
-- [ ] **EV-03**: Research Lead has "Claims without evidence" view surfacing feedback lacking supporting evidence
-- [ ] **EV-04**: Evidence artifacts have metadata: title, type (Link, File), uploader, timestamp
+- [x] **EV-03**: Research Lead has "Claims without evidence" view surfacing feedback lacking supporting evidence
+- [x] **EV-04**: Evidence artifacts have metadata: title, type (Link, File), uploader, timestamp
 
 ### Public Portal
 
@@ -230,15 +230,15 @@
 | TRACE-04 | Phase 7 | Complete |
 | TRACE-05 | Phase 7 | Complete |
 | TRACE-06 | Phase 7 | Complete |
-| WS-01 | Phase 10 | Pending |
-| WS-02 | Phase 10 | Pending |
-| WS-03 | Phase 10 | Pending |
-| WS-04 | Phase 10 | Pending |
-| WS-05 | Phase 10 | Pending |
+| WS-01 | Phase 10 | Complete |
+| WS-02 | Phase 10 | Complete |
+| WS-03 | Phase 10 | Complete |
+| WS-04 | Phase 10 | Complete |
+| WS-05 | Phase 10 | Complete |
 | EV-01 | Phase 4 | Complete |
 | EV-02 | Phase 4 | Complete |
-| EV-03 | Phase 10 | Pending |
-| EV-04 | Phase 10 | Pending |
+| EV-03 | Phase 10 | Complete |
+| EV-04 | Phase 10 | Complete |
 | PUB-01 | Phase 9 | Complete |
 | PUB-02 | Phase 9 | Complete |
 | PUB-03 | Phase 9 | Complete |
