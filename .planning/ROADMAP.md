@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 7: Traceability & Search** - Traceability matrix views, per-section and per-stakeholder views, full-text search, filtering, CSV/PDF export
 - [ ] **Phase 8: Dashboards & Notifications** - Role-aware dashboards for all 7 roles, in-app and email notifications, "what changed since last visit"
 - [ ] **Phase 9: Public Portal & Compliance** - Read-only public portal, public changelog, consultation summaries, PDF export, audit trail viewer, evidence pack export
-- [ ] **Phase 10: Workshops & Evidence Management** - Workshop events, artifacts, insight-to-section linking, evidence repository, "claims without evidence" view
+- [x] **Phase 10: Workshops & Evidence Management** - Workshop events, artifacts, insight-to-section linking, evidence repository, "claims without evidence" view (completed 2026-03-26)
 - [ ] **Phase 11: Real-Time Collaboration** - Multi-user Yjs/Hocuspocus editing, presence indicators, inline comments on selected text
 
 ## Phase Details
@@ -197,7 +197,7 @@ Plans:
 
 Plans:
 - [x] 10-01-PLAN.md -- Backend: workshop schema (4 tables), migration, permissions, audit constants, workshop tRPC router (CRUD + artifacts + links), evidence router enhancements (EV-03 claimsWithoutEvidence query, EV-04 uploader name join)
-- [ ] 10-02-PLAN.md -- Workshop UI: list page with upcoming/past tabs, create/edit forms, detail page with artifacts + section/feedback link pickers, workspace nav, dashboard replacement
+- [x] 10-02-PLAN.md -- Workshop UI: list page with upcoming/past tabs, create/edit forms, detail page with artifacts + section/feedback link pickers, workspace nav, dashboard replacement
 - [x] 10-03-PLAN.md -- Evidence UI: Claims Without Evidence full page with filters and table, evidence list metadata enhancement (uploader name + timestamp), research lead dashboard link update
 
 ### Phase 11: Real-Time Collaboration
@@ -234,5 +234,5 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 7. Traceability & Search | 2/3 | Executing | - |
 | 8. Dashboards & Notifications | 0/3 | Planning complete | - |
 | 9. Public Portal & Compliance | 0/2 | Planning complete | - |
-| 10. Workshops & Evidence Management | 2/3 | In Progress|  |
+| 10. Workshops & Evidence Management | 3/3 | Complete    | 2026-03-26 |
 | 11. Real-Time Collaboration | 0/3 | Planning complete | - |
