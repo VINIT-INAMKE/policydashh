@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 8: Dashboards & Notifications** - Role-aware dashboards for all 7 roles, in-app and email notifications, "what changed since last visit"
 - [ ] **Phase 9: Public Portal & Compliance** - Read-only public portal, public changelog, consultation summaries, PDF export, audit trail viewer, evidence pack export
 - [x] **Phase 10: Workshops & Evidence Management** - Workshop events, artifacts, insight-to-section linking, evidence repository, "claims without evidence" view (completed 2026-03-26)
-- [ ] **Phase 11: Real-Time Collaboration** - Multi-user Yjs/Hocuspocus editing, presence indicators, inline comments on selected text
+- [x] **Phase 11: Real-Time Collaboration** - Multi-user Yjs/Hocuspocus editing, presence indicators, inline comments on selected text (completed 2026-03-26)
 
 ## Phase Details
 
@@ -214,7 +214,7 @@ Plans:
 Plans:
 - [x] 11-01-PLAN.md -- Backend foundation: DB schema (ydoc_snapshots, comment_threads, comment_replies), Hocuspocus server, InlineComment mark, comments tRPC router, buildExtensions collaboration option
 - [x] 11-02-PLAN.md -- Client collaboration: HocuspocusProvider in BlockEditor, PresenceBar avatars, ConnectionStatus indicator, remote cursor CSS, auto-save fallback
-- [ ] 11-03-PLAN.md -- Inline comments UI: CommentBubble floating trigger, CommentPanel with open/resolved tabs, CommentThread with replies, resolve/reopen workflow, comment anchor highlighting
+- [x] 11-03-PLAN.md -- Inline comments UI: CommentBubble floating trigger, CommentPanel with open/resolved tabs, CommentThread with replies, resolve/reopen workflow, comment anchor highlighting
 
 ## Progress
 
@@ -235,4 +235,4 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 8. Dashboards & Notifications | 0/3 | Planning complete | - |
 | 9. Public Portal & Compliance | 0/2 | Planning complete | - |
 | 10. Workshops & Evidence Management | 3/3 | Complete    | 2026-03-26 |
-| 11. Real-Time Collaboration | 2/3 | In Progress|  |
+| 11. Real-Time Collaboration | 3/3 | Complete   | 2026-03-26 |

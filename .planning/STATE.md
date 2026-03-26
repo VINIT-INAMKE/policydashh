@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-03-26T09:04:26.394Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 11-03-PLAN.md
+last_updated: "2026-03-26T09:16:56.592Z"
 progress:
   total_phases: 11
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 31
-  completed_plans: 30
+  completed_plans: 31
 ---
 
 # Project State
@@ -71,6 +71,7 @@ Plan: 3 of 3
 | Phase 10 P03 | 3min | 1 tasks | 3 files |
 | Phase 11 P01 | 19min | 2 tasks | 18 files |
 | Phase 11 P02 | 8min | 2 tasks | 6 files |
+| Phase 11-real-time-collaboration P03 | 8min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ Recent decisions affecting current work:
 - [Phase 11]: Auto-save disabled when collaboration is active AND connected; re-enables on disconnect (offline fallback)
 - [Phase 11]: Content prop skipped when collaboration active -- Yjs document is sole source of truth
 - [Phase 11]: PresenceBar hidden when only current user present -- no visual noise in single-user mode
+- [Phase 11-real-time-collaboration]: CommentBubble uses manual selection detection (selectionUpdate + getBoundingClientRect) rather than Tiptap BubbleMenu for positioning control
+- [Phase 11-real-time-collaboration]: Comment anchor highlighting via CSS class on EditorContent rather than ProseMirror decoration plugin -- mark already renders .inline-comment-mark class
 
 ### Pending Todos
 
@@ -169,6 +172,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T09:04:26.383Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-03-26T09:16:56.580Z
+Stopped at: Completed 11-03-PLAN.md
 Resume file: None
