@@ -34,21 +34,12 @@ export default async function DashboardPage() {
   const { userId: clerkId } = await auth()
   if (!clerkId) redirect('/sign-in')
 
-  let user = await db.query.users.findFirst({
+  const user = await db.query.users.findFirst({
     where: eq(users.clerkId, clerkId),
   })
 
-  // User signed in via Clerk but webhook hasn't synced yet — create row now
-  if (!user) {
-    const [created] = await db.insert(users).values({
-      clerkId,
-      role: 'stakeholder',
-      orgType: null,
-    }).onConflictDoNothing().returning()
-    user = created ?? await db.query.users.findFirst({ where: eq(users.clerkId, clerkId) })
-  }
-
-  if (!user) redirect('/sign-in')
+  // Webhook hasn't synced yet — show setup page instead of redirect loop
+  if (!user) redirect('/setup')
 
   const roleName = ROLE_DISPLAY_NAMES[user.role] ?? 'Observer'
   const greeting = getGreeting()
