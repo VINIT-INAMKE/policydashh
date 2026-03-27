@@ -12,7 +12,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           Published Policies
         </Link>
       </header>
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
         {children}
       </main>
       <footer className="border-t px-6 py-4 text-sm text-muted-foreground flex items-center justify-between mt-16">

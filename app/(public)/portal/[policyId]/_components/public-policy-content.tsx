@@ -26,7 +26,7 @@ export function PublicPolicyContent({ sections }: PublicPolicyContentProps) {
               {section.title}
             </h2>
             <div
-              className="text-[16px] font-normal leading-[1.6] prose prose-neutral dark:prose-invert max-w-none"
+              className="text-[16px] font-normal leading-[1.8] prose prose-neutral prose-lg dark:prose-invert max-w-none text-justify"
               dangerouslySetInnerHTML={{
                 __html: renderTiptapToHtml(section.content),
               }}
