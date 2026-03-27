@@ -4,10 +4,10 @@ import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Pencil, Check, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
-import { renderTiptapToText } from '@/src/lib/tiptap-renderer'
 
 // Dynamic import with SSR disabled -- DragHandle causes hydration issues
 const BlockEditor = dynamic(() => import('./block-editor'), { ssr: false })
+const ReadOnlyEditor = dynamic(() => import('./read-only-editor'), { ssr: false })
 
 interface Section {
   id: string
@@ -36,7 +36,6 @@ export function SectionContentView({
     setSaveState(state)
   }, [])
 
-  const text = renderTiptapToText(section.content)
   const isEmpty =
     !section.content ||
     (typeof section.content === 'object' &&
@@ -97,19 +96,13 @@ export function SectionContentView({
         </div>
       ) : (
         <div className="mt-4">
-          {isEmpty && !text ? (
+          {isEmpty ? (
             <p className="text-sm text-muted-foreground">
               This section has no content yet.{' '}
               {canEdit ? 'Click "Edit section" to start writing.' : ''}
             </p>
           ) : (
-            <div className="space-y-3">
-              {text.split('\n').map((paragraph, i) => (
-                <p key={i} className="text-sm leading-relaxed">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
+            <ReadOnlyEditor content={section.content} />
           )}
         </div>
       )}
