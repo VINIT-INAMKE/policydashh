@@ -95,6 +95,9 @@ function PolicyCardsSkeleton() {
   )
 }
 
+// Force dynamic rendering — published policies change when versions are published
+export const dynamic = 'force-dynamic'
+
 export default function PublicPortalPage() {
   return (
     <div className="space-y-8">
