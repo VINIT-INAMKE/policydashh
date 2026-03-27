@@ -198,7 +198,8 @@ export function linesToTiptap(lines: string[]): Record<string, unknown> {
  * - H1 lines are skipped from section content
  */
 export function parseMarkdown(markdown: string, filename: string): ParsedDocument {
-  const lines = markdown.split('\n')
+  // Normalize line endings (Windows \r\n -> \n)
+  const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
 
   let title: string | null = null
   const sections: ParsedSection[] = []
