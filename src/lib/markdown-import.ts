@@ -9,27 +9,181 @@ export interface ParsedDocument {
 }
 
 /**
- * Convert an array of text lines into a Tiptap JSON document.
- * Splits on double-newlines to form paragraphs.
+ * Parse inline markdown formatting into Tiptap text nodes with marks.
+ * Handles: **bold**, *italic*, [links](url), `code`
  */
-export function linesToTiptap(lines: string[]): Record<string, unknown> {
-  const text = lines.join('\n').trim()
-  if (!text) {
-    return { type: 'doc', content: [] }
+function parseInlineMarks(text: string): unknown[] {
+  const nodes: unknown[] = []
+  // Regex matches: **bold**, *italic*, `code`, [text](url)
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\)/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add plain text before this match
+    if (match.index > lastIndex) {
+      const before = text.slice(lastIndex, match.index)
+      if (before) nodes.push({ type: 'text', text: before })
+    }
+
+    if (match[1]) {
+      // **bold**
+      nodes.push({ type: 'text', text: match[1], marks: [{ type: 'bold' }] })
+    } else if (match[2]) {
+      // *italic*
+      nodes.push({ type: 'text', text: match[2], marks: [{ type: 'italic' }] })
+    } else if (match[3]) {
+      // `code`
+      nodes.push({ type: 'text', text: match[3], marks: [{ type: 'code' }] })
+    } else if (match[4] && match[5]) {
+      // [text](url)
+      nodes.push({
+        type: 'text',
+        text: match[4],
+        marks: [{ type: 'link', attrs: { href: match[5], target: '_blank' } }],
+      })
+    }
+
+    lastIndex = match.index + match[0].length
   }
 
-  // Split on double newlines to form paragraphs
-  const paragraphs = text.split(/\n\n+/)
+  // Add remaining text
+  if (lastIndex < text.length) {
+    const remaining = text.slice(lastIndex)
+    if (remaining) nodes.push({ type: 'text', text: remaining })
+  }
 
-  const content = paragraphs
-    .map((para) => para.trim())
-    .filter((para) => para.length > 0)
-    .map((para) => ({
-      type: 'paragraph',
-      content: [{ type: 'text', text: para }],
-    }))
+  return nodes.length > 0 ? nodes : [{ type: 'text', text }]
+}
 
-  return { type: 'doc', content }
+/**
+ * Convert a single line of text into inline content (with marks).
+ */
+function lineToContent(line: string): unknown[] {
+  const trimmed = line.trim()
+  if (!trimmed) return []
+  return parseInlineMarks(trimmed)
+}
+
+/**
+ * Convert markdown lines into a Tiptap JSON document.
+ * Handles: headings (###, ####), paragraphs, bullet lists, numbered lists,
+ * bold, italic, links, code, horizontal rules, and blockquotes.
+ */
+export function linesToTiptap(lines: string[]): Record<string, unknown> {
+  const content: unknown[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    // Skip empty lines
+    if (!trimmed) {
+      i++
+      continue
+    }
+
+    // Horizontal rule
+    if (/^---+$/.test(trimmed) || /^\*\*\*+$/.test(trimmed)) {
+      content.push({ type: 'horizontalRule' })
+      i++
+      continue
+    }
+
+    // Headings (### H3, #### H4, ##### H5)
+    const headingMatch = trimmed.match(/^(#{3,6})\s+(.+)$/)
+    if (headingMatch) {
+      const level = headingMatch[1].length
+      const headingText = headingMatch[2].replace(/\*\*/g, '') // strip bold from headings
+      content.push({
+        type: 'heading',
+        attrs: { level },
+        content: [{ type: 'text', text: headingText }],
+      })
+      i++
+      continue
+    }
+
+    // Blockquote
+    if (trimmed.startsWith('> ')) {
+      const quoteLines: string[] = []
+      while (i < lines.length && lines[i].trim().startsWith('> ')) {
+        quoteLines.push(lines[i].trim().slice(2))
+        i++
+      }
+      content.push({
+        type: 'blockquote',
+        content: [{
+          type: 'paragraph',
+          content: lineToContent(quoteLines.join(' ')),
+        }],
+      })
+      continue
+    }
+
+    // Numbered list (1. item, 2. item)
+    if (/^\d+\.\s/.test(trimmed)) {
+      const items: unknown[] = []
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        const itemText = lines[i].trim().replace(/^\d+\.\s/, '')
+        items.push({
+          type: 'listItem',
+          content: [{
+            type: 'paragraph',
+            content: lineToContent(itemText),
+          }],
+        })
+        i++
+      }
+      content.push({ type: 'orderedList', content: items })
+      continue
+    }
+
+    // Bullet list (- item or * item)
+    if (/^[-*]\s/.test(trimmed)) {
+      const items: unknown[] = []
+      while (i < lines.length && /^[-*]\s/.test(lines[i].trim())) {
+        const itemText = lines[i].trim().replace(/^[-*]\s/, '')
+        items.push({
+          type: 'listItem',
+          content: [{
+            type: 'paragraph',
+            content: lineToContent(itemText),
+          }],
+        })
+        i++
+      }
+      content.push({ type: 'bulletList', content: items })
+      continue
+    }
+
+    // Regular paragraph — collect consecutive non-empty, non-special lines
+    const paraLines: string[] = []
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !lines[i].trim().startsWith('#') &&
+      !lines[i].trim().startsWith('> ') &&
+      !lines[i].trim().startsWith('---') &&
+      !lines[i].trim().startsWith('***') &&
+      !/^[-*]\s/.test(lines[i].trim()) &&
+      !/^\d+\.\s/.test(lines[i].trim())
+    ) {
+      paraLines.push(lines[i].trim())
+      i++
+    }
+
+    if (paraLines.length > 0) {
+      const joined = paraLines.join(' ')
+      content.push({
+        type: 'paragraph',
+        content: lineToContent(joined),
+      })
+    }
+  }
+
+  return { type: 'doc', content: content.length > 0 ? content : [] }
 }
 
 /**
@@ -49,7 +203,6 @@ export function parseMarkdown(markdown: string, filename: string): ParsedDocumen
   let title: string | null = null
   const sections: ParsedSection[] = []
 
-  // Lines before the first H2 (excluding H1 lines)
   let preambleLines: string[] = []
   let currentSectionTitle: string | null = null
   let currentSectionLines: string[] = []
@@ -60,13 +213,12 @@ export function parseMarkdown(markdown: string, filename: string): ParsedDocumen
     const h1Match = line.match(/^# (.+)$/)
     if (h1Match && !title) {
       title = h1Match[1].trim()
-      continue // Skip H1 from content
+      continue
     }
 
     // Check for H2 (section start)
     const h2Match = line.match(/^## (.+)$/)
     if (h2Match) {
-      // Save previous section if exists
       if (currentSectionTitle !== null) {
         sections.push({
           title: currentSectionTitle,
@@ -74,7 +226,6 @@ export function parseMarkdown(markdown: string, filename: string): ParsedDocumen
         })
       }
 
-      // If we haven't seen any H2 yet, check for preamble content
       if (!foundFirstH2 && preambleLines.some((l) => l.trim().length > 0)) {
         sections.push({
           title: 'Introduction',
@@ -88,9 +239,7 @@ export function parseMarkdown(markdown: string, filename: string): ParsedDocumen
       continue
     }
 
-    // Accumulate lines
     if (!foundFirstH2) {
-      // Skip additional H1 lines from preamble
       if (!h1Match) {
         preambleLines.push(line)
       }
@@ -99,7 +248,6 @@ export function parseMarkdown(markdown: string, filename: string): ParsedDocumen
     }
   }
 
-  // Save the last section
   if (currentSectionTitle !== null) {
     sections.push({
       title: currentSectionTitle,
@@ -107,7 +255,6 @@ export function parseMarkdown(markdown: string, filename: string): ParsedDocumen
     })
   }
 
-  // If no H1 was found, use filename
   if (!title) {
     title = filename.replace(/\.(md|markdown)$/, '')
   }
