@@ -120,7 +120,7 @@ export function EvidencePackDialog() {
           {/* Policy selector */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Policy</label>
-            <Select value={policyId} onValueChange={setPolicyId}>
+            <Select value={policyId} onValueChange={(v) => setPolicyId(v ?? '')}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a policy" />
               </SelectTrigger>

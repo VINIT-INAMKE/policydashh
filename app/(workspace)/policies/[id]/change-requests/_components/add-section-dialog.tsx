@@ -96,7 +96,7 @@ export function AddSectionDialog({
           </label>
           <Select
             value={selectedSectionId}
-            onValueChange={setSelectedSectionId}
+            onValueChange={(v) => setSelectedSectionId(v ?? '')}
           >
             <SelectTrigger id="section-select">
               <SelectValue placeholder="Select a section..." />
