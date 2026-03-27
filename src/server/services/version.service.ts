@@ -244,33 +244,31 @@ export async function createManualVersion(
   notes: string,
   actorId: string,
 ): Promise<typeof documentVersions.$inferSelect> {
-  return await db.transaction(async (tx) => {
-    const versionLabel = await getNextVersionLabel(tx as unknown as typeof db, documentId)
-    const sectionsSnapshot = await snapshotSections(tx as unknown as typeof db, documentId)
+  // Sequential inserts (Neon HTTP driver does not support transactions)
+  const versionLabel = await getNextVersionLabel(db, documentId)
+  const sectionsSnapshot = await snapshotSections(db, documentId)
 
-    // Manual version changelog entry (no CR)
-    const changelog: ChangelogEntry[] = [{
+  const changelog: ChangelogEntry[] = [{
+    crId: null,
+    crReadableId: null,
+    crTitle: 'Manual version',
+    summary: notes,
+    feedbackIds: [],
+    affectedSectionIds: [],
+  }]
+
+  const [version] = await db
+    .insert(documentVersions)
+    .values({
+      documentId,
+      versionLabel,
+      mergeSummary: notes,
+      createdBy: actorId,
       crId: null,
-      crReadableId: null,
-      crTitle: 'Manual version',
-      summary: notes,
-      feedbackIds: [],
-      affectedSectionIds: [],
-    }]
+      sectionsSnapshot,
+      changelog,
+    })
+    .returning()
 
-    const [version] = await tx
-      .insert(documentVersions)
-      .values({
-        documentId,
-        versionLabel,
-        mergeSummary: notes,
-        createdBy: actorId,
-        crId: null,
-        sectionsSnapshot,
-        changelog,
-      })
-      .returning()
-
-    return version
-  })
+  return version
 }

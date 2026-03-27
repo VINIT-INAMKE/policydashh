@@ -140,90 +140,90 @@ export async function mergeCR(
   mergeSummary: string,
   actorId: string,
 ) {
-  return await db.transaction(async (tx) => {
-    // 1. Fetch CR and verify status === 'approved'
-    const [cr] = await tx
-      .select()
-      .from(changeRequests)
-      .where(eq(changeRequests.id, crId))
-      .limit(1)
+  // Sequential inserts (Neon HTTP driver does not support transactions)
 
-    if (!cr) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Change request not found' })
-    }
+  // 1. Fetch CR and verify status === 'approved'
+  const [cr] = await db
+    .select()
+    .from(changeRequests)
+    .where(eq(changeRequests.id, crId))
+    .limit(1)
 
-    if (cr.status !== 'approved') {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: `CR ${cr.readableId} must be in approved state to merge, currently ${cr.status}`,
-      })
-    }
+  if (!cr) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Change request not found' })
+  }
 
-    // 2. Generate next version label
-    const versionLabel = await getNextVersionLabel(tx as unknown as typeof db, cr.documentId)
-
-    // 3. Capture section snapshot and build changelog INSIDE the transaction
-    const sectionsSnapshot = await snapshotSections(tx as unknown as typeof db, cr.documentId)
-    const changelog = await buildChangelog(tx as unknown as typeof db, crId, cr)
-
-    // 4. Insert document_versions row with snapshot and changelog
-    const [version] = await tx
-      .insert(documentVersions)
-      .values({
-        documentId: cr.documentId,
-        versionLabel,
-        mergeSummary,
-        createdBy: actorId,
-        crId,
-        sectionsSnapshot,
-        changelog,
-      })
-      .returning()
-
-    // 5. Update CR to merged
-    const [updatedCR] = await tx
-      .update(changeRequests)
-      .set({
-        status: 'merged',
-        mergedVersionId: version.id,
-        mergedBy: actorId,
-        mergedAt: new Date(),
-        xstateSnapshot: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(changeRequests.id, crId))
-      .returning()
-
-    // 6. Bulk-update linked feedback with resolvedInVersionId
-    const linkedFeedback = await tx
-      .select({ feedbackId: crFeedbackLinks.feedbackId })
-      .from(crFeedbackLinks)
-      .where(eq(crFeedbackLinks.crId, crId))
-
-    const feedbackIds = linkedFeedback.map((f) => f.feedbackId)
-
-    if (feedbackIds.length > 0) {
-      await tx
-        .update(feedbackItems)
-        .set({ resolvedInVersionId: version.id })
-        .where(inArray(feedbackItems.id, feedbackIds))
-    }
-
-    // 7. Insert workflow transition
-    await tx.insert(workflowTransitions).values({
-      entityType: 'change_request',
-      entityId: crId,
-      fromState: 'approved',
-      toState: 'merged',
-      actorId,
-      metadata: {
-        event: 'MERGE',
-        mergeSummary,
-        versionLabel,
-      },
+  if (cr.status !== 'approved') {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: `CR ${cr.readableId} must be in approved state to merge, currently ${cr.status}`,
     })
+  }
 
-    // 8. Return updated CR and version
-    return { cr: updatedCR, version }
+  // 2. Generate next version label
+  const versionLabel = await getNextVersionLabel(db, cr.documentId)
+
+  // 3. Capture section snapshot and build changelog
+  const sectionsSnapshot = await snapshotSections(db, cr.documentId)
+  const changelog = await buildChangelog(db, crId, cr)
+
+  // 4. Insert document_versions row with snapshot and changelog
+  const [version] = await db
+    .insert(documentVersions)
+    .values({
+      documentId: cr.documentId,
+      versionLabel,
+      mergeSummary,
+      createdBy: actorId,
+      crId,
+      sectionsSnapshot,
+      changelog,
+    })
+    .returning()
+
+  // 5. Update CR to merged
+  const [updatedCR] = await db
+    .update(changeRequests)
+    .set({
+      status: 'merged',
+      mergedVersionId: version.id,
+      mergedBy: actorId,
+      mergedAt: new Date(),
+      xstateSnapshot: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(changeRequests.id, crId))
+    .returning()
+
+  // 6. Bulk-update linked feedback with resolvedInVersionId
+  const linkedFeedback = await db
+    .select({ feedbackId: crFeedbackLinks.feedbackId })
+    .from(crFeedbackLinks)
+    .where(eq(crFeedbackLinks.crId, crId))
+
+  const feedbackIds = linkedFeedback.map((f) => f.feedbackId)
+
+  if (feedbackIds.length > 0) {
+    await db
+      .update(feedbackItems)
+      .set({ resolvedInVersionId: version.id })
+      .where(inArray(feedbackItems.id, feedbackIds))
+  }
+
+  // 7. Insert workflow transition
+  await db.insert(workflowTransitions).values({
+    entityType: 'change_request',
+    entityId: crId,
+    fromState: 'approved',
+    toState: 'merged',
+    actorId,
+    metadata: {
+      event: 'MERGE',
+      mergeSummary,
+      versionLabel,
+    },
   })
+
+  // 8. Return updated CR and version
+  return { cr: updatedCR, version }
 }
