@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Filter, GitPullRequest } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, Filter, GitPullRequest } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -63,6 +64,13 @@ export function CRList({ documentId }: CRListProps) {
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
+        {/* Back link */}
+        <Link href={`/policies/${documentId}`}>
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back to Policy
+          </Button>
+        </Link>
+
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">

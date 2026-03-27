@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Network, FileText, User, Search } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, Network, FileText, User, Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { trpc } from '@/src/trpc/client'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { MatrixTable } from './_components/matrix-table'
@@ -29,15 +31,18 @@ export default function TraceabilityPage() {
   const meQuery = trpc.user.getMe.useQuery()
   const role = meQuery.data?.role
   const canViewTrace = role === 'admin' || role === 'policy_lead' || role === 'auditor'
+  const isStakeholder = role === 'stakeholder'
+  const canAccessPage = canViewTrace || isStakeholder
 
-  // Role gate: redirect unauthorized users
+  // Role gate: redirect unauthorized users (stakeholders get limited access)
   useEffect(() => {
-    if (meQuery.data && !canViewTrace) {
+    if (meQuery.data && !canAccessPage) {
       router.replace(`/policies/${documentId}`)
     }
-  }, [meQuery.data, canViewTrace, router, documentId])
+  }, [meQuery.data, canAccessPage, router, documentId])
 
-  const activeTab = searchParams.get('tab') ?? 'matrix'
+  const defaultTab = isStakeholder ? 'stakeholder' : 'matrix'
+  const activeTab = searchParams.get('tab') ?? defaultTab
   const [filters, setFilters] = useState<TraceabilityFilterState>(EMPTY_FILTERS)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
@@ -104,6 +109,11 @@ export default function TraceabilityPage() {
     <div className="flex h-[calc(100vh-64px)] flex-col">
       {/* Page header */}
       <div className="shrink-0 border-b px-6 py-4">
+        <Link href={`/policies/${documentId}`}>
+          <Button variant="ghost" size="sm" className="mb-2">
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back to Policy
+          </Button>
+        </Link>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[20px] font-semibold leading-[1.2]">Traceability</h1>
@@ -125,22 +135,28 @@ export default function TraceabilityPage() {
       >
         <div className="shrink-0 border-b px-6">
           <TabsList variant="line">
-            <TabsTrigger value="matrix">
-              <Network className="size-4" />
-              Traceability Matrix
-            </TabsTrigger>
-            <TabsTrigger value="section">
-              <FileText className="size-4" />
-              By Section
-            </TabsTrigger>
+            {!isStakeholder && (
+              <TabsTrigger value="matrix">
+                <Network className="size-4" />
+                Traceability Matrix
+              </TabsTrigger>
+            )}
+            {!isStakeholder && (
+              <TabsTrigger value="section">
+                <FileText className="size-4" />
+                By Section
+              </TabsTrigger>
+            )}
             <TabsTrigger value="stakeholder">
               <User className="size-4" />
               By Stakeholder
             </TabsTrigger>
-            <TabsTrigger value="search">
-              <Search className="size-4" />
-              Search
-            </TabsTrigger>
+            {!isStakeholder && (
+              <TabsTrigger value="search">
+                <Search className="size-4" />
+                Search
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 

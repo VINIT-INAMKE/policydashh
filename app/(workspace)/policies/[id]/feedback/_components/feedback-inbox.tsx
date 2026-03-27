@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Filter, MessageSquare } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, Filter, MessageSquare } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -86,6 +87,15 @@ export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-y-auto">
+        {/* Back link */}
+        <div className="border-b px-4 py-2 lg:px-6">
+          <Link href={`/policies/${documentId}`}>
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-1 h-4 w-4" /> Back to Policy
+            </Button>
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="flex items-center gap-3 border-b px-4 py-3 lg:px-6">
           <h1 className="text-[20px] font-semibold leading-[1.2]">Feedback</h1>

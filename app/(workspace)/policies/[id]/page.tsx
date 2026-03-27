@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, Pencil, MessageSquare, GitPullRequest, Network, History } from 'lucide-react'
 import Link from 'next/link'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { SectionSidebar } from './_components/section-sidebar'
 import { SectionContentView } from './_components/section-content-view'
 import { EditPolicyDialog } from '../_components/edit-policy-dialog'
@@ -26,8 +27,8 @@ export default function PolicyDetailPage() {
   const role = me?.role
   const canEdit = role === 'admin' || role === 'policy_lead'
   const canViewCR = role === 'admin' || role === 'policy_lead' || role === 'auditor'
-  const canViewTrace = role === 'admin' || role === 'policy_lead' || role === 'auditor'
-  const canViewVersions = role !== 'workshop_moderator'
+  const canViewTrace = role === 'admin' || role === 'policy_lead' || role === 'auditor' || role === 'stakeholder'
+  const canViewVersions = true // version:read granted to most roles; server enforces the actual check
 
   const selectedSection = sectionsQuery.data?.find((s) => s.id === selectedSectionId) ?? null
 
@@ -144,6 +145,27 @@ export default function PolicyDetailPage() {
               </Link>
             )}
           </div>
+
+          {/* Mobile section selector (visible below lg breakpoint) */}
+          {(sectionsQuery.data ?? []).length > 0 && (
+            <div className="mb-4 lg:hidden">
+              <Select
+                value={selectedSectionId ?? ''}
+                onValueChange={(val) => setSelectedSectionId(val || null)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a section..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(sectionsQuery.data ?? []).map((section) => (
+                    <SelectItem key={section.id} value={section.id}>
+                      {section.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Section content or empty prompt */}
           {selectedSection ? (

@@ -152,21 +152,19 @@ export function NotificationBell() {
         </Tabs>
 
         {/* Footer */}
-        {allNotifications.length > 5 && (
-          <div className="border-t px-4 py-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full"
-              onClick={() => {
-                router.push('/notifications')
-                setPopoverOpen(false)
-              }}
-            >
-              View all notifications
-            </Button>
-          </div>
-        )}
+        <div className="border-t px-4 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              router.push('/notifications')
+              setPopoverOpen(false)
+            }}
+          >
+            View all notifications
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   )
