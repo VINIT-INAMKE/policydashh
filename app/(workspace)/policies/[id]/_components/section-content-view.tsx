@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Pencil, Check, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { SectionAssignments } from './section-assignments'
 
 // Dynamic import with SSR disabled -- DragHandle causes hydration issues
 const BlockEditor = dynamic(() => import('./block-editor'), { ssr: false })
@@ -85,6 +86,13 @@ export function SectionContentView({
           )}
         </div>
       </div>
+
+      {/* Section assignments -- visible to Policy Lead / Admin */}
+      {canEdit && (
+        <div className="mt-4 rounded-md border p-3">
+          <SectionAssignments sectionId={section.id} />
+        </div>
+      )}
 
       {/* Content area -- no max-width here so CommentPanel can expand into flex layout */}
       {canEdit && isEditing ? (
