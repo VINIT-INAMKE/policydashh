@@ -115,7 +115,7 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
                       </div>
                       <Button
                         size="sm"
-                        render={<Link href={`/policies/${version.documentId}/versions/${version.id}`} />}
+                        render={<Link href={`/policies/${version.documentId}/versions`} />}
                       >
                         Publish
                       </Button>
@@ -133,7 +133,8 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
                 <CardTitle>
                   <h2 className="text-xl font-semibold">User Management</h2>
                 </CardTitle>
-                <Button size="sm" render={<Link href="/users" />}>
+                {/* TODO: Replace /dashboard with /users once User Management page is built */}
+                <Button size="sm" render={<Link href="/dashboard" />}>
                   Manage Users
                 </Button>
               </div>

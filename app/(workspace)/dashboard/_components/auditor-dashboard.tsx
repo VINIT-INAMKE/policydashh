@@ -98,7 +98,7 @@ export async function AuditorDashboard({ userId }: AuditorDashboardProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" render={<a href="/api/export/traceability/csv" download />}>
               <Download className="size-4" />
               Export Audit Log (CSV)
             </Button>

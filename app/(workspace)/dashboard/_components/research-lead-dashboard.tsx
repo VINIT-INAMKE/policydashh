@@ -26,7 +26,7 @@ const typeColors: Record<string, string> = {
 }
 
 export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardProps) {
-  const [feedbackWithoutEvidence, [totalEvidenceResult]] = await Promise.all([
+  const [feedbackWithoutEvidence, [totalEvidenceResult], [totalFeedbackResult]] = await Promise.all([
     db
       .select({
         id: feedbackItems.id,
@@ -44,6 +44,8 @@ export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardPro
       .limit(5),
 
     db.select({ count: count() }).from(evidenceArtifacts),
+
+    db.select({ count: count() }).from(feedbackItems),
   ])
 
   // Get count of all feedback without evidence (for stats)
@@ -55,6 +57,9 @@ export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardPro
 
   const noEvidenceCount = noEvidenceCountResult?.count ?? 0
   const totalEvidence = totalEvidenceResult?.count ?? 0
+  const totalFeedback = totalFeedbackResult?.count ?? 0
+  const feedbackWithEvidence = totalFeedback - noEvidenceCount
+  const coverageRate = totalFeedback === 0 ? 100 : Math.round((feedbackWithEvidence / totalFeedback) * 100)
 
   return (
     <div className="space-y-4">
@@ -105,7 +110,7 @@ export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardPro
                     <Badge className={typeColors[fb.feedbackType] ?? 'bg-muted text-muted-foreground'}>
                       {fb.feedbackType}
                     </Badge>
-                    <Button variant="ghost" size="sm" render={<Link href={`/feedback/${fb.id}/evidence`} />}>
+                    <Button variant="ghost" size="sm" render={<Link href="/feedback/evidence-gaps" />}>
                       Attach Evidence
                     </Button>
                   </div>
@@ -142,7 +147,7 @@ export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardPro
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Coverage rate</span>
                 <span className="text-sm font-semibold">
-                  {noEvidenceCount === 0 ? '100%' : `${Math.round((1 - noEvidenceCount / Math.max(noEvidenceCount + totalEvidence, 1)) * 100)}%`}
+                  {coverageRate}%
                 </span>
               </div>
             </div>

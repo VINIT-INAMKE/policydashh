@@ -7,7 +7,8 @@ import {
   sectionAssignments,
   documentVersions,
 } from '@/src/db/schema'
-import { eq, and, notInArray, desc, gt, count } from 'drizzle-orm'
+import { workshops } from '@/src/db/schema/workshops'
+import { eq, and, notInArray, desc, gt, gte, count } from 'drizzle-orm'
 import { FileText, MessageSquare, Calendar, CheckCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -29,7 +30,7 @@ const statusColors: Record<string, string> = {
 }
 
 export async function StakeholderDashboard({ userId, lastVisitedAt }: StakeholderDashboardProps) {
-  const [assignedSections, pendingFeedback] = await Promise.all([
+  const [assignedSections, pendingFeedback, upcomingWorkshops] = await Promise.all([
     db
       .select({
         assignmentId: sectionAssignments.id,
@@ -63,6 +64,19 @@ export async function StakeholderDashboard({ userId, lastVisitedAt }: Stakeholde
       )
       .orderBy(desc(feedbackItems.updatedAt))
       .limit(5),
+
+    db
+      .select({
+        id: workshops.id,
+        title: workshops.title,
+        description: workshops.description,
+        scheduledAt: workshops.scheduledAt,
+        durationMinutes: workshops.durationMinutes,
+      })
+      .from(workshops)
+      .where(gte(workshops.scheduledAt, new Date()))
+      .orderBy(workshops.scheduledAt)
+      .limit(3),
   ])
 
   // Check for changed sections since last visit
@@ -134,6 +148,9 @@ export async function StakeholderDashboard({ userId, lastVisitedAt }: Stakeholde
               <p className="mt-2 text-sm text-muted-foreground">
                 You have no assigned sections. Contact your Policy Lead.
               </p>
+              <Button variant="outline" size="sm" className="mt-3" render={<Link href="/portal" />}>
+                Browse Public Portal
+              </Button>
             </div>
           ) : (
             <div className="space-y-2">
@@ -146,7 +163,7 @@ export async function StakeholderDashboard({ userId, lastVisitedAt }: Stakeholde
                   <Button
                     variant="outline"
                     size="sm"
-                    render={<Link href={`/feedback/submit?sectionId=${section.sectionId}&documentId=${section.documentId}`} />}
+                    render={<Link href={`/policies/${section.documentId}/sections/${section.sectionId}/feedback/new`} />}
                   >
                     Submit Feedback
                   </Button>
@@ -175,7 +192,7 @@ export async function StakeholderDashboard({ userId, lastVisitedAt }: Stakeholde
           ) : (
             <div className="space-y-2">
               {pendingFeedback.map((fb) => (
-                <div key={fb.id} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
+                <Link key={fb.id} href="/feedback/outcomes" className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
                   <Badge variant="secondary" className="font-mono text-muted-foreground shrink-0">
                     {fb.readableId}
                   </Badge>
@@ -186,7 +203,7 @@ export async function StakeholderDashboard({ userId, lastVisitedAt }: Stakeholde
                   <Badge className={statusColors[fb.status] ?? 'bg-muted text-muted-foreground'}>
                     {fb.status.replace('_', ' ')}
                   </Badge>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -198,20 +215,42 @@ export async function StakeholderDashboard({ userId, lastVisitedAt }: Stakeholde
         </div>
       </Card>
 
-      {/* Upcoming Workshops - placeholder */}
+      {/* Upcoming Workshops */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            <h2 className="text-xl font-semibold">Upcoming Workshops</h2>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              <h2 className="text-xl font-semibold">Upcoming Workshops</h2>
+            </CardTitle>
+            <Button variant="ghost" size="sm" render={<Link href="/workshops" />}>
+              View All
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Calendar className="size-8 text-muted-foreground" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              Workshop scheduling is coming soon.
-            </p>
-          </div>
+          {upcomingWorkshops.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Calendar className="size-8 text-muted-foreground" />
+              <p className="mt-2 text-sm text-muted-foreground">
+                No upcoming workshops scheduled.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {upcomingWorkshops.map((ws) => (
+                <Link key={ws.id} href={`/workshops/${ws.id}`} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
+                  <Calendar className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm">{ws.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(ws.scheduledAt), 'MMM d, yyyy h:mm a')}
+                      {ws.durationMinutes ? ` (${ws.durationMinutes} min)` : ''}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

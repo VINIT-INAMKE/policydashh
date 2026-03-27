@@ -67,6 +67,7 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
     db.select({
       id: changeRequests.id,
       readableId: changeRequests.readableId,
+      documentId: changeRequests.documentId,
       title: changeRequests.title,
       status: changeRequests.status,
       updatedAt: changeRequests.updatedAt,
@@ -164,7 +165,7 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
           <p className="text-sm">
             {changedSinceLastVisit} section(s) changed since your last visit.
           </p>
-          <Button variant="ghost" size="sm" className="ml-auto">
+          <Button variant="ghost" size="sm" className="ml-auto" render={<Link href="/policies" />}>
             See what changed
           </Button>
         </div>
@@ -210,7 +211,7 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
               ) : (
                 <div className="space-y-2">
                   {recentFeedback.map((fb) => (
-                    <div key={fb.id} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
+                    <Link key={fb.id} href="/feedback" className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
                       <Badge variant="secondary" className="font-mono text-muted-foreground shrink-0">
                         {fb.readableId}
                       </Badge>
@@ -224,7 +225,7 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(fb.createdAt), { addSuffix: true })}
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -256,7 +257,7 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
               ) : (
                 <div className="space-y-2">
                   {activeCRs.map((cr) => (
-                    <div key={cr.id} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
+                    <Link key={cr.id} href={`/policies/${cr.documentId}/change-requests/${cr.id}`} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
                       <Badge variant="secondary" className="font-mono text-muted-foreground shrink-0">
                         {cr.readableId}
                       </Badge>
@@ -267,14 +268,14 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(cr.updatedAt), { addSuffix: true })}
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
             </CardContent>
             {activeCRCount > 5 && (
               <div className="border-t px-4 py-2">
-                <Button variant="ghost" size="sm" render={<Link href="/change-requests" />}>
+                <Button variant="ghost" size="sm" render={<Link href="/policies" />}>
                   View all CRs
                 </Button>
               </div>

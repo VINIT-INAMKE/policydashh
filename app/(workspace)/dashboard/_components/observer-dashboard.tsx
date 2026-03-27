@@ -88,7 +88,7 @@ export async function ObserverDashboard({ userId }: ObserverDashboardProps) {
                       )}
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" render={<Link href={`/policies/${policy.id}`} />}>
+                  <Button variant="ghost" size="sm" render={<Link href={`/portal/${policy.id}`} />}>
                     View
                   </Button>
                 </div>
