@@ -139,15 +139,15 @@ export async function GET(request: NextRequest) {
     <TraceabilityPDF rows={matrixRows} documentTitle={documentTitle} />
   )
 
-  // Write audit log
-  await writeAuditLog({
+  // Write audit log (fire-and-forget to avoid crashing export on log failure)
+  writeAuditLog({
     actorId: user.id,
     actorRole: user.role,
     action: ACTIONS.TRACE_EXPORT,
     entityType: 'document',
     entityId: documentId,
     payload: { format: 'pdf' },
-  })
+  }).catch(console.error)
 
   return new Response(buffer as unknown as BodyInit, {
     headers: {

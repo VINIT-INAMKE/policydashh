@@ -62,7 +62,7 @@ export const commentRouter = router({
         })
         .returning()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.COMMENT_CREATE,
@@ -72,7 +72,7 @@ export const commentRouter = router({
           sectionId: input.sectionId,
           commentId: input.commentId,
         },
-      })
+      }).catch(console.error)
 
       return thread
     }),
@@ -104,14 +104,14 @@ export const commentRouter = router({
         })
         .returning()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.COMMENT_REPLY,
         entityType: 'comment_reply',
         entityId: reply.id,
         payload: { threadId: input.threadId },
-      })
+      }).catch(console.error)
 
       return reply
     }),
@@ -130,13 +130,13 @@ export const commentRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Comment thread not found' })
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.COMMENT_RESOLVE,
         entityType: 'comment_thread',
         entityId: input.id,
-      })
+      }).catch(console.error)
 
       return thread
     }),
@@ -155,13 +155,13 @@ export const commentRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Comment thread not found' })
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.COMMENT_REOPEN,
         entityType: 'comment_thread',
         entityId: input.id,
-      })
+      }).catch(console.error)
 
       return thread
     }),
@@ -193,14 +193,14 @@ export const commentRouter = router({
         .delete(commentThreads)
         .where(eq(commentThreads.id, input.id))
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.COMMENT_DELETE,
         entityType: 'comment_thread',
         entityId: input.id,
         payload: { sectionId: thread.sectionId },
-      })
+      }).catch(console.error)
 
       return { deleted: true }
     }),

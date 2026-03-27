@@ -6,7 +6,7 @@ import { db } from '@/src/db'
 import { policyDocuments, policySections } from '@/src/db/schema/documents'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { users } from '@/src/db/schema/users'
-import { eq } from 'drizzle-orm'
+import { eq, and, inArray } from 'drizzle-orm'
 import { ArrowLeft, Info, Users as UsersIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConsultationSummaryAccordion } from './_components/consultation-summary-accordion'
@@ -22,7 +22,6 @@ interface SectionSummary {
   typeBreakdown: Record<FeedbackType, number>
   outcomeBreakdown: Record<FeedbackStatus, number>
   orgBreakdown: Record<OrgType, number>
-  namedContributors: string[]
 }
 
 export default async function ConsultationSummaryPage({
@@ -40,28 +39,27 @@ export default async function ConsultationSummaryPage({
     notFound()
   }
 
-  // Query resolved feedback for this document
+  // Query resolved feedback for this document (server-side SQL filter)
   // Only resolved feedback appears in public summary
   const resolvedStatuses = ['accepted', 'partially_accepted', 'rejected', 'closed'] as const
-  const feedbackRows = await db
+  const resolvedFeedback = await db
     .select({
       sectionId: feedbackItems.sectionId,
       feedbackType: feedbackItems.feedbackType,
       status: feedbackItems.status,
       isAnonymous: feedbackItems.isAnonymous,
-      submitterName: users.name,
       submitterOrgType: users.orgType,
       sectionTitle: policySections.title,
     })
     .from(feedbackItems)
     .leftJoin(users, eq(feedbackItems.submitterId, users.id))
     .leftJoin(policySections, eq(feedbackItems.sectionId, policySections.id))
-    .where(eq(feedbackItems.documentId, policyId))
-
-  // Filter to resolved statuses only
-  const resolvedFeedback = feedbackRows.filter((row) =>
-    (resolvedStatuses as readonly string[]).includes(row.status)
-  )
+    .where(
+      and(
+        eq(feedbackItems.documentId, policyId),
+        inArray(feedbackItems.status, [...resolvedStatuses]),
+      ),
+    )
 
   if (resolvedFeedback.length === 0) {
     return (
@@ -108,7 +106,6 @@ export default async function ConsultationSummaryPage({
         typeBreakdown: { issue: 0, suggestion: 0, endorsement: 0, evidence: 0, question: 0 },
         outcomeBreakdown: { accepted: 0, partially_accepted: 0, rejected: 0, closed: 0 },
         orgBreakdown: { government: 0, industry: 0, legal: 0, academia: 0, civil_society: 0, internal: 0 },
-        namedContributors: [],
       })
     }
     const section = sectionMap.get(row.sectionId)!
@@ -132,12 +129,7 @@ export default async function ConsultationSummaryPage({
       section.orgBreakdown[orgType]++
     }
 
-    // Named contributors: only show name if NOT anonymous
-    if (!row.isAnonymous && row.submitterName) {
-      if (!section.namedContributors.includes(row.submitterName)) {
-        section.namedContributors.push(row.submitterName)
-      }
-    }
+    // SECURITY: Named contributors removed from public portal to prevent identity leakage
   }
 
   const sectionSummaries = Array.from(sectionMap.values())

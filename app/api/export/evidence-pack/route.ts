@@ -39,15 +39,15 @@ export async function GET(request: NextRequest) {
   // Generate ZIP
   const zipped = zipSync(files, { level: 6 })
 
-  // Write audit log
-  await writeAuditLog({
+  // Write audit log (fire-and-forget to avoid crashing export on log failure)
+  writeAuditLog({
     actorId: user.id,
     actorRole: user.role,
     action: ACTIONS.EVIDENCE_PACK_EXPORT,
     entityType: 'document',
     entityId: documentId,
     payload: { format: 'zip' },
-  })
+  }).catch(console.error)
 
   return new Response(zipped as unknown as BodyInit, {
     headers: {

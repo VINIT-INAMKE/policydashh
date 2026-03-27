@@ -39,14 +39,14 @@ export const workshopRouter = router({
         })
         .returning()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_CREATE,
         entityType: 'workshop',
         entityId: workshop.id,
         payload: { title: input.title },
-      })
+      }).catch(console.error)
 
       return workshop
     }),
@@ -191,14 +191,14 @@ export const workshopRouter = router({
         .where(eq(workshops.id, input.workshopId))
         .returning()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_UPDATE,
         entityType: 'workshop',
         entityId: input.workshopId,
         payload: { title: updated.title },
-      })
+      }).catch(console.error)
 
       return updated
     }),
@@ -224,13 +224,13 @@ export const workshopRouter = router({
 
       await db.delete(workshops).where(eq(workshops.id, input.workshopId))
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_DELETE,
         entityType: 'workshop',
         entityId: input.workshopId,
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -269,14 +269,14 @@ export const workshopRouter = router({
           artifactType: input.artifactType,
         })
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_ARTIFACT_ATTACH,
         entityType: 'workshop',
         entityId: input.workshopId,
         payload: { artifactId: artifact.id, artifactType: input.artifactType, title: input.title },
-      })
+      }).catch(console.error)
 
       return artifact
     }),
@@ -297,14 +297,14 @@ export const workshopRouter = router({
           ),
         )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_ARTIFACT_REMOVE,
         entityType: 'workshop',
         entityId: input.workshopId,
         payload: { artifactId: input.artifactId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -346,14 +346,14 @@ export const workshopRouter = router({
         .values({ workshopId: input.workshopId, sectionId: input.sectionId })
         .onConflictDoNothing()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_SECTION_LINK,
         entityType: 'workshop',
         entityId: input.workshopId,
         payload: { sectionId: input.sectionId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -374,14 +374,14 @@ export const workshopRouter = router({
           ),
         )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_SECTION_UNLINK,
         entityType: 'workshop',
         entityId: input.workshopId,
         payload: { sectionId: input.sectionId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -398,14 +398,14 @@ export const workshopRouter = router({
         .values({ workshopId: input.workshopId, feedbackId: input.feedbackId })
         .onConflictDoNothing()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_FEEDBACK_LINK,
         entityType: 'workshop',
         entityId: input.workshopId,
         payload: { feedbackId: input.feedbackId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -426,14 +426,14 @@ export const workshopRouter = router({
           ),
         )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_FEEDBACK_UNLINK,
         entityType: 'workshop',
         entityId: input.workshopId,
         payload: { feedbackId: input.feedbackId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),

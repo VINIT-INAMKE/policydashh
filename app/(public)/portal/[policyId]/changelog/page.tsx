@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { db } from '@/src/db'
 import { policyDocuments } from '@/src/db/schema/documents'
 import { documentVersions } from '@/src/db/schema/changeRequests'
-import { eq, desc } from 'drizzle-orm'
+import { eq, and, desc } from 'drizzle-orm'
 import { format } from 'date-fns'
 import { ArrowLeft, BookOpen } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
@@ -26,14 +26,17 @@ export default async function PublicChangelogPage({
     notFound()
   }
 
-  // Query all published versions
-  const published = await db
+  // SECURITY: Query only published versions (server-side filter, not client-side)
+  const publishedVersions = await db
     .select()
     .from(documentVersions)
-    .where(eq(documentVersions.documentId, policyId))
+    .where(
+      and(
+        eq(documentVersions.documentId, policyId),
+        eq(documentVersions.isPublished, true),
+      ),
+    )
     .orderBy(desc(documentVersions.publishedAt))
-
-  const publishedVersions = published.filter((v) => v.isPublished)
 
   return (
     <div className="space-y-8">

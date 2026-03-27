@@ -69,7 +69,7 @@ export const changeRequestRouter = router({
           })))
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.CR_CREATE,
@@ -81,7 +81,7 @@ export const changeRequestRouter = router({
           feedbackIds: input.feedbackIds,
           title: input.title,
         },
-      })
+      }).catch(console.error)
 
       return { id: cr.id, readableId }
     }),
@@ -263,13 +263,13 @@ export const changeRequestRouter = router({
         ctx.user.id,
       )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.CR_SUBMIT_REVIEW,
         entityType: 'change_request',
         entityId: input.id,
-      })
+      }).catch(console.error)
 
       // Fire-and-forget notification to CR owner
       createNotification({
@@ -289,19 +289,37 @@ export const changeRequestRouter = router({
   approve: requirePermission('cr:manage')
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      // SECURITY: Prevent self-approval - approver cannot be the CR owner
+      const [cr] = await db
+        .select({ ownerId: changeRequests.ownerId, readableId: changeRequests.readableId })
+        .from(changeRequests)
+        .where(eq(changeRequests.id, input.id))
+        .limit(1)
+
+      if (!cr) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Change request not found' })
+      }
+
+      if (cr.ownerId === ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: `Cannot approve your own change request ${cr.readableId}`,
+        })
+      }
+
       const updated = await transitionCR(
         input.id,
         { type: 'APPROVE', approverId: ctx.user.id },
         ctx.user.id,
       )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.CR_APPROVE,
         entityType: 'change_request',
         entityId: input.id,
-      })
+      }).catch(console.error)
 
       // Fire-and-forget notification to CR owner
       createNotification({
@@ -327,13 +345,13 @@ export const changeRequestRouter = router({
         ctx.user.id,
       )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.CR_REQUEST_CHANGES,
         entityType: 'change_request',
         entityId: input.id,
-      })
+      }).catch(console.error)
 
       return updated
     }),
@@ -347,7 +365,7 @@ export const changeRequestRouter = router({
     .mutation(async ({ ctx, input }) => {
       const result = await mergeCR(input.id, input.mergeSummary, ctx.user.id)
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.CR_MERGE,
@@ -357,7 +375,7 @@ export const changeRequestRouter = router({
           versionLabel: result.version.versionLabel,
           mergeSummary: input.mergeSummary,
         },
-      })
+      }).catch(console.error)
 
       // Fire-and-forget notification to CR owner
       createNotification({
@@ -386,14 +404,14 @@ export const changeRequestRouter = router({
         ctx.user.id,
       )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.CR_CLOSE,
         entityType: 'change_request',
         entityId: input.id,
         payload: { rationale: input.rationale },
-      })
+      }).catch(console.error)
 
       return updated
     }),
@@ -427,14 +445,14 @@ export const changeRequestRouter = router({
         .insert(crSectionLinks)
         .values({ crId: input.crId, sectionId: input.sectionId })
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.CR_UPDATE,
         entityType: 'change_request',
         entityId: input.crId,
         payload: { addedSectionId: input.sectionId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -473,14 +491,14 @@ export const changeRequestRouter = router({
           ),
         )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.CR_UPDATE,
         entityType: 'change_request',
         entityId: input.crId,
         payload: { removedSectionId: input.sectionId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),

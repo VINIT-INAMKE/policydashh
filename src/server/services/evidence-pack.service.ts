@@ -134,7 +134,7 @@ export async function buildEvidencePack(
     entityId: string
     fromState: string | null
     toState: string
-    actorId: string
+    actorRole: string
     rationale: Record<string, unknown> | null
     timestamp: Date
   }> = []
@@ -172,12 +172,26 @@ export async function buildEvidencePack(
       .where(conditions.length === 1 ? conditions[0] : or(...conditions))
       .orderBy(asc(workflowTransitions.timestamp))
 
+    // SECURITY: Resolve actor IDs to role names to avoid exposing raw UUIDs
+    // in the exported evidence pack
+    const actorIds = [...new Set(transitions.map((t) => t.actorId))]
+    const actorRoleMap = new Map<string, string>()
+    if (actorIds.length > 0) {
+      const actorRows = await db
+        .select({ id: users.id, role: users.role })
+        .from(users)
+        .where(inArray(users.id, actorIds))
+      for (const row of actorRows) {
+        actorRoleMap.set(row.id, row.role)
+      }
+    }
+
     decisionLogEntries = transitions.map((t) => ({
       entityType: t.entityType,
       entityId: t.entityId,
       fromState: t.fromState,
       toState: t.toState,
-      actorId: t.actorId,
+      actorRole: actorRoleMap.get(t.actorId) ?? 'unknown',
       rationale: t.metadata,
       timestamp: t.timestamp,
     }))

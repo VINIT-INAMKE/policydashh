@@ -18,7 +18,6 @@ interface SectionSummary {
   typeBreakdown: Record<FeedbackType, number>
   outcomeBreakdown: Record<FeedbackStatus, number>
   orgBreakdown: Record<OrgType, number>
-  namedContributors: string[]
 }
 
 interface ConsultationSummaryAccordionProps {
@@ -131,17 +130,7 @@ export function ConsultationSummaryAccordion({
                 </div>
               )}
 
-              {/* Named contributors */}
-              {section.namedContributors.length > 0 && (
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Named contributors to this section:{' '}
-                    <span className="text-foreground">
-                      {section.namedContributors.join(', ')}
-                    </span>
-                  </p>
-                </div>
-              )}
+              {/* SECURITY: Named contributors removed from public portal to prevent identity leakage */}
             </div>
           </AccordionContent>
         </AccordionItem>

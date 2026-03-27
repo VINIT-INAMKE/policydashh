@@ -58,7 +58,7 @@ export const evidenceRouter = router({
         })
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.EVIDENCE_ATTACH,
@@ -70,7 +70,7 @@ export const evidenceRouter = router({
           feedbackId: input.feedbackId,
           sectionId: input.sectionId,
         },
-      })
+      }).catch(console.error)
 
       return artifact
     }),
@@ -127,6 +127,23 @@ export const evidenceRouter = router({
   remove: requirePermission('evidence:upload')
     .input(z.object({ artifactId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      // SECURITY: Check ownership before deleting - only uploader, admin, or policy_lead
+      const [artifact] = await db
+        .select({ uploaderId: evidenceArtifacts.uploaderId })
+        .from(evidenceArtifacts)
+        .where(eq(evidenceArtifacts.id, input.artifactId))
+        .limit(1)
+
+      if (!artifact) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Evidence artifact not found' })
+      }
+
+      const isUploader = artifact.uploaderId === ctx.user.id
+      const isPrivileged = ctx.user.role === 'admin' || ctx.user.role === 'policy_lead'
+      if (!isUploader && !isPrivileged) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the uploader, admin, or policy lead can remove this evidence' })
+      }
+
       const [deleted] = await db
         .delete(evidenceArtifacts)
         .where(eq(evidenceArtifacts.id, input.artifactId))
@@ -136,14 +153,13 @@ export const evidenceRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Evidence artifact not found' })
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
-        action: ACTIONS.EVIDENCE_UPLOAD,
+        action: ACTIONS.EVIDENCE_REMOVE,
         entityType: 'evidence',
         entityId: input.artifactId,
-        payload: { action: 'remove' },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),

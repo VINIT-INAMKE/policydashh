@@ -130,15 +130,15 @@ export async function GET(request: NextRequest) {
 
   const csv = Papa.unparse(csvData)
 
-  // Write audit log
-  await writeAuditLog({
+  // Write audit log (fire-and-forget to avoid crashing export on log failure)
+  writeAuditLog({
     actorId: user.id,
     actorRole: user.role,
     action: ACTIONS.TRACE_EXPORT,
     entityType: 'document',
     entityId: documentId,
     payload: { format: 'csv' },
-  })
+  }).catch(console.error)
 
   return new Response(csv, {
     headers: {

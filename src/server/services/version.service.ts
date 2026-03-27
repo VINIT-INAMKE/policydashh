@@ -238,14 +238,15 @@ export async function publishVersion(
 /**
  * Create a manual version (not from a CR merge).
  * Snapshots current sections and generates next version label.
+ * Includes retry logic for concurrent version label collisions.
  */
 export async function createManualVersion(
   documentId: string,
   notes: string,
   actorId: string,
+  maxRetries = 3,
 ): Promise<typeof documentVersions.$inferSelect> {
   // Sequential inserts (Neon HTTP driver does not support transactions)
-  const versionLabel = await getNextVersionLabel(db, documentId)
   const sectionsSnapshot = await snapshotSections(db, documentId)
 
   const changelog: ChangelogEntry[] = [{
@@ -257,18 +258,36 @@ export async function createManualVersion(
     affectedSectionIds: [],
   }]
 
-  const [version] = await db
-    .insert(documentVersions)
-    .values({
-      documentId,
-      versionLabel,
-      mergeSummary: notes,
-      createdBy: actorId,
-      crId: null,
-      sectionsSnapshot,
-      changelog,
-    })
-    .returning()
+  // SECURITY: Retry loop to handle race condition when two concurrent merges
+  // generate the same version label (unique constraint violation)
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const versionLabel = await getNextVersionLabel(db, documentId)
 
-  return version
+    try {
+      const [version] = await db
+        .insert(documentVersions)
+        .values({
+          documentId,
+          versionLabel,
+          mergeSummary: notes,
+          createdBy: actorId,
+          crId: null,
+          sectionsSnapshot,
+          changelog,
+        })
+        .returning()
+
+      return version
+    } catch (error: unknown) {
+      const pgError = error as { code?: string }
+      // 23505 = unique_violation -- retry with incremented label
+      if (pgError.code === '23505' && attempt < maxRetries - 1) {
+        continue
+      }
+      throw error
+    }
+  }
+
+  // Should never reach here, but TypeScript needs a return
+  throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to generate unique version label after retries' })
 }

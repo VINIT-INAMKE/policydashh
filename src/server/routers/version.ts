@@ -91,7 +91,7 @@ export const versionRouter = router({
         ctx.user.id,
       )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.VERSION_CREATE,
@@ -102,7 +102,7 @@ export const versionRouter = router({
           versionLabel: version.versionLabel,
           notes: input.notes,
         },
-      })
+      }).catch(console.error)
 
       return version
     }),
@@ -115,7 +115,7 @@ export const versionRouter = router({
     .mutation(async ({ ctx, input }) => {
       const version = await publishVersion(input.id, ctx.user.id)
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.VERSION_PUBLISH,
@@ -125,7 +125,7 @@ export const versionRouter = router({
           versionLabel: version.versionLabel,
           documentId: version.documentId,
         },
-      })
+      }).catch(console.error)
 
       // Fire-and-forget: notify all assigned stakeholders + send emails
       // Look up policy name

@@ -4,6 +4,7 @@ import { requireSectionAccess } from '@/src/server/rbac/section-access'
 import { transitionFeedback } from '@/src/server/services/feedback.service'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
+import { can } from '@/src/lib/permissions'
 import { db } from '@/src/db'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { users } from '@/src/db/schema/users'
@@ -58,7 +59,7 @@ export const feedbackRouter = router({
         })
         .returning()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user!.id,
         actorRole: ctx.user!.role,
         action: ACTIONS.FEEDBACK_SUBMIT,
@@ -70,7 +71,7 @@ export const feedbackRouter = router({
           documentId: input.documentId,
           feedbackType: input.feedbackType,
         },
-      })
+      }).catch(console.error)
 
       return { id: feedback.id, readableId }
     }),
@@ -190,6 +191,13 @@ export const feedbackRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Feedback not found' })
       }
 
+      // SECURITY: Verify ownership or read_all permission to prevent IDOR
+      const isOwner = row.submitterId === ctx.user.id
+      const canReadAll = can(ctx.user.role, 'feedback:read_all')
+      if (!isOwner && !canReadAll) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not have access to this feedback item' })
+      }
+
       // Anonymity enforcement
       const userRole = ctx.user.role
       const canSeeIdentity = userRole === 'admin' || userRole === 'policy_lead'
@@ -216,13 +224,13 @@ export const feedbackRouter = router({
         ctx.user.id,
       )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.FEEDBACK_START_REVIEW,
         entityType: 'feedback',
         entityId: input.id,
-      })
+      }).catch(console.error)
 
       // Fire-and-forget notification to feedback submitter
       const [section] = await db
@@ -277,14 +285,14 @@ export const feedbackRouter = router({
         ctx.user.id,
       )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: actionMap[input.decision],
         entityType: 'feedback',
         entityId: input.id,
         payload: { decision: input.decision, rationale: input.rationale },
-      })
+      }).catch(console.error)
 
       // Fire-and-forget notification + email to feedback submitter
       const [section] = await db
@@ -353,13 +361,13 @@ export const feedbackRouter = router({
         ctx.user.id,
       )
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.FEEDBACK_CLOSE,
         entityType: 'feedback',
         entityId: input.id,
-      })
+      }).catch(console.error)
 
       // Fire-and-forget notification to feedback submitter
       const [section] = await db
@@ -386,7 +394,24 @@ export const feedbackRouter = router({
   // List workflow transitions (decision log) for a feedback item
   listTransitions: requirePermission('feedback:read_own')
     .input(z.object({ feedbackId: z.string().uuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      // SECURITY: Verify ownership or read_all permission to prevent IDOR
+      const [feedback] = await db
+        .select({ submitterId: feedbackItems.submitterId })
+        .from(feedbackItems)
+        .where(eq(feedbackItems.id, input.feedbackId))
+        .limit(1)
+
+      if (!feedback) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Feedback not found' })
+      }
+
+      const isOwner = feedback.submitterId === ctx.user.id
+      const canReadAll = can(ctx.user.role, 'feedback:read_all')
+      if (!isOwner && !canReadAll) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not have access to this feedback item' })
+      }
+
       const rows = await db
         .select({
           id: workflowTransitions.id,

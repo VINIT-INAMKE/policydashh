@@ -73,14 +73,14 @@ export const documentRouter = router({
         })
         .returning()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.DOCUMENT_CREATE,
         entityType: 'document',
         entityId: doc.id,
         payload: { title: input.title },
-      })
+      }).catch(console.error)
 
       return doc
     }),
@@ -107,14 +107,14 @@ export const documentRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' })
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.DOCUMENT_UPDATE,
         entityType: 'document',
         entityId: input.id,
         payload: { title: input.title, description: input.description },
-      })
+      }).catch(console.error)
 
       return updated
     }),
@@ -132,13 +132,13 @@ export const documentRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' })
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.DOCUMENT_DELETE,
         entityType: 'document',
         entityId: input.id,
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -174,14 +174,14 @@ export const documentRouter = router({
         .set({ updatedAt: new Date() })
         .where(eq(policyDocuments.id, input.documentId))
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.SECTION_CREATE,
         entityType: 'section',
         entityId: section.id,
         payload: { documentId: input.documentId, title: input.title },
-      })
+      }).catch(console.error)
 
       return section
     }),
@@ -213,14 +213,14 @@ export const documentRouter = router({
         .set({ updatedAt: new Date() })
         .where(eq(policyDocuments.id, input.documentId))
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.SECTION_RENAME,
         entityType: 'section',
         entityId: input.id,
         payload: { documentId: input.documentId, title: input.title },
-      })
+      }).catch(console.error)
 
       return updated
     }),
@@ -277,14 +277,14 @@ export const documentRouter = router({
         .set({ updatedAt: new Date() })
         .where(eq(policyDocuments.id, input.documentId))
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.SECTION_DELETE,
         entityType: 'section',
         entityId: input.id,
         payload: { documentId: input.documentId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -296,7 +296,11 @@ export const documentRouter = router({
       orderedSectionIds: z.array(z.string().uuid()),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Sequential updates -- Neon HTTP driver may not support db.transaction()
+      // KNOWN LIMITATION: Sequential updates without a transaction.
+      // The Neon HTTP driver does not support db.transaction(), so concurrent
+      // reorder requests could interleave and produce inconsistent orderIndex values.
+      // This is a known trade-off; switching to a WebSocket-based Neon driver or
+      // a single UPDATE with CASE expression would fix this but requires driver changes.
       const now = new Date()
       for (let i = 0; i < input.orderedSectionIds.length; i++) {
         await db
@@ -314,14 +318,14 @@ export const documentRouter = router({
         .set({ updatedAt: now })
         .where(eq(policyDocuments.id, input.documentId))
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.SECTION_REORDER,
         entityType: 'document',
         entityId: input.documentId,
         payload: { orderedSectionIds: input.orderedSectionIds },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),
@@ -361,14 +365,14 @@ export const documentRouter = router({
         sections.push(section)
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.DOCUMENT_IMPORT,
         entityType: 'document',
         entityId: doc.id,
         payload: { title: input.title, sectionCount: input.sections.length },
-      })
+      }).catch(console.error)
 
       return { document: doc, sections }
     }),

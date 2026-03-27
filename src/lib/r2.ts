@@ -19,12 +19,16 @@ export const r2Client = new S3Client({
 
 /**
  * Generate a presigned PUT URL for uploading a file to R2.
+ * SECURITY: ContentLength enforces server-side file size validation.
+ * ContentDisposition: attachment prevents inline rendering (XSS via SVG etc).
  */
-export async function getUploadUrl(key: string, contentType: string, expiresIn = 3600) {
+export async function getUploadUrl(key: string, contentType: string, contentLength?: number, expiresIn = 3600) {
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: key,
     ContentType: contentType,
+    ...(contentLength ? { ContentLength: contentLength } : {}),
+    ContentDisposition: 'attachment',
   })
   return getSignedUrl(r2Client, command, { expiresIn })
 }

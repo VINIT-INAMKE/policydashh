@@ -50,6 +50,7 @@ export const ACTIONS = {
   FEEDBACK_CLOSE: 'feedback.close',
   EVIDENCE_UPLOAD: 'evidence.upload',
   EVIDENCE_ATTACH: 'evidence.attach',
+  EVIDENCE_REMOVE: 'evidence.remove',
   PRIVACY_PREF_UPDATE: 'user.privacy_pref_update',
   CR_CREATE:          'cr.create',
   CR_UPDATE:          'cr.update',

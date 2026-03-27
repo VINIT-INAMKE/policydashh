@@ -29,14 +29,14 @@ export const sectionAssignmentRouter = router({
           })
           .returning()
 
-        await writeAuditLog({
+        writeAuditLog({
           actorId: ctx.user.id,
           actorRole: ctx.user.role,
           action: ACTIONS.SECTION_ASSIGN,
           entityType: 'section_assignment',
           entityId: assignment.id,
           payload: { userId: input.userId, sectionId: input.sectionId },
-        })
+        }).catch(console.error)
 
         // Fire-and-forget notification + email to the assigned user
         const [section] = await db
@@ -123,14 +123,14 @@ export const sectionAssignmentRouter = router({
         })
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.SECTION_UNASSIGN,
         entityType: 'section_assignment',
         entityId: deleted.id,
         payload: { userId: input.userId, sectionId: input.sectionId },
-      })
+      }).catch(console.error)
 
       return { success: true }
     }),

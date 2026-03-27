@@ -10,13 +10,40 @@ const sql = neon(process.env.DATABASE_URL!)
 const server = new Server({
   port: Number(process.env.PORT) || 1234,
 
-  async onAuthenticate({ token }: { token: string }) {
+  async onAuthenticate({ token, documentName }: { token: string; documentName: string }) {
     // Validate Clerk session JWT
     const payload = await verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY!,
     })
     if (!payload) throw new Error('Unauthorized')
-    return { userId: payload.sub }
+
+    const clerkUserId = payload.sub
+
+    // SECURITY: Verify user exists and check document-level authorization
+    // Look up internal user by Clerk ID
+    const userRows = await sql`
+      SELECT id, role FROM users WHERE clerk_id = ${clerkUserId}
+    `
+    if (userRows.length === 0) throw new Error('User not found')
+    const user = userRows[0] as { id: string; role: string }
+
+    // Admin and policy_lead have access to all sections
+    if (user.role !== 'admin' && user.role !== 'policy_lead') {
+      // Extract sectionId from documentName (format: "section-{uuid}")
+      const sectionId = documentName.replace('section-', '')
+
+      // Check if user is assigned to this section
+      const assignmentRows = await sql`
+        SELECT id FROM section_assignments
+        WHERE user_id = ${user.id} AND section_id = ${sectionId}
+        LIMIT 1
+      `
+      if (assignmentRows.length === 0) {
+        throw new Error('Not authorized to access this section')
+      }
+    }
+
+    return { userId: clerkUserId, internalUserId: user.id, role: user.role }
   },
 
   async onLoadDocument({ documentName, document }: { documentName: string; document: any }) {

@@ -39,14 +39,14 @@ export const userRouter = router({
         .where(eq(users.id, ctx.user.id))
         .returning()
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.USER_UPDATE,
         entityType: 'user',
         entityId: ctx.user.id,
         payload: { before: { orgType: ctx.user.orgType, name: ctx.user.name }, after: input },
-      })
+      }).catch(console.error)
 
       return updated
     }),
@@ -76,14 +76,14 @@ export const userRouter = router({
         })
       }
 
-      await writeAuditLog({
+      writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.USER_INVITE,
         entityType: 'user',
         entityId: invitation.id,
         payload: { email: input.email, role: input.role },
-      })
+      }).catch(console.error)
 
       return { invitationId: invitation.id, email: input.email, role: input.role }
     }),

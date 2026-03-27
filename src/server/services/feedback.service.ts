@@ -32,34 +32,68 @@ export async function transitionFeedback(
   }
 
   // 2. Restore the XState actor from persisted snapshot (or start fresh)
-  const actorOptions: Parameters<typeof createActor>[1] = {
-    input: {
-      feedbackId: row.id,
-      submitterId: row.submitterId,
-    },
-    ...(row.xstateSnapshot ? { snapshot: row.xstateSnapshot as Parameters<typeof createActor>[1] extends { snapshot?: infer S } ? S : never } : {}),
-  }
+  // SECURITY: Wrapped in try/catch -- if actor creation fails (e.g. corrupted snapshot),
+  // fall back to deriving state from the DB status field instead of crashing.
+  let previousState: string
+  let newState: string
+  let newSnapshot: ReturnType<ReturnType<typeof createActor>['getSnapshot']> | null = null
 
-  const actor = createActor(feedbackMachine, actorOptions as any)
-  actor.start()
+  try {
+    const actorOptions: Parameters<typeof createActor>[1] = {
+      input: {
+        feedbackId: row.id,
+        submitterId: row.submitterId,
+      },
+      ...(row.xstateSnapshot ? { snapshot: row.xstateSnapshot as Parameters<typeof createActor>[1] extends { snapshot?: infer S } ? S : never } : {}),
+    }
 
-  // 3. Capture previous state
-  const previousState = actor.getSnapshot().value as string
+    const actor = createActor(feedbackMachine, actorOptions as any)
+    actor.start()
 
-  // 4. Send the event
-  actor.send(event)
+    // 3. Capture previous state
+    previousState = actor.getSnapshot().value as string
 
-  // 5. Capture new state
-  const newSnapshot = actor.getSnapshot()
-  const newState = newSnapshot.value as string
+    // 4. Send the event
+    actor.send(event)
 
-  // 6. Verify transition happened
-  if (newState === previousState) {
+    // 5. Capture new state
+    newSnapshot = actor.getSnapshot()
+    newState = newSnapshot.value as string
+
+    // 6. Verify transition happened
+    if (newState === previousState) {
+      actor.stop()
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Invalid transition: cannot apply ${event.type} in state ${previousState}`,
+      })
+    }
+
     actor.stop()
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: `Invalid transition: cannot apply ${event.type} in state ${previousState}`,
-    })
+  } catch (error) {
+    // Re-throw TRPCErrors (e.g. "Invalid transition")
+    if (error instanceof TRPCError) throw error
+
+    // Fallback: derive state from the status field stored in DB
+    console.error('XState actor creation failed, falling back to status field:', error)
+    previousState = row.status
+
+    // Derive new state from event type
+    const eventToStateMap: Record<string, string> = {
+      START_REVIEW: 'under_review',
+      ACCEPT: 'accepted',
+      PARTIALLY_ACCEPT: 'partially_accepted',
+      REJECT: 'rejected',
+      CLOSE: 'closed',
+    }
+    newState = eventToStateMap[event.type] ?? row.status
+
+    if (newState === previousState) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Invalid transition: cannot apply ${event.type} in state ${previousState}`,
+      })
+    }
   }
 
   // 7. Build update data
@@ -100,9 +134,6 @@ export async function transitionFeedback(
     },
   })
 
-  // 10. Stop the actor
-  actor.stop()
-
-  // 11. Return updated row
+  // 10. Return updated row
   return updated
 }

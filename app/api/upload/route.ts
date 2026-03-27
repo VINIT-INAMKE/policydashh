@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getUploadUrl, generateStorageKey, getPublicUrl } from '@/src/lib/r2'
+import { db } from '@/src/db'
+import { users } from '@/src/db/schema/users'
+import { can } from '@/src/lib/permissions'
+import type { Role } from '@/src/lib/constants'
+import { eq } from 'drizzle-orm'
 
 const MAX_FILE_SIZE: Record<string, number> = {
   image: 16 * 1024 * 1024,    // 16MB
@@ -9,7 +14,8 @@ const MAX_FILE_SIZE: Record<string, number> = {
 }
 
 const ALLOWED_TYPES: Record<string, string[]> = {
-  image: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'],
+  // SECURITY: SVG removed to prevent XSS via uploaded SVG files
+  image: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
   document: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   evidence: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
 }
@@ -20,11 +26,24 @@ const ALLOWED_TYPES: Record<string, string[]> = {
  *
  * Body: { fileName: string, contentType: string, category: 'image' | 'document' | 'evidence', fileSize: number }
  * Response: { uploadUrl: string, publicUrl: string, key: string }
+ *
+ * TODO: Add rate limiting via Upstash Redis (@upstash/ratelimit) to prevent
+ * abuse of presigned URL generation. Recommended: sliding window, 10 req/min per user.
+ * See https://upstash.com/docs/oss/sdks/ts/ratelimit/overview
  */
 export async function POST(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // SECURITY: RBAC check - verify user has evidence:upload permission
+  const user = await db.query.users.findFirst({ where: eq(users.clerkId, userId) })
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 401 })
+  }
+  if (!can(user.role as Role, 'evidence:upload')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const body = await request.json()
@@ -46,8 +65,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
   }
 
-  // Validate file size
-  if (fileSize && fileSize > maxSize) {
+  // SECURITY: Require fileSize as a positive number to prevent bypass when 0/undefined
+  if (typeof fileSize !== 'number' || fileSize <= 0) {
+    return NextResponse.json({ error: 'fileSize must be a positive number' }, { status: 400 })
+  }
+
+  if (fileSize > maxSize) {
     return NextResponse.json({ error: `File too large. Maximum ${maxSize / (1024 * 1024)}MB` }, { status: 400 })
   }
 
@@ -57,7 +80,8 @@ export async function POST(request: NextRequest) {
   }
 
   const key = generateStorageKey(category, fileName)
-  const uploadUrl = await getUploadUrl(key, contentType)
+  // SECURITY: Pass fileSize as ContentLength and force attachment Content-Disposition
+  const uploadUrl = await getUploadUrl(key, contentType, fileSize)
   const publicUrl = getPublicUrl(key)
 
   return NextResponse.json({ uploadUrl, publicUrl, key })

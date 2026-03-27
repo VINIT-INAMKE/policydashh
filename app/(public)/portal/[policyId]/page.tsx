@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { db } from '@/src/db'
 import { policyDocuments } from '@/src/db/schema/documents'
 import { documentVersions } from '@/src/db/schema/changeRequests'
-import { eq, desc } from 'drizzle-orm'
+import { eq, and, desc } from 'drizzle-orm'
 import { format } from 'date-fns'
 import { ArrowLeft, Download, History, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,9 @@ import { PublicVersionSelector } from './_components/public-version-selector'
 import { PublicSectionNav } from './_components/public-section-nav'
 import { PublicPolicyContent } from './_components/public-policy-content'
 import type { SectionSnapshot } from '@/src/server/services/version.service'
+
+// SECURITY: Validate UUID format to prevent Postgres errors
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default async function PublicPolicyDetailPage({
   params,
@@ -26,36 +29,34 @@ export default async function PublicPolicyDetailPage({
   const query = await searchParams
   const versionParam = typeof query.version === 'string' ? query.version : undefined
 
-  // Query the policy document
+  // SECURITY: Validate UUID format before hitting Postgres
+  if (!UUID_REGEX.test(policyId)) {
+    notFound()
+  }
+
+  // SECURITY: Query published versions FIRST to avoid leaking policy info for unpublished policies
+  const published = await db
+    .select()
+    .from(documentVersions)
+    .where(
+      and(
+        eq(documentVersions.documentId, policyId),
+        eq(documentVersions.isPublished, true),
+      ),
+    )
+    .orderBy(desc(documentVersions.publishedAt))
+
+  // Only show policy info if at least one published version exists
+  if (published.length === 0) {
+    notFound()
+  }
+
+  // Query the policy document (safe now -- we know published versions exist)
   const policy = await db.query.policyDocuments.findFirst({
     where: eq(policyDocuments.id, policyId),
   })
   if (!policy) {
     notFound()
-  }
-
-  // Query all published versions
-  const publishedVersions = await db
-    .select()
-    .from(documentVersions)
-    .where(eq(documentVersions.documentId, policyId))
-    .orderBy(desc(documentVersions.publishedAt))
-
-  const published = publishedVersions.filter((v) => v.isPublished)
-
-  if (published.length === 0) {
-    return (
-      <div className="space-y-6">
-        <Link href="/portal" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" />
-          All Published Policies
-        </Link>
-        <h1 className="text-[28px] font-semibold leading-[1.2]">{policy.title}</h1>
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <p className="text-sm text-muted-foreground">No published versions available for this policy.</p>
-        </div>
-      </div>
-    )
   }
 
   // Select version: either from query param or latest
