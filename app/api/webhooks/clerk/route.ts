@@ -1,5 +1,6 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
+import { eq } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
 import type { Role } from '@/src/lib/constants'
@@ -69,6 +70,24 @@ export async function POST(req: Request) {
       role,
       orgType: null, // Set by user on first profile completion
     })
+  }
+
+  if (event.type === 'user.updated') {
+    const { id, phone_numbers, email_addresses, first_name, last_name, public_metadata } = event.data
+
+    const phone = phone_numbers?.[0]?.phone_number ?? null
+    const email = email_addresses?.[0]?.email_address ?? null
+    const name = [first_name, last_name].filter(Boolean).join(' ') || null
+
+    const updates: Record<string, unknown> = { phone, email, name }
+
+    // Only update role if explicitly set in metadata
+    const metadataRole = public_metadata?.role
+    if (metadataRole && ROLE_VALUES.includes(metadataRole as Role)) {
+      updates.role = metadataRole as Role
+    }
+
+    await db.update(users).set(updates).where(eq(users.clerkId, id))
   }
 
   return Response.json({ success: true })
