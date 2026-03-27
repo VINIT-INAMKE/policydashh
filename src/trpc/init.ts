@@ -10,9 +10,19 @@ import type { Role } from '@/src/lib/constants'
 export const createTRPCContext = cache(async (opts: { headers: Headers }) => {
   const { userId } = await auth()
 
-  const user = userId
+  let user = userId
     ? await db.query.users.findFirst({ where: eq(users.clerkId, userId) })
     : null
+
+  // Auto-create user row if Clerk session exists but webhook hasn't synced yet
+  if (userId && !user) {
+    const [created] = await db.insert(users).values({
+      clerkId: userId,
+      role: 'stakeholder',
+      orgType: null,
+    }).onConflictDoNothing().returning()
+    user = created ?? await db.query.users.findFirst({ where: eq(users.clerkId, userId) })
+  }
 
   return {
     headers: opts.headers,

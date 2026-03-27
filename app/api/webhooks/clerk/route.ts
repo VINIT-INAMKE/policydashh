@@ -49,10 +49,9 @@ export async function POST(req: Request) {
     return new Response('Invalid webhook signature', { status: 400 })
   }
 
-  if (event.type === 'user.created') {
+  if (event.type === 'user.created' || event.type === 'user.updated') {
     const { id, phone_numbers, email_addresses, first_name, last_name, public_metadata } = event.data
 
-    // Extract role from publicMetadata (set by admin invite), default to stakeholder
     const metadataRole = public_metadata?.role
     const role: Role = (metadataRole && ROLE_VALUES.includes(metadataRole as Role))
       ? (metadataRole as Role)
@@ -62,32 +61,24 @@ export async function POST(req: Request) {
     const email = email_addresses?.[0]?.email_address ?? null
     const name = [first_name, last_name].filter(Boolean).join(' ') || null
 
+    // Upsert: insert if new, update if exists (handles both events + missed webhooks)
     await db.insert(users).values({
       clerkId: id,
       phone,
       email,
       name,
       role,
-      orgType: null, // Set by user on first profile completion
+      orgType: null,
+    }).onConflictDoUpdate({
+      target: users.clerkId,
+      set: {
+        phone,
+        email,
+        name,
+        ...(metadataRole && ROLE_VALUES.includes(metadataRole as Role) ? { role } : {}),
+        updatedAt: new Date(),
+      },
     })
-  }
-
-  if (event.type === 'user.updated') {
-    const { id, phone_numbers, email_addresses, first_name, last_name, public_metadata } = event.data
-
-    const phone = phone_numbers?.[0]?.phone_number ?? null
-    const email = email_addresses?.[0]?.email_address ?? null
-    const name = [first_name, last_name].filter(Boolean).join(' ') || null
-
-    const updates: Record<string, unknown> = { phone, email, name }
-
-    // Only update role if explicitly set in metadata
-    const metadataRole = public_metadata?.role
-    if (metadataRole && ROLE_VALUES.includes(metadataRole as Role)) {
-      updates.role = metadataRole as Role
-    }
-
-    await db.update(users).set(updates).where(eq(users.clerkId, id))
   }
 
   return Response.json({ success: true })
