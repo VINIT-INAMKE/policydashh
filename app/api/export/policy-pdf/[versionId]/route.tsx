@@ -2,7 +2,7 @@ import { db } from '@/src/db'
 import { documentVersions } from '@/src/db/schema/changeRequests'
 import { policyDocuments } from '@/src/db/schema/documents'
 import { eq } from 'drizzle-orm'
-import { renderTiptapToText } from '@/src/lib/tiptap-renderer'
+import { renderTiptapToPdf } from '@/src/lib/tiptap-pdf-renderer'
 import type { SectionSnapshot } from '@/src/server/services/version.service'
 
 // NO auth() -- this is a public route, whitelisted in proxy.ts
@@ -38,6 +38,7 @@ export async function GET(
   // Dynamic import for @react-pdf/renderer
   const { renderToBuffer } = await import('@react-pdf/renderer')
   const { Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer')
+  // View is already destructured above
 
   const styles = StyleSheet.create({
     page: {
@@ -99,9 +100,9 @@ export async function GET(
         {sortedSections.map((section, idx) => (
           <View key={section.sectionId}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
-            <Text style={styles.sectionContent}>
-              {renderTiptapToText(section.content)}
-            </Text>
+            <View style={styles.sectionContent}>
+              {renderTiptapToPdf(section.content)}
+            </View>
             {idx < sortedSections.length - 1 && <View style={styles.divider} />}
           </View>
         ))}

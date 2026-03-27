@@ -1,0 +1,150 @@
+/**
+ * Renders Tiptap JSON to @react-pdf/renderer components.
+ * Preserves headings, bold, italic, lists, blockquotes, code blocks.
+ */
+import { Text, View, StyleSheet, Link } from '@react-pdf/renderer'
+
+type TiptapNode = {
+  type?: string
+  content?: TiptapNode[]
+  text?: string
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>
+  attrs?: Record<string, unknown>
+}
+
+const s = StyleSheet.create({
+  h3: { fontSize: 13, fontFamily: 'Helvetica-Bold', marginTop: 14, marginBottom: 4 },
+  h4: { fontSize: 12, fontFamily: 'Helvetica-Bold', marginTop: 10, marginBottom: 3 },
+  h5: { fontSize: 11, fontFamily: 'Helvetica-Bold', marginTop: 8, marginBottom: 2 },
+  paragraph: { fontSize: 11, lineHeight: 1.6, marginBottom: 6 },
+  bold: { fontFamily: 'Helvetica-Bold' },
+  italic: { fontStyle: 'italic' },
+  code: { fontFamily: 'Courier', fontSize: 10, backgroundColor: '#f0f0f0' },
+  blockquote: { borderLeftWidth: 2, borderLeftColor: '#ccc', paddingLeft: 8, marginVertical: 6 },
+  listItem: { flexDirection: 'row' as const, marginBottom: 3 },
+  bullet: { width: 14, fontSize: 11 },
+  codeBlock: { backgroundColor: '#f5f5f5', padding: 8, marginVertical: 6, borderRadius: 4 },
+  codeText: { fontFamily: 'Courier', fontSize: 9, lineHeight: 1.4 },
+  hr: { borderBottomWidth: 0.5, borderBottomColor: '#ccc', marginVertical: 10 },
+  callout: { backgroundColor: '#f8f9fa', padding: 8, borderRadius: 4, marginVertical: 6, borderLeftWidth: 3, borderLeftColor: '#0066cc' },
+})
+
+function renderInline(node: TiptapNode): React.ReactNode {
+  if (node.type === 'text' && typeof node.text === 'string') {
+    let style: Record<string, unknown> = {}
+    if (node.marks) {
+      for (const mark of node.marks) {
+        if (mark.type === 'bold') style = { ...style, ...s.bold }
+        if (mark.type === 'italic') style = { ...style, ...s.italic }
+        if (mark.type === 'code') style = { ...style, ...s.code }
+        if (mark.type === 'link' && mark.attrs?.href) {
+          return <Link src={String(mark.attrs.href)}><Text style={style}>{node.text}</Text></Link>
+        }
+      }
+    }
+    return Object.keys(style).length > 0
+      ? <Text style={style}>{node.text}</Text>
+      : node.text
+  }
+  if (node.type === 'hardBreak') return '\n'
+  return null
+}
+
+function renderInlineContent(nodes?: TiptapNode[]): React.ReactNode[] {
+  if (!nodes) return []
+  return nodes.map((n, i) => {
+    const rendered = renderInline(n)
+    return rendered !== null ? <Text key={i}>{rendered}</Text> : null
+  }).filter(Boolean) as React.ReactNode[]
+}
+
+function renderNode(node: TiptapNode, index: number): React.ReactNode {
+  switch (node.type) {
+    case 'paragraph':
+      return (
+        <Text key={index} style={s.paragraph}>
+          {renderInlineContent(node.content)}
+        </Text>
+      )
+
+    case 'heading': {
+      const level = Number(node.attrs?.level) || 3
+      const headingStyle = level <= 3 ? s.h3 : level === 4 ? s.h4 : s.h5
+      return (
+        <Text key={index} style={headingStyle}>
+          {renderInlineContent(node.content)}
+        </Text>
+      )
+    }
+
+    case 'bulletList':
+      return (
+        <View key={index}>
+          {node.content?.map((item, i) => (
+            <View key={i} style={s.listItem}>
+              <Text style={s.bullet}>{'\u2022 '}</Text>
+              <View style={{ flex: 1 }}>
+                {item.content?.map((child, j) => renderNode(child, j))}
+              </View>
+            </View>
+          ))}
+        </View>
+      )
+
+    case 'orderedList':
+      return (
+        <View key={index}>
+          {node.content?.map((item, i) => (
+            <View key={i} style={s.listItem}>
+              <Text style={s.bullet}>{`${i + 1}. `}</Text>
+              <View style={{ flex: 1 }}>
+                {item.content?.map((child, j) => renderNode(child, j))}
+              </View>
+            </View>
+          ))}
+        </View>
+      )
+
+    case 'blockquote':
+      return (
+        <View key={index} style={s.blockquote}>
+          {node.content?.map((child, i) => renderNode(child, i))}
+        </View>
+      )
+
+    case 'codeBlock':
+      return (
+        <View key={index} style={s.codeBlock}>
+          <Text style={s.codeText}>
+            {node.content?.map(c => c.text ?? '').join('') ?? ''}
+          </Text>
+        </View>
+      )
+
+    case 'callout':
+      return (
+        <View key={index} style={s.callout}>
+          {node.content?.map((child, i) => renderNode(child, i))}
+        </View>
+      )
+
+    case 'horizontalRule':
+      return <View key={index} style={s.hr} />
+
+    default:
+      if (node.content) {
+        return <View key={index}>{node.content.map((child, i) => renderNode(child, i))}</View>
+      }
+      return null
+  }
+}
+
+/**
+ * Render Tiptap JSON document to @react-pdf/renderer elements.
+ */
+export function renderTiptapToPdf(doc: Record<string, unknown> | null): React.ReactNode {
+  if (!doc) return null
+  const typed = doc as TiptapNode
+  if (!typed.content || !Array.isArray(typed.content)) return null
+  return <>{typed.content.map((node, i) => renderNode(node, i))}</>
+}
