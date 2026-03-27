@@ -63,11 +63,9 @@ export function SectionAssignments({ sectionId }: SectionAssignmentsProps) {
           Assigned Stakeholders ({assignedUsers.length})
         </span>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
+          <DialogTrigger render={<Button variant="outline" size="sm" />}>
               <UserPlus className="mr-1 h-3.5 w-3.5" />
               Assign
-            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
