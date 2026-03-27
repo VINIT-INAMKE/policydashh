@@ -51,32 +51,28 @@ export const userRouter = router({
       return updated
     }),
 
-  // Admin only: invite a user by phone number with a pre-assigned role
-  // NOTE: Clerk Invitations API only supports emailAddress. For phone-only auth,
-  // we use clerk.users.createUser with phoneNumber to pre-create the user account.
-  // The user.created webhook syncs this to our database with the assigned role.
+  // Admin only: invite a user by email with a pre-assigned role
+  // Uses Clerk Invitations API to send an email invite.
+  // The user.created webhook syncs to our database with the assigned role.
   invite: requirePermission('user:invite')
     .input(z.object({
-      phone: z.string().min(10).max(20),
+      email: z.string().email(),
       role: z.enum(['admin', 'policy_lead', 'research_lead', 'workshop_moderator', 'stakeholder', 'observer', 'auditor']),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Use Clerk Backend API to create a user with the phone number and role
-      // This triggers the user.created webhook which syncs to our database
       const { createClerkClient } = await import('@clerk/backend')
       const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
 
-      let createdUser
+      let invitation
       try {
-        createdUser = await clerk.users.createUser({
-          phoneNumber: [input.phone],
+        invitation = await clerk.invitations.createInvitation({
+          emailAddress: input.email,
           publicMetadata: { role: input.role },
-          skipPasswordRequirement: true,
         })
       } catch (error) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: `Failed to create Clerk user for invite: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          message: `Failed to send invite: ${error instanceof Error ? error.message : 'Unknown error'}`,
         })
       }
 
@@ -85,11 +81,11 @@ export const userRouter = router({
         actorRole: ctx.user.role,
         action: ACTIONS.USER_INVITE,
         entityType: 'user',
-        entityId: createdUser.id,
-        payload: { phone: input.phone, role: input.role },
+        entityId: invitation.id,
+        payload: { email: input.email, role: input.role },
       })
 
-      return { invitedUserId: createdUser.id, phone: input.phone, role: input.role }
+      return { invitationId: invitation.id, email: input.email, role: input.role }
     }),
 
   // Any authenticated user can update their own last visited timestamp
