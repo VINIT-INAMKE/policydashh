@@ -38,13 +38,13 @@ function renderInline(node: TiptapNode): React.ReactNode {
         if (mark.type === 'italic') style = { ...style, ...s.italic }
         if (mark.type === 'code') style = { ...style, ...s.code }
         if (mark.type === 'link' && mark.attrs?.href) {
-          return <Link src={String(mark.attrs.href)}><Text style={style}>{node.text}</Text></Link>
+          return <Link src={String(mark.attrs.href)}><Text style={style as any}>{node.text ?? ''}</Text></Link>
         }
       }
     }
     return Object.keys(style).length > 0
-      ? <Text style={style}>{node.text}</Text>
-      : node.text
+      ? <Text style={style as any}>{node.text ?? ''}</Text>
+      : node.text ?? ''
   }
   if (node.type === 'hardBreak') return '\n'
   return null
