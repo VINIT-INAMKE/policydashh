@@ -39,6 +39,7 @@ interface SectionSidebarProps {
   documentId: string
   selectedSectionId: string | null
   onSelectSection: (id: string) => void
+  canManageSections?: boolean
 }
 
 export function SectionSidebar({
@@ -46,6 +47,7 @@ export function SectionSidebar({
   documentId,
   selectedSectionId,
   onSelectSection,
+  canManageSections = false,
 }: SectionSidebarProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
 
@@ -109,10 +111,12 @@ export function SectionSidebar({
         <span className="text-xs font-normal uppercase tracking-wide text-muted-foreground">
           Sections
         </span>
-        <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" />
-          Add Section
-        </Button>
+        {canManageSections && (
+          <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" />
+            Add Section
+          </Button>
+        )}
       </div>
 
       {/* Section list */}
@@ -143,6 +147,7 @@ export function SectionSidebar({
                     isSelected={section.id === selectedSectionId}
                     onSelect={() => onSelectSection(section.id)}
                     documentId={documentId}
+                    canManage={canManageSections}
                   />
                 ))}
               </SortableContext>
@@ -152,12 +157,14 @@ export function SectionSidebar({
       )}
 
       {/* Add Section Dialog */}
-      <AddSectionDialog
-        documentId={documentId}
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSectionCreated={handleSectionCreated}
-      />
+      {canManageSections && (
+        <AddSectionDialog
+          documentId={documentId}
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSectionCreated={handleSectionCreated}
+        />
+      )}
     </div>
   )
 }

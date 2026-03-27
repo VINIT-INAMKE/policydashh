@@ -18,6 +18,10 @@ export default function VersionHistoryPage() {
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
 
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role
+  const canManageVersions = role === 'admin' || role === 'policy_lead'
+
   const versionsQuery = trpc.version.list.useQuery({ documentId })
 
   // Auto-select latest version on initial load
@@ -67,6 +71,7 @@ export default function VersionHistoryPage() {
           onSelect={setSelectedVersionId}
           isLoading={false}
           onNewVersion={() => setCreateOpen(true)}
+          canManageVersions={canManageVersions}
         />
       </div>
 
@@ -98,15 +103,18 @@ export default function VersionHistoryPage() {
                 onSelect={setSelectedVersionId}
                 isLoading={false}
                 onNewVersion={() => setCreateOpen(true)}
+                canManageVersions={canManageVersions}
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCreateOpen(true)}
-            >
-              New Version
-            </Button>
+            {canManageVersions && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCreateOpen(true)}
+              >
+                New Version
+              </Button>
+            )}
           </div>
 
           {/* Version detail or empty state */}
@@ -115,6 +123,7 @@ export default function VersionHistoryPage() {
               versionId={selectedVersionId}
               documentId={documentId}
               versions={versions}
+              canPublish={canManageVersions}
             />
           ) : versions.length === 0 ? (
             <div className="flex flex-col items-center gap-4 py-16 text-center">
@@ -135,11 +144,13 @@ export default function VersionHistoryPage() {
       </div>
 
       {/* Create version dialog */}
-      <CreateVersionDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        documentId={documentId}
-      />
+      {canManageVersions && (
+        <CreateVersionDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          documentId={documentId}
+        />
+      )}
     </div>
   )
 }

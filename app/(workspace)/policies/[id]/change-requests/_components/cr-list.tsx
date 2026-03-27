@@ -18,6 +18,10 @@ export function CRList({ documentId }: CRListProps) {
   const [filters, setFilters] = useState<CRFilters>(EMPTY_CR_FILTERS)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role
+  const canCreateCR = role === 'admin' || role === 'policy_lead'
+
   const queryInput = useMemo(() => ({
     documentId,
     status: filters.statuses.length === 1
@@ -80,7 +84,7 @@ export function CRList({ documentId }: CRListProps) {
               Filters
               {activeFilterCount > 0 && ` (${activeFilterCount})`}
             </Button>
-            <CreateCRDialog documentId={documentId} />
+            {canCreateCR && <CreateCRDialog documentId={documentId} />}
           </div>
         </div>
 

@@ -49,9 +49,10 @@ interface VersionDetailProps {
   versionId: string
   documentId: string
   versions: VersionListItem[]
+  canPublish?: boolean
 }
 
-export function VersionDetail({ versionId, documentId, versions }: VersionDetailProps) {
+export function VersionDetail({ versionId, documentId, versions, canPublish = false }: VersionDetailProps) {
   const [publishOpen, setPublishOpen] = useState(false)
 
   const versionQuery = trpc.version.getById.useQuery(
@@ -131,7 +132,7 @@ export function VersionDetail({ versionId, documentId, versions }: VersionDetail
         <p className="text-[14px] font-normal text-muted-foreground">
           This version is published and immutable. No further edits are possible.
         </p>
-      ) : (
+      ) : canPublish ? (
         <Button
           variant="default"
           onClick={() => setPublishOpen(true)}
@@ -140,7 +141,7 @@ export function VersionDetail({ versionId, documentId, versions }: VersionDetail
           <Lock className="size-4" />
           Publish Version
         </Button>
-      )}
+      ) : null}
 
       <Separator />
 
@@ -155,14 +156,16 @@ export function VersionDetail({ versionId, documentId, versions }: VersionDetail
       />
 
       {/* Publish dialog */}
-      <PublishDialog
-        open={publishOpen}
-        onOpenChange={setPublishOpen}
-        versionId={version.id}
-        versionLabel={version.versionLabel}
-        documentTitle=""
-        changelog={changelog}
-      />
+      {canPublish && (
+        <PublishDialog
+          open={publishOpen}
+          onOpenChange={setPublishOpen}
+          versionId={version.id}
+          versionLabel={version.versionLabel}
+          documentTitle=""
+          changelog={changelog}
+        />
+      )}
     </div>
   )
 }

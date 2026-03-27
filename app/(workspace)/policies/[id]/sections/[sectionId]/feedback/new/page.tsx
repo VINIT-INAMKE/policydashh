@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
@@ -20,6 +20,16 @@ export default async function SubmitFeedbackPage({
     caller.document.getSections({ documentId }),
     caller.user.getMe(),
   ])
+
+  // feedback:submit — stakeholder, research_lead, workshop_moderator only
+  const canSubmitFeedback =
+    user.role === 'stakeholder' ||
+    user.role === 'research_lead' ||
+    user.role === 'workshop_moderator'
+
+  if (!canSubmitFeedback) {
+    redirect(`/policies/${documentId}`)
+  }
 
   const section = sections.find((s) => s.id === sectionId)
   if (!section) {

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog as SheetPrimitive } from '@base-ui/react/dialog'
 import { cn } from '@/lib/utils'
 import { trpc } from '@/src/trpc/client'
+import type { Role } from '@/src/lib/constants'
 import { TriageActions } from './triage-actions'
 import { DecisionLog } from './decision-log'
 import { EvidenceList } from './evidence-list'
@@ -105,6 +106,9 @@ export function FeedbackDetailSheet({
     { enabled: !!feedbackId },
   )
 
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role as Role | undefined
+
   const utils = trpc.useUtils()
 
   function handleStatusChange() {
@@ -129,10 +133,10 @@ export function FeedbackDetailSheet({
       : null,
   }))
 
-  // Determine if user can perform triage (we check for feedback:review capability)
-  // In a real app this would come from session/context. For now we render for
-  // policy_lead/admin users. The server enforces permissions regardless.
-  const canTriage = true // Server-side permission check on mutations will enforce
+  // feedback:review — admin, policy_lead only
+  const canTriage = role === 'admin' || role === 'policy_lead'
+  // evidence:upload — admin, policy_lead, research_lead, workshop_moderator, stakeholder (NOT observer, auditor)
+  const canAddEvidence = role === 'admin' || role === 'policy_lead' || role === 'research_lead' || role === 'workshop_moderator' || role === 'stakeholder'
 
   return (
     <SheetPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -233,7 +237,7 @@ export function FeedbackDetailSheet({
                 {/* Evidence section */}
                 <EvidenceList
                   feedbackId={feedback.id}
-                  canAdd={canTriage || feedback.submitterId === null /* own feedback check deferred to server */}
+                  canAdd={canAddEvidence}
                 />
 
                 <Separator />

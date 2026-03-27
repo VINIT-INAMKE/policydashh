@@ -24,6 +24,17 @@ export default function EditWorkshopPage() {
   const router = useRouter()
   const workshopId = params.id
 
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role
+  const canManageWorkshops = role === 'admin' || role === 'workshop_moderator'
+
+  // Role gate: redirect unauthorized users
+  useEffect(() => {
+    if (meQuery.data && !canManageWorkshops) {
+      router.replace(`/workshops/${workshopId}`)
+    }
+  }, [meQuery.data, canManageWorkshops, router, workshopId])
+
   const workshopQuery = trpc.workshop.getById.useQuery({ workshopId })
 
   const [title, setTitle] = useState('')

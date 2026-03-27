@@ -25,9 +25,10 @@ interface PolicyCardProps {
     sectionCount: number
     updatedAt: Date | string
   }
+  canManage?: boolean
 }
 
-export function PolicyCard({ policy }: PolicyCardProps) {
+export function PolicyCard({ policy, canManage = false }: PolicyCardProps) {
   const router = useRouter()
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -43,40 +44,42 @@ export function PolicyCard({ policy }: PolicyCardProps) {
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <h3 className="text-base font-semibold leading-snug">{policy.title}</h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`More options for ${policy.title}`}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                }
-              >
-                <MoreHorizontal className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setEditOpen(true)
-                  }}
+            {canManage && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`More options for ${policy.title}`}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  }
                 >
-                  Edit Details
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setDeleteOpen(true)
-                  }}
-                >
-                  Delete Policy
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <MoreHorizontal className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditOpen(true)
+                    }}
+                  >
+                    Edit Details
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeleteOpen(true)
+                    }}
+                  >
+                    Delete Policy
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           {policy.description && (
             <p className="line-clamp-2 text-sm text-muted-foreground">
@@ -94,16 +97,20 @@ export function PolicyCard({ policy }: PolicyCardProps) {
         </CardFooter>
       </Card>
 
-      <EditPolicyDialog
-        policy={policy}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-      />
-      <DeletePolicyDialog
-        policy={policy}
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-      />
+      {canManage && (
+        <EditPolicyDialog
+          policy={policy}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
+      {canManage && (
+        <DeletePolicyDialog
+          policy={policy}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+        />
+      )}
     </>
   )
 }

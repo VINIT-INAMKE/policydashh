@@ -42,6 +42,7 @@ interface AffectedSectionsTableProps {
   linkedSections: LinkedSection[]
   documentId: string
   onSectionsChange: () => void
+  canManage?: boolean
 }
 
 export function AffectedSectionsTable({
@@ -50,11 +51,12 @@ export function AffectedSectionsTable({
   linkedSections,
   documentId,
   onSectionsChange,
+  canManage = false,
 }: AffectedSectionsTableProps) {
   const [addOpen, setAddOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<LinkedSection | null>(null)
 
-  const isDrafting = crStatus === 'drafting'
+  const isDrafting = crStatus === 'drafting' && canManage
 
   const removeSectionMutation = trpc.changeRequest.removeSection.useMutation({
     onSuccess: () => {

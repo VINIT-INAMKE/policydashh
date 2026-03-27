@@ -21,6 +21,13 @@ export default function PolicyDetailPage() {
 
   const documentQuery = trpc.document.getById.useQuery({ id })
   const sectionsQuery = trpc.document.getSections.useQuery({ documentId: id })
+  const { data: me } = trpc.user.getMe.useQuery()
+
+  const role = me?.role
+  const canEdit = role === 'admin' || role === 'policy_lead'
+  const canViewCR = role === 'admin' || role === 'policy_lead' || role === 'auditor'
+  const canViewTrace = role === 'admin' || role === 'policy_lead' || role === 'auditor'
+  const canViewVersions = role !== 'workshop_moderator'
 
   const selectedSection = sectionsQuery.data?.find((s) => s.id === selectedSectionId) ?? null
 
@@ -70,6 +77,7 @@ export default function PolicyDetailPage() {
           documentId={id}
           selectedSectionId={selectedSectionId}
           onSelectSection={setSelectedSectionId}
+          canManageSections={canEdit}
         />
       </div>
 
@@ -94,10 +102,12 @@ export default function PolicyDetailPage() {
                   <p className="mt-1 text-sm text-muted-foreground">{document.description}</p>
                 )}
               </div>
-              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                <Pencil className="mr-1 h-4 w-4" />
-                Edit
-              </Button>
+              {canEdit && (
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                  <Pencil className="mr-1 h-4 w-4" />
+                  Edit
+                </Button>
+              )}
             </div>
           </div>
 
@@ -109,31 +119,37 @@ export default function PolicyDetailPage() {
                 Feedback
               </Button>
             </Link>
-            <Link href={`/policies/${id}/change-requests`}>
-              <Button variant="outline" size="sm">
-                <GitPullRequest className="mr-1 h-4 w-4" />
-                Change Requests
-              </Button>
-            </Link>
-            <Link href={`/policies/${id}/traceability`}>
-              <Button variant="outline" size="sm">
-                <Network className="mr-1 h-4 w-4" />
-                Traceability
-              </Button>
-            </Link>
-            <Link href={`/policies/${id}/versions`}>
-              <Button variant="outline" size="sm">
-                <History className="mr-1 h-4 w-4" />
-                Versions
-              </Button>
-            </Link>
+            {canViewCR && (
+              <Link href={`/policies/${id}/change-requests`}>
+                <Button variant="outline" size="sm">
+                  <GitPullRequest className="mr-1 h-4 w-4" />
+                  Change Requests
+                </Button>
+              </Link>
+            )}
+            {canViewTrace && (
+              <Link href={`/policies/${id}/traceability`}>
+                <Button variant="outline" size="sm">
+                  <Network className="mr-1 h-4 w-4" />
+                  Traceability
+                </Button>
+              </Link>
+            )}
+            {canViewVersions && (
+              <Link href={`/policies/${id}/versions`}>
+                <Button variant="outline" size="sm">
+                  <History className="mr-1 h-4 w-4" />
+                  Versions
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Section content or empty prompt */}
           {selectedSection ? (
             <SectionContentView
               section={selectedSection}
-              canEdit={true}
+              canEdit={canEdit}
               documentId={id}
             />
           ) : (
@@ -147,15 +163,17 @@ export default function PolicyDetailPage() {
       </div>
 
       {/* Edit dialog */}
-      <EditPolicyDialog
-        policy={{
-          id: document.id,
-          title: document.title,
-          description: document.description,
-        }}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-      />
+      {canEdit && (
+        <EditPolicyDialog
+          policy={{
+            id: document.id,
+            title: document.title,
+            description: document.description,
+          }}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
     </div>
   )
 }

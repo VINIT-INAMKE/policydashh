@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Network, FileText, User, Search } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
@@ -25,6 +25,17 @@ export default function TraceabilityPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const documentId = params.id
+
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role
+  const canViewTrace = role === 'admin' || role === 'policy_lead' || role === 'auditor'
+
+  // Role gate: redirect unauthorized users
+  useEffect(() => {
+    if (meQuery.data && !canViewTrace) {
+      router.replace(`/policies/${documentId}`)
+    }
+  }, [meQuery.data, canViewTrace, router, documentId])
 
   const activeTab = searchParams.get('tab') ?? 'matrix'
   const [filters, setFilters] = useState<TraceabilityFilterState>(EMPTY_FILTERS)
@@ -102,7 +113,7 @@ export default function TraceabilityPage() {
               </span>
             )}
           </div>
-          <ExportActions documentId={documentId} filters={filters} />
+          <ExportActions documentId={documentId} filters={filters} canExport={canViewTrace} />
         </div>
       </div>
 

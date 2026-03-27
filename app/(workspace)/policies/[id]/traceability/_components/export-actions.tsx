@@ -16,6 +16,7 @@ export interface TraceabilityFilterState {
 interface ExportActionsProps {
   documentId: string
   filters: TraceabilityFilterState
+  canExport?: boolean
 }
 
 function buildQueryParams(documentId: string, filters: TraceabilityFilterState): string {
@@ -40,7 +41,7 @@ async function downloadFile(url: string, filename: string) {
   URL.revokeObjectURL(a.href)
 }
 
-export function ExportActions({ documentId, filters }: ExportActionsProps) {
+export function ExportActions({ documentId, filters, canExport = false }: ExportActionsProps) {
   const [csvLoading, setCsvLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
 
@@ -67,6 +68,8 @@ export function ExportActions({ documentId, filters }: ExportActionsProps) {
       setPdfLoading(false)
     }
   }
+
+  if (!canExport) return null
 
   return (
     <div className="flex items-center gap-2">

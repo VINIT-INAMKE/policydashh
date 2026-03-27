@@ -15,6 +15,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { trpc } from '@/src/trpc/client'
+import type { Role } from '@/src/lib/constants'
 import { useUser } from '@clerk/nextjs'
 import { CommentThread, type ThreadData } from './comment-thread'
 import type { PendingComment } from './comment-bubble'
@@ -56,6 +57,12 @@ export function CommentPanel({
   const isDesktop = useIsDesktop()
   const [newCommentBody, setNewCommentBody] = useState('')
   const [isPostingComment, setIsPostingComment] = useState(false)
+
+  // Role check for comment:create permission
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role as Role | undefined
+  // comment:create: admin, policy_lead, research_lead, workshop_moderator, stakeholder — NOT observer, auditor
+  const canComment = role === 'admin' || role === 'policy_lead' || role === 'research_lead' || role === 'workshop_moderator' || role === 'stakeholder'
 
   // tRPC queries and mutations
   const utils = trpc.useUtils()
@@ -209,7 +216,7 @@ export function CommentPanel({
       </div>
 
       {/* New comment form */}
-      {pendingComment && (
+      {canComment && pendingComment && (
         <div className="mx-4 mt-3 rounded-md border border-border bg-muted p-4">
           <p className="text-xs italic text-muted-foreground">
             Commenting on: &quot;{anchorPreview}&quot;
@@ -288,6 +295,7 @@ export function CommentPanel({
                     currentUserId={user?.id ?? ''}
                     isActive={activeCommentId === thread.commentId}
                     userNames={userNames}
+                    canComment={canComment}
                   />
                 ))}
               </div>
@@ -317,6 +325,7 @@ export function CommentPanel({
                     currentUserId={user?.id ?? ''}
                     isActive={activeCommentId === thread.commentId}
                     userNames={userNames}
+                    canComment={canComment}
                   />
                 ))}
               </div>

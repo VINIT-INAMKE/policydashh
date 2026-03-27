@@ -51,6 +51,9 @@ interface CRDetailProps {
 
 export function CRDetail({ crId, documentId }: CRDetailProps) {
   const crQuery = trpc.changeRequest.getById.useQuery({ id: crId })
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role
+  const canManageCR = role === 'admin' || role === 'policy_lead'
   const utils = trpc.useUtils()
 
   function handleStatusChange() {
@@ -128,14 +131,16 @@ export function CRDetail({ crId, documentId }: CRDetailProps) {
       </div>
 
       {/* Lifecycle Actions */}
-      <CRLifecycleActions
-        crId={cr.id}
-        readableId={cr.readableId}
-        title={cr.title}
-        status={cr.status as CRStatus}
-        documentId={documentId}
-        onStatusChange={handleStatusChange}
-      />
+      {canManageCR && (
+        <CRLifecycleActions
+          crId={cr.id}
+          readableId={cr.readableId}
+          title={cr.title}
+          status={cr.status as CRStatus}
+          documentId={documentId}
+          onStatusChange={handleStatusChange}
+        />
+      )}
 
       <Separator />
 
@@ -172,6 +177,7 @@ export function CRDetail({ crId, documentId }: CRDetailProps) {
           }))}
           documentId={documentId}
           onSectionsChange={handleSectionsChange}
+          canManage={canManageCR}
         />
       </div>
 

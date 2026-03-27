@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Loader2 } from 'lucide-react'
@@ -14,6 +14,16 @@ import { Label } from '@/components/ui/label'
 
 export default function CreateWorkshopPage() {
   const router = useRouter()
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role
+  const canManageWorkshops = role === 'admin' || role === 'workshop_moderator'
+
+  // Role gate: redirect unauthorized users
+  useEffect(() => {
+    if (meQuery.data && !canManageWorkshops) {
+      router.replace('/workshops')
+    }
+  }, [meQuery.data, canManageWorkshops, router])
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')

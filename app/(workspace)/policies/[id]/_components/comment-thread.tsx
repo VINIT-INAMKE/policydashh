@@ -73,6 +73,7 @@ interface CommentThreadProps {
   isActive: boolean
   /** Map of userId -> displayName for showing author names */
   userNames?: Map<string, string>
+  canComment?: boolean
 }
 
 export function CommentThread({
@@ -84,6 +85,7 @@ export function CommentThread({
   currentUserId,
   isActive,
   userNames,
+  canComment = false,
 }: CommentThreadProps) {
   const [showReplyForm, setShowReplyForm] = useState(false)
   const [replyText, setReplyText] = useState('')
@@ -166,38 +168,40 @@ export function CommentThread({
         </div>
 
         {/* Action menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="icon-xs" aria-label="Thread actions" />
-            }
-          >
-            <MoreHorizontal className="size-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="bottom">
-            {thread.resolved ? (
-              <DropdownMenuItem onClick={handleReopen}>
-                <RotateCcw className="size-3.5" />
-                Reopen thread
-              </DropdownMenuItem>
-            ) : (
-              <>
-                <DropdownMenuItem onClick={handleResolve}>
-                  <CheckCheck className="size-3.5" />
-                  Resolve thread
+        {canComment && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="icon-xs" aria-label="Thread actions" />
+              }
+            >
+              <MoreHorizontal className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom">
+              {thread.resolved ? (
+                <DropdownMenuItem onClick={handleReopen}>
+                  <RotateCcw className="size-3.5" />
+                  Reopen thread
                 </DropdownMenuItem>
-                {isOwner && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onClick={handleDelete}>
-                      Delete comment
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              ) : (
+                <>
+                  <DropdownMenuItem onClick={handleResolve}>
+                    <CheckCheck className="size-3.5" />
+                    Resolve thread
+                  </DropdownMenuItem>
+                  {isOwner && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="destructive" onClick={handleDelete}>
+                        Delete comment
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Root comment body */}
@@ -229,8 +233,8 @@ export function CommentThread({
         </div>
       )}
 
-      {/* Reply button + Resolve button (open threads only) */}
-      {!thread.resolved && (
+      {/* Reply button + Resolve button (open threads only, authorized users) */}
+      {!thread.resolved && canComment && (
         <div className="mt-2 flex items-center gap-2">
           <Button
             variant="ghost"

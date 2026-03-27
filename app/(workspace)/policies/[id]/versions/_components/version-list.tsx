@@ -28,6 +28,7 @@ interface VersionListProps {
   onSelect: (id: string) => void
   isLoading: boolean
   onNewVersion: () => void
+  canManageVersions?: boolean
 }
 
 export function VersionList({
@@ -36,6 +37,7 @@ export function VersionList({
   onSelect,
   isLoading,
   onNewVersion,
+  canManageVersions = false,
 }: VersionListProps) {
   // Desktop panel view (hidden on mobile)
   const desktopPanel = (
@@ -69,17 +71,19 @@ export function VersionList({
         )}
       </ScrollArea>
       {/* New Version button -- server enforces version:manage permission */}
-      <div className="border-t p-3">
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={onNewVersion}
-        >
-          <Plus className="size-3.5" />
-          New Version
-        </Button>
-      </div>
+      {canManageVersions && (
+        <div className="border-t p-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={onNewVersion}
+          >
+            <Plus className="size-3.5" />
+            New Version
+          </Button>
+        </div>
+      )}
     </div>
   )
 

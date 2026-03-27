@@ -29,6 +29,7 @@ interface SortableSectionItemProps {
   isSelected: boolean
   onSelect: () => void
   documentId: string
+  canManage?: boolean
 }
 
 export function SortableSectionItem({
@@ -36,6 +37,7 @@ export function SortableSectionItem({
   isSelected,
   onSelect,
   documentId,
+  canManage = false,
 }: SortableSectionItemProps) {
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -47,7 +49,7 @@ export function SortableSectionItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: section.id })
+  } = useSortable({ id: section.id, disabled: !canManage })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -79,48 +81,52 @@ export function SortableSectionItem({
         }}
       >
         {/* Drag handle */}
-        <button
-          className="shrink-0 cursor-grab opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
-          aria-label={`Reorder ${section.title}`}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </button>
+        {canManage && (
+          <button
+            className="shrink-0 cursor-grab opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
+            aria-label={`Reorder ${section.title}`}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
 
         {/* Section title */}
         <span className="min-w-0 flex-1 truncate">{section.title}</span>
 
         {/* More actions */}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md opacity-0 transition-opacity hover:bg-accent hover:text-accent-foreground focus:opacity-100 group-hover:opacity-100"
-            aria-label={`More options for ${section.title}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                setRenameOpen(true)
-              }}
+        {canManage && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md opacity-0 transition-opacity hover:bg-accent hover:text-accent-foreground focus:opacity-100 group-hover:opacity-100"
+              aria-label={`More options for ${section.title}`}
+              onClick={(e) => e.stopPropagation()}
             >
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={(e) => {
-                e.stopPropagation()
-                setDeleteOpen(true)
-              }}
-            >
-              Delete Section
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <MoreHorizontal className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setRenameOpen(true)
+                }}
+              >
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeleteOpen(true)
+                }}
+              >
+                Delete Section
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Rename dialog */}
