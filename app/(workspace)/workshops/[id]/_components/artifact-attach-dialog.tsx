@@ -1,13 +1,13 @@
 'use client'
 import { useState, useRef } from 'react'
-import { Loader2, Upload } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { uploadFile } from '@/src/lib/uploadthing'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 const ARTIFACT_TYPES = ['promo', 'recording', 'summary', 'attendance', 'other'] as const
@@ -22,14 +22,11 @@ const TYPE_LABELS: Record<ArtifactType, string> = {
 
 export interface ArtifactAttachDialogProps {
   workshopId: string
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-export function ArtifactAttachDialog({ workshopId, open: controlledOpen, onOpenChange }: ArtifactAttachDialogProps) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const open = controlledOpen ?? internalOpen
-  const setOpen = onOpenChange ?? setInternalOpen
+export function ArtifactAttachDialog({ workshopId, open, onOpenChange }: ArtifactAttachDialogProps) {
   const [artifactType, setArtifactType] = useState<ArtifactType>('summary')
   const [title, setTitle] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -48,7 +45,7 @@ export function ArtifactAttachDialog({ workshopId, open: controlledOpen, onOpenC
   })
 
   function resetAndClose() {
-    setOpen(false)
+    onOpenChange(false)
     setTitle('')
     setArtifactType('summary')
     setUploading(false)
@@ -79,11 +76,7 @@ export function ArtifactAttachDialog({ workshopId, open: controlledOpen, onOpenC
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); else setOpen(true) }}>
-      <DialogTrigger render={<Button size="sm" />}>
-        <Upload className="mr-1 h-4 w-4" />
-        Attach Artifact
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); else onOpenChange(true) }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Attach Workshop Artifact</DialogTitle>
