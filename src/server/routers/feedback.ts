@@ -143,6 +143,42 @@ export const feedbackRouter = router({
       })
     }),
 
+  // List all feedback across documents (for workshop feedback picker)
+  listAll: requirePermission('workshop:manage')
+    .query(async ({ ctx }) => {
+      const rows = await db
+        .select({
+          id: feedbackItems.id,
+          readableId: feedbackItems.readableId,
+          title: feedbackItems.title,
+          body: feedbackItems.body,
+          feedbackType: feedbackItems.feedbackType,
+          status: feedbackItems.status,
+          isAnonymous: feedbackItems.isAnonymous,
+          submitterId: feedbackItems.submitterId,
+          createdAt: feedbackItems.createdAt,
+          submitterName: users.name,
+        })
+        .from(feedbackItems)
+        .leftJoin(users, eq(feedbackItems.submitterId, users.id))
+        .orderBy(desc(feedbackItems.createdAt))
+
+      // Anonymity enforcement (same pattern as feedback.list)
+      const userRole = ctx.user.role
+      const canSeeIdentity = userRole === 'admin' || userRole === 'policy_lead'
+
+      return rows.map((row) => {
+        if (row.isAnonymous && !canSeeIdentity) {
+          return {
+            ...row,
+            submitterId: null,
+            submitterName: null,
+          }
+        }
+        return row
+      })
+    }),
+
   // List own feedback (stakeholder/research_lead/workshop_moderator/observer)
   listOwn: requirePermission('feedback:read_own')
     .query(async ({ ctx }) => {
