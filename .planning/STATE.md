@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-status: Milestone complete
-stopped_at: Phase 12 context gathered
-last_updated: "2026-04-11T22:16:30.380Z"
+status: Ready to plan
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-04-11T22:49:26.587Z"
 progress:
   total_phases: 13
-  completed_phases: 11
-  total_plans: 31
-  completed_plans: 31
+  completed_phases: 12
+  total_plans: 33
+  completed_plans: 33
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 11 — Real-Time Collaboration
+**Current focus:** Phase 12 — workshop-system-fix
 
 ## Current Position
 
-Phase: 11
+Phase: 13
 Plan: Not started
 
 ## Performance Metrics
@@ -72,6 +72,8 @@ Plan: Not started
 | Phase 11 P01 | 19min | 2 tasks | 18 files |
 | Phase 11 P02 | 8min | 2 tasks | 6 files |
 | Phase 11-real-time-collaboration P03 | 8min | 3 tasks | 5 files |
+| Phase 12-workshop-system-fix P01 | 3min | 2 tasks | 3 files |
+| Phase 12-workshop-system-fix P02 | 7min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -159,6 +161,9 @@ Recent decisions affecting current work:
 - [Phase 11]: PresenceBar hidden when only current user present -- no visual noise in single-user mode
 - [Phase 11-real-time-collaboration]: CommentBubble uses manual selection detection (selectionUpdate + getBoundingClientRect) rather than Tiptap BubbleMenu for positioning control
 - [Phase 11-real-time-collaboration]: Comment anchor highlighting via CSS class on EditorContent rather than ProseMirror decoration plugin -- mark already renders .inline-comment-mark class
+- [Phase 12-workshop-system-fix]: Optional includeSections parameter preserves backward compatibility for all existing document.list callers
+- [Phase 12-workshop-system-fix]: Pure dialog content pattern: picker components render only Dialog+DialogContent, parent owns trigger and state
+- [Phase 12-workshop-system-fix]: listAll guarded by workshop:manage (not feedback:read_all) so workshop moderators can access feedback for linking
 
 ### Pending Todos
 
@@ -177,6 +182,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-11T22:16:30.369Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-workshop-system-fix/12-CONTEXT.md
+Last session: 2026-04-11T22:42:49.375Z
+Stopped at: Completed 12-02-PLAN.md
+Resume file: None

@@ -242,7 +242,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 **Goal:** Workshop artifacts, section linking, and feedback linking all work end-to-end
 **Requirements**: Fix section link picker (document.list returns no sections), build feedback link picker selection UI, remove duplicate section/feedback rendering between detail page and picker components, fix orphaned DialogTrigger when pickers controlled externally
 **Depends on:** Phase 10
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 12-01-PLAN.md -- Fix document.list with includeSections, rewrite section-link-picker as pure dialog content, fix artifact-attach-dialog orphaned DialogTrigger
