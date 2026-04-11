@@ -8,9 +8,10 @@ import { ACTIONS } from '@/src/lib/constants'
 import { TRPCError } from '@trpc/server'
 
 export const documentRouter = router({
-  // List all policy documents with section counts
+  // List all policy documents with section counts (optionally with nested sections)
   list: requirePermission('document:read')
-    .query(async () => {
+    .input(z.object({ includeSections: z.boolean().optional() }).optional())
+    .query(async ({ input }) => {
       const docs = await db
         .select({
           id: policyDocuments.id,
@@ -25,7 +26,26 @@ export const documentRouter = router({
         .groupBy(policyDocuments.id)
         .orderBy(desc(policyDocuments.updatedAt))
 
-      return docs
+      if (!input?.includeSections) return docs
+
+      const allSections = await db
+        .select({
+          id: policySections.id,
+          documentId: policySections.documentId,
+          title: policySections.title,
+          orderIndex: policySections.orderIndex,
+          content: policySections.content,
+        })
+        .from(policySections)
+        .orderBy(asc(policySections.orderIndex))
+
+      const sectionsByDoc = new Map<string, typeof allSections>()
+      for (const s of allSections) {
+        if (!sectionsByDoc.has(s.documentId)) sectionsByDoc.set(s.documentId, [])
+        sectionsByDoc.get(s.documentId)!.push(s)
+      }
+
+      return docs.map((d) => ({ ...d, sections: sectionsByDoc.get(d.id) ?? [] }))
     }),
 
   // Get a single document by ID
