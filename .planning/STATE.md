@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: Milestone complete
-stopped_at: Completed 11-03-PLAN.md
-last_updated: "2026-03-26T09:25:35.138Z"
+stopped_at: Phase 12 context gathered
+last_updated: "2026-04-11T22:16:30.380Z"
 progress:
-  total_phases: 11
+  total_phases: 13
   completed_phases: 11
   total_plans: 31
   completed_plans: 31
@@ -164,6 +164,11 @@ Recent decisions affecting current work:
 
 None yet.
 
+### Roadmap Evolution
+
+- Phase 12 added: Workshop System Fix — fix broken section/feedback linking, duplicate UI, orphaned triggers
+- Phase 13 added: UX Consolidation & Navigation — breadcrumbs, tabs, feedback view consolidation, cross-nav, rename uploadthing.ts
+
 ### Blockers/Concerns
 
 - Research flags Tiptap 3 custom section node patterns may need deeper investigation during Phase 2/3 planning
@@ -172,6 +177,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T09:16:56.580Z
-Stopped at: Completed 11-03-PLAN.md
-Resume file: None
+Last session: 2026-04-11T22:16:30.369Z
+Stopped at: Phase 12 context gathered
+Resume file: .planning/phases/12-workshop-system-fix/12-CONTEXT.md
