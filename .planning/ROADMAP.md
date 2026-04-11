@@ -236,3 +236,24 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 9. Public Portal & Compliance | 0/2 | Planning complete | - |
 | 10. Workshops & Evidence Management | 3/3 | Complete    | 2026-03-26 |
 | 11. Real-Time Collaboration | 3/3 | Complete    | 2026-03-26 |
+
+### Phase 12: Workshop System Fix
+
+**Goal:** Workshop artifacts, section linking, and feedback linking all work end-to-end
+**Requirements**: Fix section link picker (document.list returns no sections), build feedback link picker selection UI, remove duplicate section/feedback rendering between detail page and picker components, fix orphaned DialogTrigger when pickers controlled externally
+**Depends on:** Phase 10
+**Plans:** 2 plans
+
+Plans:
+- [ ] 12-01-PLAN.md -- Fix document.list with includeSections, rewrite section-link-picker as pure dialog content, fix artifact-attach-dialog orphaned DialogTrigger
+- [ ] 12-02-PLAN.md -- Add feedback.listAll query, rewrite feedback-link-picker with card UI, search, type filter, multi-select
+
+### Phase 13: UX Consolidation & Navigation
+
+**Goal:** App navigation feels coherent with breadcrumbs, tab bars, consolidated views, and the primary user flows (read → feedback → track) take 2-3 clicks instead of 5-6
+**Requirements**: Add breadcrumbs across all nested routes, convert policy sub-pages to tab bar navigation, consolidate duplicate feedback views (/feedback global vs /policies/[id]/feedback), add cross-navigation between workshops and linked sections/feedback, add /users and /notifications to workspace nav, rename uploadthing.ts to r2-upload.ts and update all imports, add direct "Give Feedback" action from section content view
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 13 to break down)
