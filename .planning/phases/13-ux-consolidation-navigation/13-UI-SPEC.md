@@ -58,9 +58,11 @@ All sizes from existing ProseMirror and heading patterns in globals.css. This ph
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px | 400 (regular) | 1.5 | Breadcrumb labels, tab labels, nav links, "Give Feedback" button label, empty state body, feedback card text |
-| Label | 12px | 500 (medium) | 1.4 | Breadcrumb separator chevron visual context, count badges on tabs, muted metadata |
+| Label | 12px | 400 (regular) | 1.4 | Breadcrumb separator chevron visual context, count badges on tabs, muted metadata |
 | Heading | 20px | 600 (semibold) | 1.2 | Global feedback page section heading, empty state headings |
 | Display | 28px | 600 (semibold) | 1.2 | Policy document title (existing, unchanged — `text-[28px] font-semibold leading-[1.2]`) |
+
+Two-weight contract: 400 (regular) for Body and Label; 600 (semibold) for Heading and Display. The 12px Label size is sufficient to visually distinguish Label from 14px Body without requiring a separate weight.
 
 Font stack: `var(--font-geist-sans)` for all roles. `var(--font-geist-mono)` is editor-only — not used by any Phase 13 component.
 
@@ -81,7 +83,7 @@ All values from `app/globals.css` CSS variables. No new color tokens required.
 1. Active tab trigger text + background highlight (`data-active:bg-background data-active:text-foreground`)
 2. Active workspace nav link text (`font-semibold text-foreground` — existing pattern)
 3. "Give Feedback" primary action button fill (variant="default" uses `--primary` bg)
-4. Breadcrumb current-page segment (final non-linked crumb, rendered in `text-foreground` weight 500)
+4. Breadcrumb current-page segment (final non-linked crumb, rendered in `text-foreground` weight 400)
 5. Focus ring on tab triggers and breadcrumb links (`--ring` token, which is `oklch(0.708 0 0)`)
 
 **Muted foreground (`--muted-foreground`)** used for:
@@ -111,6 +113,8 @@ All components used in Phase 13 are already installed. No `npx shadcn add` requi
 
 **New layout to create:**
 - `app/(workspace)/policies/[id]/layout.tsx` — shared server layout wrapping all policy sub-pages. Renders the tab bar and passes policy title down. Children render below the tab bar.
+
+**Primary visual anchors on the policy detail page:** Tab bar = primary orientation anchor (tells the user where they are within the policy); document content area = primary reading target (the bulk of the visible surface); Give Feedback button = primary action anchor within `SectionContentView` (the single promoted action available to a reader).
 
 ---
 
