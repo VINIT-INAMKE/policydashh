@@ -87,14 +87,37 @@ export const documentRouter = router({
       return docs.map((d) => ({ ...d, sections: sectionsByDoc.get(d.id) ?? [] }))
     }),
 
-  // Get a single document by ID
+  // Get a single document by ID. Non-privileged roles only see published
+  // documents; an unpublished document is indistinguishable from a
+  // non-existent one (we throw NOT_FOUND, not FORBIDDEN, to avoid leaking
+  // existence).
   getById: requirePermission('document:read')
     .input(z.object({ id: z.string().uuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const canReadAll = can(ctx.user.role, 'document:read_all')
+
+      const idMatch = eq(policyDocuments.id, input.id)
+      const whereClause = canReadAll
+        ? idMatch
+        : and(
+            idMatch,
+            exists(
+              db
+                .select({ one: sql`1` })
+                .from(documentVersions)
+                .where(
+                  and(
+                    eq(documentVersions.documentId, policyDocuments.id),
+                    eq(documentVersions.isPublished, true),
+                  ),
+                ),
+            ),
+          )
+
       const [doc] = await db
         .select()
         .from(policyDocuments)
-        .where(eq(policyDocuments.id, input.id))
+        .where(whereClause)
         .limit(1)
 
       if (!doc) {
