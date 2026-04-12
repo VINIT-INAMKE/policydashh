@@ -1,12 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Pencil, MessageSquare, GitPullRequest, Network, History } from 'lucide-react'
-import Link from 'next/link'
+import { Pencil } from 'lucide-react'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { SectionSidebar } from './_components/section-sidebar'
 import { SectionContentView } from './_components/section-content-view'
@@ -14,7 +13,6 @@ import { EditPolicyDialog } from '../_components/edit-policy-dialog'
 
 export default function PolicyDetailPage() {
   const params = useParams<{ id: string }>()
-  const router = useRouter()
   const id = params.id
 
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
@@ -26,15 +24,12 @@ export default function PolicyDetailPage() {
 
   const role = me?.role
   const canEdit = role === 'admin' || role === 'policy_lead'
-  const canViewCR = role === 'admin' || role === 'policy_lead' || role === 'auditor'
-  const canViewTrace = role === 'admin' || role === 'policy_lead' || role === 'auditor' || role === 'stakeholder'
-  const canViewVersions = true // version:read granted to most roles; server enforces the actual check
 
   const selectedSection = sectionsQuery.data?.find((s) => s.id === selectedSectionId) ?? null
 
   if (documentQuery.isLoading || sectionsQuery.isLoading) {
     return (
-      <div className="flex h-[calc(100vh-64px)]">
+      <div className="flex h-full">
         {/* Sidebar skeleton */}
         <div className="w-[280px] shrink-0 border-r bg-muted p-4">
           <div className="flex flex-col gap-2">
@@ -70,7 +65,7 @@ export default function PolicyDetailPage() {
   const document = documentQuery.data
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-full">
       {/* Section sidebar */}
       <div className="hidden w-[280px] shrink-0 border-r bg-muted lg:block">
         <SectionSidebar
@@ -87,15 +82,6 @@ export default function PolicyDetailPage() {
         <div className="mx-auto max-w-[768px] p-6 lg:p-8">
           {/* Top bar */}
           <div className="mb-6">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/policies')}
-              className="mb-4"
-            >
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Back to Policies
-            </Button>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-[28px] font-semibold leading-[1.2]">{document.title}</h1>
@@ -110,40 +96,6 @@ export default function PolicyDetailPage() {
                 </Button>
               )}
             </div>
-          </div>
-
-          {/* Sub-page navigation */}
-          <div className="mb-6 flex flex-wrap items-center gap-2">
-            <Link href={`/policies/${id}/feedback`}>
-              <Button variant="outline" size="sm">
-                <MessageSquare className="mr-1 h-4 w-4" />
-                Feedback
-              </Button>
-            </Link>
-            {canViewCR && (
-              <Link href={`/policies/${id}/change-requests`}>
-                <Button variant="outline" size="sm">
-                  <GitPullRequest className="mr-1 h-4 w-4" />
-                  Change Requests
-                </Button>
-              </Link>
-            )}
-            {canViewTrace && (
-              <Link href={`/policies/${id}/traceability`}>
-                <Button variant="outline" size="sm">
-                  <Network className="mr-1 h-4 w-4" />
-                  Traceability
-                </Button>
-              </Link>
-            )}
-            {canViewVersions && (
-              <Link href={`/policies/${id}/versions`}>
-                <Button variant="outline" size="sm">
-                  <History className="mr-1 h-4 w-4" />
-                  Versions
-                </Button>
-              </Link>
-            )}
           </div>
 
           {/* Mobile section selector (visible below lg breakpoint) */}
