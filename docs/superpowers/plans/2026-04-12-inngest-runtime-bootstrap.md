@@ -4,9 +4,11 @@
 
 **Goal:** Install and wire up Inngest as the automation runtime substrate, proven end-to-end with one sample function that exercises typed events, extracted testable logic, `step.run`, `step.sleep`, and the Next.js route handler. After this plan lands, every future flow in Domain 9 of the combined feature list spec becomes a small additive change — add an event schema, add a function file, append to the barrel.
 
-**Architecture:** PolicyDash runs on Vercel (serverless) + Neon (Postgres). A long-running worker is not an option, so Inngest Cloud's managed step-function model is used: Inngest's cloud calls `POST /api/inngest` when events fire or schedules trigger, and function execution happens inside the existing Next.js serverless functions. Typed events are defined with Zod schemas and passed to `EventSchemas.fromZod()`, giving end-to-end type safety from the `emitEvent()` caller through the function handler. Pure business logic inside each step is extracted into helper modules so it can be unit-tested with Vitest without needing the Inngest Dev Server.
+**Architecture:** PolicyDash runs on Vercel (serverless) + Neon (Postgres). A long-running worker is not an option, so Inngest Cloud's managed step-function model is used: Inngest's cloud calls `POST /api/inngest` when events fire or schedules trigger, and function execution happens inside the existing Next.js serverless functions. Typed events are defined as exported `EventType` instances built with `eventType(name, { schema })`, where the schema is a `StandardSchemaV1` (Zod v3.24+ and Zod v4 implement this natively, so Zod objects can be passed directly). Each `EventType` is both the trigger passed to `createFunction` and the factory used for sending events — one source of truth per event, full type inference from definition site to handler. Pure business logic inside each step is extracted into helper modules so it can be unit-tested with Vitest without needing the Inngest Dev Server.
 
-**Tech Stack:** `inngest` npm package (client + `inngest/next` adapter), Zod (already in the codebase), Vitest (already configured), TypeScript with `@/src/...` path alias (existing convention).
+**Tech Stack:** `inngest@^4` npm package (client + `inngest/next` adapter), Zod v4 (already in the codebase as `zod@4.3.6`), Vitest (already configured), TypeScript with `@/src/...` path alias (existing convention).
+
+**Inngest v4 note:** The v4 API replaces the v3 pattern of a centralized `EventSchemas.fromZod()` bag on the client with per-event `EventType` instances. This means there is no `PolicyDashEvents` union on the client and no `GetEvents<typeof inngest>` helper — each event is its own exported symbol, and type safety flows from the `EventType` instance itself (via its `.create()` method and its shape as a trigger). This plan is written against v4 directly.
 
 **Non-goals:**
 - Defining the full event registry for the 7 production flows (Flow 1–7) — those are separate plans.
@@ -33,8 +35,8 @@ New files (all created by this plan):
 
 ```
 src/inngest/
-  client.ts                       — Inngest client instance + typed EventSchemas
-  emit.ts                         — typed emitEvent() helper wrapping inngest.send()
+  client.ts                       — Inngest client instance
+  events.ts                       — exported EventType instances (one per domain event)
   README.md                       — local dev instructions + production deploy notes
   lib/
     greeting.ts                   — pure greeting logic for the sample function (testable)
@@ -48,6 +50,8 @@ app/api/inngest/
   route.ts                        — Next.js route handler that mounts serve()
 ```
 
+Note: v3 plans had a separate `emit.ts` helper wrapping `inngest.send()` with a union type. In v4 the same type safety comes from calling `inngest.send(sampleHelloEvent.create({ ... }))` directly — the `.create()` method on the `EventType` gives full inference without a wrapper — so no `emit.ts` file is needed. Callers that prefer a named helper can define one per event in `events.ts` (see Task 3 below).
+
 Modified files:
 
 ```
@@ -56,8 +60,8 @@ package.json + package-lock.json  — adds "inngest" dependency
 ```
 
 Each file has one clear responsibility:
-- `client.ts` **only** defines the Inngest client and the event schemas.
-- `emit.ts` **only** exposes a type-safe wrapper over `inngest.send`.
+- `client.ts` **only** constructs the singleton Inngest client.
+- `events.ts` **only** declares exported `EventType` instances and their optional send helpers. Every new domain event adds one or two lines here.
 - `lib/greeting.ts` **only** does the pure string computation (no side effects, no Inngest imports — keeps the test trivial).
 - `functions/hello.ts` **only** wires the Inngest function (retry config, step wiring) and delegates the real work to `lib/greeting.ts`.
 - `functions/index.ts` is a barrel that every new flow appends itself to.
@@ -79,7 +83,7 @@ Run:
 npm install inngest
 ```
 
-Expected: `inngest` added to `dependencies` in `package.json` (not `devDependencies` — the client runs in production).
+Expected: `inngest` added to `dependencies` in `package.json` (not `devDependencies` — the client runs in production). The resolved version should be `inngest@^4` — this plan is written against the v4 API.
 
 - [ ] **Step 2: Verify the install**
 
@@ -88,7 +92,7 @@ Run:
 npm ls inngest
 ```
 
-Expected: Prints a tree fragment like `policydashboard@0.1.0 ... └── inngest@3.x.x`. If it prints `(empty)` or an error, the install failed — re-run `npm install`.
+Expected: Prints a tree fragment like `policydashboard@0.1.0 ... └── inngest@4.x.x`. If it prints `(empty)` or an error, the install failed — re-run `npm install`. If the installed major version is v3 (not v4), something has pinned the lockfile to an older range — clear `package-lock.json` entry for inngest and reinstall so v4 resolves.
 
 - [ ] **Step 3: Add Inngest env vars to .env.example**
 
@@ -111,101 +115,34 @@ git commit -m "chore(inngest): install inngest SDK and add env var placeholders"
 
 ---
 
-## Task 2: Create the Inngest client with typed EventSchemas
+## Task 2: Create the Inngest client
 
 **Files:**
 - Create: `src/inngest/client.ts`
+
+Inngest v4 separates the client from the event registry: the client is a bare singleton, and each event is its own exported `EventType` instance (see Task 3). This task only creates the client.
 
 - [ ] **Step 1: Create the client file**
 
 Create `src/inngest/client.ts` with this exact content:
 
 ```ts
-import { EventSchemas, Inngest, type GetEvents } from 'inngest'
-import { z } from 'zod'
+import { Inngest } from 'inngest'
 
 /**
- * Domain event registry.
+ * The singleton Inngest client for PolicyDash.
  *
- * Every Inngest event PolicyDash emits must have a Zod schema here. The schemas
- * are collected into EventSchemas.fromZod() so both `inngest.send()` and the
- * function handlers get end-to-end type safety (and runtime validation on send).
- *
- * To add a new event: create a z.object({ name: z.literal('your.event.name'),
- * data: z.object({ ... }) }) and append it to the tuple passed to fromZod().
+ * This file intentionally does NOT declare events. In Inngest v4 each event
+ * is an exported EventType instance (see `./events.ts`) that carries its own
+ * schema and acts as both the trigger for createFunction and the factory for
+ * sending. One source of truth per event, no centralized union type.
  */
-const eventSchemas = [
-  z.object({
-    name: z.literal('sample.hello'),
-    data: z.object({
-      recipientName: z.string().min(1),
-    }),
-  }),
-] as const
-
 export const inngest = new Inngest({
   id: 'policydash',
-  schemas: new EventSchemas().fromZod(eventSchemas),
 })
-
-export type PolicyDashEvents = GetEvents<typeof inngest>
 ```
 
 - [ ] **Step 2: Verify the file type-checks**
-
-Run:
-```bash
-npx tsc --noEmit
-```
-
-Expected: No errors. If the `inngest` package's `EventSchemas.fromZod` signature in the installed version differs from what's written above (rare — this API has been stable since v3), adapt to match the installed types. Check `node_modules/inngest/components/EventSchemas.d.ts` for the current shape.
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add src/inngest/client.ts
-git commit -m "feat(inngest): add typed client with EventSchemas registry"
-```
-
----
-
-## Task 3: Create the typed emit helper
-
-**Files:**
-- Create: `src/inngest/emit.ts`
-
-- [ ] **Step 1: Create the emit helper**
-
-Create `src/inngest/emit.ts` with this exact content:
-
-```ts
-import { inngest, type PolicyDashEvents } from './client'
-
-type EmitInput<K extends keyof PolicyDashEvents> = {
-  name: K
-  data: PolicyDashEvents[K]['data']
-}
-
-/**
- * Type-safe wrapper around inngest.send(). Prefer this over calling
- * inngest.send() directly so every emission site benefits from the event
- * registry in client.ts — misspelled event names and missing data fields
- * become TypeScript errors at the call site.
- *
- * Usage:
- *   await emitEvent({
- *     name: 'sample.hello',
- *     data: { recipientName: 'PolicyDash' },
- *   })
- */
-export async function emitEvent<K extends keyof PolicyDashEvents>(
-  event: EmitInput<K>,
-): Promise<void> {
-  await inngest.send(event)
-}
-```
-
-- [ ] **Step 2: Verify it type-checks**
 
 Run:
 ```bash
@@ -217,8 +154,78 @@ Expected: No errors.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/inngest/emit.ts
-git commit -m "feat(inngest): add typed emitEvent helper"
+git add src/inngest/client.ts
+git commit -m "feat(inngest): add singleton inngest client"
+```
+
+---
+
+## Task 3: Create the events registry
+
+**Files:**
+- Create: `src/inngest/events.ts`
+
+Each domain event is an exported `EventType` instance built with `eventType(name, { schema })`. Zod v4 implements `StandardSchemaV1` natively, so a Zod object schema can be passed directly — no wrapping required. Every event exports both the `EventType` itself (used as a trigger) and a tiny `sendX()` helper that wraps `inngest.send(event.create(data))` for call-site ergonomics.
+
+- [ ] **Step 1: Create the events file**
+
+Create `src/inngest/events.ts` with this exact content:
+
+```ts
+import { eventType } from 'inngest'
+import { z } from 'zod'
+import { inngest } from './client'
+
+/**
+ * Domain event registry.
+ *
+ * Every Inngest event PolicyDash emits gets two exports here:
+ *   1. An `EventType` instance (via `eventType(name, { schema })`) — this is
+ *      the reference passed to `createFunction`'s trigger, and also the
+ *      factory for building send payloads via its `.create()` method.
+ *   2. A `sendX()` helper that wraps `inngest.send(event.create(data))` so
+ *      callers get a typed, one-argument API at the emission site.
+ *
+ * Zod v4 implements StandardSchemaV1 natively, so a `z.object(...)` schema
+ * can be passed directly to `eventType`'s `schema` option — no `staticSchema`
+ * or wrapper needed.
+ *
+ * To add a new event:
+ *   export const myEvent = eventType('my.event', {
+ *     schema: z.object({ foo: z.string() }),
+ *   })
+ *   export async function sendMyEvent(data: { foo: string }) {
+ *     await inngest.send(myEvent.create(data))
+ *   }
+ */
+
+// -- sample.hello --------------------------------------------------------
+
+export const sampleHelloEvent = eventType('sample.hello', {
+  schema: z.object({
+    recipientName: z.string().min(1),
+  }),
+})
+
+export async function sendSampleHello(data: { recipientName: string }): Promise<void> {
+  await inngest.send(sampleHelloEvent.create(data))
+}
+```
+
+- [ ] **Step 2: Verify it type-checks**
+
+Run:
+```bash
+npx tsc --noEmit
+```
+
+Expected: No errors. If the `eventType` import fails with `has no exported member 'eventType'`, the installed Inngest version is v3, not v4 — re-check Task 1 Step 2 and reinstall with `npm install inngest@^4`. If Zod's schema is rejected as not assignable to `StandardSchemaV1`, confirm the installed Zod is v4 (check `node_modules/zod/package.json`); if it's Zod v3 before 3.24, upgrade.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/inngest/events.ts
+git commit -m "feat(inngest): add events registry with sampleHelloEvent"
 ```
 
 ---
@@ -339,6 +346,7 @@ Create `src/inngest/functions/hello.ts` with this exact content:
 
 ```ts
 import { inngest } from '../client'
+import { sampleHelloEvent } from '../events'
 import { buildGreeting } from '../lib/greeting'
 
 /**
@@ -351,8 +359,13 @@ import { buildGreeting } from '../lib/greeting'
  *
  * Keep this function in the codebase as a permanent smoke test. When the
  * real Domain 9 flows land, they follow the same structure: extract pure
- * logic into src/inngest/lib/, wire the function here with step.run /
- * step.sleep / step.sleepUntil as needed, and append to the functions barrel.
+ * logic into src/inngest/lib/, declare the event in src/inngest/events.ts,
+ * wire the function here with step.run / step.sleep / step.sleepUntil as
+ * needed, and append to the functions barrel.
+ *
+ * v4 note: the trigger is the `sampleHelloEvent` EventType instance, not
+ * a string. That is what drives type inference of `event.data` in the
+ * handler body.
  */
 export const helloFn = inngest.createFunction(
   {
@@ -362,7 +375,7 @@ export const helloFn = inngest.createFunction(
     // 4 total attempts before Inngest marks the run as failed.
     retries: 3,
   },
-  { event: 'sample.hello' },
+  { event: sampleHelloEvent },
   async ({ event, step }) => {
     const greeting = await step.run('build-greeting', () => {
       return buildGreeting({
@@ -385,7 +398,7 @@ Run:
 npx tsc --noEmit
 ```
 
-Expected: No errors. The `event.data.recipientName` access should be fully typed as `string` thanks to the Zod schema registered in `client.ts`.
+Expected: No errors. The `event.data.recipientName` access should be fully typed as `string`, inferred from the `sampleHelloEvent` EventType's Zod schema.
 
 - [ ] **Step 3: Commit**
 
@@ -524,15 +537,16 @@ serverless functions on Vercel. There is no self-hosted worker.
 
 ## Architecture at a glance
 
-- `client.ts` — the singleton Inngest client plus the typed event registry
-  (Zod schemas feeding `EventSchemas.fromZod()`). Every event PolicyDash emits
-  must be registered here.
-- `emit.ts` — the `emitEvent()` helper. Prefer this over `inngest.send()`
-  directly so misspelled event names become TypeScript errors at the call site.
+- `client.ts` — the singleton Inngest client. Just `new Inngest({ id })`.
+- `events.ts` — exported `EventType` instances (one per domain event) built
+  with `eventType(name, { schema })`, plus small `sendX()` helpers wrapping
+  `inngest.send(event.create(data))` for ergonomic call-site use. Every event
+  PolicyDash emits is declared here.
 - `lib/*.ts` — pure business logic called from inside `step.run()` bodies.
   Testable in isolation with Vitest — no Inngest Dev Server required.
 - `functions/*.ts` — thin Inngest function definitions (retry config, step
-  wiring) that delegate real work to `lib/`.
+  wiring) that delegate real work to `lib/`. Triggers reference the
+  `EventType` instance from `events.ts`, not a string event name.
 - `functions/index.ts` — barrel that collects every function into the array
   mounted at `/api/inngest`.
 - `../../app/api/inngest/route.ts` — Next.js route handler, three-line glue.
@@ -576,16 +590,32 @@ the Dev Server will retry polling — make sure `npm run dev` is running on port
 
 ## Adding a new flow
 
-1. Add a Zod schema for the new event in `client.ts` (append to the
-   `eventSchemas` tuple).
+1. Declare the event in `events.ts`:
+   ```ts
+   export const myEvent = eventType('my.event', {
+     schema: z.object({ foo: z.string() }),
+   })
+   export async function sendMyEvent(data: { foo: string }) {
+     await inngest.send(myEvent.create(data))
+   }
+   ```
 2. Put any non-trivial business logic in `lib/<flow-name>.ts` and unit test it.
-3. Create `functions/<flow-name>.ts` with `inngest.createFunction()`. Keep the
-   function body a thin shell that calls into `lib/`.
+3. Create `functions/<flow-name>.ts` with `inngest.createFunction()`. Use the
+   `EventType` as the trigger (not a string) so `event.data` types flow
+   automatically:
+   ```ts
+   import { myEvent } from '../events'
+   export const myFn = inngest.createFunction(
+     { id: 'my-fn', retries: 3 },
+     { event: myEvent },
+     async ({ event, step }) => { /* ... */ },
+   )
+   ```
 4. Import and append to the `functions` array in `functions/index.ts`.
 5. Emit the event from wherever the trigger lives (usually a tRPC mutation):
    ```ts
-   import { emitEvent } from '@/src/inngest/emit'
-   await emitEvent({ name: 'your.event', data: { ... } })
+   import { sendMyEvent } from '@/src/inngest/events'
+   await sendMyEvent({ foo: 'bar' })
    ```
 6. Smoke test against the local Dev Server before committing.
 
@@ -734,7 +764,7 @@ After Task 10 passes, the Inngest runtime is fully bootstrapped:
 - `inngest` is installed and declared in `package.json`.
 - The typed event registry is in place — adding a new event is a one-line Zod
   schema addition in `client.ts`.
-- The `emitEvent()` helper gives type-safe dispatch at every call site.
+- Per-event `sendX()` helpers in `events.ts` give type-safe dispatch at every call site via `EventType.create()`.
 - One end-to-end function proves the substrate: typed event → Zod validation →
   step.run with extracted testable logic → step.sleep delayed execution →
   function output visible in the dashboard.
