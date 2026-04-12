@@ -43,7 +43,7 @@ Before the gap list, a short punch list of things the current codebase does *mor
 - **Word-level section diff + public changelog + consultation summary.** `src/server/services/version.service.ts` has `computeSectionDiff` (diffWords), and the public portal already renders `/portal/[policyId]/changelog` and `/portal/[policyId]/consultation-summary` from real data.
 - **Policy PDF export + evidence pack ZIP export, both shipped.** `app/api/export/policy-pdf/[versionId]/route.tsx` uses `@react-pdf/renderer`; `app/api/export/evidence-pack/route.ts` uses `fflate` for ZIP. These are the backbone of newDoc2's "milestone export" flow and they already exist.
 - **Anonymity enforcement at the server.** `feedback.ts` server-side nulls out `submitterId/Name/OrgType` when `isAnonymous=true` and the caller is not admin/policy_lead. Not just a schema field — an enforced invariant.
-- **S3 upload route already wired.** `app/api/upload/route.ts` + `@aws-sdk/client-s3` + `s3-request-presigner` already in `package.json`. Evidence storage has an object backend; newDoc2 assumes this must be stood up.
+- **Cloudflare R2 upload route already wired.** `app/api/upload/route.ts` uses helpers in `src/lib/r2.ts` with presigned PUT URLs, RBAC gating (`evidence:upload`), size and content-type validation, and SVG blocked for XSS safety. R2 is S3-compatible, so the standard `@aws-sdk/client-s3` + `s3-request-presigner` SDK is used — but the backend is R2 on the existing Cloudflare account, not AWS. Evidence storage already has an object backend; newDoc2 assumed this must be stood up.
 - **tRPC + Drizzle end-to-end, not Airtable/Tally/Sheets.** newDoc2's "pulled from Tally / Sheets / Airtable" for feedback and stakeholders is explicitly replaced — everything lives in Postgres with typed routers.
 
 The merged spec below assumes these strengths stay.
@@ -66,7 +66,7 @@ The merged spec expands the current `/portal` (read-only policy viewer) into a *
 - Source: newDoc2
 - What: Executive summary, current landscape, key gap clusters, downloadable report, CTA to join consultation.
 - Gap: No research content type, no research page route, no downloadable-asset handling.
-- Notes: Needs a lightweight `researchReports` table (or reuse evidence artifacts) + a public `/research` route. Report file served via existing S3 upload route.
+- Notes: Needs a lightweight `researchReports` table (or reuse evidence artifacts) + a public `/research` route. Report file served via existing R2 upload route.
 
 ### Framework overview page (public)
 - Tag: `EXTEND`
@@ -170,7 +170,7 @@ Workshop data model and CRUD are in place. The missing pieces are the **registra
 - Tag: `EXTEND`
 - Source: newDoc1
 - What: Upload workshop recordings and attach them to a workshop as a typed artifact.
-- Gap: S3 upload route exists (`app/api/upload/route.ts`), evidence schema exists (`evidenceArtifacts` + `workshopArtifacts` join), but there is no UI flow for "upload a recording to this workshop" and no automatic artifact-type classification.
+- Gap: R2 upload route exists (`app/api/upload/route.ts` → `src/lib/r2.ts`), evidence schema exists (`evidenceArtifacts` + `workshopArtifacts` join), but there is no UI flow for "upload a recording to this workshop" and no automatic artifact-type classification. **Also note**: the current route caps uploads at 32 MB per `MAX_FILE_SIZE.evidence`, which is too small for workshop recordings — multipart upload or a raised limit is needed before Flow 3 can accept real recordings.
 - Notes: Add a workshop-detail upload panel. On success, emit `workshop.artifact.uploaded`.
 
 ### Attendance tracking
@@ -321,11 +321,12 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 - What: Typed artifacts (file | link), attached to feedback and sections.
 - Gap: None. `evidenceArtifacts` + `feedbackEvidence` + `sectionEvidence`.
 
-### S3 upload route
+### R2 upload route
 - Tag: `BUILT`
 - Source: newDoc1
-- What: Authenticated file upload to S3 with presigned URLs.
-- Gap: None. `app/api/upload/route.ts`, `@aws-sdk/client-s3`, `s3-request-presigner`.
+- What: Authenticated file upload to **Cloudflare R2** (S3-compatible) with presigned PUT URLs, RBAC gating, and size/content-type validation.
+- Gap: Cap is 32 MB per file (`MAX_FILE_SIZE` in `app/api/upload/route.ts`). Workshop recordings will exceed this — raise the cap or add multipart upload support before Flow 3 goes live. Upstash Redis rate limiting is flagged as a TODO in the route but not yet wired.
+- Notes: Implementation lives in `src/lib/r2.ts`; the `@aws-sdk/client-s3` SDK is the standard way to talk to R2.
 
 ### Evidence pack ZIP export
 - Tag: `BUILT`
@@ -480,8 +481,8 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 ### Object-storage integration (already present)
 - Tag: `BUILT`
 - Source: newDoc1
-- What: S3 upload/download with presigned URLs.
-- Gap: None. Used by Flow 3 and Flow 7.
+- What: Cloudflare R2 (S3-compatible) upload/download with presigned URLs.
+- Gap: 32 MB per-file cap needs raising (or multipart upload) before Flow 3 can accept workshop recordings. Used by Flows 3, 6, 7.
 
 ### The seven flows, re-expressed as typed events + handlers
 
@@ -497,7 +498,7 @@ Handlers:
   3. job   sendTailoredWelcomeEmail(leadId) — React Email template per role
   4. job   addToDefaultWorkshopInviteList(leadId, orgType)
   5. job   writeAuditLog({action: 'STAKEHOLDER_INTAKE_SUBMITTED', ...})
-Integrations: Resend (email), S3 (if the intake uploads a profile/affiliation doc)
+Integrations: Resend (email), R2 (if the intake uploads a profile/affiliation doc)
 Replaces: Flow 1 (Form submit → classify → Airtable → email → invite list)
 ```
 
@@ -536,7 +537,7 @@ Handlers:
   1. sync  attachArtifactToWorkshop(workshopId, artifactId)
   2. job   markChecklistItemComplete(workshopId, artifactType)
   3. job   maybeEmitMilestoneReady(workshopId) — if checklist is fully green
-Integrations: S3, Resend
+Integrations: R2, Resend
 Replaces: Flow 3 (Workshop complete → checklist → upload request → attach artifacts)
 ```
 
@@ -586,7 +587,7 @@ Handlers:
   1. sync  writeExpertReviewArtifact(versionId, reviewerId, responseBody) — stored as an evidenceArtifacts row + feedbackEvidence or sectionEvidence link
   2. job   notifyPolicyLead(versionId)
   3. job   writeAuditLog({action: 'EXPERT_REVIEW_RECEIVED', ...})
-Integrations: Resend, S3 (for PDF packets)
+Integrations: Resend, R2 (for PDF packets)
 Replaces: Flow 6 (Mark framework ready → send packet → collect response → attach to milestone)
 Note: No new entity needed. Reuse evidence artifacts + audit log.
 ```
@@ -604,10 +605,10 @@ Handlers:
   6. job   buildFeedbackMatrixCsv(documentId) — new, derives from traceability
   7. job   buildRevisionMatrixCsv(documentId) — new, derives from changeRequests + documentVersions
   8. job   composeMasterZip(parts) — fflate zip of all parts
-  9. job   uploadMasterZipToS3(zipBuffer) — presigned URL
- 10. job   emailDownloadLink(requestedBy, s3Url)
+  9. job   uploadMasterZipToR2(zipBuffer) — presigned URL
+ 10. job   emailDownloadLink(requestedBy, r2Url)
  11. job   writeAuditLog({action: 'MILESTONE_PACK_EXPORTED', ...})
-Integrations: S3, Resend, fflate, @react-pdf/renderer
+Integrations: R2, Resend, fflate, @react-pdf/renderer
 Replaces: Flow 7 (Build milestone pack → zip all the things)
 Note: Steps 2–4 already exist as HTTP routes. Extract their logic into library functions so handlers can call them directly.
 ```
@@ -666,7 +667,7 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
   4. Add `src/lib/google-calendar.ts` wrapper exposing `createWorkshopEvent()`, `inviteAttendee()`, `cancelEvent()`.
 - Consumed by: Flow 1 (briefing calendar events), Flow 2 (workshop calendar events + Meet link).
 - Why Google Meet over Zoom: simpler setup (one OAuth / one service account), no separate paid Zoom account, Meet link is free with the calendar event.
-- **Recording pull is DEFERRED**: Meet recordings live in the organizer's Drive, not directly addressable via Calendar API, and extracting them requires the Drive API + extra scopes. Flow 3's post-workshop evidence upload stays **manual for v1** — organizer uploads the recording themselves via the existing S3 upload route.
+- **Recording pull is DEFERRED**: Meet recordings live in the organizer's Drive, not directly addressable via Calendar API, and extracting them requires the Drive API + extra scopes. Flow 3's post-workshop evidence upload stays **manual for v1** — organizer uploads the recording themselves via the existing R2 upload route.
 
 ### ICS generation — `ics` npm package
 - Status: `NEW`
@@ -674,10 +675,11 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 - Setup: `npm install ics`; add `src/lib/ics.ts` wrapper with `buildWorkshopIcs(workshop, attendee)`.
 - Consumed by: Flow 2.
 
-### File storage — AWS S3
-- Status: `BUILT`
-- Role: Evidence artifacts (Flow 3), reviewer packets (Flow 6), milestone pack zips (Flow 7).
-- Setup: Already wired. No changes.
+### File storage — Cloudflare R2
+- Status: `BUILT` (EXTEND for recording support)
+- Role: Evidence artifacts (Flow 3), reviewer packets (Flow 6), milestone pack zips (Flow 7). Uses the existing Cloudflare account — no additional vendor.
+- Setup: Already wired. `src/lib/r2.ts` exposes `getUploadUrl`, `generateStorageKey`, `getPublicUrl`. The `@aws-sdk/client-s3` SDK talks to R2 via its S3-compatible API — this is the standard R2 pattern, not an AWS dependency.
+- Known gaps to close before Flow 3: (1) raise or split the 32 MB per-file cap in `app/api/upload/route.ts` to support workshop recordings (multipart upload is the standard R2 approach), (2) wire the pending `@upstash/ratelimit` TODO so the presigned-URL endpoint cannot be abused.
 
 ### Authentication — Clerk
 - Status: `BUILT`
@@ -738,7 +740,7 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 | Resend | `RESEND_WEBHOOK_SECRET` | `RESEND_API_KEY` |
 | Cal.com | `CALCOM_API_KEY`, `CALCOM_WEBHOOK_SECRET`, `NEXT_PUBLIC_CALCOM_EMBED_URL` | — |
 | Google Calendar | `GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON` *(or OAuth pair)*, `GOOGLE_CALENDAR_ORGANIZER_EMAIL` | — |
-| AWS S3 | — | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET` |
+| Cloudflare R2 | — | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` *(exact names per `src/lib/r2.ts`)* |
 | Clerk | — | `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_WEBHOOK_SECRET` |
 | Cloudflare Turnstile | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — |
 | Groq Cloud | `GROQ_API_KEY` | — |
@@ -751,11 +753,11 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 |---|---|
 | Flow 1 — Stakeholder intake | Turnstile, Resend, *(briefing path)* Cal.com + Google Calendar |
 | Flow 2 — Workshop registration | Turnstile, Resend, `ics`, Google Calendar + Meet, *(optional)* Twilio |
-| Flow 3 — Post-workshop evidence | S3, Resend (recording import via Meet **deferred**) |
+| Flow 3 — Post-workshop evidence | R2, Resend (recording import via Meet **deferred**) |
 | Flow 4 — Feedback normalization | Groq (+ heuristic fallback), Resend |
 | Flow 5 — Revision engine | Resend |
-| Flow 6 — Expert review | S3, `@react-pdf/renderer`, Resend, *(optional)* Resend Inbound |
-| Flow 7 — Milestone export | S3, `@react-pdf/renderer`, `fflate`, Resend |
+| Flow 6 — Expert review | R2, `@react-pdf/renderer`, Resend, *(optional)* Resend Inbound |
+| Flow 7 — Milestone export | R2, `@react-pdf/renderer`, `fflate`, Resend |
 
 ---
 
@@ -858,7 +860,7 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 ### Retention policy
 - Tag: `NEW` (low priority)
 - Source: implied
-- What: Rolling retention window + archival to S3.
+- What: Rolling retention window + archival to R2.
 - Gap: Absent. Partitioning gives a substrate but there is no job.
 
 ---
