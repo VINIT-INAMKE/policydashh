@@ -1,0 +1,10 @@
+import { helloFn } from './hello'
+
+/**
+ * The array of Inngest functions mounted at /api/inngest.
+ *
+ * To add a new flow: create the function file in this directory, import it
+ * here, and append it to the functions array below. The route handler at
+ * app/api/inngest/route.ts imports this array and hands it to serve().
+ */
+export const functions = [helloFn]
