@@ -2,8 +2,17 @@
 
 import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Pencil, Check, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import {
+  Pencil,
+  Check,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  MessageSquare,
+} from 'lucide-react'
+import { trpc } from '@/src/trpc/client'
 import { SectionAssignments } from './section-assignments'
 
 // Dynamic import with SSR disabled -- DragHandle causes hydration issues
@@ -32,6 +41,17 @@ export function SectionContentView({
 }: SectionContentViewProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
+
+  const router = useRouter()
+  const meQuery = trpc.user.getMe.useQuery()
+  const role = meQuery.data?.role
+  // feedback:submit permission (src/lib/permissions.ts) is granted to:
+  // stakeholder, research_lead, workshop_moderator.
+  // Admin and policy_lead do NOT have this permission.
+  const canSubmitFeedback =
+    role === 'stakeholder' ||
+    role === 'research_lead' ||
+    role === 'workshop_moderator'
 
   const handleSaveStateChange = useCallback((state: SaveState) => {
     setSaveState(state)
@@ -112,6 +132,25 @@ export function SectionContentView({
           ) : (
             <ReadOnlyEditor content={section.content} />
           )}
+        </div>
+      )}
+
+      {/* D-12: Give Feedback CTA -- visible only to roles with feedback:submit */}
+      {canSubmitFeedback && !isEditing && (
+        <div className="mt-6 flex w-full justify-end sm:w-auto">
+          <Button
+            variant="default"
+            size="default"
+            className="w-full sm:w-auto"
+            onClick={() =>
+              router.push(
+                `/policies/${documentId}/sections/${section.id}/feedback/new`,
+              )
+            }
+          >
+            <MessageSquare className="mr-2 h-4 w-4" aria-hidden="true" />
+            Give Feedback
+          </Button>
         </div>
       )}
     </div>
