@@ -68,3 +68,29 @@ export async function sendSampleHello(data: SampleHelloData): Promise<void> {
   await event.validate()
   await inngest.send(event)
 }
+
+// -- feedback.reviewed ----------------------------------------------------
+
+const feedbackReviewedSchema = z.object({
+  feedbackId: z.string().uuid(),
+  decision: z.enum(['accept', 'partially_accept', 'reject']),
+  // Rationale is required by the decide mutation (min 20 chars). We mirror
+  // the lower bound here rather than copying the 20-char rule, because this
+  // schema guards the wire contract to Inngest, not the product rule.
+  rationale: z.string().min(1).max(2000),
+  reviewedByUserId: z.string().uuid(),
+})
+
+export const feedbackReviewedEvent = eventType('feedback.reviewed', {
+  schema: feedbackReviewedSchema,
+})
+
+export type FeedbackReviewedData = z.infer<typeof feedbackReviewedSchema>
+
+export async function sendFeedbackReviewed(
+  data: FeedbackReviewedData,
+): Promise<void> {
+  const event = feedbackReviewedEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
