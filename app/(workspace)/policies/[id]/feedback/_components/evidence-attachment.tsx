@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { trpc } from '@/src/trpc/client'
-import { uploadFile } from '@/src/lib/uploadthing'
+import { uploadFile } from '@/src/lib/r2-upload'
 import { toast } from 'sonner'
 import { Paperclip, Link2, X, Loader2 } from 'lucide-react'
 

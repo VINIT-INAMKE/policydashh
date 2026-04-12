@@ -5,7 +5,7 @@ import { NodeViewWrapper } from '@tiptap/react'
 import type { NodeViewProps } from '@tiptap/react'
 import { Paperclip, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
-import { uploadFile } from '@/src/lib/uploadthing'
+import { uploadFile } from '@/src/lib/r2-upload'
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB
 

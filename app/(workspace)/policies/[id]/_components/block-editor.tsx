@@ -15,7 +15,7 @@ import { getSlashCommandItems } from '@/src/lib/tiptap-extensions/slash-command-
 import { Callout } from '@/src/lib/tiptap-extensions/callout-node'
 import { FileAttachment } from '@/src/lib/tiptap-extensions/file-attachment-node'
 import { LinkPreview } from '@/src/lib/tiptap-extensions/link-preview-node'
-import { uploadFiles } from '@/src/lib/uploadthing'
+import { uploadFiles } from '@/src/lib/r2-upload'
 import { getPresenceColor } from '@/src/lib/collaboration/presence-colors'
 import { CalloutBlockView } from './callout-block-view'
 import { ImageBlockView } from './image-block-view'

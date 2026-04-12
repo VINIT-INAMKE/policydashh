@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
-import { uploadFile } from '@/src/lib/uploadthing'
+import { uploadFile } from '@/src/lib/r2-upload'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
