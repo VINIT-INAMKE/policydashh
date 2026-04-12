@@ -72,12 +72,17 @@ the Dev Server will retry polling — make sure `npm run dev` is running on port
 2. Put any non-trivial business logic in `lib/<flow-name>.ts` and unit test it.
 3. Create `functions/<flow-name>.ts` with `inngest.createFunction()`. Use the
    `EventType` as the trigger (not a string) so `event.data` types flow
-   automatically:
+   automatically. Inngest v4 uses a 2-argument shape — triggers live inside
+   the options object:
    ```ts
+   import { inngest } from '../client'
    import { myEvent } from '../events'
    export const myFn = inngest.createFunction(
-     { id: 'my-fn', retries: 3 },
-     { event: myEvent },
+     {
+       id: 'my-fn',
+       retries: 3,
+       triggers: [{ event: myEvent }],
+     },
      async ({ event, step }) => { /* ... */ },
    )
    ```
