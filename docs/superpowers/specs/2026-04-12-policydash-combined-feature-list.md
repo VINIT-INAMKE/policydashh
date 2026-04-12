@@ -4,7 +4,9 @@
 **Sources merged:** `newDoc1.md` (Verifiable Policy OS — architecture, internal automation, Cardano anchoring) + `newDoc2.md` (Instance Structure — 5-page public site, 7 n8n/Make flows, CMS collections, policy-grade visual direction)
 **Purpose:** Give a domain-organized feature list of what the merged product vision looks like, tagged against the current PolicyDash codebase so every feature has a clear "what to do next" signal.
 
-All external workflow tooling (n8n, Make) is replaced with **coded automations** — typed events + handlers running on an in-repo job/queue runtime. No SaaS glue.
+**Deployment target:** PolicyDash runs on **Vercel** (Next.js serverless functions) with Postgres on **Neon**. Every runtime decision in this spec respects the constraint that there are no long-running worker processes — all background work runs on **Inngest**'s managed step-function platform, not on a self-hosted queue. No piece of this spec requires standing up a server.
+
+All workflow glue tools (n8n, Make, Zapier) are replaced with **coded handlers** — typed events and step functions written directly in TypeScript. Managed platform services (Inngest, Resend, Clerk, R2, Cal.com, Groq) are still used; what is eliminated is the no-code workflow-builder layer where logic lives outside version control.
 
 ---
 
@@ -446,16 +448,22 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 
 **This is the biggest net-new domain.** Today there is no background job runtime: emails are fire-and-forget, notifications are synchronous, and there is no scheduler. newDoc2's 7 flows and newDoc1's internal event system both require a real queue.
 
-### Runtime substrate
+### Runtime substrate — Inngest (decided)
 - Tag: `NEW`
 - Source: newDoc1 + newDoc2 (replacement)
-- What: A coded event/job runtime that supports typed events, background handlers, delayed/scheduled jobs, retries with backoff, and observability.
-- Gap: Absent.
-- Notes — runtime options (decide separately, not in this doc):
-  - **pg-boss** — Postgres-backed job queue; no new infra since Postgres is already here. Best fit if we want zero new dependencies.
-  - **Inngest** — typed, event-driven, great Next.js dev experience, managed or self-hosted. Best fit if we want step functions and schedules.
-  - **BullMQ + Redis** — classic queue; needs Redis. Best fit only if Redis is already in the stack.
-  - Recommendation: **pg-boss** for pragmatism, **Inngest** for DX. Pick one before implementing Flows 1–7.
+- What: Inngest handles typed events, background handlers, delayed/scheduled jobs, retries with backoff, fan-out, wait-for-event, and observability.
+- Gap: Absent today.
+- Deployment fit: PolicyDash is on Vercel (serverless) + Neon. A long-running worker model (pg-boss, BullMQ) requires a persistent process that serverless cannot host. Inngest is a **managed service** that calls your `/api/inngest` route when events fire or schedules trigger, so all execution happens inside the existing Next.js serverless functions. Zero new infra.
+- Free tier: 50k steps / month, unlimited events, 6 concurrent functions — enough for the initial consultation workload. Paid plans start only when that's exceeded.
+- Step-function model: each `step.run()` is a separate serverless invocation with its own timeout budget, so long workflows (like Flow 7's 11-step milestone pack build) sidestep Vercel function timeouts automatically. No "the request took too long" failures.
+- Delayed jobs: `step.sleepUntil(targetTime)` holds the wait on Inngest's side and wakes the function at the exact moment. This is what makes Flow 2's T-48h and T-2h workshop reminders trivial — no polling, no cron hacks.
+- Setup:
+  1. `npm install inngest`.
+  2. Create `src/inngest/client.ts` with an `Inngest` instance and typed `EventSchemas`.
+  3. Create `src/inngest/functions/*.ts` — one file per flow (Flow 1–7).
+  4. Mount at `app/api/inngest/route.ts` via `serve({ client, functions })`.
+  5. Add `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` env vars.
+- Alternative considered and rejected: Trigger.dev v3 — similar guarantees, slightly different runtime model. Inngest picked for tighter Next.js DX, cleaner step-function primitives, and the direct `sleepUntil` API.
 
 ### Typed event registry
 - Tag: `NEW`
@@ -486,7 +494,7 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 
 ### The seven flows, re-expressed as typed events + handlers
 
-Each flow below is a concrete event + handler chain. Handlers are ordered and marked `sync` (inside the request) or `job` (background via the runtime).
+Each flow below is a concrete event + handler chain. Handlers are ordered and marked `sync` (runs inside the tRPC request that emits the event, before returning to the user) or `job` (runs as an Inngest `step.run()` after the event is dispatched, with full retry / observability / delayed-execution support). Sync steps are for writes that must succeed before the user sees a success response; job steps are for everything else.
 
 #### Flow 1 — Stakeholder intake
 ```
@@ -616,9 +624,9 @@ Note: Steps 2–4 already exist as HTTP routes. Extract their logic into library
 ### Observability
 - Tag: `NEW`
 - Source: implied
-- What: Each job has structured logs; failures surface in an internal "job runs" dashboard.
+- What: Each function run has structured logs; failures, delayed-job status, and step-by-step execution timelines are visible in the Inngest dashboard.
 - Gap: No job observability today.
-- Notes: pg-boss has a jobs table; Inngest has its own UI. Either is acceptable.
+- Notes: Inngest ships its own UI out-of-the-box — function runs, event stream, failure replay, retry history, step-by-step timeline. No custom dashboard to build.
 
 ---
 
@@ -646,12 +654,12 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 - Status: `NEW`
 - Role: Handle 1:1 scheduling for the **"institution / regulator → request a briefing"** path on the participate splitter. Group workshops do **not** go through Cal.com — they use internal workshop registration (Flow 2).
 - Setup:
-  1. Self-host Cal.com (Docker) or use Cal.com managed.
+  1. Create a **Cal.com Cloud** account on the free personal plan — managed, no self-hosting, no server to run. Upgrade to a team plan later only if multi-organizer round-robin availability becomes a requirement.
   2. Create an event type for "policy briefing" (30 / 45 / 60 min variants).
   3. Embed Cal.com widget on `/participate/briefing` via `@calcom/embed-react`.
-  4. Configure a Cal.com webhook at `/api/webhooks/calcom` that emits `briefing.booked` into the internal event bus. Handler sends a tailored confirmation + adds the booking to the organizer's Google Calendar via our existing Google integration.
+  4. Configure a Cal.com webhook at `/api/webhooks/calcom` that emits `briefing.booked` into Inngest. The Inngest function sends a tailored confirmation email and adds the booking to the organizer's Google Calendar via our existing Google integration.
 - Consumed by: Flow 1 (briefing path branch).
-- Why Cal.com over Calendly: OSS, self-hostable, no SaaS lock-in, fits the "coded automation, no external workflow SaaS" constraint.
+- Why Cal.com over Calendly: OSS project with a generous free managed tier, honest pricing if we outgrow it, cleaner webhook model. Fits the "no server hosting" constraint.
 
 ### Calendar + meetings — Google Calendar + Google Meet
 - Status: `NEW`
@@ -708,12 +716,13 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 - Consumed by: Flow 4.
 - Why Groq: generous free tier, very fast inference (sub-second), OpenAI-compatible API so the provider can be swapped later without rewriting handlers.
 
-### Analytics — Plausible
+### Analytics — Umami Cloud
 - Status: `NEW`
 - Role: Privacy-friendly page analytics for the public site only (not the workspace). Cookie-free, GDPR-friendly, appropriate for a policy-grade site.
+- Why Umami Cloud over Plausible: generous free tier on the managed cloud, same privacy posture as Plausible (cookie-free, no personal data), same custom-event model. Plausible Cloud starts at ~$9/mo; Umami Cloud free tier handles the initial public-site traffic at zero cost and zero ops.
 - Setup:
-  1. Self-host Plausible via Docker or use Plausible Cloud.
-  2. Add the Plausible script tag to `app/(public)/layout.tsx` only — explicitly exclude workspace routes.
+  1. Create an Umami Cloud account and add the PolicyDash public domain as a website.
+  2. Add the Umami tracking snippet to `app/(public)/layout.tsx` only — explicitly exclude workspace routes so authed user behavior is not tracked.
   3. Register custom events: `participate_form_submitted`, `workshop_registered`, `briefing_requested`, `research_report_downloaded`.
 - Consumed by: public site pages (Domain 1).
 
@@ -737,14 +746,15 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 
 | Service | New env vars | Already set |
 |---|---|---|
+| Inngest | `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` | — |
 | Resend | `RESEND_WEBHOOK_SECRET` | `RESEND_API_KEY` |
-| Cal.com | `CALCOM_API_KEY`, `CALCOM_WEBHOOK_SECRET`, `NEXT_PUBLIC_CALCOM_EMBED_URL` | — |
+| Cal.com Cloud | `CALCOM_API_KEY`, `CALCOM_WEBHOOK_SECRET`, `NEXT_PUBLIC_CALCOM_EMBED_URL` | — |
 | Google Calendar | `GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON` *(or OAuth pair)*, `GOOGLE_CALENDAR_ORGANIZER_EMAIL` | — |
 | Cloudflare R2 | — | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` *(exact names per `src/lib/r2.ts`)* |
 | Clerk | — | `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_WEBHOOK_SECRET` |
 | Cloudflare Turnstile | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — |
 | Groq Cloud | `GROQ_API_KEY` | — |
-| Plausible | `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`, `NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` | — |
+| Umami Cloud | `NEXT_PUBLIC_UMAMI_WEBSITE_ID`, `NEXT_PUBLIC_UMAMI_SCRIPT_SRC` | — |
 | Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` | — |
 
 ### Per-flow integration map
@@ -903,14 +913,30 @@ newDoc1 positions PolicyDash as a **Verifiable Policy Operating System** anchore
 
 Things that are **not** decided in this feature list and need their own decisions before implementation starts:
 
-1. **Automation runtime choice** (pg-boss vs. Inngest vs. BullMQ+Redis). Recommended: pg-boss for zero-new-infra, Inngest for DX. Decide before touching Flow 1.
-2. **Project-layer refactor** — land before the public site refactor so public pages are project-scoped from day one.
-3. **Google Calendar auth model** — service account with domain-wide delegation vs. OAuth2 for a shared organizer account. Depends on whether PolicyDash is deployed inside a Google Workspace org.
-4. **Cardano anchoring timing** — deferred, but at what milestone does it become real?
-5. **Real-time collab** — deferred; revisit at a later milestone. No decision needed now.
-6. **Post-v1 SMS provider swap** — Twilio is used for v1; flag MSG91 or Fast2SMS for India-specific production cost optimization later.
+1. **Project-layer refactor** — land before the public site refactor so public pages are project-scoped from day one.
+2. **Google Calendar auth model** — service account with domain-wide delegation vs. OAuth2 for a shared organizer account. Depends on whether PolicyDash is deployed inside a Google Workspace org.
+3. **Cardano anchoring timing** — deferred, but at what milestone does it become real?
+4. **Real-time collab** — deferred; revisit at a later milestone.
+5. **Post-v1 SMS provider swap** — Twilio is used for v1; flag MSG91 or Fast2SMS for India-specific production cost optimization later.
 
-**Decisions resolved in Domain 9a** (no longer open): third-party integration choices (Cal.com, Google Meet, Groq, Turnstile, Plausible, Twilio), email template engine (React Email), Flow 4 normalizer (Groq + heuristic fallback), error monitoring (Sentry deferred).
+**Decisions resolved** — pinned for reference so they don't re-open later:
+
+| Decision | Resolution |
+|---|---|
+| Hosting target | **Vercel** (serverless functions) + **Neon** (Postgres). No long-running workers. |
+| Automation runtime | **Inngest** — managed step functions, fits Vercel serverless, `sleepUntil` primitive for Flow 2 reminders, 50k steps/mo free tier |
+| 1:1 scheduling | **Cal.com Cloud** (free personal plan, managed, no self-host) |
+| Meeting platform | **Google Meet** via Google Calendar API (Meet link free with event creation) |
+| Video / native meeting room | **Skipped entirely** — not building a consultation room, not using GetStream |
+| LLM for Flow 4 | **Groq Cloud** (OpenAI-compatible endpoint, Llama 3.3) + heuristic fallback |
+| Captcha | **Cloudflare Turnstile** (reuses existing Cloudflare account) |
+| Analytics | **Umami Cloud** free tier (privacy-friendly, replaces Plausible for zero-cost start) |
+| SMS | **Twilio** for v1 (free trial credit), gated by `users.smsOptIn` |
+| Email template engine | **React Email** |
+| Error monitoring | **Sentry deferred** until pre-production |
+| File storage | **Cloudflare R2** (S3-compatible, already wired in `src/lib/r2.ts`) |
+| Real-time collab | **Deferred** |
+| Cardano verification | **Deferred** |
 
 ---
 
