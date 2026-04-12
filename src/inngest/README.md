@@ -86,13 +86,83 @@ the Dev Server will retry polling — make sure `npm run dev` is running on port
      async ({ event, step }) => { /* ... */ },
    )
    ```
+
+   **Important — inline the `triggers: [...]` array.** Keep the trigger list
+   inside the options object literal. If you extract it to an intermediate
+   `const triggers = [{ event: myEvent }]`, TypeScript widens the trigger
+   type and `event.data` in the handler collapses to `any`. This is a v4
+   type-inference footgun — always inline.
 4. Import and append to the `functions` array in `functions/index.ts`.
-5. Emit the event from wherever the trigger lives (usually a tRPC mutation):
+5. Emit the event from wherever the trigger lives (usually a tRPC mutation).
+   **Always use the `sendX()` helper — never call `inngest.send()` directly.**
+   The helper enforces Zod validation and keeps the type-safe contract between
+   call site and schema:
    ```ts
    import { sendMyEvent } from '@/src/inngest/events'
    await sendMyEvent({ foo: 'bar' })
    ```
 6. Smoke test against the local Dev Server before committing.
+
+## Errors: retry vs. non-retry
+
+Inngest retries `retries: N` times on any thrown error from a step or handler.
+That's the right behavior for **transient** failures — network hiccups, brief
+database unavailability, rate-limit bumps, upstream service flaps.
+
+For **deterministic** failures — bad input, policy violation, a missing
+prerequisite, a row that does not exist — retrying N times is waste. It burns
+retry budget, delays the dashboard signal, and sends the same bad payload
+through the same broken code path repeatedly. Throw `NonRetriableError`
+from `inngest` instead:
+
+```ts
+import { NonRetriableError } from 'inngest'
+
+if (!user) {
+  throw new NonRetriableError(`user ${userId} not found`)
+}
+```
+
+Inngest will mark the run as failed immediately and skip retries. Rule of
+thumb: use plain `Error` for anything that might succeed on retry; use
+`NonRetriableError` for anything that cannot.
+
+## Function options beyond the basics
+
+The bootstrap's `helloFn` uses `id`, `name`, `retries`, and `triggers`. Real
+flows will need more:
+
+- `concurrency` — cap parallel runs per function or per event key. Use this
+  on Flow 1 (stakeholder intake) to avoid hammering Resend if a spam burst
+  comes through the participate form.
+- `rateLimit` — coarser throttle (e.g., "at most N runs per 10 seconds").
+- `batchEvents` — merge many incoming events into a single function run for
+  bulk processing. Useful for digest emails and feedback normalization.
+- `debounce` — collapse a burst of events into one delayed run.
+- `throttle` — newer alternative to `rateLimit` with different semantics.
+- `priority` — raise or lower a run's scheduling priority.
+
+None of these are wired in the bootstrap. When a flow needs one, look up the
+current option shape in `node_modules/inngest/components/InngestFunction.d.ts`
+and add it to the options object — the `createFunction` types will check it.
+
+## Step tools beyond step.run + step.sleep
+
+The bootstrap demonstrates `step.run()` (idempotent work) and `step.sleep()`
+(fixed delay). Other step tools the real flows will need:
+
+- `step.sleepUntil(targetDate)` — sleep until a specific moment (workshop
+  reminders at T-48h and T-2h, deferred tasks).
+- `step.waitForEvent(name, { timeout, if })` — pause the function until
+  another event arrives (post-workshop evidence waiting on artifact uploads,
+  expert review waiting on reviewer response).
+- `step.invoke(otherFn, { data })` — synchronously call another Inngest
+  function and await its result (composing flows, chaining pipelines).
+- `step.sendEvent(name, payload)` — emit an event from inside a step (useful
+  for fan-out from one flow to many).
+
+All of these are durable — they survive function re-invocations and produce
+one row each in the Inngest dashboard's step timeline. Use them liberally.
 
 ## Production deployment (Vercel + Inngest Cloud)
 
@@ -103,8 +173,12 @@ promoting the first flow to production.
 2. Create an app called `policydash`.
 3. From the app's "Keys" page, copy `INNGEST_EVENT_KEY` and
    `INNGEST_SIGNING_KEY`.
-4. Add both to Vercel → Project Settings → Environment Variables, scoped to
-   Production (and Preview if you want previews to run against Inngest Cloud).
+4. Add both keys to Vercel → Project Settings → Environment Variables, scoped
+   to **both Production and Preview**. Vercel preview deploys run with
+   `NODE_ENV=production`, which means `serve()` operates in signed-request
+   mode and will reject unsigned Inngest Cloud calls on preview URLs without
+   `INNGEST_SIGNING_KEY`. Scoping the keys to Production alone is a common
+   footgun — preview deploys then 401 every Inngest sync request.
 5. In Inngest Cloud, register the deployed PolicyDash URL as the app endpoint
    (e.g., `https://policydash.example.com/api/inngest`). Inngest Cloud sends a
    sync request to that URL to discover functions.
