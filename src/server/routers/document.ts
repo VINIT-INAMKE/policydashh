@@ -26,18 +26,18 @@ export const documentRouter = router({
         .groupBy(policyDocuments.id)
         .orderBy(desc(policyDocuments.updatedAt))
 
-      if (!input?.includeSections) return docs
-
-      const allSections = await db
-        .select({
-          id: policySections.id,
-          documentId: policySections.documentId,
-          title: policySections.title,
-          orderIndex: policySections.orderIndex,
-          content: policySections.content,
-        })
-        .from(policySections)
-        .orderBy(asc(policySections.orderIndex))
+      const allSections = input?.includeSections
+        ? await db
+            .select({
+              id: policySections.id,
+              documentId: policySections.documentId,
+              title: policySections.title,
+              orderIndex: policySections.orderIndex,
+              content: policySections.content,
+            })
+            .from(policySections)
+            .orderBy(asc(policySections.orderIndex))
+        : []
 
       const sectionsByDoc = new Map<string, typeof allSections>()
       for (const s of allSections) {
