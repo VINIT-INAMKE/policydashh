@@ -41,6 +41,9 @@ export const documentRouter = router({
           description: policyDocuments.description,
           createdAt: policyDocuments.createdAt,
           updatedAt: policyDocuments.updatedAt,
+          // NOTE: sectionCount reflects total sections, not just those
+          // assigned to the caller. Intentionally unscoped per RBAC plan
+          // 2026-04-12 — metadata leak is acceptable, content is gated.
           sectionCount: sql<number>`cast(count(${policySections.id}) as integer)`,
         })
         .from(policyDocuments)
