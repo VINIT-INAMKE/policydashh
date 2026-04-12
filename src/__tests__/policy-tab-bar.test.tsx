@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, cleanup, within } from '@testing-library/react'
+import { render, screen, cleanup } from '@testing-library/react'
 import React from 'react'
 
 // --- Mocks -----------------------------------------------------------------
@@ -42,12 +42,12 @@ describe('PolicyTabBar', () => {
       />
     )
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(5)
-    expect(links[0]).toHaveTextContent('Content')
-    expect(links[1]).toHaveTextContent('Feedback')
-    expect(links[2]).toHaveTextContent('Change Requests')
-    expect(links[3]).toHaveTextContent('Versions')
-    expect(links[4]).toHaveTextContent('Traceability')
+    expect(links.length).toBe(5)
+    expect(links[0].textContent).toBe('Content')
+    expect(links[1].textContent).toBe('Feedback')
+    expect(links[2].textContent).toBe('Change Requests')
+    expect(links[3].textContent).toBe('Versions')
+    expect(links[4].textContent).toBe('Traceability')
   })
 
   it('hides Change Requests and Traceability for stakeholder (canViewCR=false, canViewTrace=false)', () => {
@@ -60,7 +60,7 @@ describe('PolicyTabBar', () => {
       />
     )
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(3)
+    expect(links.length).toBe(3)
     const labels = links.map((l) => l.textContent)
     expect(labels).toEqual(['Content', 'Feedback', 'Versions'])
     // Assert absent from DOM entirely (not hidden via css)
@@ -78,10 +78,10 @@ describe('PolicyTabBar', () => {
       />
     )
     const contentLink = screen.getByRole('link', { name: 'Content' })
-    expect(contentLink).toHaveAttribute('aria-current', 'page')
+    expect(contentLink.getAttribute('aria-current')).toBe('page')
     // Other tabs should NOT have aria-current
     const feedbackLink = screen.getByRole('link', { name: 'Feedback' })
-    expect(feedbackLink).not.toHaveAttribute('aria-current')
+    expect(feedbackLink.getAttribute('aria-current')).toBeNull()
   })
 
   it('marks Feedback tab active on /policies/{id}/feedback', () => {
@@ -94,9 +94,9 @@ describe('PolicyTabBar', () => {
       />
     )
     const feedbackLink = screen.getByRole('link', { name: 'Feedback' })
-    expect(feedbackLink).toHaveAttribute('aria-current', 'page')
+    expect(feedbackLink.getAttribute('aria-current')).toBe('page')
     const contentLink = screen.getByRole('link', { name: 'Content' })
-    expect(contentLink).not.toHaveAttribute('aria-current')
+    expect(contentLink.getAttribute('aria-current')).toBeNull()
   })
 
   it('marks Change Requests active on nested /policies/{id}/change-requests/new (startsWith match)', () => {
@@ -109,8 +109,8 @@ describe('PolicyTabBar', () => {
       />
     )
     const crLink = screen.getByRole('link', { name: 'Change Requests' })
-    expect(crLink).toHaveAttribute('aria-current', 'page')
+    expect(crLink.getAttribute('aria-current')).toBe('page')
     const contentLink = screen.getByRole('link', { name: 'Content' })
-    expect(contentLink).not.toHaveAttribute('aria-current')
+    expect(contentLink.getAttribute('aria-current')).toBeNull()
   })
 })
