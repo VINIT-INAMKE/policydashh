@@ -38,25 +38,29 @@ export async function createDraftCRFromFeedback(
   const num = Number(seqResult.seq)
   const readableId = `CR-${String(num).padStart(3, '0')}`
 
-  const [cr] = await db
-    .insert(changeRequests)
-    .values({
-      readableId,
-      documentId: input.documentId,
-      ownerId: input.ownerId,
-      title: input.title,
-      description: input.description,
+  const cr = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(changeRequests)
+      .values({
+        readableId,
+        documentId: input.documentId,
+        ownerId: input.ownerId,
+        title: input.title,
+        description: input.description,
+      })
+      .returning({ id: changeRequests.id })
+
+    await tx.insert(crFeedbackLinks).values({
+      crId: inserted.id,
+      feedbackId: input.feedbackId,
     })
-    .returning({ id: changeRequests.id })
 
-  await db.insert(crFeedbackLinks).values({
-    crId: cr.id,
-    feedbackId: input.feedbackId,
-  })
+    await tx.insert(crSectionLinks).values({
+      crId: inserted.id,
+      sectionId: input.sectionId,
+    })
 
-  await db.insert(crSectionLinks).values({
-    crId: cr.id,
-    sectionId: input.sectionId,
+    return inserted
   })
 
   return { id: cr.id, readableId }
