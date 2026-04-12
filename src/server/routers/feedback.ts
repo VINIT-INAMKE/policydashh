@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { router, requirePermission } from '@/src/trpc/init'
+import { router, requirePermission, protectedProcedure } from '@/src/trpc/init'
 import { requireSectionAccess } from '@/src/server/rbac/section-access'
 import { transitionFeedback } from '@/src/server/services/feedback.service'
 import { writeAuditLog } from '@/src/lib/audit'
@@ -189,6 +189,69 @@ export const feedbackRouter = router({
         .orderBy(desc(feedbackItems.createdAt))
 
       return rows
+    }),
+
+  // Cross-policy feedback list (Phase 13 D-09 global feedback data source)
+  // Role-aware: read_all callers get everything; read_own callers get only their submissions.
+  // NOTE: uses protectedProcedure with internal permission branching because
+  // the two permissions (feedback:read_all and feedback:read_own) are disjoint
+  // in the permission matrix — no single requirePermission() call covers both.
+  listCrossPolicy: protectedProcedure
+    .input(z.object({
+      policyId: z.string().uuid().optional(),
+      status: z.enum(STATUSES).optional(),
+      feedbackType: z.enum(FEEDBACK_TYPES).optional(),
+      priority: z.enum(PRIORITIES).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const canReadAll = can(ctx.user.role, 'feedback:read_all')
+      const canReadOwn = can(ctx.user.role, 'feedback:read_own')
+
+      if (!canReadAll && !canReadOwn) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Missing permission: feedback:read_all or feedback:read_own' })
+      }
+
+      const conditions = []
+      if (!canReadAll) {
+        conditions.push(eq(feedbackItems.submitterId, ctx.user.id))
+      }
+      if (input.policyId) conditions.push(eq(feedbackItems.documentId, input.policyId))
+      if (input.status) conditions.push(eq(feedbackItems.status, input.status))
+      if (input.feedbackType) conditions.push(eq(feedbackItems.feedbackType, input.feedbackType))
+      if (input.priority) conditions.push(eq(feedbackItems.priority, input.priority))
+
+      const rows = await db
+        .select({
+          id: feedbackItems.id,
+          readableId: feedbackItems.readableId,
+          sectionId: feedbackItems.sectionId,
+          documentId: feedbackItems.documentId,
+          submitterId: feedbackItems.submitterId,
+          submitterName: users.name,
+          submitterOrgType: users.orgType,
+          feedbackType: feedbackItems.feedbackType,
+          priority: feedbackItems.priority,
+          impactCategory: feedbackItems.impactCategory,
+          title: feedbackItems.title,
+          body: feedbackItems.body,
+          status: feedbackItems.status,
+          isAnonymous: feedbackItems.isAnonymous,
+          createdAt: feedbackItems.createdAt,
+          updatedAt: feedbackItems.updatedAt,
+        })
+        .from(feedbackItems)
+        .leftJoin(users, eq(feedbackItems.submitterId, users.id))
+        .where(conditions.length ? and(...conditions) : undefined)
+        .orderBy(desc(feedbackItems.createdAt))
+
+      // Anonymity enforcement — same pattern as feedback.list
+      const canSeeIdentity = ctx.user.role === 'admin' || ctx.user.role === 'policy_lead'
+      return rows.map((row) => {
+        if (row.isAnonymous && !canSeeIdentity) {
+          return { ...row, submitterId: null, submitterName: null, submitterOrgType: null }
+        }
+        return row
+      })
     }),
 
   // Get single feedback by ID
