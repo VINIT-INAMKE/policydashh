@@ -9,19 +9,21 @@ interface WorkspaceNavProps {
   userRole?: string
 }
 
-const baseNavItems = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/policies', label: 'Policies' },
-  { href: '/feedback', label: 'Feedback' },
-]
-
 export function WorkspaceNav({ userRole }: WorkspaceNavProps) {
   const pathname = usePathname()
 
   const navItems = useMemo(() => {
-    const items = [...baseNavItems]
-    // Workshops visible to all roles (everyone has workshop:read)
-    items.push({ href: '/workshops', label: 'Workshops' })
+    // D-14: canonical order — Dashboard, Policies, Feedback, Workshops, Users, Audit
+    // D-15: NO /notifications link (bell stays in header only)
+    const items: { href: string; label: string }[] = [
+      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/policies', label: 'Policies' },
+      { href: '/feedback', label: 'Feedback' },
+      { href: '/workshops', label: 'Workshops' },
+    ]
+    if (userRole === 'admin' || userRole === 'policy_lead') {
+      items.push({ href: '/users', label: 'Users' })
+    }
     if (userRole === 'admin' || userRole === 'auditor') {
       items.push({ href: '/audit', label: 'Audit' })
     }
