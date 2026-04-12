@@ -9,7 +9,7 @@ This document presents a **draft policy framework** intended to support the deve
 The purpose of this framework is threefold:
 
 1. To **articulate a structured policy lens** through which blockchain technologies and crypto-related activities can be understood and governed in the Indian context.
-2. To **identify core regulatory considerations**—including legality, data security, taxation and innovation enablement—without pre-empting legislative or regulatory authority.
+2. To **identify core regulatory considerations** including legality, data security, taxation and innovation enablement without pre-empting legislative or regulatory authority.
 3. To serve as a **foundation for multi-stakeholder dialogue**, enabling policymakers, regulators, industry participants, legal experts and civil society to engage with a shared conceptual structure.
 
 This framework is intended to complement existing laws and regulatory instruments, not replace them. It seeks to clarify policy direction where ambiguity currently exists, while preserving the flexibility required for emerging technologies whose use cases, risks and societal impacts continue to evolve.
@@ -60,7 +60,7 @@ Subsequent stages of this project will:
 
 India has, over the past decade, demonstrated a strong commitment to **digital public infrastructure**, leveraging technology to enable scale, inclusion and efficiency. Initiatives across identity, payments, data governance and service delivery illustrate a governance model that combines technological innovation with public accountability.
 
-Blockchain technologies—when understood as **distributed systems for trust, verification and coordination**—align naturally with this trajectory. Their potential applications extend beyond financial instruments to areas such as supply chains, public records, credentials, governance and infrastructure monitoring.
+Blockchain technologies when understood as **distributed systems for trust, verification and coordination** align naturally with this trajectory. Their potential applications extend beyond financial instruments to areas such as supply chains, public records, credentials, governance and infrastructure monitoring.
 
 However, the policy treatment of blockchain in India has largely evolved **indirectly**, often through the lens of crypto assets rather than as a broader technological paradigm. This has contributed to uncertainty in how blockchain-based systems are perceived, regulated and adopted.
 
@@ -294,7 +294,7 @@ At present, uncertainty around the legal nature and classification of crypto ass
 - **Inconsistent enforcement**, due to the absence of clear categorization
 - **Consumer risk**, arising from unclear rights, responsibilities and protections
 
-A policy framework that does not address classification risks either **overgeneralization**—treating all crypto assets as uniformly risky—or **under-specification**, leaving significant gaps in governance.
+A policy framework that does not address classification risks either **overgeneralization** treating all crypto assets as uniformly risky or **under-specification**, leaving significant gaps in governance.
 
 This section therefore explores **directional approaches** to classification and legality, with the aim of supporting clarity while preserving regulatory discretion.
 
@@ -315,6 +315,7 @@ This distinction is critical to ensure that:
 ### 4.3 Functional Classification of Crypto Assets (Directional)
 
 Rather than a single blanket category, crypto assets can be viewed through a **functional classification lens**. This framework does not propose definitive legal categories, but outlines **commonly observed functional types** for policy consideration.
+
 #### 4.3.1 Utility-Oriented Tokens
 
 Utility-oriented tokens are typically designed to provide access to a service, platform, or network functionality.
@@ -332,6 +333,7 @@ From a policy perspective, such tokens may raise issues related to:
 - Secondary market behavior
 
 However, their risk profile may differ substantially from financial instruments.
+
 #### 4.3.2 Payment and Exchange-Oriented Tokens
 
 Some crypto assets are primarily used as **means of exchange**, stores of value, or payment instruments within digital or cross-border contexts.
@@ -343,6 +345,7 @@ Policy considerations in this category may include:
 - Anti-money laundering and counter-terrorism financing obligations
 
 The treatment of such tokens often intersects with **financial regulation**, even when they are not formally recognized as legal tender.
+
 #### 4.3.3 Asset-Linked or Value-Referenced Tokens
 
 Certain crypto assets derive their value from linkage to:
@@ -358,6 +361,7 @@ These tokens may present **heightened regulatory considerations**, including:
 - Systemic risk if widely adopted
 
 Policy frameworks may need to assess whether such instruments functionally resemble existing regulated products, without assuming equivalence in all cases.
+
 #### 4.3.4 Governance and Protocol Tokens
 
 Some crypto assets confer governance rights within decentralized protocols, allowing holders to participate in decision-making related to system rules or upgrades.
@@ -370,10 +374,9 @@ Policy questions here may include:
 
 These tokens challenge traditional regulatory categories and may require **context-sensitive evaluation**.
 
-
 ### 4.4 Legality and Permitted Activities: A Directional Approach
 
-Rather than framing legality as a binary question—legal versus illegal—this framework suggests viewing crypto asset activities across a **spectrum of permitted, restricted and regulated activities**.
+Rather than framing legality as a binary question legal versus illegal this framework suggests viewing crypto asset activities across a **spectrum of permitted, restricted and regulated activities**.
 
 Key activity dimensions may include:
 
@@ -443,6 +446,7 @@ While blockchain systems are often associated with immutability and transparency
 This section outlines **directional policy considerations** for managing data security, custody and consumer protection in a manner consistent with India’s legal framework and socio-economic context.
 
 ### 5.2 Data Protection in Blockchain-Based Systems
+
 #### 5.2.1 Immutability and Data Protection Tensions
 
 A defining feature of many blockchain systems is the immutability of recorded data. While this property enhances auditability and trust, it may conflict with data protection principles such as:
@@ -452,6 +456,7 @@ A defining feature of many blockchain systems is the immutability of recorded da
 - Rights related to correction or erasure
 
 Policy frameworks must therefore acknowledge that **not all data is suitable for on-chain storage**, particularly where personal or sensitive information is involved.
+
 #### 5.2.2 Alignment with India’s Data Protection Framework
 
 Blockchain deployments operating in India must be considered in light of existing and emerging data protection obligations. Policy direction may emphasize:
@@ -461,6 +466,7 @@ Blockchain deployments operating in India must be considered in light of existin
 - Purpose-bound data usage
 
 Such approaches allow blockchain systems to preserve functional integrity while aligning with statutory data protection requirements.
+
 #### 5.2.3 Consent and User Awareness
 
 Consent mechanisms in blockchain-based systems require special attention, as decentralization may obscure responsibility for obtaining, managing and revoking consent.
@@ -472,6 +478,7 @@ Policy considerations may include:
 - User education regarding the implications of immutable records
 
 ### 5.3 Custody Models and Risk Allocation
+
 #### 5.3.1 Overview of Custody Arrangements
 
 Custody in blockchain contexts refers to the control and safeguarding of cryptographic keys that enable access to digital assets or system functions. Common custody models include:
@@ -481,6 +488,7 @@ Custody in blockchain contexts refers to the control and safeguarding of cryptog
 - Hybrid or shared-control models
 
 Each model presents distinct risk profiles and policy implications.
+
 #### 5.3.2 Self-Custody and User Responsibility
 
 Self-custody empowers users with direct control but also exposes them to:
@@ -490,6 +498,7 @@ Self-custody empowers users with direct control but also exposes them to:
 - Security breaches
 
 Policy frameworks may need to consider whether additional safeguards, disclosures, or educational requirements are appropriate when services rely heavily on self-custody models.
+
 #### 5.3.3 Third-Party Custody and Intermediary Risk
 
 Where custody is provided by intermediaries, policy considerations may include:
@@ -501,8 +510,8 @@ Where custody is provided by intermediaries, policy considerations may include:
 
 Such considerations aim to reduce systemic risk and enhance consumer trust, without mandating uniform technical solutions.
 
-
 ### 5.4 Cybersecurity and Operational Safeguards
+
 #### 5.4.1 Security Expectations
 
 Blockchain-based systems, particularly those involving financial value or personal data, may be subject to heightened cybersecurity expectations. Policy direction may encourage:
@@ -512,6 +521,7 @@ Blockchain-based systems, particularly those involving financial value or person
 - Incident response planning
 
 Rather than prescribing specific technologies, policy frameworks may focus on **outcome-oriented security standards**.
+
 #### 5.4.2 Incident Disclosure and Accountability
 
 Given the irreversible nature of many blockchain transactions, timely disclosure of security incidents is critical. Policy considerations may include:
@@ -522,8 +532,8 @@ Given the irreversible nature of many blockchain transactions, timely disclosure
 
 Such measures support accountability and consumer protection without inhibiting innovation.
 
-
 ### 5.5 Consumer Protection and Market Conduct
+
 #### 5.5.1 Transparency and Disclosure
 
 Consumers engaging with blockchain-based services often face information asymmetry. Policy frameworks may therefore emphasize:
@@ -533,6 +543,7 @@ Consumers engaging with blockchain-based services often face information asymmet
 - Disclosure of fees, limitations and potential losses
 
 These measures help ensure informed participation.
+
 #### 5.5.2 Misrepresentation and Unfair Practices
 
 Blockchain and crypto markets have seen instances of misleading claims regarding:
@@ -542,6 +553,7 @@ Blockchain and crypto markets have seen instances of misleading claims regarding
 - Regulatory status
 
 Policy direction may support mechanisms to address misrepresentation and unfair practices, particularly where services target retail consumers.
+
 #### 5.5.3 Grievance Redressal and Recourse
 
 Decentralized systems can complicate traditional grievance mechanisms. Policy considerations may explore:
@@ -592,106 +604,118 @@ From a policy perspective, taxation measures signal the State’s intent to regu
 This framework does not seek to reinterpret existing tax provisions, but instead considers **structural policy questions** that arise from their application.
 
 ### 6.3 Challenges in Existing Approaches
+
 #### 6.3.1 Classification and Taxability
-    
+
     A central challenge lies in determining **what is being taxed**. Crypto-related transactions may involve:
-    
+
     - Transfers of value
     - Access to services
     - Network participation/Grants
     - Incentives or rewards
-    
+
     Treating all such activity under a single tax category may obscure meaningful differences in economic substance.
+
 #### 6.3.2 Compliance Burden and Complexity
-    
+
     Participants frequently report difficulty in:
-    
+
     - Tracking transaction history across platforms
     - Valuing assets in volatile markets
     - Meeting reporting requirements
-    
+
     For startups and small enterprises, compliance costs may be disproportionately high relative to scale and revenue.
+
 #### 6.3.3 Impact on Innovation and Participation
-    
+
     Taxation frameworks that do not differentiate between speculative activity and infrastructure development may unintentionally:
-    
+
     - Discourage experimentation
     - Push activity into informal or offshore channels
     - Reduce transparency and compliance over time
+
 ### 6.4 Directional Policy Considerations
 
 This framework suggests several **policy-level considerations** that may guide future refinement of taxation and compliance approaches.
+
 #### 6.4.1 Activity-Based Tax Treatment
-    
+
     Rather than focusing solely on asset form, policy may benefit from examining:
-    
+
     - Nature of the activity (investment, consumption, infrastructure participation)
     - Role of the participant (user, developer, intermediary)
     - Frequency and scale of transactions
-    
+
     Such distinctions may enable more proportionate and comprehensible tax treatment.
+
 #### 6.4.2 Treatment of Losses, Transfers and Incentives
-    
+
     Clarity may be required on issues such as:
-    
+
     - Treatment of losses in volatile markets
     - Intra-network transfers without economic realization
     - Protocol-level incentives or rewards
-    
+
     Addressing these questions can reduce uncertainty and promote voluntary compliance.
+
 #### 6.4.3 Simplification and Thresholds
-    
+
     Policy frameworks may explore simplification mechanisms, including:
-    
+
     - Threshold-based reporting
     - De minimis exemptions for low-value activity
     - Streamlined compliance for early-stage enterprises
-    
+
     Such approaches can enhance compliance without undermining fiscal objectives.
-    
+
 ### 6.5 Compliance, Reporting and Enforcement
+
 #### 6.5.1 Reporting Expectations
-    
+
     Clear guidance on reporting obligations supports both taxpayers and enforcement authorities. Policy considerations may include:
-    
+
     - Standardized reporting formats
     - Alignment with existing financial disclosure norms
     - Use of technology to facilitate compliance
+
 #### 6.5.2 Role of Intermediaries
-    
+
     Intermediaries may play a role in:
-    
+
     - Information reporting
     - Transaction monitoring
     - User education
-    
+
     Policy frameworks may consider how responsibilities can be appropriately distributed without imposing excessive operational burden.
+
 #### 6.5.3 Enforcement and Fairness
-    
+
     Effective enforcement requires clarity, proportionality and consistency. Policy design may seek to:
-    
+
     - Avoid retroactive uncertainty
     - Ensure fairness across participant categories
     - Maintain alignment with broader financial compliance systems
+
 ### 6.6 Coordination with Other Regulatory Domains
+
     Taxation does not operate in isolation. Its effectiveness and legitimacy are influenced by:
-    
+
     - Legal classification of crypto assets
     - Consumer protection measures
     - Data governance frameworks
-    
+
     Policy coherence across these domains reduces friction and enhances trust.
-    
+
 ### 6.7 Open Policy Questions for Consultation
+
     This section highlights issues for stakeholder engagement:
-    
+
     - How can tax treatment reflect economic substance without excessive complexity?
     - What compliance models best support innovation while ensuring accountability?
     - How should protocol-level incentives be treated for tax purposes?
     - What role should technology play in simplifying compliance?
-    
+
     These questions are intentionally left open for structured consultation.
-    
 
 ## 7. Innovation Enablement & Incentive Structures
 
@@ -708,23 +732,25 @@ Policy frameworks that focus exclusively on risk mitigation may inadvertently:
 This section therefore emphasizes the role of policy in **creating enabling conditions** for responsible blockchain innovation, while remaining aligned with broader public interest objectives.
 
 ### 7.2 Regulatory Sandboxes and Controlled Experimentation
+
 #### 7.2.1 Purpose of Sandboxes
-    
+
     Regulatory sandboxes can provide structured environments in which innovators test new models under regulatory oversight. For blockchain-based systems, sandboxes may support:
-    
+
     - Early-stage experimentation
     - Evidence gathering for policy refinement
     - Risk identification prior to wider deployment
+
 #### 7.2.2 Scope and Design Considerations
-    
+
     Policy frameworks may consider sandboxes that:
-    
+
     - Are time-bound and outcome-oriented
     - Apply proportionate safeguards
     - Allow participation by startups, enterprises and public-sector actors
-    
+
     Rather than focusing solely on financial applications, sandboxes may also support **non-financial and public-interest use cases**.
-    
+
 ### 7.3 Supporting Public-Interest and Infrastructure Use Cases
 
 Blockchain applications in areas such as governance, public records, welfare delivery and transparency may generate **social value** that differs from purely commercial activity.
@@ -738,26 +764,29 @@ Policy considerations may include:
 Such differentiation allows policy to reflect **context and impact**, rather than applying uniform treatment.
 
 ### 7.4 Startup, Developer and Ecosystem Support
+
 #### 7.4.1 Reducing Regulatory Uncertainty for Startups
-    
+
     Early-stage enterprises often face disproportionate risk from regulatory ambiguity. Policy frameworks may seek to:
-    
+
     - Provide clearer guidance on permissible activities
     - Reduce compliance friction at early stages
     - Encourage voluntary disclosure and engagement
+
 #### 7.4.2 Talent, Skills and Research Development
-    
+
     Long-term innovation capacity depends on:
-    
+
     - Skilled developers and researchers
     - Academic–industry collaboration
     - Open research and experimentation
-    
+
     Policy direction may encourage support for:
-    
+
     - Research grants
     - Educational initiatives
     - Open-source development
+
 ### 7.5 Incentive Structures and Market Signals
 
 Incentives need not be financial alone. Policy frameworks may consider:
@@ -789,7 +818,6 @@ This section identifies areas for stakeholder input:
 
 These questions will inform refinement of innovation-focused policy mechanisms.
 
-
 ## 8. Institutional & Governance Architecture
 
 ### 8.1 Importance of Institutional Coordination
@@ -805,86 +833,94 @@ Without clear coordination mechanisms, policy outcomes may include:
 This section outlines **directional considerations** for institutional and governance arrangements that support coherent, adaptive policy development.
 
 ### 8.2 Multi-Ministerial and Cross-Regulatory Coordination
+
 #### 8.2.1 Need for Cross-Domain Alignment
-    
+
     Blockchain-based activities often engage multiple regulatory mandates simultaneously. For example, a single application may raise:
-    
+
     - Financial compliance questions
     - Data protection concerns
     - Consumer protection issues
     - Innovation policy considerations
-    
+
     Policy frameworks may therefore benefit from **formal or informal coordination mechanisms** that enable dialogue and alignment across ministries and regulators.
+
 #### 8.2.2 Possible Coordination Mechanisms
-    
+
     Without prescribing specific institutional forms, policy considerations may include:
-    
+
     - Inter-ministerial working groups
     - Joint consultation processes
     - Shared policy principles or guidance documents
-    
+
     Such mechanisms can reduce fragmentation while respecting existing statutory mandates.
-    
+
 ### 8.3 Role of Advisory and Expert Bodies
+
 #### 8.3.1 Value of Domain Expertise
-    
+
     Given the technical and economic complexity of blockchain systems, policy formulation may benefit from **ongoing expert input** beyond traditional regulatory processes.
-    
+
     Advisory bodies may provide:
-    
+
     - Technical insight
     - Market intelligence
     - Comparative policy perspectives
+
 #### 8.3.2 Composition and Function
-    
+
     Policy frameworks may consider advisory mechanisms that:
-    
+
     - Include technical, legal, economic and social perspectives
     - Reflect diversity across industry, academia and civil society
     - Operate transparently and on a consultative basis
-    
+
     Such bodies need not exercise regulatory authority; their value lies in **informing decision-making**.
-    
+
 ### 8.4 Iterative and Adaptive Governance
+
 #### 8.4.1 Moving Beyond Static Policy
-    
+
     Blockchain technologies evolve rapidly, making static policy approaches difficult to sustain. Adaptive governance recognizes that:
-    
+
     - Early policy may require revision
     - Pilot outcomes provide valuable learning
     - Stakeholder feedback improves legitimacy
-    
+
     Policy frameworks may therefore emphasize **periodic review and iteration** rather than one-time rulemaking.
+
 #### 8.4.2 Feedback Loops and Learning Mechanisms
-    
+
     Directional considerations may include:
-    
+
     - Structured review cycles
     - Feedback channels for regulated entities and users
     - Integration of sandbox learnings into broader policy
-    
+
     These mechanisms help ensure that policy remains responsive and evidence-based.
-    
+
 ### 8.5 Role of Self-Regulation and Co-Regulation
+
 #### 8.5.1 Complementary Governance Models
-    
+
     In some contexts, industry-led standards or codes of conduct may complement formal regulation. Such approaches may:
-    
+
     - Encourage responsible behavior
     - Support early-stage governance
     - Reduce enforcement burden
-    
+
     Policy frameworks may explore **co-regulatory models**, where self-regulation operates within clearly defined public-interest boundaries.
+
 #### 8.5.2 Safeguards and Accountability
-    
+
     Any self- or co-regulatory approach must be accompanied by:
-    
+
     - Transparency
     - Oversight mechanisms
     - Clear escalation pathways
-    
+
     This ensures that voluntary standards enhance, rather than undermine, regulatory objectives.
-    
+
 ### 8.6 Institutional Capacity Building
 
 Effective governance depends on institutional capacity. Policy considerations may include:
@@ -906,7 +942,6 @@ This section identifies issues for stakeholder discussion:
 
 These questions will guide further consultation and refinement.
 
-
 ## 9. Phased Implementation Roadmap
 
 ### 9.1 Rationale for a Phased Approach
@@ -920,74 +955,81 @@ Blockchain technologies and crypto-related activities evolve rapidly and their s
 Rather than a single comprehensive rollout, phased implementation supports **progressive policy maturation**, balancing innovation with risk management.
 
 ### 9.2 Phase I: Clarification and Capacity Building (0–12 Months)
+
 #### 9.2.1 Policy Clarification and Guidance
-    
+
     In the short term, emphasis may be placed on:
-    
+
     - Clarifying policy intent and scope
     - Issuing guidance documents where ambiguity exists
     - Communicating regulatory expectations clearly to stakeholders
-    
+
     Such clarification can significantly reduce uncertainty without requiring legislative change.
+
 #### 9.2.2 Institutional Capacity Development
-    
+
     Early efforts may also focus on:
-    
+
     - Building internal expertise within relevant institutions
     - Facilitating knowledge-sharing across ministries and regulators
     - Engaging with technical experts and research bodies
-    
+
     Capacity development enhances regulatory effectiveness and confidence.
+
 #### 9.2.3 Pilot Programs and Sandboxes
-    
+
     Phase I may include:
-    
+
     - Launch of regulatory sandboxes
     - Pilot projects in public-interest domains
     - Controlled experimentation under oversight
-    
+
     These initiatives provide evidence to inform subsequent policy refinement.
-    
+
 ### 9.3 Phase II: Refinement and Expansion (1–3 Years)
+
 #### 9.3.1 Policy Refinement Based on Evidence
-    
+
     Insights from Phase I may inform:
-    
+
     - Adjustment of classifications and definitions
     - Refinement of compliance and reporting expectations
     - Reassessment of consumer protection measures
-    
+
     This phase emphasizes **learning-driven governance**.
+
 #### 9.3.2 Expansion of Permissible Activities
-    
+
     As clarity improves, policymakers may consider:
-    
+
     - Expanding the scope of permitted activities
     - Supporting broader adoption of compliant models
     - Encouraging ecosystem maturation
-    
+
     Expansion is contingent on demonstrated risk management and compliance.
-    
+
 ### 9.4 Phase III: Consolidation and Long-Term Governance (Beyond 3 Years)
+
 #### 9.4.1 Policy Consolidation
-    
+
     Over the longer term, policy elements may be consolidated into:
-    
+
     - More formal regulatory frameworks
     - Harmonized guidance across domains
     - Stable compliance expectations
-    
+
     Consolidation supports predictability and market confidence.
+
 #### 9.4.2 Alignment with Global Developments
-    
+
     Blockchain and crypto markets operate globally. Long-term governance may therefore include:
-    
+
     - Monitoring international standards
     - Engaging in cross-border policy dialogue
     - Ensuring interoperability and compatibility
-    
+
     Global alignment enhances competitiveness and cooperation.
-    
+
 ### 9.5 Continuous Review and Adaptation
 
 Across all phases, continuous review mechanisms may include:
@@ -1008,7 +1050,6 @@ A phased approach also supports proactive risk management by:
 
 This reduces the likelihood of unintended consequences.
 
-
 ## 10. Risks, Trade-offs & Open Policy Questions
 
 ### 10.1 Purpose of This Section
@@ -1026,48 +1067,63 @@ Explicit recognition of these factors strengthens policy legitimacy and supports
 ### 10.2 Risks of Over-Regulation
 
 Overly restrictive or premature regulation may produce unintended consequences, including:
+
 #### 10.2.1 Innovation Suppression
+
     - Discouragement of early-stage experimentation
     - Reduced participation by startups and researchers
     - Slower development of domestic technical capability
+
 #### 10.2.2 Informal or Offshore Migration
+
     - Movement of activity to less regulated jurisdictions
     - Reduced transparency and oversight
     - Loss of economic and intellectual capital
+
 #### 10.2.3 Regulatory Rigidity
+
     - Difficulty adapting to technological change
     - Increased compliance burden without commensurate risk reduction
-    
+
     These risks highlight the importance of **proportionate and phased policy design**.
-    
+
 ### 10.3 Risks of Under-Regulation
 
 Conversely, insufficient regulatory attention carries its own risks:
+
 #### 10.3.1 Consumer Harm
+
     - Exposure to fraud, misrepresentation and operational failures
     - Limited avenues for redress
+
 #### 10.3.2 Systemic and Financial Risk
+
     - Concentration of risk in intermediaries
     - Market instability and contagion effects
+
 #### 10.3.3 Erosion of Trust
+
     - Loss of public confidence in digital systems
     - Reputational impact on legitimate innovation
-    
+
     Under-regulation may undermine both public interest and long-term ecosystem growth.
-    
+
 ### 10.4 Key Policy Trade-offs
+
 #### 10.4.1 Clarity vs Flexibility
-    
+
     Clear rules provide certainty but may limit adaptability. Flexible approaches allow learning but may prolong ambiguity.
+
 #### 10.4.2 Centralized Oversight vs Decentralized Models
-    
+
     Traditional regulatory structures may not map cleanly onto decentralized systems, raising questions of accountability and enforcement.
+
 #### 10.4.3 Innovation Speed vs Consumer Protection
-    
+
     Faster innovation can increase risk exposure, while strong safeguards may slow adoption.
-    
+
     Recognizing these trade-offs enables more informed and transparent policy choices.
-    
+
 ### 10.5 Areas Requiring Further Evidence
 
 Several areas require deeper analysis and stakeholder input before policy positions can be refined, including:
@@ -1089,7 +1145,6 @@ This framework intentionally leaves several questions open for stakeholder engag
 - What mechanisms best support adaptive governance over time?
 
 These questions will guide structured consultation and iterative refinement.
-
 
 ## 11. Conclusion & Path Forward
 
@@ -1157,4 +1212,3 @@ Over time, insights from these processes may inform more formal policy instrumen
 ### 11.6 Closing Note
 
 This framework reflects an **intent to engage, learn and adapt**, rather than to prescribe or constrain. By approaching blockchain policy as an evolving governance challenge rather than a fixed regulatory problem, India can position itself to harness the benefits of these technologies while managing their risks responsibly.
-
