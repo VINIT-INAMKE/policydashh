@@ -126,13 +126,16 @@ export const workshopRouter = router({
         .innerJoin(policyDocuments, eq(policySections.documentId, policyDocuments.id))
         .where(eq(workshopSectionLinks.workshopId, input.workshopId))
 
-      // Fetch linked feedback with readableId, title, status
+      // Fetch linked feedback with readableId, title, status, documentId
+      // documentId enables cross-navigation from workshop detail to the
+      // originating policy's feedback view (D-13).
       const feedback = await db
         .select({
           feedbackId: workshopFeedbackLinks.feedbackId,
           readableId: feedbackItems.readableId,
           title: feedbackItems.title,
           status: feedbackItems.status,
+          documentId: feedbackItems.documentId,
         })
         .from(workshopFeedbackLinks)
         .innerJoin(feedbackItems, eq(workshopFeedbackLinks.feedbackId, feedbackItems.id))

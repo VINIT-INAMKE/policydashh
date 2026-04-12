@@ -155,12 +155,15 @@ export default function WorkshopDetailPage() {
                   key={section.sectionId}
                   className="flex items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-background/50"
                 >
-                  <div className="min-w-0">
+                  <Link
+                    href={`/policies/${section.documentId}`}
+                    className="block min-w-0 flex-1 hover:underline"
+                  >
                     <p className="truncate text-sm">{section.sectionTitle}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {section.documentTitle}
                     </p>
-                  </div>
+                  </Link>
                   {canManage && (
                     <Button
                       variant="ghost"
@@ -208,12 +211,15 @@ export default function WorkshopDetailPage() {
                   key={fb.feedbackId}
                   className="flex items-center justify-between gap-2 rounded-md px-2 py-1 hover:bg-background/50"
                 >
-                  <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/policies/${fb.documentId}/feedback`}
+                    className="block min-w-0 flex-1 hover:underline"
+                  >
                     <span className="mr-2 font-mono text-xs text-muted-foreground">
                       {fb.readableId}
                     </span>
                     <span className="truncate text-sm">{fb.title}</span>
-                  </div>
+                  </Link>
                   {canManage && (
                     <Button
                       variant="ghost"
