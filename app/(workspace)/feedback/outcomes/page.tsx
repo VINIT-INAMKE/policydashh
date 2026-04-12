@@ -1,16 +1,9 @@
-import { Suspense } from 'react'
-import { OutcomesList } from './_components/outcomes-list'
+import { redirect } from 'next/navigation'
 
-export default function FeedbackOutcomesPage() {
-  return (
-    <div className="mx-auto max-w-[768px]">
-      <h1 className="mb-6 text-[20px] font-semibold leading-[1.2]">
-        Your Feedback
-      </h1>
-
-      <Suspense fallback={null}>
-        <OutcomesList />
-      </Suspense>
-    </div>
-  )
+/**
+ * Legacy route — folded into /feedback?tab=outcomes (Phase 13 D-10).
+ * Preserves old bookmarks and notification deep links.
+ */
+export default function OutcomesPage() {
+  redirect('/feedback?tab=outcomes')
 }
