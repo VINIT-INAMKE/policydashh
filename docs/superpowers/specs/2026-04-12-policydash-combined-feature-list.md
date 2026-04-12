@@ -621,6 +621,144 @@ Note: Steps 2–4 already exist as HTTP routes. Extract their logic into library
 
 ---
 
+## Domain 9a — Third-party integrations
+
+The automation runtime (Domain 9) is the substrate; this section enumerates the external services it talks to, grouped by concern. Every choice below is **decided** — not a menu of options. Deferred items are marked explicitly. These integrations overlap with existing feature rows (email in Domain 12, captcha in Domain 1, etc.); they are grouped here as an integration inventory, not counted as additional feature rows.
+
+### Email — Resend
+- Status: `BUILT` (wrapper) / `EXTEND` (templates + webhook)
+- Role: Transactional email for all seven flows — welcome, confirmations, reminders, feedback-reviewed notifications, reviewer packets, milestone download links.
+- Setup:
+  1. Add React Email templates under `src/emails/`.
+  2. Wire Resend webhook at `/api/webhooks/resend` to capture delivery / bounce / complaint events into a new `emailDeliveries` table.
+  3. Configure DKIM / SPF / DMARC for the sending domain.
+- Consumed by: Flows 1–7.
+
+### Inbound email — Resend Inbound
+- Status: `NEW` (optional)
+- Role: Receive replies as structured intake for expert review responses (Flow 6), so reviewers can reply to an email rather than log in and fill a form.
+- Setup: Configure a dedicated inbound address in Resend; add `/api/webhooks/resend-inbound` to parse and persist responses as `evidenceArtifacts` rows linked via `feedbackEvidence` / `sectionEvidence`.
+- Consumed by: Flow 6 (optional — form submission remains the default path).
+- Decision: Implement only if reviewers push back on using a form. Not on the critical path.
+
+### 1:1 scheduling — Cal.com
+- Status: `NEW`
+- Role: Handle 1:1 scheduling for the **"institution / regulator → request a briefing"** path on the participate splitter. Group workshops do **not** go through Cal.com — they use internal workshop registration (Flow 2).
+- Setup:
+  1. Self-host Cal.com (Docker) or use Cal.com managed.
+  2. Create an event type for "policy briefing" (30 / 45 / 60 min variants).
+  3. Embed Cal.com widget on `/participate/briefing` via `@calcom/embed-react`.
+  4. Configure a Cal.com webhook at `/api/webhooks/calcom` that emits `briefing.booked` into the internal event bus. Handler sends a tailored confirmation + adds the booking to the organizer's Google Calendar via our existing Google integration.
+- Consumed by: Flow 1 (briefing path branch).
+- Why Cal.com over Calendly: OSS, self-hostable, no SaaS lock-in, fits the "coded automation, no external workflow SaaS" constraint.
+
+### Calendar + meetings — Google Calendar + Google Meet
+- Status: `NEW`
+- Role:
+  1. Create calendar events for workshops on workshop publish.
+  2. Auto-generate a Google Meet link via `conferenceData.createRequest` in the Calendar API — zero extra API calls, Meet link comes for free with the event.
+  3. Invite registered attendees to the event so Google sends its native reminders alongside our own.
+  4. Create calendar events for Cal.com-booked 1:1 briefings (see above).
+- Setup:
+  1. Create a Google Cloud project, enable Google Calendar API.
+  2. Create a service account with domain-wide delegation (if on Google Workspace) OR an OAuth2 client for a single shared organizer account.
+  3. Store credentials as `GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON` or OAuth token pair in env.
+  4. Add `src/lib/google-calendar.ts` wrapper exposing `createWorkshopEvent()`, `inviteAttendee()`, `cancelEvent()`.
+- Consumed by: Flow 1 (briefing calendar events), Flow 2 (workshop calendar events + Meet link).
+- Why Google Meet over Zoom: simpler setup (one OAuth / one service account), no separate paid Zoom account, Meet link is free with the calendar event.
+- **Recording pull is DEFERRED**: Meet recordings live in the organizer's Drive, not directly addressable via Calendar API, and extracting them requires the Drive API + extra scopes. Flow 3's post-workshop evidence upload stays **manual for v1** — organizer uploads the recording themselves via the existing S3 upload route.
+
+### ICS generation — `ics` npm package
+- Status: `NEW`
+- Role: Generate `.ics` attachments for workshop confirmation emails as a belt-and-suspenders complement to Google Calendar invites (covers attendees not on Google Workspace).
+- Setup: `npm install ics`; add `src/lib/ics.ts` wrapper with `buildWorkshopIcs(workshop, attendee)`.
+- Consumed by: Flow 2.
+
+### File storage — AWS S3
+- Status: `BUILT`
+- Role: Evidence artifacts (Flow 3), reviewer packets (Flow 6), milestone pack zips (Flow 7).
+- Setup: Already wired. No changes.
+
+### Authentication — Clerk
+- Status: `BUILT`
+- Role: Workspace auth + role provisioning via webhook.
+- Setup: Already wired. No changes.
+
+### Captcha — Cloudflare Turnstile
+- Status: `NEW`
+- Role: Protect public forms (participate intake, workshop registration, briefing request) from automated spam. Uses the existing Cloudflare account — no new vendor.
+- Setup:
+  1. In the existing Cloudflare dashboard, enable Turnstile and create a site key for the PolicyDash domain.
+  2. Install `@marsidev/react-turnstile` for the React widget.
+  3. Add `src/lib/turnstile.ts` with a `verifyTurnstileToken(token, ip)` helper that POSTs to `https://challenges.cloudflare.com/turnstile/v0/siteverify`.
+  4. Gate every public form submission behind the verifier at the tRPC procedure layer.
+- Consumed by: Flow 1 (all public forms), Flow 2 (public workshop registration), Flow 1 briefing path (Cal.com embed page).
+
+### LLM inference — Groq Cloud API
+- Status: `NEW` (Flow 4 only)
+- Role: Auto-categorize loosely-structured feedback intake into `sectionId` + `feedbackType` + `impactCategory` as a draft for policy_lead review. Runs inside Flow 4's `normalizeToSchema` handler.
+- Setup:
+  1. Create a Groq Cloud account, generate an API key.
+  2. Use Groq's OpenAI-compatible endpoint: point the standard `openai` SDK at `https://api.groq.com/openai/v1` with the Groq API key. No separate SDK needed.
+  3. Default model: `llama-3.3-70b-versatile` for quality; fall back to `llama-3.1-8b-instant` for cost if rate limits bite.
+  4. Add `src/lib/groq.ts` with `categorizeFeedback(rawResponse, documentSections)` — a structured-output prompt that returns `{sectionId, feedbackType, impactCategory, confidence}`.
+  5. Add a `heuristicCategorizer()` fallback that runs if Groq is unavailable or returns low confidence, so the intake path never blocks.
+- Consumed by: Flow 4.
+- Why Groq: generous free tier, very fast inference (sub-second), OpenAI-compatible API so the provider can be swapped later without rewriting handlers.
+
+### Analytics — Plausible
+- Status: `NEW`
+- Role: Privacy-friendly page analytics for the public site only (not the workspace). Cookie-free, GDPR-friendly, appropriate for a policy-grade site.
+- Setup:
+  1. Self-host Plausible via Docker or use Plausible Cloud.
+  2. Add the Plausible script tag to `app/(public)/layout.tsx` only — explicitly exclude workspace routes.
+  3. Register custom events: `participate_form_submitted`, `workshop_registered`, `briefing_requested`, `research_report_downloaded`.
+- Consumed by: public site pages (Domain 1).
+
+### SMS reminders — Twilio
+- Status: `NEW` (optional, gated by user opt-in)
+- Role: Optional SMS reminders for workshops (T-24h and T-2h) alongside email, for high-signal reminder delivery.
+- Setup:
+  1. Create a Twilio account (starts with ~$15 trial credit, ~1500 SMS for development — the easiest free starting point).
+  2. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` in env.
+  3. Install `twilio` SDK, add `src/lib/sms.ts` with `sendSms(to, body)`.
+  4. Add `users.smsOptIn` boolean column (defaults false) — SMS is only sent to users who have explicitly opted in. Unsolicited SMS is regulated and must not be the default.
+  5. Flow 2's reminder handler checks `smsOptIn` and fans out email + (optionally) SMS.
+- Consumed by: Flow 2 (workshop reminders).
+- Why Twilio for now: easiest setup, best SDK, free trial covers all development. For India-production cost optimization, swap to MSG91 or Fast2SMS later — both offer India-specific pricing but need more setup friction. That swap is a flagged future optimization, not a decision for v1.
+
+### Error monitoring — Sentry
+- Status: `DEFERRED`
+- Decision: Skip for now. Revisit before production launch. Structured logs to stdout and the job runtime's own failure surface are sufficient during build.
+
+### Environment variables introduced by this section
+
+| Service | New env vars | Already set |
+|---|---|---|
+| Resend | `RESEND_WEBHOOK_SECRET` | `RESEND_API_KEY` |
+| Cal.com | `CALCOM_API_KEY`, `CALCOM_WEBHOOK_SECRET`, `NEXT_PUBLIC_CALCOM_EMBED_URL` | — |
+| Google Calendar | `GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON` *(or OAuth pair)*, `GOOGLE_CALENDAR_ORGANIZER_EMAIL` | — |
+| AWS S3 | — | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET` |
+| Clerk | — | `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_WEBHOOK_SECRET` |
+| Cloudflare Turnstile | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — |
+| Groq Cloud | `GROQ_API_KEY` | — |
+| Plausible | `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`, `NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` | — |
+| Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` | — |
+
+### Per-flow integration map
+
+| Flow | Integrations consumed |
+|---|---|
+| Flow 1 — Stakeholder intake | Turnstile, Resend, *(briefing path)* Cal.com + Google Calendar |
+| Flow 2 — Workshop registration | Turnstile, Resend, `ics`, Google Calendar + Meet, *(optional)* Twilio |
+| Flow 3 — Post-workshop evidence | S3, Resend (recording import via Meet **deferred**) |
+| Flow 4 — Feedback normalization | Groq (+ heuristic fallback), Resend |
+| Flow 5 — Revision engine | Resend |
+| Flow 6 — Expert review | S3, `@react-pdf/renderer`, Resend, *(optional)* Resend Inbound |
+| Flow 7 — Milestone export | S3, `@react-pdf/renderer`, `fflate`, Resend |
+
+---
+
 ## Domain 10 — Design System & Visual Direction
 
 ### Semantic token system (existing)
@@ -765,10 +903,12 @@ Things that are **not** decided in this feature list and need their own decision
 
 1. **Automation runtime choice** (pg-boss vs. Inngest vs. BullMQ+Redis). Recommended: pg-boss for zero-new-infra, Inngest for DX. Decide before touching Flow 1.
 2. **Project-layer refactor** — land before the public site refactor so public pages are project-scoped from day one.
-3. **Email templates engine** — React Email vs. MJML vs. plain-text-with-better-structure.
-4. **Normalization layer for Flow 4** — heuristic vs. LLM-assisted. Affects whether we take an LLM dependency.
-5. **Cardano anchoring timing** — deferred, but at what milestone does it become real?
-6. **Real-time collab** — deferred; revisit at a later milestone. No decision needed now.
+3. **Google Calendar auth model** — service account with domain-wide delegation vs. OAuth2 for a shared organizer account. Depends on whether PolicyDash is deployed inside a Google Workspace org.
+4. **Cardano anchoring timing** — deferred, but at what milestone does it become real?
+5. **Real-time collab** — deferred; revisit at a later milestone. No decision needed now.
+6. **Post-v1 SMS provider swap** — Twilio is used for v1; flag MSG91 or Fast2SMS for India-specific production cost optimization later.
+
+**Decisions resolved in Domain 9a** (no longer open): third-party integration choices (Cal.com, Google Meet, Groq, Turnstile, Plausible, Twilio), email template engine (React Email), Flow 4 normalizer (Groq + heuristic fallback), error monitoring (Sentry deferred).
 
 ---
 
