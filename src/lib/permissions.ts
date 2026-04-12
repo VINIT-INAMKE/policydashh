@@ -16,6 +16,7 @@ export const PERMISSIONS = {
   // Document management
   'document:create':      [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
   'document:read':        [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
+  'document:read_all':    [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR] as readonly Role[],
   'document:update':      [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
   'document:delete':      [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
 
