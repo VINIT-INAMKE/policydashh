@@ -1,4 +1,5 @@
 import { helloFn } from './hello'
+import { feedbackReviewedFn } from './feedback-reviewed'
 
 /**
  * The array of Inngest functions mounted at /api/inngest.
@@ -7,4 +8,4 @@ import { helloFn } from './hello'
  * here, and append it to the functions array below. The route handler at
  * app/api/inngest/route.ts imports this array and hands it to serve().
  */
-export const functions = [helloFn]
+export const functions = [helloFn, feedbackReviewedFn]
