@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { trpc } from '@/src/trpc/client'
 import { Users, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -14,7 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { format } from 'date-fns'
+import { toast } from 'sonner'
 import { InviteUserDialog } from './invite-user-dialog'
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -36,10 +43,32 @@ const ORG_TYPE_DISPLAY: Record<string, string> = {
   internal: 'Internal',
 }
 
+const ROLE_VALUES = [
+  'admin',
+  'policy_lead',
+  'research_lead',
+  'workshop_moderator',
+  'stakeholder',
+  'observer',
+  'auditor',
+] as const
+
+type UserRole = (typeof ROLE_VALUES)[number]
+
 export function UsersClient() {
   const [inviteOpen, setInviteOpen] = useState(false)
 
+  const utils = trpc.useUtils()
   const usersQuery = trpc.user.listUsers.useQuery()
+  const updateRoleMutation = trpc.user.updateRole.useMutation({
+    onSuccess: (updated) => {
+      utils.user.listUsers.invalidate()
+      toast.success(`Role updated to ${ROLE_DISPLAY[updated.role] ?? updated.role}.`)
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update role. Please try again.')
+    },
+  })
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -91,10 +120,24 @@ export function UsersClient() {
                   {user.email || <span className="text-muted-foreground">--</span>}
                 </TableCell>
                 <TableCell>
-                  {/* TODO: Replace with a role-change dropdown when role update mutation is available */}
-                  <Badge variant="secondary">
-                    {ROLE_DISPLAY[user.role] ?? user.role}
-                  </Badge>
+                  <Select
+                    value={user.role}
+                    onValueChange={(newRole) =>
+                      updateRoleMutation.mutate({ userId: user.id, role: newRole as UserRole })
+                    }
+                    disabled={updateRoleMutation.isPending}
+                  >
+                    <SelectTrigger className="h-7 w-[160px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLE_VALUES.map((r) => (
+                        <SelectItem key={r} value={r} className="text-xs">
+                          {ROLE_DISPLAY[r] ?? r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell>
                   {user.orgType

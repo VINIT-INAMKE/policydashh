@@ -88,6 +88,38 @@ export const userRouter = router({
       return { invitationId: invitation.id, email: input.email, role: input.role }
     }),
 
+  // Admin only: update another user's role
+  updateRole: requirePermission('user:manage_roles')
+    .input(z.object({
+      userId: z.string().uuid(),
+      role: z.enum(['admin', 'policy_lead', 'research_lead', 'workshop_moderator', 'stakeholder', 'observer', 'auditor']),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const target = await db.query.users.findFirst({
+        where: eq(users.id, input.userId),
+      })
+      if (!target) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
+      }
+
+      const [updated] = await db
+        .update(users)
+        .set({ role: input.role, updatedAt: new Date() })
+        .where(eq(users.id, input.userId))
+        .returning()
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.USER_UPDATE,
+        entityType: 'user',
+        entityId: input.userId,
+        payload: { before: { role: target.role }, after: { role: input.role } },
+      }).catch(console.error)
+
+      return updated
+    }),
+
   // Any authenticated user can update their own last visited timestamp
   // No audit log -- operational, not a business event
   updateLastVisited: protectedProcedure

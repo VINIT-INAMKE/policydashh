@@ -133,8 +133,7 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
                 <CardTitle>
                   <h2 className="text-xl font-semibold">User Management</h2>
                 </CardTitle>
-                {/* TODO: Replace /dashboard with /users once User Management page is built */}
-                <Button size="sm" render={<Link href="/dashboard" />}>
+                <Button size="sm" render={<Link href="/users" />}>
                   Manage Users
                 </Button>
               </div>
