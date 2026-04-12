@@ -9,7 +9,8 @@
       "Skill(gsd:execute-phase)",
       "Skill(gsd:ui-phase)",
       "Bash(node *)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)"
     ]
   }
 }
