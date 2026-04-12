@@ -253,7 +253,7 @@ Plans:
 **Goal:** App navigation feels coherent with breadcrumbs, tab bars, consolidated views, and the primary user flows (read → feedback → track) take 2-3 clicks instead of 5-6
 **Requirements**: Add breadcrumbs across all nested routes, convert policy sub-pages to tab bar navigation, consolidate duplicate feedback views (/feedback global vs /policies/[id]/feedback), add cross-navigation between workshops and linked sections/feedback, add /users and /notifications to workspace nav, rename uploadthing.ts to r2-upload.ts and update all imports, add direct "Give Feedback" action from section content view
 **Depends on:** Phase 12
-**Plans:** 0 plans
+**Plans:** 1/5 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 13 to break down)
