@@ -98,6 +98,17 @@ describe('documentRouter.list scoping', () => {
     const anyExists = __recordedWheres.some((w) => containsType(w, 'exists'))
     expect(anyExists).toBe(true)
   })
+
+  it('stakeholder list with includeSections adds an inArray assignment guard on the sections sub-query', async () => {
+    const caller = createCaller(mkCtx('stakeholder'))
+    await caller.list({ includeSections: true })
+    // The sub-query for inline sections must carry its own inArray guard
+    // scoping to sectionAssignments. Without this, a developer could remove
+    // the canReadAll ternary on the sections sub-query and the existing
+    // tests would still pass (they only check the main documents query).
+    const anyInArray = __recordedWheres.some((w) => containsType(w, 'inArray'))
+    expect(anyInArray).toBe(true)
+  })
 })
 
 describe('documentRouter.getById scoping', () => {
