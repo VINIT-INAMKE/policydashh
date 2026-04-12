@@ -2,16 +2,38 @@ import { z } from 'zod'
 import { router, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
 import { policyDocuments, policySections } from '@/src/db/schema/documents'
-import { eq, and, asc, desc, sql, count } from 'drizzle-orm'
+import { documentVersions } from '@/src/db/schema/changeRequests'
+import { sectionAssignments } from '@/src/db/schema/sectionAssignments'
+import { eq, and, asc, desc, sql, count, exists, inArray } from 'drizzle-orm'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
+import { can } from '@/src/lib/permissions'
 import { TRPCError } from '@trpc/server'
 
 export const documentRouter = router({
   // List all policy documents with section counts (optionally with nested sections)
   list: requirePermission('document:read')
     .input(z.object({ includeSections: z.boolean().optional() }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const canReadAll = can(ctx.user.role, 'document:read_all')
+
+      // Non-privileged roles only see documents that have at least one
+      // published version. Privileged roles (admin/policy_lead/auditor)
+      // see drafts too.
+      const publishedExists = exists(
+        db
+          .select({ one: sql`1` })
+          .from(documentVersions)
+          .where(
+            and(
+              eq(documentVersions.documentId, policyDocuments.id),
+              eq(documentVersions.isPublished, true),
+            ),
+          ),
+      )
+
+      const scopeWhere = canReadAll ? undefined : publishedExists
+
       const docs = await db
         .select({
           id: policyDocuments.id,
@@ -23,9 +45,12 @@ export const documentRouter = router({
         })
         .from(policyDocuments)
         .leftJoin(policySections, eq(policyDocuments.id, policySections.documentId))
+        .where(scopeWhere)
         .groupBy(policyDocuments.id)
         .orderBy(desc(policyDocuments.updatedAt))
 
+      // When sections are requested inline, also scope them: non-privileged
+      // callers only get sections they're assigned to.
       const allSections = input?.includeSections
         ? await db
             .select({
@@ -36,6 +61,17 @@ export const documentRouter = router({
               content: policySections.content,
             })
             .from(policySections)
+            .where(
+              canReadAll
+                ? undefined
+                : inArray(
+                    policySections.id,
+                    db
+                      .select({ id: sectionAssignments.sectionId })
+                      .from(sectionAssignments)
+                      .where(eq(sectionAssignments.userId, ctx.user.id)),
+                  ),
+            )
             .orderBy(asc(policySections.orderIndex))
         : []
 
