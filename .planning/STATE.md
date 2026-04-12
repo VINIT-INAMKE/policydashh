@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: Ready to plan
-stopped_at: Completed 13-02-PLAN.md (breadcrumb + layout refactor)
-last_updated: "2026-04-12T07:06:42.098Z"
+stopped_at: Completed 13-05-PLAN.md
+last_updated: "2026-04-12T07:09:17.431Z"
 progress:
   total_phases: 13
   completed_phases: 12
   total_plans: 38
-  completed_plans: 34
+  completed_plans: 36
 ---
 
 # Project State
@@ -75,6 +75,7 @@ Plan: Not started
 | Phase 12-workshop-system-fix P01 | 3min | 2 tasks | 3 files |
 | Phase 12-workshop-system-fix P02 | 7min | 2 tasks | 2 files |
 | Phase 13-ux-consolidation-navigation P02 | 11min | 2 tasks | 3 files |
+| Phase 13 P05 | 25m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,7 @@ Recent decisions affecting current work:
 - [Phase 12-workshop-system-fix]: listAll guarded by workshop:manage (not feedback:read_all) so workshop moderators can access feedback for linking
 - [Phase 13-ux-consolidation-navigation]: Breadcrumb uses null-label sentinel for loading state (renders Skeleton); entity detection limited to segments[1] under /policies and /workshops to avoid stray tRPC queries on deep UUID paths
 - [Phase 13-ux-consolidation-navigation]: Workspace layout refactored to flex h-screen flex-col with shrink-0 header/breadcrumb and flex-1 overflow-y-auto main -- enables Plan 03 policy tab bar without hardcoded pixel offsets
+- [Phase 13]: Plan 13-05: feedback:submit permission derived from src/lib/permissions.ts (stakeholder, research_lead, workshop_moderator). Give Feedback CTA hidden during edit mode.
 
 ### Pending Todos
 
@@ -185,6 +187,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T07:06:42.087Z
-Stopped at: Completed 13-02-PLAN.md (breadcrumb + layout refactor)
+Last session: 2026-04-12T07:09:17.422Z
+Stopped at: Completed 13-05-PLAN.md
 Resume file: None
