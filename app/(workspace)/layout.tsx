@@ -6,6 +6,7 @@ import { users } from '@/src/db/schema/users'
 import { eq } from 'drizzle-orm'
 import { WorkspaceNav } from './_components/workspace-nav'
 import { NotificationBell } from './_components/notification-bell'
+import { Breadcrumb } from './_components/breadcrumb'
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth()
@@ -18,8 +19,8 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   const userRole = user?.role
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-3">
+    <div className="flex h-screen flex-col">
+      <header className="flex shrink-0 items-center justify-between border-b px-6 py-3">
         <div className="flex items-center gap-6">
           <h1 className="text-lg font-semibold">PolicyDash</h1>
           <WorkspaceNav userRole={userRole} />
@@ -29,7 +30,8 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           <UserButton />
         </div>
       </header>
-      <main className="p-6">
+      <Breadcrumb />
+      <main className="flex-1 overflow-y-auto p-6">
         {children}
       </main>
     </div>
