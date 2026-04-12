@@ -127,14 +127,33 @@ export const documentRouter = router({
       return doc
     }),
 
-  // Get all sections for a document, ordered by orderIndex
+  // Get all sections for a document, ordered by orderIndex. Non-privileged
+  // roles only see sections they are assigned to via sectionAssignments;
+  // the inArray subquery narrows the result set without changing the row
+  // shape (in contrast to an innerJoin, which would return a joined row).
   getSections: requirePermission('document:read')
     .input(z.object({ documentId: z.string().uuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const canReadAll = can(ctx.user.role, 'document:read_all')
+
+      const baseWhere = eq(policySections.documentId, input.documentId)
+      const whereClause = canReadAll
+        ? baseWhere
+        : and(
+            baseWhere,
+            inArray(
+              policySections.id,
+              db
+                .select({ id: sectionAssignments.sectionId })
+                .from(sectionAssignments)
+                .where(eq(sectionAssignments.userId, ctx.user.id)),
+            ),
+          )
+
       const sections = await db
         .select()
         .from(policySections)
-        .where(eq(policySections.documentId, input.documentId))
+        .where(whereClause)
         .orderBy(asc(policySections.orderIndex))
 
       return sections
