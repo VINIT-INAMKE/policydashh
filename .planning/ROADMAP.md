@@ -30,9 +30,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Milestone v0.2: Verifiable Policy OS — Public Consultation & On-Chain Anchoring (Phases 14–25)
 
-- [x] **Phase 14: Collab Rollback** - Remove Yjs/Hocuspocus/inline comments, drop related schema, delete hocuspocus-server; verify single-user editor with auto-save (completed 2026-04-13)
-- [x] **Phase 15: Stale Verification Closeout** - Re-verify Phase 4 FeedbackDetailSheet + Phase 7 traceability discoverability; fix Phase 9 Export Evidence Pack button (completed 2026-04-13)
-- [ ] **Phase 16: Notification Dispatch Migration + Flow 5 Smoke** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency
+- [x] **Phase 14: Collab Rollback** - Remove Yjs/Hocuspocus/inline comments, drop related schema, delete hocuspocus-server; verify single-user editor with auto-save
+ (completed 2026-04-13)
+- [x] **Phase 15: Stale Verification Closeout** - Re-verify Phase 4 FeedbackDetailSheet + Phase 7 traceability discoverability; fix Phase 9 Export Evidence Pack button
+ (completed 2026-04-13)
+- [ ] **Phase 16: Flow 5 Smoke + Notification Dispatch Migration** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency
 - [ ] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary
 - [ ] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery
 - [ ] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails
@@ -296,7 +298,7 @@ Plans:
 
 ---
 
-# Milestone v0.2 — Verifiable Policy OS: Public Consultation & On-Chain Anchoring
+#### Milestone v0.2 — Verifiable Policy OS: Public Consultation & On-Chain Anchoring
 
 **Started:** 2026-04-13
 **Phases:** 14–25 (12 phases, Phase 20.5 inserted between 20 and 21)
@@ -353,7 +355,14 @@ Plans:
   3. `notificationDispatch` Inngest fn inserts the DB row and sends the Resend email with retry safety
   4. Transition-window dual-write guarded by idempotency key (`createdBy + entityType + entityId + action`) prevents duplicate notifications during cutover
   5. Flow 5 smoke walk produces all four observable effects (in-app notification, email send, auto-draft CR, workflowTransition log) on a single feedback.decide call
-**Plans:** TBD (run /gsd:plan-phase 16)
+**Plans:** 5 plans
+
+Plans:
+- [ ] 16-00-PLAN.md - Wave 0 test scaffolds (create-draft-cr, notification-create, notification-dispatch)
+- [ ] 16-01-PLAN.md - Migration 0009 idempotency_key + notification.create event + sendNotificationCreate helper
+- [ ] 16-02-PLAN.md - notificationDispatchFn Inngest function + register in functions barrel
+- [ ] 16-03-PLAN.md - Migrate 7 createNotification callsites across 4 routers to sendNotificationCreate
+- [ ] 16-04-PLAN.md - Flow 5 end-to-end smoke walk + create-draft-cr.test.ts promotion + SMOKE.md evidence
 
 ### Phase 17: Workshop Lifecycle + Recording Pipeline (Groq)
 
