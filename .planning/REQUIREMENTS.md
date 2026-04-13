@@ -147,7 +147,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 - [x] **FIX-05**: Re-verify Phase 4 FeedbackDetailSheet triage workflow reachable after v0.1 Phase 13 /feedback consolidation
 - [x] **FIX-06**: Re-verify Phase 7 traceability page discoverable via PolicyTabBar after v0.1 Phase 13 navigation work
-- [ ] **FIX-07**: v0.1 Flow 5 (feedback.decide → Inngest → notification + email + auto-draft CR) smoke test passes end-to-end
+- [x] **FIX-07**: v0.1 Flow 5 (feedback.decide → Inngest → notification + email + auto-draft CR) smoke test passes end-to-end
 
 ### Notification Dispatch Migration
 
@@ -365,7 +365,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | FIX-05 | Phase 15 | Complete |
 | FIX-06 | Phase 15 | Complete |
 | EV-08 | Phase 15 | Complete |
-| FIX-07 | Phase 16 | Pending |
+| FIX-07 | Phase 16 | Complete |
 | NOTIF-04 | Phase 16 | Complete |
 | NOTIF-05 | Phase 16 | Complete |
 | NOTIF-06 | Phase 16 | Complete |

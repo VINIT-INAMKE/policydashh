@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
  (completed 2026-04-13)
 - [x] **Phase 15: Stale Verification Closeout** - Re-verify Phase 4 FeedbackDetailSheet + Phase 7 traceability discoverability; fix Phase 9 Export Evidence Pack button
  (completed 2026-04-13)
-- [ ] **Phase 16: Flow 5 Smoke + Notification Dispatch Migration** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency
+- [x] **Phase 16: Flow 5 Smoke + Notification Dispatch Migration** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency (completed 2026-04-13)
 - [ ] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary
 - [ ] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery
 - [ ] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails
@@ -262,7 +262,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 13. UX Consolidation & Navigation | 5/5 | Complete | 2026-04-12 |
 | 14. Collab Rollback | 4/4 | Complete    | 2026-04-13 |
 | 15. Stale Verification Closeout | 1/1 | Complete    | 2026-04-13 |
-| 16. Flow 5 Smoke + Notification Migration | 4/5 | In Progress|  |
+| 16. Flow 5 Smoke + Notification Migration | 5/5 | Complete    | 2026-04-13 |
 | 17. Workshop Lifecycle + Recording Pipeline | 0/0 | v0.2 Planning | - |
 | 18. Async Evidence Pack Export | 0/0 | v0.2 Planning | - |
 | 19. Public /participate Intake | 0/0 | v0.2 Planning | - |
@@ -355,14 +355,14 @@ Plans:
   3. `notificationDispatch` Inngest fn inserts the DB row and sends the Resend email with retry safety
   4. Transition-window dual-write guarded by idempotency key (`createdBy + entityType + entityId + action`) prevents duplicate notifications during cutover
   5. Flow 5 smoke walk produces all four observable effects (in-app notification, email send, auto-draft CR, workflowTransition log) on a single feedback.decide call
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 16-00-PLAN.md - Wave 0 test scaffolds (create-draft-cr, notification-create, notification-dispatch)
 - [x] 16-01-PLAN.md - Migration 0009 idempotency_key + notification.create event + sendNotificationCreate helper
 - [x] 16-02-PLAN.md - notificationDispatchFn Inngest function + register in functions barrel
 - [x] 16-03-PLAN.md - Migrate 7 createNotification callsites across 4 routers to sendNotificationCreate
-- [ ] 16-04-PLAN.md - Flow 5 end-to-end smoke walk + create-draft-cr.test.ts promotion + SMOKE.md evidence
+- [x] 16-04-PLAN.md - Flow 5 end-to-end smoke walk + create-draft-cr.test.ts promotion + SMOKE.md evidence
 
 ### Phase 17: Workshop Lifecycle + Recording Pipeline (Groq)
 
