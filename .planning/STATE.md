@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Milestone complete
-stopped_at: Completed 15-01-PLAN.md (Phase 15 stale verification closeout — v0.1 gate cleared)
-last_updated: "2026-04-13T20:59:55.977Z"
+status: Ready to execute
+stopped_at: Completed 16-00-PLAN.md (Wave 0 test scaffolds locked)
+last_updated: "2026-04-13T21:48:03.612Z"
 progress:
-  total_phases: 13
-  completed_phases: 13
-  total_plans: 38
-  completed_plans: 38
+  total_phases: 26
+  completed_phases: 15
+  total_plans: 48
+  completed_plans: 44
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 15 — Stale Verification Closeout
+**Current focus:** Phase 16 — flow-5-smoke-notification-dispatch-migration
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
+Phase: 16 (flow-5-smoke-notification-dispatch-migration) — EXECUTING
+Plan: 2 of 5
 
 ## Performance Metrics
 
@@ -83,6 +83,7 @@ Plan: Not started
 | Phase 14-collab-rollback P03 | 4min | 2 tasks | 7 files |
 | Phase 14-collab-rollback P04 | 10min | 2 tasks | 3 files |
 | Phase 15-stale-verification-closeout P01 | 12min | 3 tasks | 6 files |
+| Phase 16-flow-5-smoke-notification-dispatch-migration P00 | 8min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,9 @@ Recent decisions affecting current work:
 - [Phase 14-collab-rollback]: Plan 14-04: Phase-final acceptance pattern established — last plan of a rollback phase runs direct-dep grep, full-codebase residual grep, full npm test, and tsc --noEmit as the canonical Phase Acceptance Gate quartet.
 - [Phase 15-stale-verification-closeout]: FIX-05 and FIX-06 are re-verification only; Phase 13 consolidation and Phase 13-03 plan already wired FeedbackDetailSheet and PolicyTabBar Traceability tab. Verified via exact-substring greps before flipping VERIFICATION.md.
 - [Phase 15-stale-verification-closeout]: EV-08 resolved by adding optional trigger? ReactNode prop to EvidencePackDialog with default parameter = {}, preserving backwards compat with audit/page.tsx:33 zero-prop call. Auditor dashboard mounts the dialog in-place via the new prop.
+- [Phase 16-flow-5-smoke-notification-dispatch-migration]: Wave 0 uses vi.hoisted() for sharing mock functions across vi.mock factory hoist boundary (canonical pattern for this repo)
+- [Phase 16-flow-5-smoke-notification-dispatch-migration]: Wave 0 uses variable-path dynamic import inside beforeAll to let Vitest discover test files whose target module does not yet exist (bypasses Vite import-analysis static walker)
+- [Phase 16-flow-5-smoke-notification-dispatch-migration]: Wave 0 accepts 9 intentional RED failures (5 notification-create, 4 notification-dispatch) as the Nyquist contract Plans 01/02 must satisfy; pre-existing section-assignments and feedback-permissions failures logged to deferred-items.md as out-of-scope
 
 ### Pending Todos
 
@@ -204,6 +208,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T20:54:43.558Z
-Stopped at: Completed 15-01-PLAN.md (Phase 15 stale verification closeout — v0.1 gate cleared)
+Last session: 2026-04-13T21:47:53.378Z
+Stopped at: Completed 16-00-PLAN.md (Wave 0 test scaffolds locked)
 Resume file: None
