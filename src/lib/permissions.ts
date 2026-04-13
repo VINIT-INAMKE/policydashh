@@ -29,7 +29,12 @@ export const PERMISSIONS = {
 
   // Feedback (Phase 4)
   'feedback:submit':           [ROLES.STAKEHOLDER, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR] as readonly Role[],
-  'feedback:read_own':         [ROLES.STAKEHOLDER, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.OBSERVER] as readonly Role[],
+  // Every authenticated role can read their own feedback. The read_own
+  // procedures (listOwn / getById / listTransitions) scope by submitterId
+  // internally, so this is universally safe — an admin with no submissions
+  // simply sees an empty list. Restricting the grant 403s staff roles on
+  // /feedback/outcomes for no security benefit.
+  'feedback:read_own':         [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
   'feedback:read_all':         [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR] as readonly Role[],
   'feedback:review':           [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
 
