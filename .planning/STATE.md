@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-04-13T14:47:48.953Z"
+stopped_at: Completed 14-03-PLAN.md (backend surface teardown + schema drop)
+last_updated: "2026-04-13T14:54:52.626Z"
 progress:
   total_phases: 13
   completed_phases: 13
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 14 (Collab Rollback) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Plan: 3 of 4
 | Phase 13-ux-consolidation-navigation P03 | 4min | 3 tasks | 4 files |
 | Phase 14-collab-rollback P01 | 5min | 2 tasks | 10 files |
 | Phase 14-collab-rollback P02 | 3min | 2 tasks | 3 files |
+| Phase 14-collab-rollback P03 | 4min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,7 @@ Recent decisions affecting current work:
 - [Phase 13-ux-consolidation-navigation]: Plan 13-03: PolicyTabBar uses plain nav+Link (not base-ui Tabs) per Research Pitfall 3 to avoid route/state fight; role gating computed in server layout; content h-full with min-h-0 flex-1 shell leveraging Plan 02's flex-column chain
 - [Phase 14-collab-rollback]: Plan 14-01 Wave 1: deleted collab test files BEFORE source (Pitfall 3) to prevent Vitest import-of-deleted-code crashes; block-editor.tsx transient broken imports are intentional and reserved for Plan 14-02
 - [Phase 14-collab-rollback]: Plan 14-02: whole-file Write-tool rewrite used for block-editor.tsx (40% edit surface) and build-extensions.ts; editor-extensions.test.ts needed no change (already had zero inlineComment references at HEAD)
+- [Phase 14-collab-rollback]: Skipped drizzle-kit push; applied drop migration 0008 via @neondatabase/serverless driver (deterministic path given journal drift) — canonical pattern for hand-written DDL on this project
 
 ### Pending Todos
 
@@ -196,6 +198,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T14:47:42.905Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-04-13T14:54:52.610Z
+Stopped at: Completed 14-03-PLAN.md (backend surface teardown + schema drop)
 Resume file: None
