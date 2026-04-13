@@ -1,8 +1,10 @@
 ---
 phase: 07-traceability-search
-verified: 2026-03-25T00:00:00Z
-status: gaps_found
-score: 8/10 truths verified
+verified: 2026-04-13T00:00:00Z
+status: passed
+score: 9/10 truths verified (truth #10 re-verified; TRACE-01 REQUIREMENTS.md discrepancy is a separate docs-only concern outside Phase 15 scope)
+re_verification: true
+re_verified_note: "FIX-06 re-verified 2026-04-13 — PolicyTabBar includes a Traceability entry (lines 33–38) with canViewTrace role gating. Added in v0.1 Phase 13-03; confirmed reachable in v0.2 Phase 15."
 gaps:
   - truth: "Traceability link appears in workspace navigation or policy sub-navigation"
     status: failed
@@ -42,9 +44,9 @@ human_verification:
 # Phase 7: Traceability & Search Verification Report
 
 **Phase Goal:** The full feedback-to-version traceability chain is visible, queryable, and exportable -- proving the platform's core value proposition
-**Verified:** 2026-03-25
-**Status:** gaps_found
-**Re-verification:** No -- initial verification
+**Verified:** 2026-03-25 (re-verified 2026-04-13)
+**Status:** passed (re-verified 2026-04-13)
+**Re-verification:** Yes — re-verified 2026-04-13 in v0.2 Phase 15
 
 ---
 
