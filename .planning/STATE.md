@@ -1,17 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.2
-milestone_name: verifiable-policy-os
-status: Defining requirements
-stopped_at: —
-last_updated: "2026-04-13T00:00:00.000Z"
+milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
+status: Ready to execute
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-04-13T14:41:03.905Z"
 progress:
-  total_phases: 25
+  total_phases: 13
   completed_phases: 13
   total_plans: 38
   completed_plans: 38
-  v02_phases_planned: 12
-  v02_phases_complete: 0
 ---
 
 # Project State
@@ -21,14 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Milestone v0.2 — Verifiable Policy OS — Public Consultation & On-Chain Anchoring (defining requirements)
+**Current focus:** Phase 14 — Collab Rollback
 
 ## Current Position
 
-Phase: 14 (Collab Rollback) — ready to plan
-Plan: —
-Status: Milestone v0.2 roadmap committed; ready for /gsd:plan-phase 14
-Last activity: 2026-04-13 — Milestone v0.2 roadmap created (12 phases, 55 requirements)
+Phase: 14 (Collab Rollback) — EXECUTING
+Plan: 2 of 4
 
 ## Performance Metrics
 
@@ -82,6 +78,7 @@ Last activity: 2026-04-13 — Milestone v0.2 roadmap created (12 phases, 55 requ
 | Phase 13 P05 | 25m | 2 tasks | 4 files |
 | Phase 13-ux-consolidation-navigation P04 | 2min | 2 tasks | 7 files |
 | Phase 13-ux-consolidation-navigation P03 | 4min | 3 tasks | 4 files |
+| Phase 14-collab-rollback P01 | 5min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -178,6 +175,7 @@ Recent decisions affecting current work:
 - [Phase 13-ux-consolidation-navigation]: Plan 13-04: Role gating consolidated at GlobalFeedbackTabs level via server-fetched canSeeAll/canSeeEvidenceGaps props; tab components skip their own role checks
 - [Phase 13-ux-consolidation-navigation]: Plan 13-04: Legacy /feedback/outcomes and /feedback/evidence-gaps redirect to /feedback?tab= URLs to preserve old notification deep links
 - [Phase 13-ux-consolidation-navigation]: Plan 13-03: PolicyTabBar uses plain nav+Link (not base-ui Tabs) per Research Pitfall 3 to avoid route/state fight; role gating computed in server layout; content h-full with min-h-0 flex-1 shell leveraging Plan 02's flex-column chain
+- [Phase 14-collab-rollback]: Plan 14-01 Wave 1: deleted collab test files BEFORE source (Pitfall 3) to prevent Vitest import-of-deleted-code crashes; block-editor.tsx transient broken imports are intentional and reserved for Plan 14-02
 
 ### Pending Todos
 
@@ -196,6 +194,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T07:18:07.856Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-04-13T14:41:01.216Z
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
