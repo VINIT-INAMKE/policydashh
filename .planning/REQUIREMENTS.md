@@ -32,9 +32,9 @@
 - [x] **EDIT-03**: Drag-and-drop reordering of blocks within a section
 - [x] **EDIT-04**: Rich text formatting within blocks (bold, italic, underline, strikethrough, links, inline code)
 - [x] **EDIT-05**: Embeds and media support (images, file attachments, rich link previews)
-- [x] **EDIT-06**: Real-time collaborative editing -- multiple users can edit the same section simultaneously via Yjs/Hocuspocus
-- [x] **EDIT-07**: Presence indicators showing who is currently viewing/editing a section
-- [x] **EDIT-08**: Inline comments -- user can select text and leave a comment anchored to that selection
+- [x] **EDIT-06**: Real-time collaborative editing — Yjs/Hocuspocus (shipped in v0.1 Phase 11, **rolled back in v0.2 Phase 14**, deferred to v2)
+- [x] **EDIT-07**: Presence indicators showing who is currently viewing/editing a section (shipped in v0.1 Phase 11, **rolled back in v0.2 Phase 14**, deferred to v2)
+- [x] **EDIT-08**: Inline comments anchored to selected text (shipped in v0.1 Phase 11, **rolled back in v0.2 Phase 14**, deferred to v2)
 
 ### Feedback System
 
@@ -72,7 +72,7 @@
 
 ### Traceability
 
-- [ ] **TRACE-01**: Full traceability chain: Feedback -> Change Request -> Section -> Version
+- [x] **TRACE-01**: Full traceability chain: Feedback -> Change Request -> Section -> Version
 - [x] **TRACE-02**: Traceability matrix view: grid of FB -> CR -> Section -> Version with decision rationale
 - [x] **TRACE-03**: Filter traceability by stakeholder org type, section, decision outcome, version range
 - [x] **TRACE-04**: Per-section "What changed and why" view showing feedback that drove changes
@@ -120,10 +120,10 @@
 
 ### Search & Filtering
 
-- [ ] **SRCH-01**: Filter feedback by section, stakeholder type, priority, status, impact category, feedback type
-- [ ] **SRCH-02**: Full-text search across feedback content
-- [ ] **SRCH-03**: Search policy document content across sections
-- [ ] **SRCH-04**: Filter CRs by status, section, linked feedback
+- [x] **SRCH-01**: Filter feedback by section, stakeholder type, priority, status, impact category, feedback type
+- [x] **SRCH-02**: Full-text search across feedback content
+- [x] **SRCH-03**: Search policy document content across sections (section titles only; body JSONB search deferred by v0.1 plan decision)
+- [x] **SRCH-04**: Filter CRs by status, section, linked feedback
 
 ### Audit & Compliance
 
@@ -134,6 +134,99 @@
 - [x] **AUDIT-05**: Milestone evidence pack export: stakeholder list, feedback matrix, version history, workshop evidence, decision logs
 - [x] **AUDIT-06**: Evidence pack exportable as structured ZIP with index
 
+## v0.2 Requirements
+
+Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation & On-Chain Anchoring. Phases 14–25.
+
+### Collab Rollback
+
+- [ ] **COLLAB-ROLLBACK-01**: Yjs/Hocuspocus/inline-comment code removed; EDIT-06, EDIT-07, EDIT-08 moved to Deferred v2 status; `ydoc_snapshots`, `comment_threads`, `comment_replies` schema dropped; `hocuspocus-server/` directory deleted
+- [ ] **COLLAB-ROLLBACK-02**: Single-user Tiptap editor with auto-save continues to function without Collaboration extension (verified via render tests)
+
+### v0.1 Closeout
+
+- [ ] **FIX-05**: Re-verify Phase 4 FeedbackDetailSheet triage workflow reachable after v0.1 Phase 13 /feedback consolidation
+- [ ] **FIX-06**: Re-verify Phase 7 traceability page discoverable via PolicyTabBar after v0.1 Phase 13 navigation work
+- [ ] **FIX-07**: v0.1 Flow 5 (feedback.decide → Inngest → notification + email + auto-draft CR) smoke test passes end-to-end
+
+### Notification Dispatch Migration
+
+- [ ] **NOTIF-04**: Every `createNotification(...).catch(console.error)` callsite in application routers migrated to `notification.create` Inngest event
+- [ ] **NOTIF-05**: `notificationDispatch` Inngest fn handles DB insert + Resend email dispatch off the mutation critical path
+- [ ] **NOTIF-06**: Migration uses transition-window dual-write with idempotency key on `createdBy + entityType + entityId + action` to prevent duplicate sends
+
+### Workshop Lifecycle (extensions)
+
+- [ ] **WS-06**: `workshops.status` enum (`upcoming` → `in_progress` → `completed` → `archived`) with audited state transitions
+- [ ] **WS-07**: Workshop linked to cal.com event type via `calcomEventTypeId` FK on `workshops`
+- [ ] **WS-08**: Public `/workshops` listing shows upcoming workshops with cal.com embed for registration
+- [ ] **WS-09**: Cal.com webhook handler verifies HMAC-SHA256 signature on raw request body before processing
+- [ ] **WS-10**: Cal.com `BOOKING_CREATED` webhook creates `workshopRegistrations` row, auto-inviting unknown emails via Clerk
+- [ ] **WS-11**: Cal.com `MEETING_ENDED` webhook transitions workshop to `completed` and auto-populates attendance
+- [ ] **WS-12**: `workshopCompleted` Inngest fn fires 72h + 7d moderator nudges on missing evidence checklist slots
+- [ ] **WS-13**: Workshop has evidence checklist with required artifact slots (`registration_export`, `screenshot`, `recording`, `attendance`, `summary`)
+- [ ] **WS-14**: Moderator recording upload triggers Groq Whisper transcription + llama summary pipeline (moderator-reviewed before publish)
+- [ ] **WS-15**: Post-workshop feedback link is emailed to attendees and back-links to the workshop via `workshopFeedbackLinks`
+
+### Async Evidence Pack (extensions)
+
+- [ ] **EV-05**: Evidence pack export is async via Inngest (not sync tRPC)
+- [ ] **EV-06**: Async evidence pack includes R2 binaries (recordings, screenshots, attachments) via streaming `fflate.Zip` + R2 multipart upload
+- [ ] **EV-07**: Completed evidence pack uploaded to R2 and download URL emailed to requester (24h presigned GET)
+- [ ] **EV-08**: Phase 9 auditor dashboard "Export Evidence Pack" button opens `EvidencePackDialog` directly (not Link to `/audit`)
+
+### Public Intake On-Ramp
+
+- [ ] **INTAKE-01**: Public can submit `/participate` form with role, organization type, expertise, email, and interest
+- [ ] **INTAKE-02**: Cloudflare Turnstile captcha gates the `/participate` form server-side before any processing
+- [ ] **INTAKE-03**: `/participate` submission triggers `participateIntake` Inngest fn (rate-limited, idempotent per emailHash)
+- [ ] **INTAKE-04**: Submission auto-creates a Clerk user via `invitations.createInvitation` when email is unknown (role pre-assigned to `stakeholder`)
+- [ ] **INTAKE-05**: Role-tailored welcome email sent per 6 org buckets (government, industry, legal, academia, civil_society, internal) via Resend
+- [ ] **INTAKE-06**: Existing Clerk user on `/participate` submission is routed to existing account with no duplicate invite
+- [ ] **INTAKE-07**: `/participate` form is reachable without authentication
+
+### Public Surface Extensions
+
+- [ ] **PUB-06**: Public `/research` content page with executive summary, current Indian landscape, key gap clusters, research report download
+- [ ] **PUB-07**: Public `/framework` draft consultation surface with per-section status badges (Draft / Under Review / Validated) for documents tagged `isPublicDraft: true`
+- [ ] **PUB-08**: `/framework` page shows a "what changed" log aggregating recent CR merges per section
+- [ ] **PUB-09**: Minimal public shell (header, footer) with routing between `/`, `/participate`, `/workshops`, `/research`, `/framework`, `/portal`
+- [ ] **PUB-10**: Public surfaces use a policy-grade theme (white / off-white base, dark blue / slate typography, muted saffron or teal accent, document cards)
+
+### LLM-Assisted Content (Groq)
+
+- [ ] **LLM-01**: Groq SDK wrapper (`src/lib/llm.ts`) routes tasks to appropriate models with fail-fast env validation via `requireEnv('GROQ_API_KEY')`
+- [ ] **LLM-02**: Workshop recording is transcribed via `whisper-large-v3-turbo` within Inngest `step.run` (uploads > 25 MB rejected at R2 presign step)
+- [ ] **LLM-03**: Workshop transcript is summarized via `llama-3.1-8b-instant` with structured output (key discussion points, decisions, action items)
+- [ ] **LLM-04**: Per-section consultation summary prose is generated via `llama-3.3-70b-versatile` from aggregated accepted feedback
+- [ ] **LLM-05**: Consultation summary cached in `documentVersions.consultationSummary` (JSONB) and auto-regenerated on every `version.published` event
+- [ ] **LLM-06**: Consultation summary generation sees only anonymized feedback content (bodies without submitter identity)
+- [ ] **LLM-07**: All LLM outputs enter a human review gate (`pending → draft → approved`) before any public rendering
+- [ ] **LLM-08**: LLM output guardrail regex detects stakeholder names leaking through summaries and blocks publish
+
+### Engagement Tracking & UX Extensions
+
+- [ ] **UX-08**: `users.lastActivityAt` updated via tRPC middleware on every authenticated mutation
+- [ ] **UX-09**: Admin dashboard widget lists inactive users (no activity in configurable window) with engagement score
+- [ ] **UX-10**: Basic engagement score calculated from feedback count + workshop attendance count
+- [ ] **UX-11**: Workshop attendance history visible on stakeholder profile (auto-populated from cal.com webhooks)
+
+### Verification Layer (Cardano Anchoring)
+
+- [ ] **VERIFY-01**: First-class `milestones` table with required-slot definitions and readiness state (immutable once anchored)
+- [ ] **VERIFY-02**: Milestone entity links to `documentVersions`, `workshops`, `feedbackItems`, `evidenceArtifacts` via nullable `milestoneId` FK
+- [ ] **VERIFY-03**: Admin can mark milestone ready, triggering hash computation and Cardano anchoring
+- [ ] **VERIFY-04**: SHA256 hashing service (`src/lib/hashing.ts`) produces deterministic hashes for `policyVersion`, `workshop`, `evidenceBundle`, and `milestone`
+- [ ] **VERIFY-05**: JSON canonicalization (RFC 8785 JCS or explicit sort+stringify) with golden-fixture tests ensures hash determinism
+- [ ] **VERIFY-06**: `milestoneReady` Inngest fn anchors milestone state to Cardano preview-net via Mesh SDK + Blockfrost in 5 steps (compute-hash → persist-hash → check-existing-tx → submit-tx → confirm-loop)
+- [ ] **VERIFY-07**: Every `version.published` event triggers a per-version Cardano anchor tx
+- [ ] **VERIFY-08**: Cardano anchor fn is idempotent (DB unique constraint on hash + Blockfrost metadata-label pre-check + `concurrency: { key: 'cardano-wallet', limit: 1 }`)
+- [ ] **VERIFY-09**: Public `/portal` displays Verified State badges with Cardanoscan preview-net explorer links on anchored versions and milestones
+
+### Cross-Phase Integration
+
+- [ ] **INTEGRATION-01**: End-to-end smoke test walks the full chain: `/participate` submit → Clerk invite → workshop register → 48h + 2h reminders fire → `MEETING_ENDED` webhook → workshop completed + attendance populated → moderator nudge → feedback submit → feedback.decide → notification Inngest → CR → merge → version published → per-version Cardano anchor → milestone ready → milestone hash → milestone Cardano anchor → Verified State badge visible on public portal
+
 ## v2 Requirements
 
 ### Advanced Editor
@@ -141,6 +234,9 @@
 - **EDIT-V2-01**: Paragraph-level text anchors for pinpoint feedback targeting
 - **EDIT-V2-02**: Inline databases (Notion-style)
 - **EDIT-V2-03**: Templates for common policy section structures
+- **EDIT-V2-04**: Real-time collaborative editing (rolled back from v0.1 Phase 11 in v0.2 Phase 14; formerly EDIT-06)
+- **EDIT-V2-05**: Presence indicators for active editors (rolled back from v0.1 Phase 11 in v0.2 Phase 14; formerly EDIT-07)
+- **EDIT-V2-06**: Inline comments anchored to selected text (rolled back from v0.1 Phase 11 in v0.2 Phase 14; formerly EDIT-08)
 
 ### Multi-Tenant
 
@@ -272,4 +368,4 @@
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after roadmap creation*
+*Last updated: 2026-04-13 after milestone v0.2 definition (55 new requirements added across 9 categories + collab rollback; 5 v0.1 pending flipped to Complete; 3 v0.1 editor reqs annotated as rolled back in v0.2 Phase 14)*
