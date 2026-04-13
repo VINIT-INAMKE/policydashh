@@ -30,6 +30,13 @@ export const r2Client = new S3Client({
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
   },
+  // R2's CORS policy is scoped to the account endpoint hostname
+  // (e.g. https://<account-id>.r2.cloudflarestorage.com). The AWS SDK
+  // defaults to virtual-hosted-style URLs (bucket.<account-id>...),
+  // which is a different hostname and R2 does not serve CORS headers
+  // for that variant. forcePathStyle keeps the hostname stable so the
+  // bucket's CORS policy actually applies to browser uploads.
+  forcePathStyle: true,
   // AWS SDK v3 (>= 3.729) started signing a zero CRC32 checksum into
   // presigned PUT URLs by default. R2 then validates the uploaded body
   // against that signed-in checksum, rejects the mismatch, and returns
