@@ -66,10 +66,6 @@ export const PERMISSIONS = {
   // Workshops (Phase 10)
   'workshop:manage':           [ROLES.ADMIN, ROLES.WORKSHOP_MODERATOR] as readonly Role[],
   'workshop:read':             [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
-
-  // Inline Comments (Phase 11)
-  'comment:read':              [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
-  'comment:create':            [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER] as readonly Role[],
 } as const
 
 export type Permission = keyof typeof PERMISSIONS

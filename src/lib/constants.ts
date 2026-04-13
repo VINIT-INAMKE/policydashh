@@ -74,11 +74,6 @@ export const ACTIONS = {
   WORKSHOP_SECTION_UNLINK:  'workshop.section_unlink',
   WORKSHOP_FEEDBACK_LINK:   'workshop.feedback_link',
   WORKSHOP_FEEDBACK_UNLINK: 'workshop.feedback_unlink',
-  COMMENT_CREATE:           'comment.create',
-  COMMENT_REPLY:            'comment.reply',
-  COMMENT_RESOLVE:          'comment.resolve',
-  COMMENT_REOPEN:           'comment.reopen',
-  COMMENT_DELETE:            'comment.delete',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]
