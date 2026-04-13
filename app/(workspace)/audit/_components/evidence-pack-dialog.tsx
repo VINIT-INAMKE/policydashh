@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, type ReactNode, type ReactElement } from 'react'
 import { CheckCircle, Download, Loader2, FileArchive } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,11 @@ import { Progress } from '@/components/ui/progress'
 
 type ExportState = 'idle' | 'loading' | 'complete' | 'error'
 
-export function EvidencePackDialog() {
+interface EvidencePackDialogProps {
+  trigger?: ReactNode
+}
+
+export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
   const [open, setOpen] = useState(false)
   const [policyId, setPolicyId] = useState('')
   const [exportState, setExportState] = useState<ExportState>('idle')
@@ -107,7 +111,18 @@ export function EvidencePackDialog() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button size="sm"><FileArchive className="size-4" />Export Evidence Pack</Button>} />
+      <DialogTrigger
+        render={
+          trigger !== undefined
+            ? (trigger as ReactElement)
+            : (
+              <Button size="sm">
+                <FileArchive className="size-4" />
+                Export Evidence Pack
+              </Button>
+            )
+        }
+      />
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Export Evidence Pack</DialogTitle>

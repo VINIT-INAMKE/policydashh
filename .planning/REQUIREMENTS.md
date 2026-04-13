@@ -145,8 +145,8 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 ### v0.1 Closeout
 
-- [ ] **FIX-05**: Re-verify Phase 4 FeedbackDetailSheet triage workflow reachable after v0.1 Phase 13 /feedback consolidation
-- [ ] **FIX-06**: Re-verify Phase 7 traceability page discoverable via PolicyTabBar after v0.1 Phase 13 navigation work
+- [x] **FIX-05**: Re-verify Phase 4 FeedbackDetailSheet triage workflow reachable after v0.1 Phase 13 /feedback consolidation
+- [x] **FIX-06**: Re-verify Phase 7 traceability page discoverable via PolicyTabBar after v0.1 Phase 13 navigation work
 - [ ] **FIX-07**: v0.1 Flow 5 (feedback.decide → Inngest → notification + email + auto-draft CR) smoke test passes end-to-end
 
 ### Notification Dispatch Migration
@@ -173,7 +173,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [ ] **EV-05**: Evidence pack export is async via Inngest (not sync tRPC)
 - [ ] **EV-06**: Async evidence pack includes R2 binaries (recordings, screenshots, attachments) via streaming `fflate.Zip` + R2 multipart upload
 - [ ] **EV-07**: Completed evidence pack uploaded to R2 and download URL emailed to requester (24h presigned GET)
-- [ ] **EV-08**: Phase 9 auditor dashboard "Export Evidence Pack" button opens `EvidencePackDialog` directly (not Link to `/audit`)
+- [x] **EV-08**: Phase 9 auditor dashboard "Export Evidence Pack" button opens `EvidencePackDialog` directly (not Link to `/audit`)
 
 ### Public Intake On-Ramp
 

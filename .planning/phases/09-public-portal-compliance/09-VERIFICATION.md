@@ -1,11 +1,13 @@
 ---
 phase: 09-public-portal-compliance
-verified: 2026-03-25T12:00:00Z
-status: gaps_found
-score: 12/13 must-haves verified
+verified: 2026-04-13T00:00:00Z
+status: passed
+score: 13/13 truths verified
+re_verification: true
+re_verified_note: "EV-08 fixed 2026-04-13 — EvidencePackDialog accepts optional trigger prop; auditor-dashboard.tsx now mounts the dialog in-place with its own Export Evidence Pack (ZIP) button. No /audit navigation required."
 gaps:
   - truth: "Auditor dashboard 'View Full Audit Trail' button links to /audit"
-    status: partial
+    status: fixed
     reason: "The 'View Full Audit Trail' button correctly links to /audit. However, the 'Export Evidence Pack (ZIP)' button in the Export Controls card also links to /audit (navigates to audit page) rather than opening the EvidencePackDialog directly. The plan specified this button should trigger the dialog. The dialog is accessible from the audit page, but the dashboard shortcut does not directly invoke it."
     artifacts:
       - path: "app/(workspace)/dashboard/_components/auditor-dashboard.tsx"
@@ -36,9 +38,9 @@ human_verification:
 # Phase 9: Public Portal & Compliance Verification Report
 
 **Phase Goal:** Published policies are publicly accessible with full privacy controls, and auditors can review the complete audit trail and export governance evidence packs
-**Verified:** 2026-03-25T12:00:00Z
-**Status:** gaps_found (1 warning-level gap)
-**Re-verification:** No — initial verification
+**Verified:** 2026-03-25T12:00:00Z (re-verified 2026-04-13T00:00:00Z)
+**Status:** passed (re-verified 2026-04-13)
+**Re-verification:** Yes — re-verified 2026-04-13 in v0.2 Phase 15
 
 ---
 

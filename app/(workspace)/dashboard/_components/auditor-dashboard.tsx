@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from './stat-card'
 import { formatDistanceToNow } from 'date-fns'
+import { EvidencePackDialog } from '@/app/(workspace)/audit/_components/evidence-pack-dialog'
 
 interface AuditorDashboardProps {
   userId: string
@@ -102,10 +103,14 @@ export async function AuditorDashboard({ userId }: AuditorDashboardProps) {
               <Download className="size-4" />
               Export Audit Log (CSV)
             </Button>
-            <Button variant="outline" size="sm" render={<Link href="/audit" />}>
-              <FileArchive className="size-4" />
-              Export Evidence Pack (ZIP)
-            </Button>
+            <EvidencePackDialog
+              trigger={
+                <Button variant="outline" size="sm">
+                  <FileArchive className="size-4" />
+                  Export Evidence Pack (ZIP)
+                </Button>
+              }
+            />
           </div>
         </CardContent>
       </Card>
