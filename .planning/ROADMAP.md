@@ -262,7 +262,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 13. UX Consolidation & Navigation | 5/5 | Complete | 2026-04-12 |
 | 14. Collab Rollback | 4/4 | Complete    | 2026-04-13 |
 | 15. Stale Verification Closeout | 1/1 | Complete    | 2026-04-13 |
-| 16. Flow 5 Smoke + Notification Migration | 1/5 | In Progress|  |
+| 16. Flow 5 Smoke + Notification Migration | 2/5 | In Progress|  |
 | 17. Workshop Lifecycle + Recording Pipeline | 0/0 | v0.2 Planning | - |
 | 18. Async Evidence Pack Export | 0/0 | v0.2 Planning | - |
 | 19. Public /participate Intake | 0/0 | v0.2 Planning | - |
@@ -355,11 +355,11 @@ Plans:
   3. `notificationDispatch` Inngest fn inserts the DB row and sends the Resend email with retry safety
   4. Transition-window dual-write guarded by idempotency key (`createdBy + entityType + entityId + action`) prevents duplicate notifications during cutover
   5. Flow 5 smoke walk produces all four observable effects (in-app notification, email send, auto-draft CR, workflowTransition log) on a single feedback.decide call
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 - [x] 16-00-PLAN.md - Wave 0 test scaffolds (create-draft-cr, notification-create, notification-dispatch)
-- [ ] 16-01-PLAN.md - Migration 0009 idempotency_key + notification.create event + sendNotificationCreate helper
+- [x] 16-01-PLAN.md - Migration 0009 idempotency_key + notification.create event + sendNotificationCreate helper
 - [ ] 16-02-PLAN.md - notificationDispatchFn Inngest function + register in functions barrel
 - [ ] 16-03-PLAN.md - Migrate 7 createNotification callsites across 4 routers to sendNotificationCreate
 - [ ] 16-04-PLAN.md - Flow 5 end-to-end smoke walk + create-draft-cr.test.ts promotion + SMOKE.md evidence

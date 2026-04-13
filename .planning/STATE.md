@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 16-00-PLAN.md (Wave 0 test scaffolds locked)
-last_updated: "2026-04-13T21:48:03.612Z"
+stopped_at: Completed 16-01-PLAN.md (notification idempotency column + notification.create event registry)
+last_updated: "2026-04-13T21:57:48.358Z"
 progress:
   total_phases: 26
   completed_phases: 15
   total_plans: 48
-  completed_plans: 44
+  completed_plans: 45
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 16 (flow-5-smoke-notification-dispatch-migration) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Plan: 2 of 5
 | Phase 14-collab-rollback P04 | 10min | 2 tasks | 3 files |
 | Phase 15-stale-verification-closeout P01 | 12min | 3 tasks | 6 files |
 | Phase 16-flow-5-smoke-notification-dispatch-migration P00 | 8min | 3 tasks | 4 files |
+| Phase 16-flow-5-smoke-notification-dispatch-migration P01 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -190,6 +191,9 @@ Recent decisions affecting current work:
 - [Phase 16-flow-5-smoke-notification-dispatch-migration]: Wave 0 uses vi.hoisted() for sharing mock functions across vi.mock factory hoist boundary (canonical pattern for this repo)
 - [Phase 16-flow-5-smoke-notification-dispatch-migration]: Wave 0 uses variable-path dynamic import inside beforeAll to let Vitest discover test files whose target module does not yet exist (bypasses Vite import-analysis static walker)
 - [Phase 16-flow-5-smoke-notification-dispatch-migration]: Wave 0 accepts 9 intentional RED failures (5 notification-create, 4 notification-dispatch) as the Nyquist contract Plans 01/02 must satisfy; pre-existing section-assignments and feedback-permissions failures logged to deferred-items.md as out-of-scope
+- [Phase 16-flow-5-smoke-notification-dispatch-migration]: Partial unique index (WHERE idempotency_key IS NOT NULL) for notification dual-write transition window — legacy NULL inserts bypass the constraint while new sendNotificationCreate inserts get NOTIF-06 dedup
+- [Phase 16-flow-5-smoke-notification-dispatch-migration]: z.guid() not z.uuid() for notification.create schema — Zod 4 z.uuid() rejects version-0 UUIDs used in locked Wave 0 test fixtures; production v4 UUIDs validate identically under both
+- [Phase 16-flow-5-smoke-notification-dispatch-migration]: Neon serverless DDL runner uses sql.query(stmt) not sql`...` tagged-template form — documented as Pattern 2 for future hand-written migrations
 
 ### Pending Todos
 
@@ -208,6 +212,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T21:47:53.378Z
-Stopped at: Completed 16-00-PLAN.md (Wave 0 test scaffolds locked)
+Last session: 2026-04-13T21:57:37.924Z
+Stopped at: Completed 16-01-PLAN.md (notification idempotency column + notification.create event registry)
 Resume file: None
