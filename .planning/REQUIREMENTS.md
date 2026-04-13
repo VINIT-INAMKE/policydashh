@@ -141,7 +141,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 ### Collab Rollback
 
 - [x] **COLLAB-ROLLBACK-01**: Yjs/Hocuspocus/inline-comment code removed; EDIT-06, EDIT-07, EDIT-08 moved to Deferred v2 status; `ydoc_snapshots`, `comment_threads`, `comment_replies` schema dropped; `hocuspocus-server/` directory deleted
-- [ ] **COLLAB-ROLLBACK-02**: Single-user Tiptap editor with auto-save continues to function without Collaboration extension (verified via render tests)
+- [x] **COLLAB-ROLLBACK-02**: Single-user Tiptap editor with auto-save continues to function without Collaboration extension (verified via render tests)
 
 ### v0.1 Closeout
 
@@ -361,7 +361,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | AUDIT-05 | Phase 9 | Complete |
 | AUDIT-06 | Phase 9 | Complete |
 | COLLAB-ROLLBACK-01 | Phase 14 | Complete |
-| COLLAB-ROLLBACK-02 | Phase 14 | Pending |
+| COLLAB-ROLLBACK-02 | Phase 14 | Complete |
 | FIX-05 | Phase 15 | Pending |
 | FIX-06 | Phase 15 | Pending |
 | EV-08 | Phase 15 | Pending |
