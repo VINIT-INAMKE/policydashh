@@ -1,777 +1,943 @@
-# Architecture Research
+# Architecture Research — PolicyDash v0.2
 
-**Domain:** Stakeholder policy consultation platform with real-time collaborative editing
-**Researched:** 2026-03-25
-**Confidence:** HIGH (core patterns well-established; integration of CRDT + workflow is the novel challenge)
+**Domain:** Next.js 16 + tRPC v11 + Drizzle + Inngest + Clerk on Vercel serverless (existing PolicyDash app, subsequent milestone integration)
+**Researched:** 2026-04-13
+**Confidence:** HIGH (grounded in repo source; no redesign, only integration guidance)
 
-## System Overview
+## Scope
 
-PolicyDash is a dual-model system: real-time collaborative document editing (CRDT-based) alongside structured relational workflow data (feedback, change requests, versions, RBAC). The core architectural challenge is bridging these two worlds cleanly.
+This is **integration research, not greenfield design.** v0.1 shipped 13 phases; v0.2 adds ~10 capabilities (async evidence export, workshop lifecycle, public `/participate`, cal.com webhooks, public content surfaces, LLM consultation summaries, Milestone entity, SHA256 hashing, Cardano anchoring, engagement tracking). Every recommendation below respects the existing file layout observed in:
 
-```
-                            CLIENTS
-                 ┌──────────────────────────┐
-                 │  Next.js App (RSC + SPA)  │
-                 │  ┌──────┐  ┌───────────┐ │
-                 │  │Editor│  │ Dashboard  │ │
-                 │  │(CRDT)│  │ (tRPC/RSC) │ │
-                 │  └──┬───┘  └─────┬─────┘ │
-                 └─────┼────────────┼───────┘
-                       │            │
-          ┌────────────┼────────────┼────────────────┐
-          │   WebSocket │    HTTPS   │                │
-          │            │            │                │
-   ┌──────▼──────┐  ┌──▼────────────▼──┐  ┌────────┐ │
-   │ Hocuspocus   │  │   Next.js API    │  │  Auth  │ │
-   │ (Yjs CRDT    │  │   (tRPC Router)  │  │Provider│ │
-   │  Server)     │  │                  │  │(Clerk) │ │
-   │              │  │ ┌──────────────┐ │  └────────┘ │
-   │ onStoreDoc ──┼──┼─▶ Workflow     │ │             │
-   │ webhook      │  │ │ Engine       │ │             │
-   │              │  │ │ (XState)     │ │             │
-   └──────┬───────┘  │ └──────────────┘ │             │
-          │          │ ┌──────────────┐ │             │
-          │          │ │ RBAC         │ │             │
-          │          │ │ Service      │ │             │
-          │          │ └──────────────┘ │             │
-          │          │ ┌──────────────┐ │             │
-          │          │ │ Audit Log    │ │             │
-          │          │ │ (append-only)│ │             │
-          │          │ └──────┬───────┘ │             │
-          │          └────────┼─────────┘             │
-          │                   │                       │
-   ┌──────▼───────────────────▼──────────────────┐    │
-   │              PostgreSQL                      │    │
-   │  ┌─────────┐ ┌──────────┐ ┌──────────────┐  │    │
-   │  │ CRDT    │ │ Workflow │ │ Audit        │  │    │
-   │  │ Binary  │ │ Tables   │ │ Event Store  │  │    │
-   │  │ Store   │ │          │ │ (append-only)│  │    │
-   │  └─────────┘ └──────────┘ └──────────────┘  │    │
-   └──────────────────────────────────────────────┘    │
-                                                       │
-   ┌───────────────────────┐  ┌──────────────────┐    │
-   │  S3/MinIO             │  │  Public Portal   │    │
-   │  (File/Evidence       │  │  (Static/ISR     │    │
-   │   Storage)            │  │   read-only)     │    │
-   └───────────────────────┘  └──────────────────┘    │
-                                                       │
-          ─ ─ ─ ─  SERVER BOUNDARY  ─ ─ ─ ─ ─ ─ ─ ─ ─┘
-```
+- `src/trpc/init.ts` — `publicProcedure`, `protectedProcedure`, `requirePermission(p)` already defined
+- `src/server/routers/_app.ts` — flat barrel-imported router composition
+- `src/inngest/client.ts`, `events.ts`, `functions/index.ts`, `functions/feedback-reviewed.ts` — canonical Flow 5 pattern
+- `app/api/webhooks/clerk/route.ts` — svix-verified webhook pattern
+- `proxy.ts` — Clerk middleware config with public-route matcher (note: file is named `proxy.ts` not `middleware.ts`)
+- `src/db/schema/workshops.ts` — existing FK pattern (link tables, not polymorphic)
 
-### The Dual-Model Problem (Central Architectural Insight)
+---
 
-PolicyDash operates in two distinct data domains that must stay synchronized:
-
-1. **CRDT Domain** -- Real-time collaborative document content. Stored as Yjs binary (Uint8Array). Synced via WebSocket. Conflict-free by design. Content lives in Y.Doc instances managed by Hocuspocus.
-
-2. **Relational Domain** -- Structured workflow data. Feedback items, change requests, versions, RBAC assignments, audit logs. Stored in normalized PostgreSQL tables. Accessed via tRPC. Consistency via transactions.
-
-The bridge between these domains is the **Section** entity: sections have stable IDs in both the CRDT document (as block metadata) and the relational database (as rows). When a section's content changes in the CRDT, the Hocuspocus `onStoreDocument` hook can trigger relational side-effects (version tracking, audit logging). When a CR is merged, the relational system instructs the CRDT to apply changes to specific section fragments.
-
-## Component Responsibilities
-
-| Component | Responsibility | Boundary | Implementation |
-|-----------|----------------|----------|----------------|
-| **Block Editor** | Notion-style content editing, slash commands, drag/drop, inline comments | Client-side, renders CRDT state | BlockNote + Yjs Y.XmlFragment |
-| **Hocuspocus Server** | CRDT sync, WebSocket management, document persistence, awareness (cursors) | Standalone process or embedded in Next.js | @hocuspocus/server with custom extensions |
-| **tRPC API Layer** | All structured data operations (feedback, CRs, versions, RBAC, users) | Next.js API routes | tRPC v11 with Zod validation |
-| **Workflow Engine** | State machine management for feedback lifecycle, CR lifecycle, version lifecycle | Server-side service layer | XState v5 machines, persisted state in DB |
-| **RBAC Service** | Permission evaluation, section-level access scoping, role management | Middleware + DB policies | Application-layer checks + PostgreSQL RLS |
-| **Audit Logger** | Immutable event recording for every state change | Append-only service | INSERT-only PostgreSQL table, no UPDATE/DELETE |
-| **Version Manager** | Snapshot creation, diff generation, changelog compilation, publishing | Server-side service | Yjs snapshots + relational version metadata |
-| **File Storage** | Evidence artifacts, workshop materials, media embeds | External service | S3-compatible (MinIO for dev, S3 for prod) |
-| **Auth Provider** | Authentication, session management, invite flows | External service | Clerk (handles JWT, MFA, invites) |
-| **Public Portal** | Read-only published policy content, public changelog | Separate route group or subdomain | Next.js ISR pages, no auth required |
-
-## Recommended Project Structure
+## System Overview (existing + v0.2 additions)
 
 ```
-policydash/
-├── src/
-│   ├── app/                        # Next.js App Router
-│   │   ├── (workspace)/            # Authenticated workspace routes
-│   │   │   ├── documents/          # Document editor pages
-│   │   │   ├── feedback/           # Feedback management
-│   │   │   ├── changes/            # Change request views
-│   │   │   ├── versions/           # Version history
-│   │   │   ├── workshops/          # Workshop management
-│   │   │   ├── traceability/       # Traceability matrix
-│   │   │   ├── admin/              # Admin/RBAC management
-│   │   │   └── layout.tsx          # Auth-gated workspace layout
-│   │   ├── (portal)/               # Public portal routes (no auth)
-│   │   │   ├── policies/           # Published policy viewer
-│   │   │   ├── changelog/          # Public changelog
-│   │   │   └── layout.tsx          # Public layout (no sidebar)
-│   │   ├── api/
-│   │   │   └── trpc/[trpc]/        # tRPC HTTP handler
-│   │   └── layout.tsx              # Root layout
-│   │
-│   ├── server/                     # Server-side business logic
-│   │   ├── routers/                # tRPC routers (one per domain)
-│   │   │   ├── feedback.ts
-│   │   │   ├── changeRequest.ts
-│   │   │   ├── version.ts
-│   │   │   ├── document.ts
-│   │   │   ├── workshop.ts
-│   │   │   ├── user.ts
-│   │   │   ├── rbac.ts
-│   │   │   └── audit.ts
-│   │   ├── services/               # Domain services (business rules)
-│   │   │   ├── feedback.service.ts
-│   │   │   ├── changeRequest.service.ts
-│   │   │   ├── version.service.ts
-│   │   │   ├── traceability.service.ts
-│   │   │   └── audit.service.ts
-│   │   ├── machines/               # XState workflow machines
-│   │   │   ├── feedback.machine.ts
-│   │   │   ├── changeRequest.machine.ts
-│   │   │   └── version.machine.ts
-│   │   ├── rbac/                   # Permission evaluation
-│   │   │   ├── permissions.ts      # Permission definitions
-│   │   │   ├── evaluate.ts         # Permission checker
-│   │   │   └── middleware.ts       # tRPC middleware
-│   │   └── trpc.ts                 # tRPC initialization + context
-│   │
-│   ├── collab/                     # Hocuspocus collaboration server
-│   │   ├── server.ts               # Hocuspocus config + extensions
-│   │   ├── extensions/
-│   │   │   ├── persistence.ts      # PostgreSQL document persistence
-│   │   │   ├── auth.ts             # WebSocket auth (verify Clerk JWT)
-│   │   │   ├── rbac.ts             # Section-level read/write filtering
-│   │   │   └── audit.ts            # CRDT change audit logging
-│   │   └── hooks.ts                # onConnect, onStoreDocument, etc.
-│   │
-│   ├── db/                         # Database layer
-│   │   ├── schema/                 # Drizzle ORM schema files
-│   │   │   ├── documents.ts
-│   │   │   ├── sections.ts
-│   │   │   ├── feedback.ts
-│   │   │   ├── changeRequests.ts
-│   │   │   ├── versions.ts
-│   │   │   ├── workshops.ts
-│   │   │   ├── users.ts
-│   │   │   ├── rbac.ts
-│   │   │   ├── audit.ts
-│   │   │   └── files.ts
-│   │   ├── migrations/
-│   │   └── index.ts                # DB client + connection
-│   │
-│   ├── components/                 # React components
-│   │   ├── editor/                 # BlockNote editor wrapper + config
-│   │   ├── feedback/               # Feedback UI components
-│   │   ├── workflow/               # CR and version workflow UI
-│   │   ├── traceability/           # Matrix/chain visualization
-│   │   ├── dashboard/              # Role-aware dashboard panels
-│   │   └── ui/                     # Shared UI primitives
-│   │
-│   ├── lib/                        # Shared utilities
-│   │   ├── trpc.ts                 # tRPC client setup
-│   │   ├── auth.ts                 # Clerk client helpers
-│   │   ├── constants.ts            # IDs, enums, prefixes (FB-, CR-)
-│   │   └── types.ts                # Shared TypeScript types
-│   │
-│   └── hooks/                      # React hooks
-│       ├── useCollaboration.ts     # Yjs/Hocuspocus connection
-│       ├── usePermissions.ts       # Client-side RBAC checks
-│       └── useWorkflow.ts          # Workflow state subscriptions
-│
-├── drizzle.config.ts
-├── next.config.ts
-└── package.json
+┌────────────────────────────────────────────────────────────────────────┐
+│                         Browser / Public Visitors                     │
+│   (workspace) authed routes    |    (public) /portal /participate     │
+└──────────┬────────────────────────────────┬───────────────────────────┘
+           │ tRPC over HTTP                 │ public tRPC + form POSTs
+           ▼                                ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                      Next.js 16 app/ (Vercel serverless)             │
+│                                                                        │
+│  app/api/trpc/[trpc]/route.ts   ──►  appRouter                        │
+│      ├── protectedProcedure (Clerk session required)                  │
+│      └── publicProcedure + publicRateLimited (NEW, no auth ctx)       │
+│                                                                        │
+│  app/api/webhooks/                                                    │
+│      ├── clerk/route.ts     (existing — user.created)                 │
+│      ├── calcom/route.ts    (NEW — BOOKING_CREATED / COMPLETED)       │
+│      └── _lib/verify.ts     (NEW — shared signature helpers)          │
+│                                                                        │
+│  app/api/inngest/route.ts ──► functions[] barrel (Inngest handler)    │
+│                                                                        │
+│  app/(workspace)/  ... authed UI (existing)                           │
+│  app/(public)/portal/ ... existing public pages                       │
+│  app/(public)/participate/ /workshops/ /research/ /framework/ (NEW)   │
+└──────────┬────────────────────────────┬──────────────┬────────────────┘
+           │ drizzle (Neon HTTP)        │ inngest.send │ 3rd-party
+           ▼                            ▼              ▼
+┌─────────────────────────┐  ┌───────────────────┐  ┌────────────────┐
+│       Postgres          │  │  Inngest runtime  │  │ Clerk, cal.com,│
+│   (existing schema      │  │  ┌─────────────┐  │  │  Groq, R2,     │
+│    + new milestones,    │  │  │ feedback/   │  │  │  Blockfrost    │
+│    hashes,              │  │  │ workshop/   │  │  │  (Cardano)     │
+│    engagement cols)     │  │  │ milestone/  │  │  └────────────────┘
+└─────────────────────────┘  │  │ public/     │  │
+                             │  │ export/     │  │
+                             │  └─────────────┘  │
+                             │  step.run units   │
+                             │  for long jobs    │
+                             └───────────────────┘
 ```
 
-### Structure Rationale
+---
 
-- **`server/routers/` + `server/services/`:** Routers handle input validation and output shaping. Services contain business logic. This separation means workflow logic is testable independent of tRPC.
-- **`server/machines/`:** XState machines are pure, serializable state definitions. They live alongside services because they ARE the business rules for lifecycle transitions.
-- **`collab/`:** Hocuspocus is a separate concern from the tRPC API. It may run as a separate process in production (different scaling profile -- long-lived WebSocket connections vs request/response). Keeping it isolated enables this.
-- **`db/schema/`:** One file per domain entity. Drizzle schema files are the single source of truth for database structure. No separate migration authoring -- generate from schema diffs.
-- **`(workspace)/` vs `(portal)/`:** Next.js route groups cleanly separate authenticated workspace from public portal. Different layouts, different auth requirements, potentially different caching strategies.
+## 1. Public vs Protected tRPC Organization
 
-## Architectural Patterns
+### Current state (verified in `src/trpc/init.ts`)
 
-### Pattern 1: Dual-Model Bridge via Section Stable IDs
-
-**What:** Every section in a policy document has a stable UUID that exists in BOTH the Yjs CRDT tree (as block metadata) AND the PostgreSQL `sections` table. This ID never changes across edits or versions. It is the bridge between real-time content and structured workflow data.
-
-**When to use:** Any time feedback, CRs, or version diffs need to reference specific document content.
-
-**Trade-offs:**
-- PRO: Feedback can reference sections without coupling to CRDT internals
-- PRO: RBAC can scope access per-section using relational queries
-- CON: Must keep section IDs synchronized between CRDT and DB -- Hocuspocus hooks handle this
-- CON: Section creation/deletion in editor must propagate to relational DB
-
-**Example:**
-```typescript
-// In BlockNote editor -- section blocks carry stable IDs
-const sectionBlock = {
-  id: "block-uuid-123",           // BlockNote's internal ID
-  type: "section",
-  props: {
-    sectionId: "sec-stable-uuid",  // Stable ID shared with DB
-    title: "Data Privacy Requirements",
-    order: 3,
-  },
-  children: [/* nested content blocks */],
-};
-
-// In PostgreSQL -- same sectionId links to workflow data
-// sections table
-{ id: "sec-stable-uuid", document_id: "doc-uuid", title: "Data Privacy Requirements", order: 3 }
-
-// feedback table references the section
-{ id: "FB-001", section_id: "sec-stable-uuid", type: "suggestion", status: "submitted" }
+```ts
+export const publicProcedure   = t.procedure                  // already exported, unused
+export const protectedProcedure = t.procedure.use(enforceAuth) // Clerk session gate
+export const requirePermission  = (p) => protectedProcedure.use(...)
 ```
 
-### Pattern 2: CRDT Content + Relational Metadata (Separation of Concerns)
+`publicProcedure` is **defined but never used**. All routers in `src/server/routers/_app.ts` consume `requirePermission(...)` or `protectedProcedure`. The Clerk middleware (`proxy.ts`) already excludes `/api/trpc` from forced auth via the matcher, but any router calling `ctx.user!` would throw for unauthed callers — meaning public procedures must be explicitly built, not just "left unprotected."
 
-**What:** Document content (paragraphs, lists, tables, formatting) lives exclusively in Yjs. Structured metadata (feedback, CRs, versions, permissions) lives exclusively in PostgreSQL. Neither tries to be the other.
+### Recommendation: Separate `publicRouter` + `publicProcedure` helper with rate-limit middleware
 
-**When to use:** Always. This is the foundational data architecture.
+**Do NOT** mix public and protected procedures in the same router file. Two reasons:
 
-**Trade-offs:**
-- PRO: Each system does what it is designed for (CRDT for merge-free editing, RDBMS for queries/transactions)
-- PRO: You can query "all feedback for section X" without parsing CRDT state
-- CON: Two sources of truth for "what does this document look like" -- CRDT for live content, DB for version snapshots
-- CON: Consistency requires careful hook orchestration
+1. **Accidental re-gating risk.** If `feedbackRouter` mixed `submit` (protected) and `publicSubmit` (public), a refactor touching shared imports or middleware could accidentally add `requirePermission` to the public one. Humans scan for "does this procedure live in the protected router" as a heuristic.
+2. **Context shape divergence.** Public procedures must not reference `ctx.user.id`. Keeping them in a separate file enforces this by typing — the public context has `user: null`.
 
-**Data ownership boundaries:**
-```
-CRDT (Yjs/Hocuspocus) owns:
-  - Live document content (blocks, text, formatting)
-  - Cursor positions and awareness
-  - Inline comments (ephemeral, synced via awareness)
-  - Real-time editing state
-
-PostgreSQL owns:
-  - Section registry (stable IDs, order, hierarchy)
-  - Feedback items and their lifecycle state
-  - Change requests and their lifecycle state
-  - Version metadata (number, changelog, publish status)
-  - Version content snapshots (Yjs binary snapshots stored as bytea)
-  - RBAC assignments (user -> role -> section mappings)
-  - Audit log (immutable event stream)
-  - Workshop metadata and artifact references
-  - File/evidence metadata (actual files in S3)
-```
-
-### Pattern 3: State Machine Per Lifecycle (XState)
-
-**What:** Each entity with a lifecycle (Feedback, Change Request, Version) gets its own XState machine definition. The machine defines valid states, transitions, guards (conditions), and actions (side-effects). Machine state is persisted in the entity's database row.
-
-**When to use:** Every workflow transition in the system.
-
-**Trade-offs:**
-- PRO: Impossible to reach invalid states -- the machine rejects invalid transitions
-- PRO: Visual state charts serve as living documentation
-- PRO: Guards enforce business rules (e.g., "only Policy Lead can approve CRs")
-- PRO: Actions trigger side-effects (audit log, notifications) deterministically
-- CON: XState has a learning curve for the team
-- CON: Machine definitions must be kept in sync with DB enum types
-
-**Example:**
-```typescript
-// Feedback lifecycle machine
-import { setup, assign } from 'xstate';
-
-export const feedbackMachine = setup({
-  types: {
-    context: {} as {
-      feedbackId: string;
-      sectionId: string;
-      submittedBy: string;
-      reviewedBy: string | null;
-      rationale: string | null;
-    },
-    events: {} as
-      | { type: 'SUBMIT' }
-      | { type: 'START_REVIEW'; reviewerId: string }
-      | { type: 'ACCEPT'; rationale: string }
-      | { type: 'PARTIALLY_ACCEPT'; rationale: string }
-      | { type: 'REJECT'; rationale: string }
-      | { type: 'CLOSE' },
-  },
-  guards: {
-    hasRationale: ({ event }) => 'rationale' in event && event.rationale.length > 0,
-  },
-}).createMachine({
-  id: 'feedback',
-  initial: 'submitted',
-  states: {
-    submitted: {
-      on: { START_REVIEW: { target: 'underReview' } },
-    },
-    underReview: {
-      on: {
-        ACCEPT:           { target: 'accepted', guard: 'hasRationale' },
-        PARTIALLY_ACCEPT: { target: 'partiallyAccepted', guard: 'hasRationale' },
-        REJECT:           { target: 'rejected', guard: 'hasRationale' },
-      },
-    },
-    accepted:          { on: { CLOSE: 'closed' } },
-    partiallyAccepted: { on: { CLOSE: 'closed' } },
-    rejected:          { on: { CLOSE: 'closed' } },
-    closed:            { type: 'final' },
-  },
-});
-```
-
-### Pattern 4: Append-Only Audit Log
-
-**What:** Every mutation in the system (feedback submission, CR state change, version publish, RBAC modification, document edit save) writes an immutable event to the `audit_events` table. No UPDATE or DELETE on this table, ever. The table has a database-level trigger that prevents modifications.
-
-**When to use:** Every write operation.
-
-**Trade-offs:**
-- PRO: Complete, tamper-evident history for compliance
-- PRO: Can reconstruct state at any point in time
-- PRO: Auditor role gets full visibility without special logic
-- CON: Table grows indefinitely -- partition by month/year
-- CON: Must decide granularity (every keystroke? no. every save/transition? yes.)
-
-**Schema pattern:**
-```sql
-CREATE TABLE audit_events (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  timestamp     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  actor_id      UUID NOT NULL REFERENCES users(id),
-  actor_role    TEXT NOT NULL,
-  action        TEXT NOT NULL,       -- 'feedback.submit', 'cr.approve', 'version.publish'
-  entity_type   TEXT NOT NULL,       -- 'feedback', 'change_request', 'version', 'section'
-  entity_id     UUID NOT NULL,
-  payload       JSONB NOT NULL,      -- action-specific data (old state, new state, rationale)
-  ip_address    INET
-) PARTITION BY RANGE (timestamp);
-
--- Prevent any modification after insert
-CREATE RULE no_update_audit AS ON UPDATE TO audit_events DO INSTEAD NOTHING;
-CREATE RULE no_delete_audit AS ON DELETE TO audit_events DO INSTEAD NOTHING;
-```
-
-### Pattern 5: Section-Level RBAC (Application + Database Layers)
-
-**What:** Access control is enforced at two layers. Application layer (tRPC middleware) checks "can this user perform this action on this entity?" before executing business logic. Database layer (PostgreSQL RLS) acts as a safety net, ensuring queries only return rows the user has access to even if application logic has a bug.
-
-**When to use:** Every data access operation.
-
-**Architecture:**
+**File layout (NEW):**
 
 ```
-User Request
-    ↓
-[Clerk JWT] → extract userId, roles
-    ↓
-[tRPC Middleware] → load user's section assignments
-    ↓                → check: does role + section assignment permit this action?
-    ↓                → DENY early if not (throws TRPCError FORBIDDEN)
-    ↓
-[Service Layer] → execute business logic
-    ↓
-[PostgreSQL RLS] → row-level policies filter results
-                   → uses session variable: SET app.current_user_id = 'xxx'
-                   → policies on feedback, sections, CRs check section_assignments
+src/server/
+├── routers/
+│   ├── _app.ts              (MODIFIED: add publicRouter, milestone, cardano, etc.)
+│   ├── public/
+│   │   ├── index.ts         (NEW: publicRouter composition — participate, workshops, research)
+│   │   ├── participate.ts   (NEW: participate.submit with Turnstile verify)
+│   │   ├── workshops.ts     (NEW: public.workshops.list, getById)
+│   │   └── framework.ts     (NEW: public section status reads)
+│   ├── milestone.ts         (NEW: milestone CRUD + readiness checks)
+│   ├── cardano.ts           (NEW: verified-state reads, re-anchor trigger)
+│   └── ... (existing)
+└── trpc/
+    └── public-procedure.ts  (NEW: publicProcedure with Turnstile + rate limit)
 ```
 
-**Section assignment model:**
-```
-users ──┐
-        ├── section_assignments ──┐
-roles ──┘     (user_id,          ├── sections
-              role,               │
-              section_id,         │
-              permissions[])  ────┘
-```
+**New `publicProcedure` helper (NEW file `src/trpc/public-procedure.ts`):**
 
-A stakeholder assigned to sections A and B with role "Stakeholder" can:
-- READ content of sections A and B only
-- SUBMIT feedback on sections A and B only
-- Cannot see feedback on section C
-- Cannot see other stakeholders' draft feedback
+```ts
+// Wrap t.procedure with a Turnstile-verify + rate-limit middleware.
+// Cannot extend existing publicProcedure in init.ts without importing
+// Turnstile into the base trpc module — keep the concern separate.
+import { t } from '@/src/trpc/init'
+import { verifyTurnstile } from '@/src/lib/turnstile'
+import { rateLimitByIp } from '@/src/lib/rate-limit'
 
-A Policy Lead assigned to sections A, B, C can:
-- READ/WRITE all content in assigned sections
-- Review and decide on feedback in assigned sections
-- Create and manage CRs for assigned sections
-
-## Data Flow
-
-### Flow 1: Feedback Submission Pipeline
-
-```
-Stakeholder views section (filtered by RBAC)
-    ↓
-Opens feedback form on section "sec-uuid-123"
-    ↓
-Fills: type=Suggestion, priority=High, content="...", evidence=[file]
-    ↓
-[tRPC] feedback.submit mutation
-    ↓
-[RBAC Middleware] → verify user has section assignment + submit permission
-    ↓
-[Feedback Service]
-    ├── Generate ID: FB-001
-    ├── Upload evidence file → S3, store metadata in files table
-    ├── INSERT feedback row (status: 'submitted', section_id, submitter_id)
-    ├── Initialize XState machine → persist state snapshot
-    ├── INSERT audit_event (action: 'feedback.submit')
-    └── Return FB-001 to client
-    ↓
-[Dashboard] shows FB-001 in "Submitted" column for Policy Lead
+export const publicProcedure = t.procedure
+  .use(async ({ ctx, next, getRawInput }) => {
+    // Read a `_turnstile` field from input on mutations; skip for queries.
+    const raw = (await getRawInput()) as { _turnstile?: string } | undefined
+    if (raw?._turnstile) {
+      const ok = await verifyTurnstile(raw._turnstile, ctx.headers)
+      if (!ok) throw new TRPCError({ code: 'FORBIDDEN', message: 'Turnstile failed' })
+    }
+    await rateLimitByIp(ctx.headers)
+    return next({ ctx: { ...ctx, user: null } })  // explicit nulling
+  })
 ```
 
-### Flow 2: Change Request Lifecycle (Feedback to Version)
+**Composition in `_app.ts` (MODIFIED):**
 
-This is the core traceability pipeline:
-
-```
-Policy Lead reviews feedback items on a section
-    ↓
-Groups related feedback: FB-001, FB-003, FB-007
-    ↓
-[tRPC] changeRequest.create mutation
-    ├── Generate ID: CR-001
-    ├── Link source feedback items: [FB-001, FB-003, FB-007]
-    ├── Link affected sections: [sec-uuid-123, sec-uuid-456]
-    ├── Set CR status: 'drafting'
-    ├── Assign CR owner (Policy Lead)
-    ├── INSERT audit_event
-    └── Transition linked feedback to 'accepted' (with rationale)
-    ↓
-Policy Lead edits section content in BlockNote editor
-    ↓  (CRDT changes flow via Hocuspocus WebSocket)
-    ↓
-CR moves through review workflow:
-    drafting → in_review → approved → merged
-    ↓ (each transition = audit event + guard check)
-    ↓
-[tRPC] changeRequest.merge mutation
-    ├── Verify CR status is 'approved'
-    ├── Create Yjs snapshot of current document state
-    ├── Store snapshot as new version (V0.2)
-    ├── Compute section-level diff (V0.1 → V0.2)
-    ├── Generate changelog entries linked to CR-001 and FB items
-    ├── UPDATE version metadata
-    ├── Transition CR to 'merged'
-    ├── INSERT audit_events (cr.merge, version.create)
-    └── Return version V0.2 metadata
-    ↓
-Traceability chain is now queryable:
-    FB-001 → CR-001 → Section "sec-uuid-123" → Version 0.2
+```ts
+export const appRouter = router({
+  // authed
+  user, audit, document, feedback, ...
+  // public — single namespace keeps client-side type safety clean
+  public: publicRouter,
+  // new authed modules
+  milestone: milestoneRouter,
+  cardano: cardanoRouter,
+})
 ```
 
-### Flow 3: Real-Time Collaborative Editing
+Client calls become `trpc.public.participate.submit.useMutation()` — the `public.` prefix is self-documenting.
 
-```
-User opens document in BlockNote editor
-    ↓
-[useCollaboration hook]
-    ├── Create Y.Doc instance
-    ├── Connect HocuspocusProvider (WebSocket)
-    │   ├── Send Clerk JWT for authentication
-    │   └── Hocuspocus verifies token, loads user's section assignments
-    ├── Provider syncs document state from server
-    └── BlockNote renders CRDT state as blocks
-    ↓
-User types in section "Data Privacy"
-    ↓
-[BlockNote] → ProseMirror transaction → Y.js update (binary delta)
-    ↓
-[HocuspocusProvider] → sends update via WebSocket
-    ↓
-[Hocuspocus Server]
-    ├── Merges update into server Y.Doc (CRDT merge, no conflicts)
-    ├── Broadcasts update to all other connected clients
-    ├── onStoreDocument (debounced, ~2-5 seconds)
-    │   ├── Persist Y.Doc binary to PostgreSQL (documents.content bytea)
-    │   ├── Detect section structure changes (new/deleted/reordered sections)
-    │   └── Sync section registry to relational DB if structure changed
-    └── Awareness updates (cursors, selections) broadcast immediately
-    ↓
-Other connected users see changes in real-time
+### How to prevent accidental re-gating
+
+1. **Lint rule / convention:** any file under `src/server/routers/public/` may only import from `src/trpc/public-procedure.ts`, never from `src/trpc/init.ts`. Add a single eslint-plugin-import restriction pattern.
+2. **Context type narrowing:** the `publicProcedure` middleware sets `user: null` explicitly in context, so any `ctx.user.id` access fails typechecking inside public routers.
+3. **Router barrel hygiene:** `publicRouter`'s barrel file (`src/server/routers/public/index.ts`) re-exports only public sub-routers. If a developer types `protected` imports into this file, code review catches it as an obvious diff.
+
+---
+
+## 2. Inngest Function Organization
+
+### Current state (verified in `src/inngest/functions/index.ts`)
+
+```ts
+import { helloFn } from './hello'
+import { feedbackReviewedFn } from './feedback-reviewed'
+export const functions = [helloFn, feedbackReviewedFn]
 ```
 
-### Flow 4: Version Publishing to Public Portal
+Flat, two functions. Flow 5 pattern: one file per function, Zod-schema'd event in `src/inngest/events.ts`, typed `send*()` helpers, shared copy/content builders in `src/inngest/lib/`. Every side effect wrapped in `step.run` for retry-memoization. `NonRetriableError` for missing-row cases. Context is re-fetched inside the function, not carried in the payload (keeps emit path minimal).
+
+### Recommendation: Domain-based grouping with flat `functions[]` barrel
+
+Lifecycle grouping (intake/lifecycle/export) sounds tidy but falls apart once a function spans lifecycle boundaries (e.g., `milestoneReadyFn` computes hashes AND submits to Cardano AND sends confirmation email — which bucket?). Domain grouping is unambiguous: each function lives in the folder of the entity it serves.
+
+**File layout:**
 
 ```
-Policy Lead triggers "Publish Version 0.2"
-    ↓
-[tRPC] version.publish mutation
-    ├── Verify all linked CRs are in 'merged' status
-    ├── Take final Yjs snapshot → store as version content
-    ├── Convert Yjs content to static HTML/JSON for public portal
-    ├── Sanitize: strip stakeholder identities (unless opted-in)
-    ├── Generate public changelog (what changed, why, linked FB IDs)
-    ├── SET version.published = true, version.published_at = now()
-    ├── INSERT audit_event (version.publish)
-    └── Trigger ISR revalidation for public portal pages
-    ↓
-[Public Portal] (no auth)
-    ├── /policies/[slug]/v/[version] → rendered policy content
-    ├── /changelog → public changelog with version diffs
-    └── PDF export of published version
+src/inngest/
+├── client.ts                  (unchanged)
+├── events.ts                  (MODIFIED: add ~12 new events)
+├── functions/
+│   ├── index.ts               (MODIFIED: import and list all)
+│   ├── hello.ts               (existing)
+│   ├── feedback/
+│   │   ├── reviewed.ts        (MOVED from ../feedback-reviewed.ts)
+│   │   └── notification-dispatch.ts (NEW — generic notification.create handler)
+│   ├── workshop/
+│   │   ├── lifecycle.ts       (NEW — on workshop.scheduled_at, transition states)
+│   │   ├── reminders.ts       (NEW — 48h/2h nudges, step.sleepUntil)
+│   │   ├── recording-processed.ts (NEW — Whisper + llama summary)
+│   │   └── checklist-nudge.ts (NEW — 72h + 7d evidence checklist)
+│   ├── participate/
+│   │   └── intake.ts          (NEW — Clerk invite + welcome email)
+│   ├── calcom/
+│   │   ├── booking-created.ts (NEW — auto-invite user, link workshop)
+│   │   └── booking-completed.ts (NEW — attendance rec + feedback link email)
+│   ├── version/
+│   │   └── published.ts       (NEW — LLM summary + hash + anchor)
+│   ├── milestone/
+│   │   └── ready.ts           (NEW — hash bundle + Cardano anchor)
+│   └── export/
+│       └── evidence-pack.ts   (NEW — R2 ZIP + presigned email delivery)
+└── lib/                        (shared pure helpers per function)
+    ├── feedback-reviewed-copy.ts    (existing)
+    ├── auto-draft-cr-content.ts     (existing)
+    ├── create-draft-cr.ts           (existing)
+    ├── workshop-reminder-copy.ts    (NEW)
+    ├── groq-transcribe.ts           (NEW)
+    ├── groq-summarize.ts            (NEW)
+    ├── clerk-invite.ts              (NEW — wraps Clerk invitations API)
+    ├── milestone-hash.ts            (NEW — SHA256 canonicalization)
+    └── cardano-anchor.ts            (NEW — Mesh + Blockfrost)
 ```
 
-## How Real-Time Collaboration Integrates with Versioned Content
+### Barrel scaling pattern (scales cleanly from 2 → 20 functions)
 
-This is the trickiest architectural boundary. The approach:
+Keep `functions/index.ts` as a single flat array — the alternative (one barrel per subfolder) buys nothing because Inngest doesn't care about groupings at registration time, and Vercel's route handler just needs the array.
 
-1. **Live editing happens in the CRDT only.** The Yjs document is the single source of truth for "what the document looks like right now." Multiple users edit simultaneously via Hocuspocus. No version is created during editing.
+```ts
+// src/inngest/functions/index.ts (MODIFIED)
+import { helloFn } from './hello'
+import { feedbackReviewedFn } from './feedback/reviewed'
+import { notificationDispatchFn } from './feedback/notification-dispatch'
+import { workshopLifecycleFn } from './workshop/lifecycle'
+import { workshopRemindersFn } from './workshop/reminders'
+import { workshopRecordingProcessedFn } from './workshop/recording-processed'
+import { workshopChecklistNudgeFn } from './workshop/checklist-nudge'
+import { participateIntakeFn } from './participate/intake'
+import { calcomBookingCreatedFn } from './calcom/booking-created'
+import { calcomBookingCompletedFn } from './calcom/booking-completed'
+import { versionPublishedFn } from './version/published'
+import { milestoneReadyFn } from './milestone/ready'
+import { exportEvidencePackFn } from './export/evidence-pack'
 
-2. **Versions are snapshots of CRDT state.** When a CR is merged or a manual version is created, the system takes a Yjs snapshot (lightweight: state vector + delete set) and stores it alongside version metadata in PostgreSQL. The snapshot can reconstruct the document state at that point.
+export const functions = [
+  helloFn,
+  feedbackReviewedFn,
+  notificationDispatchFn,
+  workshopLifecycleFn,
+  workshopRemindersFn,
+  workshopRecordingProcessedFn,
+  workshopChecklistNudgeFn,
+  participateIntakeFn,
+  calcomBookingCreatedFn,
+  calcomBookingCompletedFn,
+  versionPublishedFn,
+  milestoneReadyFn,
+  exportEvidencePackFn,
+]
+```
 
-3. **Diffs are computed between snapshots.** Section-level diffs compare the content of each section between two Yjs snapshots. This powers the changelog and "what changed" views.
-
-4. **The CRDT never stops.** Editors can keep working while a version is being created. The snapshot captures a point-in-time; ongoing edits continue on the live document. This is safe because CRDT snapshots are non-destructive.
-
-5. **Published content is static.** The public portal does not run Yjs. Published versions are pre-rendered HTML/JSON exported from the Yjs snapshot at publish time.
+### Event naming convention (extends current `feedback.reviewed`)
 
 ```
-Timeline:
-
-  ──────────────────────────────────────────────▶  time
-  │                    │                    │
-  │  Live editing      │  Snapshot taken    │  More editing
-  │  (CRDT updates     │  (Version 0.2)    │  (CRDT continues)
-  │   flowing)         │                    │
-                       │
-                       ▼
-                  ┌─────────┐
-                  │ Yjs     │
-                  │ Snapshot │──▶ PostgreSQL (bytea)
-                  │ (binary) │──▶ Static HTML (public portal)
-                  └─────────┘──▶ Diff vs V0.1 (changelog)
+<entity>.<past-tense-verb>    workshop.scheduled, workshop.completed, version.published
+<entity>.<action>.<state>     milestone.ready, milestone.anchored
+<source>.<webhook-event>      calcom.booking.created, calcom.booking.completed
 ```
 
-## How Section-Level RBAC Scoping Works
+All new events follow the three-step pattern from `src/inngest/events.ts`: private Zod schema → exported `eventType()` instance → exported `sendX()` helper with `.validate()` before `inngest.send()`. Two rules (A: helper param is `z.infer<typeof schema>`, B: helper calls `.validate()` first) are already documented in that file and must not be bypassed.
 
-The section-level RBAC system requires coordination across three layers:
+**One-file-per-event vs a single `events.ts`:** keep the single file until it exceeds ~800 lines. The current 97-line file with 2 events will grow to ~600-800 lines with ~12 events — still manageable. Splitting earlier creates import churn. When it does split, split by domain: `events/feedback.ts`, `events/workshop.ts`, etc.
 
-### Layer 1: Database (Section Assignments Table)
+---
+
+## 3. Webhook Routing
+
+### Current state (verified)
+
+```
+app/api/webhooks/clerk/route.ts   — svix.Webhook verification, upserts users table
+app/api/inngest/route.ts           — Inngest's own handler (excluded from auth in proxy.ts)
+proxy.ts                           — matcher lists /api/webhooks(.*) as public
+```
+
+### Recommendation: `_lib` folder for shared verification helpers
+
+```
+app/api/webhooks/
+├── _lib/
+│   ├── verify-svix.ts       (NEW — extract from clerk/route.ts; reused by clerk)
+│   ├── verify-calcom.ts     (NEW — cal.com uses HMAC-SHA256 over raw body)
+│   └── types.ts             (NEW — shared WebhookHandler<T> return shapes)
+├── clerk/
+│   └── route.ts             (MODIFIED — import verify-svix, keep handler logic)
+└── calcom/
+    └── route.ts             (NEW — HMAC verify, dispatch to sendCalcomBookingCreated)
+```
+
+**Why `_lib` not `src/lib/webhooks/`:** Next.js 16 app router allows `_` prefixed folders to opt out of routing. Co-locating the verify helpers with the routes they serve makes it obvious which file-system neighbors use them, and eliminates the `src/lib` vs `app/api` drift.
+
+### Cal.com webhook signature
+
+Cal.com signs webhooks with HMAC-SHA256 using a shared secret, header name `X-Cal-Signature-256`. Unlike svix (Clerk), there's no timestamp replay protection in the default cal.com signer, so:
+
+- **Verify HMAC over raw request body** (not parsed JSON — Next.js `req.text()` before any `.json()`)
+- **Deduplicate** by `bookingId + triggerEvent` to survive retries (cal.com retries on 5xx with exponential backoff)
+- **Return 200 fast**, delegate work to Inngest via `sendCalcomBookingCreated()` before returning
+
+**Route handler shape (`app/api/webhooks/calcom/route.ts`):**
+
+```ts
+export async function POST(req: Request) {
+  const body = await req.text()
+  const sig = (await headers()).get('x-cal-signature-256')
+  if (!verifyCalcomSignature(body, sig)) return new Response('bad sig', { status: 400 })
+
+  const event = JSON.parse(body) as CalcomWebhookEvent
+  if (event.triggerEvent === 'BOOKING_CREATED') {
+    await sendCalcomBookingCreated({ bookingId: event.payload.uid, ... })
+  } else if (event.triggerEvent === 'BOOKING_COMPLETED') {
+    await sendCalcomBookingCompleted({ bookingId: event.payload.uid, ... })
+  }
+  return Response.json({ ok: true })
+}
+```
+
+The handler does NO database work beyond what svix verification needs. All DB mutation + side effects live in the Inngest function. This matches the philosophy of the existing `clerk/route.ts` but pushes even the user upsert into Inngest (see §9 Data Flow Changes).
+
+### Inngest handler
+
+`app/api/inngest/route.ts` already exists and is excluded by `proxy.ts` matcher `/api/inngest(.*)`. No changes needed except updating the `functions` import to the growing barrel.
+
+---
+
+## 4. Cal.com ↔ Workshop Sync Direction
+
+### Decision: **cal.com is the source of truth for scheduling; PolicyDash mirrors via webhook.**
+
+This inverts the instinct of "our app owns everything" but is correct for three reasons:
+
+1. **Cal.com has features we don't:** reschedule flow, timezone handling, ICS emails, participant availability, buffer times. Treating it as primary means those features come free.
+2. **v0.2 Key Decision already committed to delegation.** PROJECT.md: "Cal.com delegated scheduling. Half of Phase 20 deleted; we only handle the webhook + auto-create-user via Clerk invitation."
+3. **Write-write conflicts are a known failure mode.** If workshops were created in our app and POSTed to cal.com, a cal.com API failure would leave our DB and cal.com out of sync with unclear recovery. One-directional flow (cal.com → us) has no divergence risk.
+
+### Mechanics
+
+- **Workshops table stays as-is** (`src/db/schema/workshops.ts`). Add one column: `calcomEventTypeId int`. This identifies WHICH cal.com event type generates registrations for this workshop.
+- **Admin creates workshop in PolicyDash first** (existing `workshops.create` mutation), then enters the matching cal.com event-type ID in the form. No cal.com API call required for creation.
+- **Participants register in cal.com** via embed at `app/(public)/workshops/[id]/register/page.tsx`. Embed is configured to the event type.
+- **`BOOKING_CREATED` webhook** arrives → `calcomBookingCreatedFn` (Inngest):
+  1. Look up workshop by `calcomEventTypeId`
+  2. Check if user exists by email (in `users` table)
+  3. If not, call Clerk invitations API to create user + send invite
+  4. Insert `workshopRegistrations` row linking workshop + user
+  5. Queue `workshop.reminder` events (48h + 2h prior) via `inngest.send` with `ts: scheduledAt - 48h`
+- **`BOOKING_COMPLETED` webhook** arrives → `calcomBookingCompletedFn`:
+  1. Mark registration as attended
+  2. Send post-workshop feedback link email (linked via existing `workshopFeedbackLinks` table)
+
+### Trade-off acknowledged
+
+**We lose the ability to cancel/reschedule from inside PolicyDash.** Admins must do this in cal.com. Acceptable because: (a) scheduling is rare once set, (b) cal.com's UI is better than what we'd build, (c) cancellation webhooks (`BOOKING_CANCELLED`) flow back to us the same way.
+
+### Idempotency
+
+`bookingId` is unique across cal.com. Use it as the idempotency key on `workshopRegistrations` (unique index on `calcomBookingId`). Webhook retries are safe: second insert fails the unique constraint, Inngest step memoizes the first successful run.
+
+---
+
+## 5. Milestone Entity Schema
+
+### Context
+
+Milestones aggregate "what was the state of the platform at a governance checkpoint?" — e.g., "Framework v1.0 milestone completed 2026-06-01 with 3 workshops, 127 feedback items, 4 evidence bundles, 1 published version." The hash commits that exact aggregation.
+
+### Recommendation: **single `milestoneId` FK on each aggregated entity + a `milestone_slots` definition table.**
+
+**Reject many-to-many join tables.** Reason: a workshop belongs to at most one milestone (the one it contributed evidence toward); a feedback item belongs to at most one milestone (the first one whose hash includes it). Putting entities in multiple milestones muddles the hashing semantics and creates per-lookup joins on hash computation.
+
+**Schema (NEW file `src/db/schema/milestones.ts`):**
+
+```ts
+export const milestoneStatusEnum = pgEnum('milestone_status', [
+  'draft',      // being composed
+  'ready',      // all required slots filled, ready to hash
+  'anchoring',  // hash computed, cardano tx submitted
+  'anchored',   // tx confirmed
+  'failed',     // anchoring failed after retries
+])
+
+export const milestones = pgTable('milestones', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  readableId:   text('readable_id').notNull().unique(),    // M-001, M-002
+  title:        text('title').notNull(),
+  description:  text('description'),
+  status:       milestoneStatusEnum('status').notNull().default('draft'),
+  // slot definitions — JSONB: [{ kind: 'version', minCount: 1 }, { kind: 'workshop', minCount: 2 }, ...]
+  requiredSlots: jsonb('required_slots').notNull(),
+  // hash artifacts (null until status >= 'ready')
+  contentHash:  text('content_hash'),                      // sha256 hex, 64 chars
+  metadataJson: jsonb('metadata_json'),                    // canonical JSON that was hashed
+  // cardano anchoring (null until 'anchored')
+  cardanoTxHash: text('cardano_tx_hash'),
+  cardanoNetwork: text('cardano_network'),                 // 'preview' | 'mainnet'
+  anchoredAt:   timestamp('anchored_at', { withTimezone: true }),
+  createdBy:    uuid('created_by').notNull().references(() => users.id),
+  createdAt:    timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:    timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+```
+
+**MODIFIED existing tables** (add single nullable FK each — migrations are additive):
+
+```ts
+// src/db/schema/documents.ts — documentVersions
+milestoneId: uuid('milestone_id').references(() => milestones.id, { onDelete: 'set null' })
+
+// src/db/schema/workshops.ts — workshops
+milestoneId: uuid('milestone_id').references(() => milestones.id, { onDelete: 'set null' })
+
+// src/db/schema/evidence.ts — evidenceArtifacts (or a dedicated evidenceBundles table if added)
+milestoneId: uuid('milestone_id').references(() => milestones.id, { onDelete: 'set null' })
+
+// src/db/schema/feedback.ts — feedbackItems
+milestoneId: uuid('milestone_id').references(() => milestones.id, { onDelete: 'set null' })
+```
+
+`onDelete: 'set null'` means deleting a milestone unbinds but doesn't cascade-delete its members — safer for audit.
+
+### Hash computation references via index
+
+`milestone_hash.ts` canonicalization query reads all rows where `milestoneId = M` from each table, sorts deterministically by `id`, serializes to canonical JSON, hashes the result. Indexes required:
 
 ```sql
-CREATE TABLE section_assignments (
-  id          UUID PRIMARY KEY,
-  user_id     UUID REFERENCES users(id),
-  section_id  UUID REFERENCES sections(id),
-  role        TEXT NOT NULL,  -- role within this section scope
-  permissions TEXT[] NOT NULL, -- ['read', 'write', 'submit_feedback', 'review_feedback']
-  created_at  TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS policy: users only see sections they are assigned to
-CREATE POLICY section_access ON sections
-  FOR SELECT
-  USING (
-    id IN (
-      SELECT section_id FROM section_assignments
-      WHERE user_id = current_setting('app.current_user_id')::uuid
-    )
-    OR EXISTS (
-      SELECT 1 FROM users
-      WHERE id = current_setting('app.current_user_id')::uuid
-      AND role IN ('admin', 'auditor')  -- admin/auditor see everything
-    )
-  );
+CREATE INDEX idx_document_versions_milestone ON document_versions(milestone_id) WHERE milestone_id IS NOT NULL;
+CREATE INDEX idx_workshops_milestone         ON workshops(milestone_id)         WHERE milestone_id IS NOT NULL;
+CREATE INDEX idx_evidence_milestone          ON evidence_artifacts(milestone_id) WHERE milestone_id IS NOT NULL;
+CREATE INDEX idx_feedback_milestone          ON feedback_items(milestone_id)    WHERE milestone_id IS NOT NULL;
 ```
 
-### Layer 2: tRPC Middleware (Application Logic)
+Partial indexes keep them small (most rows have null `milestone_id`).
 
-```typescript
-// RBAC middleware that runs before every tRPC procedure
-const requireSectionAccess = (permission: string) =>
-  t.middleware(async ({ ctx, next, input }) => {
-    const sectionId = (input as any).sectionId;
-    if (!sectionId) throw new TRPCError({ code: 'BAD_REQUEST' });
+### Why not a many-to-many?
 
-    const hasAccess = await ctx.rbac.checkSectionPermission(
-      ctx.userId, sectionId, permission
-    );
-    if (!hasAccess) throw new TRPCError({ code: 'FORBIDDEN' });
+Many-to-many would require answering "which milestone's hash includes this workshop" at anchor time, and invite the question "can the same workshop appear in two milestones with two different hashes?" The answer is unambiguous with single-FK: a workshop is assigned to exactly one milestone at the moment its moderator says "include this in milestone M." Before that, `milestoneId IS NULL`.
 
-    return next({ ctx });
-  });
+---
 
-// Usage in router
-export const feedbackRouter = router({
-  submit: protectedProcedure
-    .use(requireSectionAccess('submit_feedback'))
-    .input(feedbackSubmitSchema)
-    .mutation(({ ctx, input }) => { /* ... */ }),
-});
+## 6. SHA256 Hashing Service Location
+
+### Recommendation: **pure function in `src/lib/hashing.ts`, called once at `.status → 'ready'` transition, result stored in `milestones.content_hash` and sibling `content_hash` columns on each hashable entity.**
+
+This is a hybrid (pure-function + derived column). The pure function is the canonicalizer + hasher; the column is the cached result. Trade-offs:
+
+| Pattern | Pro | Con |
+|---------|-----|-----|
+| Compute on demand | No stale cache, always current | Every verification request re-reads all referenced rows, slow for milestones with 100+ items |
+| Cached column only | Fast verification | Stale if someone mutates a referenced row after hashing |
+| **Hybrid (this)** | Fast reads, single write event, immutability enforced by state transition | Requires state machine gate to prevent post-hash mutation |
+
+**Immutability enforcement:** once a `milestone.status` goes to `ready` (or a `documentVersion.status` goes to `published`), service-layer mutations must refuse writes to linked rows. v0.1 already has an immutable-snapshot pattern on published versions (Phase 6). Extend the same pattern to milestone-member rows: a DB-level check constraint or a service-layer guard on every mutation.
+
+**Pure function shape (`src/lib/hashing.ts`, NEW):**
+
+```ts
+import { createHash } from 'crypto'
+
+// Canonical JSON: keys sorted lexically, no whitespace, ISO date strings.
+export function canonicalize(value: unknown): string { /* ... */ }
+
+export function sha256Hex(data: string): string {
+  return createHash('sha256').update(data, 'utf8').digest('hex')
+}
+
+export async function computePolicyVersionHash(versionId: string): Promise<string> { /* ... */ }
+export async function computeWorkshopHash(workshopId: string): Promise<string> { /* ... */ }
+export async function computeEvidenceBundleHash(bundleId: string): Promise<string> { /* ... */ }
+export async function computeMilestoneHash(milestoneId: string): Promise<{
+  hash: string
+  metadataJson: unknown          // the canonical object that was hashed (stored verbatim)
+}> { /* ... */ }
 ```
 
-### Layer 3: Hocuspocus (CRDT Document Filtering)
+Milestone hash includes the contentHash of each referenced version/workshop/bundle, not their raw payloads — a Merkle-tree-ish structure. This means mutating a workshop row after hashing breaks the milestone hash indirectly via the workshop hash. The state-machine gate prevents that.
 
-This is the most nuanced layer. When a user opens the editor, they should only see sections they have access to. Two approaches:
+### Where it's called
 
-**Approach A: Document-level access (simpler, recommended for V1)**
-- If a user has access to ANY section in a document, they can load the full CRDT document
-- Section content they should not see is rendered as "[Restricted Section]" placeholders in the editor UI
-- Feedback submission is gated by tRPC middleware, not the editor
-- Simpler because one Y.Doc per document
+- `versionPublishedFn` (Inngest) computes + stores `documentVersions.content_hash` as step 1 of post-publish flow.
+- `milestoneReadyFn` (Inngest) computes + stores `milestones.content_hash` as step 1 before Cardano anchoring.
 
-**Approach B: Section-level Y.Doc splitting (complex, V2+)**
-- Each section has its own Y.Doc fragment
-- Hocuspocus only syncs fragments the user has access to
-- True content isolation but significantly more complex CRDT management
+**Never called synchronously from tRPC.** Hash computation reads many rows; blocking the request path for 500ms–2s to finalize a milestone is acceptable UX-wise as a "finalize" button action, but better placed in Inngest for retry durability and because the next step (Cardano anchoring) is long-running anyway.
 
-**Recommendation: Start with Approach A.** The security boundary is enforced by tRPC (server-side) for all mutations. The editor filtering is a UX convenience, not a security mechanism. Move to Approach B only if there are strict confidentiality requirements where even seeing a section title is prohibited.
+---
 
-## Build Order (Dependency Graph)
+## 7. Cardano Anchoring Execution Context
 
-Components must be built in this order based on dependencies:
+### Step boundaries inside `milestoneReadyFn`
+
+Mesh SDK on Vercel serverless is viable because the function runs inside Inngest's durable executor, not Vercel's 10s request timeout. Each `step.run` has its own timeout (default 2 minutes, extendable). The submission flow breaks cleanly into multiple steps:
+
+```ts
+// src/inngest/functions/milestone/ready.ts
+export const milestoneReadyFn = inngest.createFunction(
+  { id: 'milestone-ready', retries: 5, triggers: [{ event: milestoneReadyEvent }] },
+  async ({ event, step }) => {
+    const { milestoneId } = event.data
+
+    // STEP 1: compute hash + canonicalize metadata (pure, fast, memoized)
+    const { hash, metadataJson } = await step.run('compute-hash', async () => {
+      return computeMilestoneHash(milestoneId)
+    })
+
+    // STEP 2: persist hash BEFORE submitting tx (idempotency anchor — see below)
+    await step.run('persist-hash', async () => {
+      await db.update(milestones)
+        .set({ contentHash: hash, metadataJson, status: 'anchoring' })
+        .where(eq(milestones.id, milestoneId))
+    })
+
+    // STEP 3: build + sign + submit tx (Mesh SDK + Blockfrost)
+    //         Signing is fast; submission is a network call that can take 10-30s.
+    //         step.run memoizes the result so retry after a 500 from Blockfrost
+    //         does NOT re-submit — it returns the cached txHash.
+    const txHash = await step.run('submit-cardano-tx', async () => {
+      return await submitMilestoneAnchor({
+        metadataJson,   // attached as tx metadata, label 674 or similar
+        contentHash: hash,
+      })
+    })
+
+    await step.run('persist-tx-hash', async () => {
+      await db.update(milestones)
+        .set({ cardanoTxHash: txHash, cardanoNetwork: 'preview' })
+        .where(eq(milestones.id, milestoneId))
+    })
+
+    // STEP 4: wait for confirmation (poll Blockfrost with step.sleep + step.run)
+    //         NOT a single step — use step.sleep between polls so we don't burn budget.
+    for (let i = 0; i < 20; i++) {
+      await step.sleep(`wait-${i}`, '30s')
+      const confirmed = await step.run(`check-confirm-${i}`, async () => {
+        return await isTxConfirmed(txHash)
+      })
+      if (confirmed) break
+    }
+
+    // STEP 5: finalize
+    await step.run('mark-anchored', async () => {
+      await db.update(milestones)
+        .set({ status: 'anchored', anchoredAt: new Date() })
+        .where(eq(milestones.id, milestoneId))
+    })
+  },
+)
+```
+
+### Retry semantics when Blockfrost is down
+
+Inngest's `retries: 5` with exponential backoff handles transient Blockfrost outages. Each failed step re-runs from scratch — but **only the failed step**. Step 1 (`compute-hash`) is memoized, so retrying step 3 does NOT re-hash.
+
+**If step 3 actually submits but Blockfrost returns a timeout before returning the txHash**, that's the dangerous case: the tx is on-chain but we think it failed. Two mitigations:
+
+1. **Pre-compute and persist the hash before submission (step 2 above).** The content hash is fully deterministic — if the same milestoneId re-enters the function from a retry, `computeMilestoneHash` returns the same hash. We can then query Blockfrost for any tx whose metadata label contains that hash, and if found, skip submission and adopt that txHash.
+2. **Blockfrost has `/metadata/txs/labels/:label` search.** Before submitting in step 3, check: "has any tx already been submitted with this exact content hash in its metadata?" If yes → return that txHash (idempotent). If no → submit.
+
+### Idempotency key per milestone hash
+
+Metadata label 674 (per CIP-20) carries the hash. Because the hash is deterministic per milestone content, submitting the same milestone twice produces the same tx metadata payload. The idempotency check is:
+
+```ts
+async function submitMilestoneAnchor({ metadataJson, contentHash }) {
+  const existingTx = await blockfrost.searchByMetadata({ label: 674, key: 'content_hash', value: contentHash })
+  if (existingTx) return existingTx.tx_hash  // already on-chain, idempotent
+  // else build + sign + submit
+}
+```
+
+This makes `step.run('submit-cardano-tx', ...)` truly idempotent: any number of retries converges on the same txHash.
+
+### What NOT to do
+
+- **Don't put Mesh SDK tx building in tRPC.** Synchronous API requests cannot wait 10-30s for Cardano submission. The milestone finalize button in the UI calls a tRPC mutation that emits `milestone.ready` and returns immediately; status is polled/subscribed separately.
+- **Don't hash inside cardano-anchor.ts.** Hashing is a separate concern; the anchor function receives the already-computed hash. Keeps it testable without DB.
+- **Don't skip the hash persistence between step 1 and step 3.** If the function is killed between "compute hash" and "submit tx", the persisted hash in step 2 is what lets the next retry detect "this milestone already has a computed hash, just re-enter the submit step with the same value."
+
+---
+
+## 8. Suggested Build Order
+
+Dependency-safe sequencing, tagged with integration risks. Phase numbers match PROJECT.md `Active` section.
 
 ```
-Phase 1: Foundation (no dependencies)
-├── PostgreSQL schema (all tables)
-├── Auth provider setup (Clerk)
-├── tRPC skeleton (context, middleware, router shell)
-└── Project scaffolding (Next.js + all config)
+Phase 14  Collab rollback                    (PREREQ for everything — reduces type surface)
+           └─ risk: none. Isolated removal.
 
-Phase 2: Core Content (depends on Phase 1)
-├── Block editor integration (BlockNote + basic config)
-├── Hocuspocus server (basic persistence, no RBAC yet)
-├── Document CRUD (create, list, open)
-└── Section model (stable IDs, registration in DB)
+Phase 15  Stale verification closeout        (fix existing bugs before stacking v0.2)
+           └─ risk: Phase 9 auditor dashboard button — touches evidence export which Phase 16 replaces.
+              Do Phase 15 FIRST so we're fixing real code, not about-to-be-deleted code.
 
-Phase 3: Feedback System (depends on Phase 2)
-├── Feedback state machine (XState)
-├── Feedback CRUD + lifecycle transitions
-├── Feedback <-> Section linking
-├── Audit logging (start simple, every feedback transition)
-└── Evidence file upload (S3)
+Phase 16  Flow 5 smoke + notification migration
+           └─ risk: HIGH. Migrating every createNotification().catch() callsite to Inngest is
+              invasive (touches ~15 tRPC mutations). Must be done before any new Inngest
+              function assumes notifications are async-only. Ship behind feature flag first.
 
-Phase 4: Change Request Workflow (depends on Phase 3)
-├── CR state machine (XState)
-├── CR CRUD + lifecycle transitions
-├── CR <-> Feedback linking (traceability)
-├── CR <-> Section linking
-└── CR merge flow (create version from CR)
+Phase 17  Workshop lifecycle state machine   (PREREQ for cal.com webhook)
+           └─ risk: MEDIUM. State machine must be in place before cal.com BOOKING_COMPLETED
+              can transition workshops to 'completed'. If Phase 17 slips, Phase 20 blocks.
 
-Phase 5: Versioning & Publishing (depends on Phase 4)
-├── Yjs snapshot capture
-├── Version metadata + changelog generation
-├── Section-level diff computation
-├── Publish workflow (version → public portal)
-├── Public portal pages (ISR)
-└── Traceability matrix (query across FB→CR→Section→Version)
+Phase 18  Workshop checklist nudge + recording→Groq transcription
+           └─ risk: Groq API rate limits on Whisper. Build with retry budget.
 
-Phase 6: RBAC & Polish (can partially parallelize with Phase 3+)
-├── Section assignment management
-├── RBAC middleware (tRPC)
-├── RBAC in Hocuspocus (section filtering)
-├── Role-aware dashboards
-├── PostgreSQL RLS policies
-└── Stakeholder onboarding flow
+Phase 19  Public /participate + Clerk invite + Turnstile
+           └─ risk: HIGH. Clerk invitations API must work end-to-end (create user → send
+              email → user accepts → user.created webhook arrives → users row reconciled)
+              BEFORE the public form ships. Pre-test with manual invite flow.
+              ALSO: Phase 19 needs the publicProcedure helper to exist — do that first.
 
-Phase 7: Workshops & Extended Features
-├── Workshop CRUD + artifacts
-├── Workshop <-> Feedback linking
-├── Workshop <-> Section linking
-├── Milestone evidence pack export
-└── Advanced audit views
+Phase 20  Public /workshops + cal.com embed + webhook
+           └─ risk: HIGH. Depends on Phase 17 (state machine) AND Phase 19 (Clerk invite).
+              Cannot ship either piece independently. Webhook handler must be registered
+              in cal.com dashboard before webhooks start flowing — operational dependency.
+
+Phase 21  Public /research + /framework + LLM consultation summary
+           └─ risk: LOW. Pure read surfaces + one new Inngest function (versionPublishedFn
+              adds LLM summary step). Theme work is isolated.
+
+Phase 22  Milestone entity + SHA256 hashing service
+           └─ risk: MEDIUM. Schema migration adds nullable FK on 4 tables — safe.
+              Hashing canonicalization MUST be deterministic; build with property tests.
+
+Phase 23  Cardano anchoring (Mesh + Blockfrost)
+           └─ risk: HIGH. Requires funded preview-net wallet. Blockfrost API key.
+              Mesh SDK on Vercel serverless needs verification — has cold-start cost.
+              Do the idempotency search BEFORE the first real submission.
+
+Phase 24  Engagement tracking
+           └─ risk: LOW. lastActivityAt column update goes in a tRPC middleware that
+              runs on every mutation — MUST be added AFTER Phase 16 notification
+              migration to avoid merge conflicts in trpc/init.ts.
+
+Phase 25  Integration smoke                  (walks the full chain end-to-end)
+           └─ risk: MEDIUM. Flakes in any upstream phase surface here.
+              Requires all external deps wired: Clerk, cal.com, Groq, Blockfrost, R2.
 ```
 
-**Rationale for this order:**
-- Schema and auth are prerequisites for everything
-- You need the editor working before feedback makes sense (feedback references sections)
-- Feedback must exist before CRs (CRs aggregate feedback)
-- CRs must exist before versioning (versions capture CR merges)
-- RBAC is cross-cutting but can be layered on progressively -- start with "everyone sees everything" and add restrictions
-- Workshops are valuable but not on the critical path for the core traceability pipeline
+### Critical path
 
-## Scaling Considerations
+```
+14 → 15 → 16 → 17 ─┬─► 20 ─┐
+                   │        │
+               19 ─┴────────┤
+                             └─► 25
+  18 ────────────────────────────┤
+  21 ────────────────────────────┤
+  22 → 23 ──────────────────────┤
+  24 ───────────────────────────┘
+```
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 0-100 users (V1) | Single Next.js server, Hocuspocus embedded in same process. PostgreSQL on single instance. All fine. |
-| 100-1K users | Separate Hocuspocus to its own process/server (WebSocket connections have different scaling profile than HTTP). Add connection pooling (PgBouncer). S3 for file storage. |
-| 1K-10K users | Hocuspocus horizontal scaling with Redis for cross-instance Y.Doc sync. PostgreSQL read replicas for portal/reporting queries. CDN for public portal. Audit log table partitioning. |
-| 10K+ users | Multi-tenant schema isolation (workspace_id partition key on all tables, a la Notion). Separate read/write databases (CQRS). Potentially move audit log to dedicated event store. |
+Phases 18, 21, 22–23, 24 can parallel-develop once their respective prereqs land.
 
-### First Bottleneck: Hocuspocus WebSocket Connections
+### Integration risks to budget for
 
-WebSocket connections are long-lived and memory-intensive. A single Hocuspocus server can handle ~500-1000 concurrent document editing sessions. When you hit this:
-- Run Hocuspocus as a separate process with its own scaling group
-- Use Redis adapter for cross-instance document sync
-- Implement connection affinity (same document -> same server when possible)
+1. **Clerk invitations end-to-end** (Phase 19 blocker for Phase 20) — build a smoke script that creates an invite and waits for the webhook, BEFORE building the UI.
+2. **Notification migration breadth** (Phase 16) — every `createNotification().catch()` callsite is a touchpoint. Count them first (feedback.ts confirmed to have at least 3 callsites at lines 343, 435, plus the already-migrated 398; expect similar density in changeRequest.ts and version.ts).
+3. **Cal.com operational setup** (Phase 20) — webhook URL must be registered in cal.com's dashboard before testing. Needs staging environment with public URL.
+4. **Cardano funded wallet** (Phase 23) — preview-net faucet provides test ADA but the wallet seed must be in Vercel env vars (NOT committed). Operational checklist item.
+5. **Groq rate limits** (Phase 18, 21) — Whisper on recordings and llama-3.3-70b for summaries. Budget backoff into the Inngest functions.
 
-### Second Bottleneck: Audit Log Table Size
+---
 
-The append-only audit table will grow fastest. When queries slow:
-- Partition by timestamp (monthly or yearly partitions)
-- Index on (entity_type, entity_id) and (actor_id, timestamp)
-- Archive old partitions to cold storage for compliance, query hot partitions only
+## 9. Data Flow Changes (Inngest takes over notifications)
 
-## Anti-Patterns
+### Current state (v0.1)
 
-### Anti-Pattern 1: Storing Document Content in PostgreSQL JSON
+`src/server/routers/feedback.ts` lines 343, 435: synchronous `createNotification(...).catch(console.error)` inside tRPC mutation handlers. Fire-and-forget, NOT awaited, errors silently logged.
 
-**What people do:** Store block content as JSONB in PostgreSQL alongside metadata, bypassing CRDT.
-**Why it is wrong:** Loses real-time collaboration capability. Every save becomes a full document write that can conflict with other users' saves. No merge semantics. The previous PolicyDash attempt likely had this problem.
-**Do this instead:** Document content lives in Yjs. PostgreSQL stores only the binary Y.Doc state (for persistence) and relational references (section IDs, feedback links).
+```ts
+// Phase 16 BEFORE:
+const updated = await transitionFeedback(...)
+createNotification({ userId, type, title, body, ... }).catch(console.error)
+return updated
+```
 
-### Anti-Pattern 2: RBAC Checks Only in the UI
+Except `feedback.decide` already uses the new pattern (line 398):
 
-**What people do:** Hide UI elements for unauthorized users but still serve the data in API responses.
-**Why it is wrong:** Any user with browser dev tools can see restricted data. This is not access control; it is UI decoration.
-**Do this instead:** Enforce access control in tRPC middleware (application layer) AND PostgreSQL RLS (database layer). UI filtering is a third layer for UX, not security.
+```ts
+// Phase 16 TARGET (already done for decide):
+const updated = await transitionFeedback(...)
+await sendFeedbackReviewed({ feedbackId, decision, rationale, reviewedByUserId })
+return updated
+```
 
-### Anti-Pattern 3: Unguarded Workflow Transitions
+### v0.2 migration: all notifications flow through `notification.create` event
 
-**What people do:** Use simple status string columns and update them directly: `UPDATE feedback SET status = 'accepted'`. Any code path can set any status.
-**Why it is wrong:** Nothing prevents invalid transitions (e.g., jumping from 'submitted' directly to 'closed' without review). Business rules are scattered across multiple UPDATE calls. The previous PolicyDash had "no state machine" as a critical flaw.
-**Do this instead:** Use XState machines as the single authority for valid transitions. The machine's guards enforce business rules. The `status` column is only ever updated by the machine's output.
+**NEW event** (`src/inngest/events.ts`):
 
-### Anti-Pattern 4: Single Y.Doc per Workspace
+```ts
+const notificationCreateSchema = z.object({
+  userId:     z.uuid(),
+  type:       z.enum(NOTIFICATION_TYPES),
+  title:      z.string().min(1).max(200),
+  body:       z.string().min(1).max(2000),
+  entityType: z.string(),
+  entityId:   z.uuid(),
+  linkHref:   z.string().optional(),
+})
 
-**What people do:** Put all documents in one giant Y.Doc to simplify sync.
-**Why it is wrong:** Y.Doc size grows linearly with all content. Every user loading any document downloads the entire workspace. Memory explodes.
-**Do this instead:** One Y.Doc per policy document. Each document has its own Hocuspocus room. Users only load the document they are editing.
+export const notificationCreateEvent = eventType('notification.create', { schema: notificationCreateSchema })
+export async function sendNotificationCreate(data) { /* create + validate + send */ }
+```
 
-### Anti-Pattern 5: Converting Y.Doc to JSON for Persistence
+**NEW function** `src/inngest/functions/feedback/notification-dispatch.ts` (generic):
 
-**What people do:** Serialize Y.Doc to JSON for storage, then reconstruct from JSON on load.
-**Why it is wrong:** As explicitly warned in Hocuspocus docs: "Converting Y.Doc to JSON and reconstructing it as binary on reconnection breaks Yjs's merge semantics, causing duplicate content and update conflicts across sessions."
-**Do this instead:** Always persist Y.Doc as Uint8Array (binary). Store in PostgreSQL as `bytea` column. For rendering in non-editor contexts (public portal, PDF export), convert to HTML/JSON as a one-way export.
+```ts
+export const notificationDispatchFn = inngest.createFunction(
+  { id: 'notification-dispatch', retries: 3, triggers: [{ event: notificationCreateEvent }] },
+  async ({ event, step }) => {
+    await step.run('insert-notification', async () => {
+      await db.insert(notifications).values({ ...event.data })
+    })
+    // Optionally fan out to email if user has email preference set
+    const email = await step.run('fetch-email', fetchUserEmail(event.data.userId))
+    if (email) await step.run('send-email', sendGenericNotificationEmail(email, event.data))
+  },
+)
+```
+
+### Migration pattern (applied mechanically to every callsite)
+
+```diff
+- createNotification({ userId, type, title, body, entityType, entityId, linkHref }).catch(console.error)
++ await sendNotificationCreate({ userId, type, title, body, entityType, entityId, linkHref })
+```
+
+### Compat concerns (synchronous expectations)
+
+**Q: Does any v0.1 code await createNotification and expect the notification row to be visible in the next read?**
+
+Scanning `feedback.ts`: no. All existing callsites are `.catch(console.error)` fire-and-forget. The mutations return `updated` immediately; the notification is eventually consistent from the client's perspective.
+
+**Q: Does any v0.1 UI poll for notifications right after a mutation?**
+
+The notification bell (existing component per GRAPH_REPORT) uses TanStack Query. After a mutation invalidates the notifications query, the next fetch happens a beat later. Inngest latency (typically 50-200ms in production, up to a few seconds cold) is comparable to, and often faster than, the query invalidation round-trip. No user-perceivable change.
+
+**Q: What if Inngest is slow and the user refreshes before the notification inserts?**
+
+Acceptable degradation. The notification is durable (Inngest retries), so it WILL appear, just not instantly. For critical in-flow feedback ("your CR was merged"), the mutation response itself carries the success signal — the notification is an asynchronous echo, not the source of truth.
+
+### Other data flows
+
+- **Evidence pack export (Phase 16):** currently synchronous streaming in a Next.js route handler — slow, blocks Vercel function timeout. Migrates to Inngest `export-evidence-pack` event + function. tRPC mutation starts the job and returns a job ID; UI polls or subscribes for completion.
+- **LLM consultation summary (Phase 21):** triggered by `version.published` event fired from the version publish mutation. The mutation returns immediately; the summary appears asynchronously in `documentVersions.consultationSummary`. UI shows "Generating summary..." placeholder until it arrives.
+- **Cardano anchoring (Phase 23):** triggered by both `version.published` (per-version) AND `milestone.ready` (per-milestone). Same pattern: mutation returns fast, status column goes `anchoring → anchored`, UI polls.
+
+---
+
+## 10. File Catalog: New vs Modified
+
+### NEW files
+
+**Public tRPC surface:**
+- `src/trpc/public-procedure.ts` — rate-limited, Turnstile-verified procedure helper
+- `src/server/routers/public/index.ts` — publicRouter barrel
+- `src/server/routers/public/participate.ts` — participate.submit mutation
+- `src/server/routers/public/workshops.ts` — public workshop list + detail
+- `src/server/routers/public/framework.ts` — public section status reads
+- `src/lib/turnstile.ts` — Cloudflare Turnstile server verify
+- `src/lib/rate-limit.ts` — IP-based rate limiter (likely Upstash or in-memory per-lambda)
+
+**New tRPC routers:**
+- `src/server/routers/milestone.ts` — milestone CRUD, slot-fill checks, finalize
+- `src/server/routers/cardano.ts` — verified state reads, re-anchor trigger
+
+**Webhooks:**
+- `app/api/webhooks/_lib/verify-svix.ts` — extracted shared helper
+- `app/api/webhooks/_lib/verify-calcom.ts` — HMAC-SHA256 verifier
+- `app/api/webhooks/_lib/types.ts` — shared webhook types
+- `app/api/webhooks/calcom/route.ts` — cal.com webhook handler
+
+**Public pages:**
+- `app/(public)/participate/page.tsx` — intake form
+- `app/(public)/workshops/page.tsx` — workshop listing
+- `app/(public)/workshops/[id]/register/page.tsx` — cal.com embed
+- `app/(public)/research/page.tsx` — research content surface
+- `app/(public)/framework/page.tsx` — framework draft-consultation surface
+
+**Inngest events + functions (per §2 layout):**
+- `src/inngest/functions/feedback/reviewed.ts` (moved from flat)
+- `src/inngest/functions/feedback/notification-dispatch.ts`
+- `src/inngest/functions/workshop/lifecycle.ts`
+- `src/inngest/functions/workshop/reminders.ts`
+- `src/inngest/functions/workshop/recording-processed.ts`
+- `src/inngest/functions/workshop/checklist-nudge.ts`
+- `src/inngest/functions/participate/intake.ts`
+- `src/inngest/functions/calcom/booking-created.ts`
+- `src/inngest/functions/calcom/booking-completed.ts`
+- `src/inngest/functions/version/published.ts`
+- `src/inngest/functions/milestone/ready.ts`
+- `src/inngest/functions/export/evidence-pack.ts`
+- `src/inngest/lib/workshop-reminder-copy.ts`
+- `src/inngest/lib/groq-transcribe.ts`
+- `src/inngest/lib/groq-summarize.ts`
+- `src/inngest/lib/clerk-invite.ts`
+- `src/inngest/lib/milestone-hash.ts`
+- `src/inngest/lib/cardano-anchor.ts`
+
+**Services:**
+- `src/lib/hashing.ts` — canonicalize + sha256 + per-entity hash computers
+- `src/lib/cardano/mesh-client.ts` — Mesh SDK wrapper (wallet, tx build, sign)
+- `src/lib/cardano/blockfrost-client.ts` — Blockfrost REST wrapper
+- `src/lib/groq/client.ts` — Groq API wrapper (whisper + llama)
+- `src/lib/clerk/invitations.ts` — Clerk invitations API wrapper
+
+**Schema:**
+- `src/db/schema/milestones.ts` — milestones table + status enum
+- `src/db/schema/workshopRegistrations.ts` — registration table (if not already in workshops.ts; review during Phase 20)
+- Migration files: additive FK columns on 4 existing tables
+
+### MODIFIED files
+
+**tRPC composition:**
+- `src/server/routers/_app.ts` — add `public`, `milestone`, `cardano` routers
+- `src/trpc/init.ts` — add a `lastActivityMiddleware` used by protected mutations (Phase 24)
+
+**Existing routers (notification migration, Phase 16):**
+- `src/server/routers/feedback.ts` — replace `createNotification().catch()` with `sendNotificationCreate`
+- `src/server/routers/changeRequest.ts` — same
+- `src/server/routers/version.ts` — same; also emit `version.published` event
+- `src/server/routers/notification.ts` — no change (read-only)
+- `src/server/routers/workshop.ts` — add lifecycle transition mutations, emit workshop events
+- `src/server/routers/evidence.ts` — emit `evidence.pack.export.requested`
+
+**Inngest:**
+- `src/inngest/client.ts` — no change
+- `src/inngest/events.ts` — add ~12 new event definitions (following the documented template)
+- `src/inngest/functions/index.ts` — append all new functions to the barrel array
+
+**Schema (additive columns):**
+- `src/db/schema/documents.ts` — add `milestoneId` FK + `contentHash` column on documentVersions, add `consultationSummary text` column
+- `src/db/schema/workshops.ts` — add `milestoneId` FK, `contentHash`, `status` enum column, `calcomEventTypeId int`, `recordingUrl`, `transcript`, `summary`
+- `src/db/schema/evidence.ts` — add `milestoneId` FK, `contentHash`
+- `src/db/schema/feedback.ts` — add `milestoneId` FK
+- `src/db/schema/users.ts` — add `lastActivityAt`, `engagementScore` (Phase 24)
+- `src/db/schema/index.ts` — export new milestones table
+
+**Webhooks:**
+- `app/api/webhooks/clerk/route.ts` — refactor to import `verify-svix.ts` helper (no behavior change); optionally dispatch into Inngest for Phase 19 participate welcome email
+
+**Middleware:**
+- `proxy.ts` — add `/participate(.*)`, `/workshops(.*)`, `/research(.*)`, `/framework(.*)` to the public route matcher
+
+### NOT touched
+
+- Real-time collab files — being removed in Phase 14, don't modify
+- Existing v0.1 section editor, CR workflow internals, traceability matrix — stable surfaces
+- `src/db/schema/collaboration.ts` — being dropped in Phase 14
+
+---
+
+## Architectural Patterns Reinforced in v0.2
+
+### Pattern 1: Event-sourced side effects via Inngest
+
+**What:** tRPC mutation mutates exactly one entity in one transaction, then emits a domain event. All downstream side effects (notifications, emails, auto-drafts, hash computation, cardano anchoring) live in Inngest functions triggered by the event.
+
+**Why:** retries, memoization, observability, durability. Vercel serverless CANNOT do long-running background work in the request path — Inngest is the only sanctioned off-ramp.
+
+**Trade-off:** slight eventual consistency (notifications appear 50-200ms late). Acceptable for this domain.
+
+### Pattern 2: Idempotency via deterministic keys
+
+**What:** every side effect that talks to an external system uses a deterministic key for idempotency.
+- Cal.com: `bookingId` unique constraint
+- Clerk invite: `emailAddress + role` upsert
+- Cardano: metadata-label search for `contentHash` before submission
+- Hashing: content hash itself is deterministic, so re-running is safe
+
+**Why:** webhooks retry, Inngest retries, users double-click. Every path must be idempotent or we corrupt state.
+
+### Pattern 3: State-machine-gated immutability
+
+**What:** once an entity enters a "finalized" state (version.published, milestone.ready, feedback.closed), service-layer mutations refuse to write to it or its referenced rows.
+
+**Why:** hash-based verification (Phase 22/23) only works if the hashed content cannot change post-hash. v0.1 already enforces this for documentVersions; extend the same pattern to milestones and workshop-recordings-frozen-for-milestone.
+
+---
+
+## Anti-Patterns (explicit "don't do this")
+
+### Anti-Pattern 1: Public procedures mixed with protected in the same router file
+
+**What people do:** add an `intake` mutation to `feedbackRouter` using `publicProcedure` because it's "about feedback."
+**Why wrong:** one refactor away from accidentally inheriting `requirePermission` middleware. Public/protected must be filesystem-separated.
+**Instead:** `src/server/routers/public/participate.ts` uses the dedicated `publicProcedure` helper with Turnstile + rate limit.
+
+### Anti-Pattern 2: Synchronous Cardano tx submission from tRPC
+
+**What people do:** call Mesh SDK directly inside a mutation handler, user waits 20 seconds.
+**Why wrong:** Vercel function timeout is 10s (hobby) / 60s (pro); submission can take longer than the soft timeout; retry story is hand-coded; zero idempotency.
+**Instead:** mutation emits `milestone.ready`, returns `{ status: 'anchoring' }`. Inngest function handles submission with proper retries + idempotency.
+
+### Anti-Pattern 3: Many-to-many milestone membership
+
+**What people do:** `milestone_members` join table linking milestones to all entity types polymorphically.
+**Why wrong:** hash semantics become ambiguous ("which milestone is this workshop's hash part of?"), Postgres can't enforce polymorphic FKs cleanly, queries are slower.
+**Instead:** single nullable `milestoneId` FK on each entity type. One entity → zero or one milestones.
+
+### Anti-Pattern 4: Recomputing hashes on every verification read
+
+**What people do:** `/portal/verified-state` endpoint re-canonicalizes + re-hashes on every request.
+**Why wrong:** O(N) reads per public page load, unpredictable latency, blocks under load.
+**Instead:** hash is computed once by `milestoneReadyFn` and stored in `milestones.content_hash`. Verification just reads the stored value.
+
+### Anti-Pattern 5: Storing `contentHash` without a state-machine gate
+
+**What people do:** add `contentHash` column, compute on publish, let anyone mutate linked rows afterward.
+**Why wrong:** stored hash becomes a lie; Cardano-anchored content silently drifts from the hash.
+**Instead:** couple the column with a `status` state that refuses mutations after finalization.
+
+---
 
 ## Integration Points
 
-### External Services
+### External services
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Clerk (Auth) | JWT verification in tRPC context + Hocuspocus onConnect | Clerk webhooks sync user data to local users table. Invite flow uses Clerk invitation API. |
-| S3/MinIO (Files) | Presigned URLs for upload/download | Upload: client gets presigned URL from tRPC, uploads directly to S3. Download: tRPC generates presigned read URL. File metadata in PostgreSQL. |
-| Email (Notifications) | Event-driven from workflow transitions | When feedback status changes, audit event triggers notification. Use Resend or similar transactional email. |
+| Service | Integration | Gotchas |
+|---------|-------------|---------|
+| Clerk | Auth + invitations API via @clerk/nextjs/server | Invitation flow has two steps: create invite (returns ticket) + listen for user.created webhook. Don't assume `users` row exists immediately after invite POST. |
+| Cal.com | Webhook-only integration; embed on public page | HMAC-SHA256 verify over raw body; no built-in replay protection → dedupe by bookingId. |
+| Groq | Direct inference (not compound-beta) | Rate limits vary by model; whisper-large-v3-turbo has per-minute audio limits. Always retry with backoff. |
+| Blockfrost | REST API key in env | Preview-net base URL differs from mainnet; easy misconfiguration. Rate limits are per-project. |
+| Mesh SDK | Cardano tx building in Node (not browser) | Cold-start cost on Vercel serverless — first call is slow. Inngest is the right home because duration doesn't matter. |
+| R2 | Presigned upload URLs (existing) | Already working; extend for evidence pack ZIP and workshop recording download. forcePathStyle + CRC workaround already in place. |
 
-### Internal Boundaries
+### Internal boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| BlockNote Editor <-> Hocuspocus | WebSocket (Yjs sync protocol) | Binary CRDT updates. Awareness protocol for cursors. Auth via JWT in connection params. |
-| Hocuspocus <-> PostgreSQL | Direct DB writes in hooks | onStoreDocument persists Y.Doc binary. onLoadDocument retrieves it. Debounced writes (2-5s). |
-| Hocuspocus <-> tRPC Services | Internal function calls or HTTP webhooks | When document structure changes (sections added/removed), Hocuspocus notifies the relational layer. Can be direct function call if same process, or webhook if separate. |
-| tRPC <-> XState Machines | In-process function calls | Service instantiates machine, sends event, reads new state, persists to DB. No separate process for XState. |
-| Workspace <-> Public Portal | Shared database, different rendering | Portal reads published version snapshots. No write access. Can use ISR/SSG for performance. |
+| tRPC ↔ Inngest | `inngest.send()` via typed `send*()` helpers | Never call `inngest.send()` directly — registry pattern enforces validation |
+| Inngest ↔ DB | `db` from `@/src/db` inside `step.run` | Memoized on retry; never call outside step.run from a function |
+| Inngest ↔ external APIs | Service wrappers in `src/lib/*` imported from functions | Keeps functions declarative, wrappers testable in isolation |
+| Webhooks → Inngest | Route handler verifies, then calls `send*()` helper | Route handlers do NO DB work beyond dedupe keys |
+| Public tRPC ↔ protected tRPC | No direct boundary — composed in `appRouter` | `ctx.user: null` in public contexts enforces separation via types |
+
+---
 
 ## Sources
 
-- [Notion Data Model Architecture](https://www.notion.com/blog/data-model-behind-notion) -- block-based data model, render tree hierarchy, permission inheritance
-- [Notion System Design](https://www.educative.io/blog/notion-system-design) -- six subsystem decomposition, WebSocket MessageStore pattern
-- [BlockNote Collaboration Docs](https://www.blocknotejs.org/docs/features/collaboration) -- Yjs integration, provider options, setup patterns
-- [BlockNote Yjs Integration Deep Dive](https://deepwiki.com/TypeCellOS/BlockNote/8.1-yjs-integration) -- Y.XmlFragment mapping, plugin architecture, awareness protocol
-- [Hocuspocus Persistence Guide](https://tiptap.dev/docs/hocuspocus/guides/persistence) -- onStoreDocument/onLoadDocument hooks, binary persistence requirement
-- [Yjs Community: Versioning Discussion](https://discuss.yjs.dev/t/for-versioning-should-i-store-snapshot-or-document-copies/2421) -- snapshots vs document copies, state vector + delete set approach
-- [XState Documentation](https://stately.ai/docs/xstate) -- actor-based state management, v5 machine API
-- [PostgreSQL Row-Level Security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html) -- RLS policy syntax, USING clauses
-- [tRPC Next.js Integration](https://trpc.io/docs/client/nextjs) -- createCaller for RSC, React Query hooks for client
-- [CRDT Libraries Comparison (2025)](https://velt.dev/blog/best-crdt-libraries-real-time-data-sync) -- Yjs as industry standard for document collaboration
-- [Workflow Engine vs State Machine](https://workflowengine.io/blog/workflow-engine-vs-state-machine/) -- when to use state machines for human-driven workflows
-- [Event Sourcing with PostgreSQL](https://github.com/eugene-khyst/postgresql-event-sourcing) -- append-only event store patterns
-- [tRPC vs Server Actions (2026)](https://caisy.io/blog/trpc-vs-server-actions) -- tRPC for complex mutation workflows, Server Actions for simple forms
+- Direct read of `src/trpc/init.ts`, `src/server/routers/_app.ts`, `src/server/routers/feedback.ts`
+- Direct read of `src/inngest/client.ts`, `events.ts`, `functions/index.ts`, `functions/feedback-reviewed.ts`, `lib/create-draft-cr.ts`
+- Direct read of `app/api/webhooks/clerk/route.ts`, `proxy.ts`
+- Direct read of `src/db/schema/workshops.ts`, `src/db/schema/index.ts`
+- `.planning/PROJECT.md` v0.2 milestone definition, Active requirements list, Key Decisions
+- Inngest v4 durable-execution model (step.run memoization, NonRetriableError, retries config) — referenced in existing feedback-reviewed.ts inline docs
+- CIP-20 (Cardano transaction metadata label conventions) for anchoring label choice
+- Cal.com webhook documentation (HMAC-SHA256 signature header `X-Cal-Signature-256`, BOOKING_CREATED / BOOKING_COMPLETED / BOOKING_CANCELLED events)
+- Svix webhooks (Clerk's signature provider) documentation
 
 ---
-*Architecture research for: PolicyDash -- Stakeholder Policy Consultation Platform*
-*Researched: 2026-03-25*
+*Architecture research for: PolicyDash v0.2 integration into existing Next.js 16 + tRPC v11 + Drizzle + Inngest + Clerk app*
+*Researched: 2026-04-13*
+*Confidence: HIGH — grounded in direct source reads of the existing app; no unverified framework claims*
