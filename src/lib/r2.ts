@@ -30,6 +30,14 @@ export const r2Client = new S3Client({
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
   },
+  // AWS SDK v3 (>= 3.729) started signing a zero CRC32 checksum into
+  // presigned PUT URLs by default. R2 then validates the uploaded body
+  // against that signed-in checksum, rejects the mismatch, and returns
+  // 403 — which surfaces in the browser as a misleading CORS error
+  // because 403 responses carry no Access-Control-Allow-Origin header.
+  // Setting requestChecksumCalculation to WHEN_REQUIRED disables the
+  // automatic checksum so presigned PUTs work against R2.
+  requestChecksumCalculation: 'WHEN_REQUIRED',
 })
 
 /**
