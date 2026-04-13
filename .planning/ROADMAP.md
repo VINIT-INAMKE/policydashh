@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Milestone v0.2: Verifiable Policy OS — Public Consultation & On-Chain Anchoring (Phases 14–25)
 
-- [ ] **Phase 14: Collab Rollback** - Remove Yjs/Hocuspocus/inline comments, drop related schema, delete hocuspocus-server; verify single-user editor with auto-save
+- [x] **Phase 14: Collab Rollback** - Remove Yjs/Hocuspocus/inline comments, drop related schema, delete hocuspocus-server; verify single-user editor with auto-save (completed 2026-04-13)
 - [ ] **Phase 15: Stale Verification Closeout** - Re-verify Phase 4 FeedbackDetailSheet + Phase 7 traceability discoverability; fix Phase 9 Export Evidence Pack button
 - [ ] **Phase 16: Notification Dispatch Migration + Flow 5 Smoke** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency
 - [ ] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary
@@ -258,7 +258,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 11. Real-Time Collaboration | 3/3 | Complete (rolled back in v0.2 P14) | 2026-03-26 |
 | 12. Workshop System Fix | 2/2 | Complete | 2026-04-12 |
 | 13. UX Consolidation & Navigation | 5/5 | Complete | 2026-04-12 |
-| 14. Collab Rollback | 3/4 | In Progress|  |
+| 14. Collab Rollback | 4/4 | Complete   | 2026-04-13 |
 | 15. Stale Verification Closeout | 0/0 | v0.2 Planning | - |
 | 16. Flow 5 Smoke + Notification Migration | 0/0 | v0.2 Planning | - |
 | 17. Workshop Lifecycle + Recording Pipeline | 0/0 | v0.2 Planning | - |
@@ -319,13 +319,13 @@ Parallelizable once prereqs land: 18 (after 16), 20.5 (after 17), 21 (after 20.5
   3. Block editor loads and accepts input in single-user mode without any Yjs/Collaboration extension imports; auto-save fires on idle
   4. `EDIT-06`, `EDIT-07`, `EDIT-08` annotated as "rolled back in v0.2 Phase 14, deferred to v2" in REQUIREMENTS.md
   5. Render tests pass after each deletion step (not just typecheck) — prevents the `providerRef.current` class of bug
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 14-01-PLAN.md — Delete 10 standalone collab files (UI components, hooks, utilities, collab-specific tests)
 - [x] 14-02-PLAN.md — Rewrite block-editor.tsx and build-extensions.ts to remove all providerRef/Yjs/InlineComment code paths
 - [x] 14-03-PLAN.md — Delete commentRouter, clean permissions/constants, drop collaboration schema + apply DB migration
-- [ ] 14-04-PLAN.md — Remove collab npm packages, clean env/css, verify absence audits, final acceptance gate
+- [x] 14-04-PLAN.md — Remove collab npm packages, clean env/css, verify absence audits, final acceptance gate
 
 ### Phase 15: Stale Verification Closeout
 
