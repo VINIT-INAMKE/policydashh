@@ -350,21 +350,77 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | NOTIF-01 | Phase 8 | Complete |
 | NOTIF-02 | Phase 8 | Complete |
 | NOTIF-03 | Phase 8 | Complete |
-| SRCH-01 | Phase 7 | Pending |
-| SRCH-02 | Phase 7 | Pending |
-| SRCH-03 | Phase 7 | Pending |
-| SRCH-04 | Phase 7 | Pending |
+| SRCH-01 | Phase 7 | Complete |
+| SRCH-02 | Phase 7 | Complete |
+| SRCH-03 | Phase 7 | Complete |
+| SRCH-04 | Phase 7 | Complete |
 | AUDIT-01 | Phase 1 | Complete |
 | AUDIT-02 | Phase 1 | Complete |
 | AUDIT-03 | Phase 1 | Complete |
 | AUDIT-04 | Phase 9 | Complete |
 | AUDIT-05 | Phase 9 | Complete |
 | AUDIT-06 | Phase 9 | Complete |
+| COLLAB-ROLLBACK-01 | Phase 14 | Pending |
+| COLLAB-ROLLBACK-02 | Phase 14 | Pending |
+| FIX-05 | Phase 15 | Pending |
+| FIX-06 | Phase 15 | Pending |
+| EV-08 | Phase 15 | Pending |
+| FIX-07 | Phase 16 | Pending |
+| NOTIF-04 | Phase 16 | Pending |
+| NOTIF-05 | Phase 16 | Pending |
+| NOTIF-06 | Phase 16 | Pending |
+| WS-06 | Phase 17 | Pending |
+| WS-12 | Phase 17 | Pending |
+| WS-13 | Phase 17 | Pending |
+| WS-14 | Phase 17 | Pending |
+| LLM-01 | Phase 17 | Pending |
+| LLM-02 | Phase 17 | Pending |
+| LLM-03 | Phase 17 | Pending |
+| EV-05 | Phase 18 | Pending |
+| EV-06 | Phase 18 | Pending |
+| EV-07 | Phase 18 | Pending |
+| INTAKE-01 | Phase 19 | Pending |
+| INTAKE-02 | Phase 19 | Pending |
+| INTAKE-03 | Phase 19 | Pending |
+| INTAKE-04 | Phase 19 | Pending |
+| INTAKE-05 | Phase 19 | Pending |
+| INTAKE-06 | Phase 19 | Pending |
+| INTAKE-07 | Phase 19 | Pending |
+| WS-07 | Phase 20 | Pending |
+| WS-08 | Phase 20 | Pending |
+| WS-09 | Phase 20 | Pending |
+| WS-10 | Phase 20 | Pending |
+| WS-11 | Phase 20 | Pending |
+| WS-15 | Phase 20 | Pending |
+| PUB-06 | Phase 20.5 | Pending |
+| PUB-07 | Phase 20.5 | Pending |
+| PUB-08 | Phase 20.5 | Pending |
+| LLM-04 | Phase 21 | Pending |
+| LLM-05 | Phase 21 | Pending |
+| LLM-06 | Phase 21 | Pending |
+| LLM-07 | Phase 21 | Pending |
+| LLM-08 | Phase 21 | Pending |
+| PUB-09 | Phase 21 | Pending |
+| PUB-10 | Phase 21 | Pending |
+| VERIFY-01 | Phase 22 | Pending |
+| VERIFY-02 | Phase 22 | Pending |
+| VERIFY-03 | Phase 22 | Pending |
+| VERIFY-04 | Phase 22 | Pending |
+| VERIFY-05 | Phase 22 | Pending |
+| VERIFY-06 | Phase 23 | Pending |
+| VERIFY-07 | Phase 23 | Pending |
+| VERIFY-08 | Phase 23 | Pending |
+| VERIFY-09 | Phase 23 | Pending |
+| UX-08 | Phase 24 | Pending |
+| UX-09 | Phase 24 | Pending |
+| UX-10 | Phase 24 | Pending |
+| UX-11 | Phase 24 | Pending |
+| INTEGRATION-01 | Phase 25 | Pending |
 
 **Coverage:**
-- v1 requirements: 87 total
-- Mapped to phases: 87
-- Unmapped: 0
+- v1 requirements: 87 total — 87 mapped, 87 complete
+- v0.2 requirements: 55 total — 55 mapped, 0 complete
+- Total: 142 requirements — 142 mapped, 87 complete, 55 pending, 0 unmapped
 
 ---
 *Requirements defined: 2026-03-25*

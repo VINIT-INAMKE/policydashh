@@ -23,6 +23,26 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 9: Public Portal & Compliance** - Read-only public portal, public changelog, consultation summaries, PDF export, audit trail viewer, evidence pack export
 - [x] **Phase 10: Workshops & Evidence Management** - Workshop events, artifacts, insight-to-section linking, evidence repository, "claims without evidence" view (completed 2026-03-26)
 - [x] **Phase 11: Real-Time Collaboration** - Multi-user Yjs/Hocuspocus editing, presence indicators, inline comments on selected text (completed 2026-03-26)
+- [x] **Phase 12: Workshop System Fix** - Fix workshop section/feedback linking, dialog pickers, duplicate UI (completed 2026-03-26)
+- [x] **Phase 13: UX Consolidation & Navigation** - Breadcrumbs, PolicyTabBar, consolidated /feedback, cross-nav, r2-upload rename (completed 2026-04-12)
+
+---
+
+### Milestone v0.2: Verifiable Policy OS — Public Consultation & On-Chain Anchoring (Phases 14–25)
+
+- [ ] **Phase 14: Collab Rollback** - Remove Yjs/Hocuspocus/inline comments, drop related schema, delete hocuspocus-server; verify single-user editor with auto-save
+- [ ] **Phase 15: Stale Verification Closeout** - Re-verify Phase 4 FeedbackDetailSheet + Phase 7 traceability discoverability; fix Phase 9 Export Evidence Pack button
+- [ ] **Phase 16: Notification Dispatch Migration + Flow 5 Smoke** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency
+- [ ] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary
+- [ ] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery
+- [ ] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails
+- [ ] **Phase 20: Cal.com Workshop Register (Flow 2)** - Public /workshops listing with cal.com embed, webhook handler, auto-user-create, MEETING_ENDED attendance, post-workshop feedback link
+- [ ] **Phase 20.5: Public /research + /framework Content** - Static /research content page; /framework draft consultation surface with per-section status badges and what-changed log
+- [ ] **Phase 21: Public Shell + LLM Consultation Summary + Theme** - Minimal public shell routing; llama-3.3-70b consultation summary per section with human review gate; policy-grade theme
+- [ ] **Phase 22: Milestone Entity + SHA256 Hashing Service** - First-class milestones table, RFC 8785 JCS canonicalization, deterministic hashing for version/workshop/evidence/milestone
+- [ ] **Phase 23: Cardano Preview-Net Anchoring** - Mesh SDK + Blockfrost per-milestone and per-version anchoring with Verified State badges on public portal
+- [ ] **Phase 24: Stakeholder Engagement Tracking Lite** - users.lastActivityAt via tRPC middleware, admin inactive-user widget, basic engagement score
+- [ ] **Phase 25: Cross-Phase Integration Smoke** - Full E2E walk: /participate → workshop register → reminders → MEETING_ENDED → feedback → CR → merge → version → milestone → SHA256 → Cardano tx → Verified State badge
 
 ## Phase Details
 
@@ -225,17 +245,32 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Auth | 0/3 | Planning complete | - |
-| 2. Policy Documents & Sections | 0/3 | Planning complete | - |
-| 3. Block Editor | 0/3 | Planning complete | - |
+| 1. Foundation & Auth | 3/3 | Complete | 2026-03-25 |
+| 2. Policy Documents & Sections | 3/3 | Complete | 2026-03-25 |
+| 3. Block Editor | 3/3 | Complete | 2026-03-25 |
 | 4. Feedback System | 3/3 | Complete | 2026-03-25 |
-| 5. Change Requests | 0/3 | Planning complete | - |
-| 6. Versioning | 0/2 | Planning complete | - |
-| 7. Traceability & Search | 2/3 | Executing | - |
-| 8. Dashboards & Notifications | 0/3 | Planning complete | - |
-| 9. Public Portal & Compliance | 0/2 | Planning complete | - |
-| 10. Workshops & Evidence Management | 3/3 | Complete    | 2026-03-26 |
-| 11. Real-Time Collaboration | 3/3 | Complete    | 2026-03-26 |
+| 5. Change Requests | 3/3 | Complete | 2026-03-25 |
+| 6. Versioning | 2/2 | Complete | 2026-03-25 |
+| 7. Traceability & Search | 3/3 | Complete | 2026-03-25 |
+| 8. Dashboards & Notifications | 3/3 | Complete | 2026-03-25 |
+| 9. Public Portal & Compliance | 2/2 | Complete | 2026-03-25 |
+| 10. Workshops & Evidence Management | 3/3 | Complete | 2026-03-26 |
+| 11. Real-Time Collaboration | 3/3 | Complete (rolled back in v0.2 P14) | 2026-03-26 |
+| 12. Workshop System Fix | 2/2 | Complete | 2026-04-12 |
+| 13. UX Consolidation & Navigation | 5/5 | Complete | 2026-04-12 |
+| 14. Collab Rollback | 0/0 | v0.2 Planning | - |
+| 15. Stale Verification Closeout | 0/0 | v0.2 Planning | - |
+| 16. Flow 5 Smoke + Notification Migration | 0/0 | v0.2 Planning | - |
+| 17. Workshop Lifecycle + Recording Pipeline | 0/0 | v0.2 Planning | - |
+| 18. Async Evidence Pack Export | 0/0 | v0.2 Planning | - |
+| 19. Public /participate Intake | 0/0 | v0.2 Planning | - |
+| 20. Cal.com Workshop Register | 0/0 | v0.2 Planning | - |
+| 20.5. Public /research + /framework Pages | 0/0 | v0.2 Planning | - |
+| 21. Public Shell + Consultation Summary + Theme | 0/0 | v0.2 Planning | - |
+| 22. Milestone Entity + SHA256 Hashing | 0/0 | v0.2 Planning | - |
+| 23. Cardano Preview-Net Anchoring | 0/0 | v0.2 Planning | - |
+| 24. Stakeholder Engagement Tracking | 0/0 | v0.2 Planning | - |
+| 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
 
 ### Phase 12: Workshop System Fix
 
@@ -256,4 +291,200 @@ Plans:
 **Plans:** 5/5 plans complete
 
 Plans:
-- [x] TBD (run /gsd:plan-phase 13 to break down) (completed 2026-04-12)
+- [x] TBD (run /gsd:plan-phase 13 to break down)
+ (completed 2026-04-12)
+
+---
+
+# Milestone v0.2 — Verifiable Policy OS: Public Consultation & On-Chain Anchoring
+
+**Started:** 2026-04-13
+**Phases:** 14–25 (12 phases, Phase 20.5 inserted between 20 and 21)
+**Goal:** Turn PolicyDash from a closed authenticated workspace into a verifiable policy operating system with a public consultation on-ramp, fully automated workshop/feedback flows via Inngest, LLM-assisted content (Groq), and Cardano preview-net anchoring of every published policy version and completed milestone.
+
+## Execution Order
+
+Critical path: **14 → 15 → 16 → {17 ∥ 19} → 20 → 25**
+
+Parallelizable once prereqs land: 18 (after 16), 20.5 (after 17), 21 (after 20.5), 22→23, 24 (after 20).
+
+### Phase 14: Collab Rollback
+
+**Goal:** Real-time collaboration code is fully removed so v0.2 work can layer onto a smaller, stable type surface
+**Depends on:** v0.1 Phase 13
+**Requirements:** COLLAB-ROLLBACK-01, COLLAB-ROLLBACK-02
+**Success Criteria** (what must be TRUE):
+  1. `ydoc_snapshots`, `comment_threads`, `comment_replies` tables dropped via migration with no dangling FK references
+  2. `hocuspocus-server/` directory deleted from repo; `NEXT_PUBLIC_HOCUSPOCUS_URL` removed from `.env.example`
+  3. Block editor loads and accepts input in single-user mode without any Yjs/Collaboration extension imports; auto-save fires on idle
+  4. `EDIT-06`, `EDIT-07`, `EDIT-08` annotated as "rolled back in v0.2 Phase 14, deferred to v2" in REQUIREMENTS.md
+  5. Render tests pass after each deletion step (not just typecheck) — prevents the `providerRef.current` class of bug
+**Plans:** TBD (run /gsd:plan-phase 14)
+
+### Phase 15: Stale Verification Closeout
+
+**Goal:** v0.1 audit gaps (stale verifications on Phase 4, Phase 7, plus Phase 9 auditor dashboard bug) are resolved before any new surfaces are built on top of them
+**Depends on:** Phase 14
+**Requirements:** FIX-05, FIX-06, EV-08
+**Success Criteria** (what must be TRUE):
+  1. Stakeholder clicking a feedback row in `/feedback` opens the detail sheet with triage actions and decision log (verifies Phase 4 FeedbackDetailSheet wiring works post-Phase 13 consolidation)
+  2. Traceability page is reachable via PolicyTabBar from any policy detail page (verifies Phase 7 discoverability)
+  3. Auditor dashboard "Export Evidence Pack" button opens `EvidencePackDialog` directly (fixes Phase 9 audit gap — one-line fix, previously routed as Link to `/audit`)
+  4. Phase 4 and Phase 7 VERIFICATION.md files are updated to `status: passed` with a re-verified timestamp
+**Plans:** TBD (run /gsd:plan-phase 15)
+
+### Phase 16: Flow 5 Smoke + Notification Dispatch Migration
+
+**Goal:** All notification dispatch runs through Inngest (off the mutation critical path) with transition-window dual-write to prevent duplicate sends; Flow 5 (feedback decided → notification + email + auto-draft CR) smoke-tested end-to-end against a running dev server
+**Depends on:** Phase 15
+**Requirements:** FIX-07, NOTIF-04, NOTIF-05, NOTIF-06
+**Success Criteria** (what must be TRUE):
+  1. Admin decides a feedback item (accept/partial/reject) and within ~5 seconds: in-app notification appears for submitter, email sent via Resend, if accept/partial a draft CR is auto-created with linked feedback and sections
+  2. `createNotification(...).catch(console.error)` callsites replaced with `sendEvent('notification.create', ...)` in `feedback.ts`, `changeRequest.ts`, `version.ts`, `sectionAssignment.ts`; `feedback.decide:398` pattern confirmed as reference
+  3. `notificationDispatch` Inngest fn inserts the DB row and sends the Resend email with retry safety
+  4. Transition-window dual-write guarded by idempotency key (`createdBy + entityType + entityId + action`) prevents duplicate notifications during cutover
+  5. Flow 5 smoke walk produces all four observable effects (in-app notification, email send, auto-draft CR, workflowTransition log) on a single feedback.decide call
+**Plans:** TBD (run /gsd:plan-phase 16)
+
+### Phase 17: Workshop Lifecycle + Recording Pipeline (Groq)
+
+**Goal:** Workshops have a real status machine with completion events, an evidence checklist with auto-nudges, and recordings are transcribed + summarized via Groq Whisper + llama in a background pipeline
+**Depends on:** Phase 16
+**Requirements:** WS-06, WS-12, WS-13, WS-14, LLM-01, LLM-02, LLM-03
+**Success Criteria** (what must be TRUE):
+  1. Moderator can transition a workshop through `upcoming → in_progress → completed → archived` via admin actions, with each transition audited
+  2. Workshop completion triggers `workshopCompleted` Inngest fn that creates evidence checklist rows for required artifact slots
+  3. Moderator receives a nudge email at 72h and 7d after completion if evidence slots are still empty, with deep-links to the upload targets
+  4. Moderator uploads a workshop recording → `workshopRecordingProcessed` Inngest fn transcribes via Whisper-large-v3-turbo and summarizes via llama-3.1-8b-instant
+  5. Transcript and summary appear as workshop artifacts in draft state; moderator reviews and approves before they become visible beyond admins
+  6. Uploads > 25MB are rejected at R2 presign step; `src/lib/llm.ts` wrapper enforces `max_tokens` on every Groq chat call
+**Plans:** TBD (run /gsd:plan-phase 17)
+
+### Phase 18: Async Evidence Pack Export
+
+**Goal:** Evidence pack export runs async via Inngest with R2 binary inclusion; completed pack is uploaded and delivered via presigned-GET email link
+**Depends on:** Phase 16 (Inngest pattern)
+**Requirements:** EV-05, EV-06, EV-07
+**Success Criteria** (what must be TRUE):
+  1. Admin or Auditor clicks "Export Evidence Pack" → receives toast "Your pack is being generated, you'll get an email when ready"
+  2. `evidencePackExport` Inngest fn gathers metadata (CSVs/JSONs) and fetches R2 binaries (recordings, screenshots, attachments) via streaming download
+  3. fflate `Zip` stream assembles the archive and uploads to `evidence-packs/{policyId}-{timestamp}.zip` via R2 multipart upload without loading the full archive into memory
+  4. Requester receives email with presigned-GET URL (24h expiry) and pack metadata (file count, total size, timestamp)
+  5. Fallback path: if binary fetch times out, deliver a manifest-only pack with presigned links (documented as degraded-mode)
+**Plans:** TBD (run /gsd:plan-phase 18)
+
+### Phase 19: Public `/participate` Intake (Clerk Invite + Turnstile)
+
+**Goal:** Any visitor can submit `/participate` form, get role-classified, auto-registered via Clerk invitation API, and receive a role-tailored welcome email — with layered abuse protection
+**Depends on:** Phase 16
+**Requirements:** INTAKE-01, INTAKE-02, INTAKE-03, INTAKE-04, INTAKE-05, INTAKE-06, INTAKE-07
+**Success Criteria** (what must be TRUE):
+  1. Unauthenticated visitor can load `/participate` and submit the form with role, org type, expertise, email, and interest
+  2. Cloudflare Turnstile token is verified server-side before any Clerk or DB call; missing/invalid token returns 403
+  3. Submission fires `participateIntake` Inngest event and returns a success toast within 500ms (user does not wait for Clerk API)
+  4. `participateIntake` Inngest fn: rate-limits per emailHash, auto-creates Clerk user via `invitations.createInvitation({ emailAddress, publicMetadata: { role: 'stakeholder', orgType } })` if unknown, no-ops on duplicate submit via idempotency key
+  5. Role-tailored welcome email sent via Resend per 6 org buckets (government / industry / legal / academia / civil_society / internal) — 6 templates
+  6. Existing Clerk user routed to their existing account, no duplicate invite, still receives welcome email
+  7. Turnstile failure, rate limit hit, and Clerk errors surfaced cleanly in the UI without exposing internals
+**Plans:** TBD (run /gsd:plan-phase 19)
+
+### Phase 20: Cal.com Workshop Register
+
+**Goal:** Visitors can register for workshops via cal.com embed; webhook handler creates `workshopRegistrations`, auto-creates Clerk users, auto-populates attendance from `MEETING_ENDED`, and emails post-workshop feedback links back-linked to workshops
+**Depends on:** Phase 17 + Phase 19
+**Requirements:** WS-07, WS-08, WS-09, WS-10, WS-11, WS-15
+**Success Criteria** (what must be TRUE):
+  1. Admin creating a workshop auto-creates a matching cal.com event type via cal.com API; `workshops.calcomEventTypeId` FK stored
+  2. Public `/workshops` listing shows upcoming workshops with cal.com embed widget per workshop
+  3. Visitor can book a slot via the embed; cal.com sends `BOOKING_CREATED` webhook to `/api/webhooks/cal`
+  4. Webhook handler verifies HMAC-SHA256 signature on raw request body (not after `req.json()`) before any processing; idempotent on `bookingUid`
+  5. `BOOKING_CREATED` handler creates `workshopRegistrations` row; if attendee email unknown, Clerk-invites via `invitations.createInvitation`
+  6. `MEETING_ENDED` webhook (flat payload shape — NOT `BOOKING_COMPLETED` which doesn't exist) transitions workshop to `completed` status and auto-populates attendance from cal.com attendee list
+  7. Post-workshop feedback link emailed to attendees; clicking it lands on a pre-filled feedback form with `workshopId` set, and submission creates a `workshopFeedbackLinks` row
+**Plans:** TBD (run /gsd:plan-phase 20)
+
+### Phase 20.5: Public `/research` + `/framework` Content Pages
+
+**Goal:** Public visitors can read the research backing the policy and see the draft framework under consultation with per-section status and a "what changed" log
+**Depends on:** Phase 17 (framework page surfaces document-level status)
+**Requirements:** PUB-06, PUB-07, PUB-08
+**Success Criteria** (what must be TRUE):
+  1. Public `/research` page renders executive summary, current Indian landscape, key gap clusters, and a downloadable research report (PDF) without authentication
+  2. Public `/framework` page lists documents tagged `isPublicDraft: true` with per-section status badges: Draft / Under Review / Validated (derived from section-level CR and review state)
+  3. `/framework` shows a "what changed" log aggregating recent CR merges per section with dates and short summaries (no stakeholder identity surfaced)
+  4. Both pages load without authentication; `proxy.ts` `publicRoutes` explicitly allow them
+**Plans:** TBD (run /gsd:plan-phase 20.5)
+
+### Phase 21: Public Shell + Consultation Summary LLM + Theme
+
+**Goal:** Minimal public shell ties the public surfaces together with a policy-grade theme; LLM-generated consultation summary prose is cached per published version and auto-regenerated on every publish, gated by human review before public display
+**Depends on:** Phase 20.5
+**Requirements:** LLM-04, LLM-05, LLM-06, LLM-07, LLM-08, PUB-09, PUB-10
+**Success Criteria** (what must be TRUE):
+  1. Minimal public shell (header, footer) wraps `/`, `/participate`, `/workshops`, `/research`, `/framework`, `/portal` with consistent navigation; landing page at `/` is deferred but shell routes exist
+  2. Policy-grade theme applied: white/off-white base, dark blue/slate typography, saffron or teal accent, document cards (verified against reference design in `newDoc2.md`)
+  3. `version.published` event triggers `consultationSummaryGenerate` Inngest fn that calls llama-3.3-70b-versatile with anonymized accepted-feedback content grouped by section
+  4. LLM output cached in `documentVersions.consultationSummary` (JSONB) with status `pending`; never rendered publicly until moderator reviews and marks `approved`
+  5. Guardrail regex scans generated text for stakeholder name patterns and blocks publish if any match (belt-and-suspenders alongside anonymization at input)
+  6. Consultation summary only visible publicly when status is `approved`; draft versions show "Summary under review" placeholder
+  7. Moderator review modal shows pending/draft summaries with side-by-side raw feedback counts for verification
+**Plans:** TBD (run /gsd:plan-phase 21)
+
+### Phase 22: Milestone Entity + SHA256 Hashing Service
+
+**Goal:** First-class Milestone entity links all its constituent state (versions, workshops, feedback, evidence) and exposes a deterministic SHA256 hash service; golden-fixture tests guarantee hash stability under Cardano anchoring
+**Depends on:** Phase 18 (evidence pack foundations)
+**Requirements:** VERIFY-01, VERIFY-02, VERIFY-03, VERIFY-04, VERIFY-05
+**Success Criteria** (what must be TRUE):
+  1. `milestones` table exists with required-slot definitions, readiness state (`defining → ready → anchoring → anchored`), and immutability enforcement after `anchored`
+  2. `documentVersions`, `workshops`, `feedbackItems`, `evidenceArtifacts` each have nullable `milestoneId` FK with partial indexes
+  3. Admin can view a milestone detail page showing all linked entities and click "Mark milestone ready" to trigger hash computation
+  4. `src/lib/hashing.ts` produces deterministic SHA256 hashes for `policyVersion`, `workshop`, `evidenceBundle`, `milestone` inputs
+  5. Canonical JSON pass (RFC 8785 JCS or explicit sort+stringify) normalizes input before hashing
+  6. Golden-fixture tests verify hash stability across permuted inputs, nested objects, and array orderings — failure means hash is non-deterministic and anchoring cannot proceed
+**Plans:** TBD (run /gsd:plan-phase 22)
+
+### Phase 23: Cardano Preview-Net Anchoring
+
+**Goal:** Every published policy version and completed milestone is SHA256-hashed and anchored to Cardano preview-net via Mesh SDK + Blockfrost, with Verified State badges and Cardanoscan explorer links on the public portal
+**Depends on:** Phase 22 + user-provided funded preview-net wallet
+**Requirements:** VERIFY-06, VERIFY-07, VERIFY-08, VERIFY-09
+**Success Criteria** (what must be TRUE):
+  1. `src/lib/cardano.ts` built with `import 'server-only'` guard, Mesh SDK + Blockfrost wired, env vars validated via `requireEnv`
+  2. Admin marks milestone ready → `milestoneReady` Inngest fn executes 5 steps: compute-hash → persist-hash → check-existing-tx → submit-tx → confirm-loop
+  3. `check-existing-tx` queries Blockfrost `/metadata/txs/labels/:label` for existing tx matching this content hash; if found, reuses existing txHash (prevents double-anchor on redeploy or retry)
+  4. `submit-tx` builds Cardano tx with metadata JSON (CIP-10 label 674) containing `{ project, type, hash, milestoneId, timestamp }`, signs with service wallet, submits via Blockfrost
+  5. `confirm-loop` polls until tx confirmed (step.sleep 30s between polls); stores `txHash` and `anchoredAt` on milestone row
+  6. Every `version.published` event triggers a per-version anchor via the same pipeline (different metadata type)
+  7. DB-level `UNIQUE(milestoneId)` / `UNIQUE(versionId)` constraint + `concurrency: { key: 'cardano-wallet', limit: 1 }` enforce idempotency at three layers
+  8. Public `/portal` renders Verified State badge on anchored versions and milestones, linking to `https://preview.cardanoscan.io/transaction/{txHash}` explorer page
+**Plans:** TBD (run /gsd:plan-phase 23)
+
+### Phase 24: Stakeholder Engagement Tracking (lite)
+
+**Goal:** Admins have visibility into stakeholder engagement — who is active, who has gone dormant, and how engagement is measured — without building a full CRM
+**Depends on:** Phase 20 (needs cal.com attendance data to be meaningful)
+**Requirements:** UX-08, UX-09, UX-10, UX-11
+**Success Criteria** (what must be TRUE):
+  1. `users.lastActivityAt` column updated via tRPC middleware on every authenticated mutation; migration backfills to `createdAt` for existing users
+  2. Admin dashboard widget lists users with no activity in a configurable window (default 30 days), sortable by last activity and engagement score
+  3. Basic engagement score computed from feedback count + workshop attendance count; formula documented in code comment
+  4. Stakeholder profile page shows workshop attendance history auto-populated from cal.com `MEETING_ENDED` webhook events
+**Plans:** TBD (run /gsd:plan-phase 24)
+
+### Phase 25: Cross-Phase Integration Smoke
+
+**Goal:** A full end-to-end walk from public intake through feedback decision, CR merge, version publish, milestone completion, and Cardano anchoring proves the entire v0.2 chain works as a single product — the gap I bailed on in the v0.1 audit
+**Depends on:** All prior v0.2 phases (14–24)
+**Requirements:** INTEGRATION-01
+**Success Criteria** (what must be TRUE):
+  1. Fresh visitor submits `/participate` → receives welcome email → clicks Clerk invite link → sets password → lands on stakeholder dashboard
+  2. Same visitor views `/workshops`, books a slot via cal.com embed, receives cal.com confirmation + ICS attachment
+  3. Cal.com reminder emails fire on schedule (spot-check via dev-mode time acceleration)
+  4. After session ends, `MEETING_ENDED` webhook transitions workshop to completed; attendance auto-populated; post-workshop feedback email arrives with deep-link
+  5. Stakeholder submits feedback via deep-link → `workshopFeedbackLinks` row created → workflowTransition audit log shows correct actor
+  6. Admin reviews feedback, accepts it with rationale → Inngest fires `feedback.reviewed` → notification + email + auto-draft CR created
+  7. Admin merges CR → new document version published → `version.published` event triggers per-version Cardano anchor → `consultationSummaryGenerate` fires → moderator reviews LLM summary → marks approved
+  8. Admin marks milestone ready → milestone hash computed → Cardano tx submitted → confirmed → Verified State badge visible on `/portal` with Cardanoscan preview-net link
+  9. Integration smoke report written to `.planning/v0.2-INTEGRATION-SMOKE.md` documenting any gaps, flaky steps, or regressions
+**Plans:** TBD (run /gsd:plan-phase 25)
