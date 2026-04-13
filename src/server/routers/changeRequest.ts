@@ -12,7 +12,7 @@ import { users } from '@/src/db/schema/users'
 import { workflowTransitions } from '@/src/db/schema/workflow'
 import { eq, and, desc, asc, sql, inArray, ilike } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
-import { createNotification } from '@/src/lib/notifications'
+import { sendNotificationCreate } from '@/src/inngest/events'
 
 const CR_STATUSES = ['drafting', 'in_review', 'approved', 'merged', 'closed'] as const
 
@@ -271,16 +271,18 @@ export const changeRequestRouter = router({
         entityId: input.id,
       }).catch(console.error)
 
-      // Fire-and-forget notification to CR owner
-      createNotification({
-        userId: updated.ownerId,
-        type: 'cr_status_changed',
-        title: 'CR sent for review',
-        body: `Change request ${updated.readableId} is now in review.`,
+      // NOTIF-04: route notification through notificationDispatchFn (Inngest).
+      await sendNotificationCreate({
+        userId:     updated.ownerId,
+        type:       'cr_status_changed',
+        title:      'CR sent for review',
+        body:       `Change request ${updated.readableId} is now in review.`,
         entityType: 'cr',
-        entityId: updated.id,
-        linkHref: `/change-requests/${updated.id}`,
-      }).catch(console.error)
+        entityId:   updated.id,
+        linkHref:   `/change-requests/${updated.id}`,
+        createdBy:  ctx.user.id,
+        action:     'submitForReview',
+      })
 
       return updated
     }),
@@ -321,16 +323,18 @@ export const changeRequestRouter = router({
         entityId: input.id,
       }).catch(console.error)
 
-      // Fire-and-forget notification to CR owner
-      createNotification({
-        userId: updated.ownerId,
-        type: 'cr_status_changed',
-        title: 'CR approved',
-        body: `Change request ${updated.readableId} has been approved.`,
+      // NOTIF-04: route notification through notificationDispatchFn (Inngest).
+      await sendNotificationCreate({
+        userId:     updated.ownerId,
+        type:       'cr_status_changed',
+        title:      'CR approved',
+        body:       `Change request ${updated.readableId} has been approved.`,
         entityType: 'cr',
-        entityId: updated.id,
-        linkHref: `/change-requests/${updated.id}`,
-      }).catch(console.error)
+        entityId:   updated.id,
+        linkHref:   `/change-requests/${updated.id}`,
+        createdBy:  ctx.user.id,
+        action:     'approve',
+      })
 
       return updated
     }),
@@ -377,16 +381,18 @@ export const changeRequestRouter = router({
         },
       }).catch(console.error)
 
-      // Fire-and-forget notification to CR owner
-      createNotification({
-        userId: result.cr.ownerId,
-        type: 'cr_status_changed',
-        title: 'CR merged',
-        body: `Change request ${result.cr.readableId} was merged into version ${result.version.versionLabel}.`,
+      // NOTIF-04: route notification through notificationDispatchFn (Inngest).
+      await sendNotificationCreate({
+        userId:     result.cr.ownerId,
+        type:       'cr_status_changed',
+        title:      'CR merged',
+        body:       `Change request ${result.cr.readableId} was merged into version ${result.version.versionLabel}.`,
         entityType: 'cr',
-        entityId: result.cr.id,
-        linkHref: `/change-requests/${result.cr.id}`,
-      }).catch(console.error)
+        entityId:   result.cr.id,
+        linkHref:   `/change-requests/${result.cr.id}`,
+        createdBy:  ctx.user.id,
+        action:     'merge',
+      })
 
       return result
     }),
