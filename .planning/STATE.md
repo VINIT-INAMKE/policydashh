@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Phase complete — ready for verification
+status: Milestone complete
 stopped_at: Completed 14-04-PLAN.md (final wave — Phase 14 acceptance gate PASSED)
-last_updated: "2026-04-13T15:05:19.940Z"
+last_updated: "2026-04-13T15:13:30.710Z"
 progress:
   total_phases: 13
   completed_phases: 13
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 
 ## Current Position
 
-Phase: 14 (Collab Rollback) — EXECUTING
-Plan: 4 of 4
+Phase: 14
+Plan: Not started
 
 ## Performance Metrics
 

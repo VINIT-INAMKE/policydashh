@@ -1,7 +1,7 @@
 ---
 phase: 14
 slug: collab-rollback
-status: human_needed
+status: passed
 verified: 2026-04-13
 must_haves_passed: 5/5
 human_verification:

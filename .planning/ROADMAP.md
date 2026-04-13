@@ -258,7 +258,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 11. Real-Time Collaboration | 3/3 | Complete (rolled back in v0.2 P14) | 2026-03-26 |
 | 12. Workshop System Fix | 2/2 | Complete | 2026-04-12 |
 | 13. UX Consolidation & Navigation | 5/5 | Complete | 2026-04-12 |
-| 14. Collab Rollback | 4/4 | Complete   | 2026-04-13 |
+| 14. Collab Rollback | 4/4 | Complete    | 2026-04-13 |
 | 15. Stale Verification Closeout | 0/0 | v0.2 Planning | - |
 | 16. Flow 5 Smoke + Notification Migration | 0/0 | v0.2 Planning | - |
 | 17. Workshop Lifecycle + Recording Pipeline | 0/0 | v0.2 Planning | - |
