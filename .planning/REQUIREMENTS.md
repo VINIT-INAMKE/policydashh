@@ -152,7 +152,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 ### Notification Dispatch Migration
 
 - [x] **NOTIF-04**: Every `createNotification(...).catch(console.error)` callsite in application routers migrated to `notification.create` Inngest event
-- [ ] **NOTIF-05**: `notificationDispatch` Inngest fn handles DB insert + Resend email dispatch off the mutation critical path
+- [x] **NOTIF-05**: `notificationDispatch` Inngest fn handles DB insert + Resend email dispatch off the mutation critical path
 - [x] **NOTIF-06**: Migration uses transition-window dual-write with idempotency key on `createdBy + entityType + entityId + action` to prevent duplicate sends
 
 ### Workshop Lifecycle (extensions)
@@ -367,7 +367,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | EV-08 | Phase 15 | Complete |
 | FIX-07 | Phase 16 | Pending |
 | NOTIF-04 | Phase 16 | Complete |
-| NOTIF-05 | Phase 16 | Pending |
+| NOTIF-05 | Phase 16 | Complete |
 | NOTIF-06 | Phase 16 | Complete |
 | WS-06 | Phase 17 | Pending |
 | WS-12 | Phase 17 | Pending |
