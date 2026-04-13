@@ -94,3 +94,63 @@ export async function sendFeedbackReviewed(
   await event.validate()
   await inngest.send(event)
 }
+
+// -- notification.create --------------------------------------------------
+
+// Zod 4's z.uuid() only accepts UUID versions 1-8 (it specifically rejects
+// version-0 all-zeros-ish test fixtures). We use z.guid() here — which
+// accepts any 8-4-4-4-12 hex UUID regardless of the version nibble — so the
+// Wave 0 test fixtures (e.g. '00000000-0000-0000-0000-000000000001') validate
+// correctly. Production callsites pass real v4 UUIDs from gen_random_uuid(),
+// which z.guid() accepts identically; there is no runtime risk difference.
+const notificationCreateSchema = z.object({
+  userId: z.guid(),
+  type: z.enum([
+    'feedback_status_changed',
+    'version_published',
+    'section_assigned',
+    'cr_status_changed',
+  ]),
+  title: z.string().min(1).max(200),
+  body: z.string().max(1000).optional(),
+  entityType: z.string().optional(),
+  entityId: z.guid().optional(),
+  linkHref: z.string().optional(),
+  // NOTIF-06 idempotency key fields — caller supplies these so the
+  // Inngest function can compute a deterministic per-action key and insert
+  // with onConflictDoNothing() against the notifications_idempotency_key_unique
+  // partial index added in migration 0009_notification_idempotency.sql.
+  createdBy: z.guid(),
+  action: z.string().min(1).max(64),
+})
+
+export const notificationCreateEvent = eventType('notification.create', {
+  schema: notificationCreateSchema,
+})
+
+export type NotificationCreateData = z.infer<typeof notificationCreateSchema>
+
+export async function sendNotificationCreate(
+  data: NotificationCreateData,
+): Promise<void> {
+  const event = notificationCreateEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
+
+/**
+ * Deterministic idempotency key for the notifications table unique index
+ * added in migration 0009_notification_idempotency. Keep this function in
+ * lockstep with the SQL: any change here must ship with a new migration
+ * and a backfill plan.
+ *
+ * Shape: `${createdBy}:${entityType ?? ''}:${entityId ?? ''}:${action}`
+ */
+export function computeNotificationIdempotencyKey(parts: {
+  createdBy: string
+  entityType: string | undefined
+  entityId: string | undefined
+  action: string
+}): string {
+  return `${parts.createdBy}:${parts.entityType ?? ''}:${parts.entityId ?? ''}:${parts.action}`
+}
