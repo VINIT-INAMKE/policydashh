@@ -51,10 +51,10 @@ Shipped in milestone v0.1 (11 core phases + 2 fix/consolidation phases). See `.p
 - [ ] Remove Yjs/Hocuspocus/inline comments and drop associated schema
 - [ ] Verify single-user block editor still works with auto-save fallback
 
-**Stale verification closeout (Phase 15)**
-- [ ] Re-verify Phase 4 FeedbackDetailSheet wiring after Phase 13 consolidation
-- [ ] Re-verify Phase 7 traceability nav discoverability after PolicyTabBar
-- [ ] Fix Phase 9 auditor dashboard Export Evidence Pack button to open dialog
+**Stale verification closeout (Phase 15)** — ✓ Complete (2026-04-14)
+- [x] Re-verify Phase 4 FeedbackDetailSheet wiring after Phase 13 consolidation
+- [x] Re-verify Phase 7 traceability nav discoverability after PolicyTabBar
+- [x] Fix Phase 9 auditor dashboard Export Evidence Pack button to open dialog
 
 **Automation pipeline (Phases 16–18)**
 - [ ] Flow 5 end-to-end smoke test (feedback.decide → Inngest → notification + email + auto-draft CR)
@@ -223,6 +223,7 @@ Shipped in milestone v0.1 (11 core phases + 2 fix/consolidation phases). See `.p
 | **v0.2: Clerk-invite for public auto-registration** | Public `/participate` and workshop register must create real user accounts without going through sign-up flow. Clerk's invitations API creates a user synchronously and sends invite email; our existing webhook reconciles. No separate `leads` table needed. | — Pending |
 | **v0.2: Groq direct inference, not compound-beta** | Compound-beta has built-in web search + code execution tools priced higher than direct inference. PolicyDash workloads are summarization + transcription + classification — direct inference on small models is cheaper and sufficient. | — Pending |
 | **v0.2: Cardano preview-net first** | Mainnet anchoring requires real ADA and operational rigor. Preview-net delivers the verifiability story without the funding commitment. User provides funded wallet at Phase 23. | — Pending |
+| **v0.2: Clerk email/password is the canonical auth path** (carried from v0.1 late adjustment) | v0.1 Phase 1 originally spec'd phone-only auth, but Clerk was switched to email/password before v0.1 shipped. Schema was already permissive — `users.email` and `users.phone` both nullable. v0.2 builds on this by using `invitations.createInvitation` (email-based) as the canonical public auto-register path for `/participate` and cal.com webhook handlers. | ✓ Good |
 
 ## Evolution
 
@@ -242,4 +243,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-13 — milestone v0.2 (Verifiable Policy OS — Public Consultation & On-Chain Anchoring) started*
+*Last updated: 2026-04-14 — Phase 15 (Stale Verification Closeout) complete; v0.1 audit gaps closed*
