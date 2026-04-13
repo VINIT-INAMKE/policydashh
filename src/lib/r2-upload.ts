@@ -43,7 +43,19 @@ export async function uploadFile(file: File, options: UploadOptions = {}): Promi
 
   const { uploadUrl, publicUrl, key } = await presignRes.json()
 
-  // Step 2: Upload directly to R2
+  // Step 2: Upload directly to R2.
+  //
+  // The presigned URL is signed with ContentDisposition: 'attachment' (see
+  // src/lib/r2.ts getUploadUrl), and its X-Amz-SignedHeaders includes
+  // content-disposition. We MUST send the same Content-Disposition header
+  // on the PUT or R2 computes a different signature and returns 403 —
+  // which Chrome surfaces as a misleading CORS error because 403
+  // responses carry no Access-Control-Allow-Origin header.
+  const putHeaders = {
+    'Content-Type': file.type,
+    'Content-Disposition': 'attachment',
+  }
+
   if (onProgress) {
     // Use XMLHttpRequest for progress tracking
     await new Promise<void>((resolve, reject) => {
@@ -59,13 +71,15 @@ export async function uploadFile(file: File, options: UploadOptions = {}): Promi
       })
       xhr.addEventListener('error', () => reject(new Error('Upload failed')))
       xhr.open('PUT', uploadUrl)
-      xhr.setRequestHeader('Content-Type', file.type)
+      for (const [name, value] of Object.entries(putHeaders)) {
+        xhr.setRequestHeader(name, value)
+      }
       xhr.send(file)
     })
   } else {
     const putRes = await fetch(uploadUrl, {
       method: 'PUT',
-      headers: { 'Content-Type': file.type },
+      headers: putHeaders,
       body: file,
     })
     if (!putRes.ok) {
