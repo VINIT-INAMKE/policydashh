@@ -1,9 +1,10 @@
 ---
 phase: 04-feedback-system
-verified: 2026-03-25T05:30:00Z
-status: gaps_found
-score: 8/10 truths verified
-re_verification: false
+verified: 2026-04-13T00:00:00Z
+status: passed
+score: 10/10 truths verified
+re_verification: true
+re_verified_note: "FIX-05 re-verified 2026-04-13 — FeedbackDetailSheet is now imported and mounted in feedback-inbox.tsx with selectedFeedbackId state controlling open/onOpenChange. Gap closed via v0.1 Phase 13 consolidation, confirmed in v0.2 Phase 15."
 gaps:
   - truth: "Feedback detail sheet opens on card click and shows full feedback content"
     status: failed
@@ -42,9 +43,9 @@ human_verification:
 # Phase 4: Feedback System Verification Report
 
 **Phase Goal:** Stakeholders can submit structured, traceable feedback on policy sections with full lifecycle management, evidence support, and privacy controls
-**Verified:** 2026-03-25T05:30:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-03-25T05:30:00Z (re-verified 2026-04-13T00:00:00Z)
+**Status:** passed (re-verified 2026-04-13)
+**Re-verification:** Yes — re-verified 2026-04-13 in v0.2 Phase 15
 
 ## Goal Achievement
 
