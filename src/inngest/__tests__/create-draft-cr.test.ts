@@ -140,8 +140,48 @@ describe('createDraftCRFromFeedback', () => {
     })
   })
 
-  // Deferred to Plan 04 smoke deep-dive — the current implementation relies
-  // on db.transaction rolling back on throw, but exercising that path
-  // requires either an integration test or a more elaborate tx fake.
-  it.todo('rolls back all three inserts if any step inside the transaction throws')
+  it('propagates sequence allocation failure before opening a transaction', async () => {
+    // Simulate cr_id_seq being missing (or any other db.execute failure) —
+    // createDraftCRFromFeedback should reject BEFORE db.transaction is ever
+    // called, so no partial writes can land.
+    mocks.executeMock.mockRejectedValueOnce(
+      new Error('relation "cr_id_seq" does not exist'),
+    )
+
+    await expect(createDraftCRFromFeedback(VALID_INPUT)).rejects.toThrow(
+      /cr_id_seq/,
+    )
+
+    expect(mocks.executeMock).toHaveBeenCalledTimes(1)
+    // Transaction must NEVER be opened on sequence failure.
+    expect(mocks.transactionMock).not.toHaveBeenCalled()
+  })
+
+  it('propagates errors thrown inside the transaction (rollback path)', async () => {
+    // Sequence allocates fine, but the first insert inside the transaction
+    // blows up — db.transaction semantics must propagate the error out of
+    // createDraftCRFromFeedback so the Inngest step.run fails and retries,
+    // and the caller never sees a half-written CR.
+    mocks.executeMock.mockResolvedValueOnce({ rows: [{ seq: 99 }] })
+
+    const insertSpy = vi.fn(() => {
+      throw new Error('duplicate key value violates unique constraint')
+    })
+    const tx = { insert: insertSpy }
+    mocks.transactionMock.mockImplementationOnce(
+      async (cb: (tx: unknown) => Promise<unknown>) => {
+        // Real drizzle.transaction re-throws whatever the callback throws
+        // (and rolls back the underlying SQL tx). The fake mirrors that
+        // contract — we don't need a real rollback, just error propagation.
+        return await cb(tx)
+      },
+    )
+
+    await expect(createDraftCRFromFeedback(VALID_INPUT)).rejects.toThrow(
+      /duplicate key value/,
+    )
+
+    expect(mocks.transactionMock).toHaveBeenCalledTimes(1)
+    expect(insertSpy).toHaveBeenCalledTimes(1)
+  })
 })
