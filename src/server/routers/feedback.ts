@@ -13,7 +13,7 @@ import { workflowTransitions } from '@/src/db/schema/workflow'
 import { eq, and, desc, asc, sql } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { createNotification } from '@/src/lib/notifications'
-import { sendFeedbackReviewed } from '@/src/inngest/events'
+import { sendFeedbackReviewed, sendNotificationCreate } from '@/src/inngest/events'
 
 const FEEDBACK_TYPES = ['issue', 'suggestion', 'endorsement', 'evidence', 'question'] as const
 const PRIORITIES = ['low', 'medium', 'high'] as const
@@ -331,7 +331,9 @@ export const feedbackRouter = router({
         entityId: input.id,
       }).catch(console.error)
 
-      // Fire-and-forget notification to feedback submitter
+      // NOTIF-04: route notification through notificationDispatchFn (Inngest)
+      // instead of the legacy fire-and-forget createNotification. Awaited so
+      // emit failures propagate to the mutation; Inngest handles retries.
       const [section] = await db
         .select({ title: policySections.title })
         .from(policySections)
@@ -340,15 +342,17 @@ export const feedbackRouter = router({
 
       const sectionName = section?.title ?? 'a section'
 
-      createNotification({
-        userId: updated.submitterId,
-        type: 'feedback_status_changed',
-        title: 'Feedback under review',
-        body: `Your feedback on \u201c${sectionName}\u201d is now being reviewed.`,
+      await sendNotificationCreate({
+        userId:     updated.submitterId,
+        type:       'feedback_status_changed',
+        title:      'Feedback under review',
+        body:       `Your feedback on \u201c${sectionName}\u201d is now being reviewed.`,
         entityType: 'feedback',
-        entityId: updated.id,
-        linkHref: `/feedback/${updated.id}`,
-      }).catch(console.error)
+        entityId:   updated.id,
+        linkHref:   `/feedback/${updated.id}`,
+        createdBy:  ctx.user.id,
+        action:     'startReview',
+      })
 
       return updated
     }),
@@ -423,7 +427,7 @@ export const feedbackRouter = router({
         entityId: input.id,
       }).catch(console.error)
 
-      // Fire-and-forget notification to feedback submitter
+      // NOTIF-04: route notification through notificationDispatchFn (Inngest).
       const [section] = await db
         .select({ title: policySections.title })
         .from(policySections)
@@ -432,15 +436,17 @@ export const feedbackRouter = router({
 
       const sectionName = section?.title ?? 'a section'
 
-      createNotification({
-        userId: updated.submitterId,
-        type: 'feedback_status_changed',
-        title: 'Feedback closed',
-        body: `Your feedback on \u201c${sectionName}\u201d has been closed.`,
+      await sendNotificationCreate({
+        userId:     updated.submitterId,
+        type:       'feedback_status_changed',
+        title:      'Feedback closed',
+        body:       `Your feedback on \u201c${sectionName}\u201d has been closed.`,
         entityType: 'feedback',
-        entityId: updated.id,
-        linkHref: `/feedback/${updated.id}`,
-      }).catch(console.error)
+        entityId:   updated.id,
+        linkHref:   `/feedback/${updated.id}`,
+        createdBy:  ctx.user.id,
+        action:     'close',
+      })
 
       return updated
     }),
