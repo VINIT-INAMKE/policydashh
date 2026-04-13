@@ -362,9 +362,9 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | AUDIT-06 | Phase 9 | Complete |
 | COLLAB-ROLLBACK-01 | Phase 14 | Complete |
 | COLLAB-ROLLBACK-02 | Phase 14 | Complete |
-| FIX-05 | Phase 15 | Pending |
-| FIX-06 | Phase 15 | Pending |
-| EV-08 | Phase 15 | Pending |
+| FIX-05 | Phase 15 | Complete |
+| FIX-06 | Phase 15 | Complete |
+| EV-08 | Phase 15 | Complete |
 | FIX-07 | Phase 16 | Pending |
 | NOTIF-04 | Phase 16 | Pending |
 | NOTIF-05 | Phase 16 | Pending |

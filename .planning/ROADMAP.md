@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Milestone v0.2: Verifiable Policy OS — Public Consultation & On-Chain Anchoring (Phases 14–25)
 
 - [x] **Phase 14: Collab Rollback** - Remove Yjs/Hocuspocus/inline comments, drop related schema, delete hocuspocus-server; verify single-user editor with auto-save (completed 2026-04-13)
-- [ ] **Phase 15: Stale Verification Closeout** - Re-verify Phase 4 FeedbackDetailSheet + Phase 7 traceability discoverability; fix Phase 9 Export Evidence Pack button
+- [x] **Phase 15: Stale Verification Closeout** - Re-verify Phase 4 FeedbackDetailSheet + Phase 7 traceability discoverability; fix Phase 9 Export Evidence Pack button (completed 2026-04-13)
 - [ ] **Phase 16: Notification Dispatch Migration + Flow 5 Smoke** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency
 - [ ] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary
 - [ ] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery
@@ -259,7 +259,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 12. Workshop System Fix | 2/2 | Complete | 2026-04-12 |
 | 13. UX Consolidation & Navigation | 5/5 | Complete | 2026-04-12 |
 | 14. Collab Rollback | 4/4 | Complete    | 2026-04-13 |
-| 15. Stale Verification Closeout | 0/0 | v0.2 Planning | - |
+| 15. Stale Verification Closeout | 1/1 | Complete   | 2026-04-13 |
 | 16. Flow 5 Smoke + Notification Migration | 0/0 | v0.2 Planning | - |
 | 17. Workshop Lifecycle + Recording Pipeline | 0/0 | v0.2 Planning | - |
 | 18. Async Evidence Pack Export | 0/0 | v0.2 Planning | - |
@@ -337,10 +337,10 @@ Plans:
   2. Traceability page is reachable via PolicyTabBar from any policy detail page (verifies Phase 7 discoverability)
   3. Auditor dashboard "Export Evidence Pack" button opens `EvidencePackDialog` directly (fixes Phase 9 audit gap — one-line fix, previously routed as Link to `/audit`)
   4. Phase 4 and Phase 7 VERIFICATION.md files are updated to `status: passed` with a re-verified timestamp
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 15-01-PLAN.md — Re-verify FIX-05 + FIX-06 (no code change), fix EV-08 (EvidencePackDialog trigger prop + auditor dashboard in-place mount), flip Phase 4/7/9 VERIFICATION.md to passed
+- [x] 15-01-PLAN.md — Re-verify FIX-05 + FIX-06 (no code change), fix EV-08 (EvidencePackDialog trigger prop + auditor dashboard in-place mount), flip Phase 4/7/9 VERIFICATION.md to passed
 
 ### Phase 16: Flow 5 Smoke + Notification Dispatch Migration
 

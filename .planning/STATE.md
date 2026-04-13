@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Milestone complete
-stopped_at: Completed 14-04-PLAN.md (final wave — Phase 14 acceptance gate PASSED)
-last_updated: "2026-04-13T15:13:30.710Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 15-01-PLAN.md (Phase 15 stale verification closeout — v0.1 gate cleared)
+last_updated: "2026-04-13T20:54:43.576Z"
 progress:
   total_phases: 13
   completed_phases: 13
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 14 — Collab Rollback
+**Current focus:** Phase 15 — Stale Verification Closeout
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
+Phase: 15 (Stale Verification Closeout) — EXECUTING
+Plan: 1 of 1
 
 ## Performance Metrics
 
@@ -82,6 +82,7 @@ Plan: Not started
 | Phase 14-collab-rollback P02 | 3min | 2 tasks | 3 files |
 | Phase 14-collab-rollback P03 | 4min | 2 tasks | 7 files |
 | Phase 14-collab-rollback P04 | 10min | 2 tasks | 3 files |
+| Phase 15-stale-verification-closeout P01 | 12min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,8 @@ Recent decisions affecting current work:
 - [Phase 14-collab-rollback]: Skipped drizzle-kit push; applied drop migration 0008 via @neondatabase/serverless driver (deterministic path given journal drift) — canonical pattern for hand-written DDL on this project
 - [Phase 14-collab-rollback]: Plan 14-04: Accepted transitive yjs/@tiptap/extension-collaboration residuals (pulled via @tiptap/extension-drag-handle→@tiptap/y-tiptap) because acceptance criteria check direct deps + source imports, both of which pass. Direct-dep removal + zero source imports is the behavioral signal, not comprehensive node_modules eradication.
 - [Phase 14-collab-rollback]: Plan 14-04: Phase-final acceptance pattern established — last plan of a rollback phase runs direct-dep grep, full-codebase residual grep, full npm test, and tsc --noEmit as the canonical Phase Acceptance Gate quartet.
+- [Phase 15-stale-verification-closeout]: FIX-05 and FIX-06 are re-verification only; Phase 13 consolidation and Phase 13-03 plan already wired FeedbackDetailSheet and PolicyTabBar Traceability tab. Verified via exact-substring greps before flipping VERIFICATION.md.
+- [Phase 15-stale-verification-closeout]: EV-08 resolved by adding optional trigger? ReactNode prop to EvidencePackDialog with default parameter = {}, preserving backwards compat with audit/page.tsx:33 zero-prop call. Auditor dashboard mounts the dialog in-place via the new prop.
 
 ### Pending Todos
 
@@ -201,6 +204,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T15:05:10.181Z
-Stopped at: Completed 14-04-PLAN.md (final wave — Phase 14 acceptance gate PASSED)
+Last session: 2026-04-13T20:54:43.558Z
+Stopped at: Completed 15-01-PLAN.md (Phase 15 stale verification closeout — v0.1 gate cleared)
 Resume file: None
