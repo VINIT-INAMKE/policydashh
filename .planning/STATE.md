@@ -1,30 +1,32 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.1
-milestone_name: milestone
-status: Milestone complete
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-04-12T07:25:18.423Z"
+milestone: v0.2
+milestone_name: verifiable-policy-os
+status: Defining requirements
+stopped_at: —
+last_updated: "2026-04-13T00:00:00.000Z"
 progress:
-  total_phases: 13
-  completed_phases: 13
-  total_plans: 38
-  completed_plans: 38
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-25)
+See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 12 — workshop-system-fix
+**Current focus:** Milestone v0.2 — Verifiable Policy OS — Public Consultation & On-Chain Anchoring (defining requirements)
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-13 — Milestone v0.2 started
 
 ## Performance Metrics
 
