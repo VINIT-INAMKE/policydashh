@@ -56,9 +56,15 @@ Shipped in milestone v0.1 (11 core phases + 2 fix/consolidation phases). See `.p
 - [x] Re-verify Phase 7 traceability nav discoverability after PolicyTabBar
 - [x] Fix Phase 9 auditor dashboard Export Evidence Pack button to open dialog
 
-**Automation pipeline (Phases 16–18)**
-- [ ] Flow 5 end-to-end smoke test (feedback.decide → Inngest → notification + email + auto-draft CR)
-- [ ] Migrate all `createNotification(...).catch(...)` callsites to `notification.create` Inngest event
+**Notification Dispatch Migration (Phase 16)** — ✓ Complete (2026-04-14, smoke walk deferred to milestone-end batch)
+- [x] All 7 `createNotification(...).catch(console.error)` callsites migrated to awaited `sendNotificationCreate(...)` across feedback.ts, changeRequest.ts, version.ts, sectionAssignment.ts
+- [x] `notificationDispatchFn` Inngest function with insert → fetch user → send Resend email step semantics, registered at `/api/inngest`
+- [x] `notifications.idempotency_key` column + partial UNIQUE index for transition-window dual-write safety
+- [x] `feedback.decide → sendFeedbackReviewed → feedbackReviewedFn` Flow 5 reference path preserved untouched
+- [x] FIX-07 automated regression coverage via fully-green `create-draft-cr.test.ts` (5/5, error paths included)
+- [ ] Manual Flow 5 end-to-end smoke walk on running dev server (deferred to `/gsd:complete-milestone` batch — full procedure in `16-SMOKE.md`)
+
+**Automation pipeline (Phases 17–18)**
 - [ ] Workshop lifecycle status machine (upcoming/in_progress/completed/archived)
 - [ ] Workshop evidence checklist auto-creation with 72h and 7d moderator nudges
 - [ ] Workshop recording → Whisper transcription → llama summary via Groq (human-reviewed before publish)
@@ -243,4 +249,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 — Phase 15 (Stale Verification Closeout) complete; v0.1 audit gaps closed*
+*Last updated: 2026-04-14 — Phase 16 (Flow 5 Smoke + Notification Dispatch Migration) complete; FIX-07/NOTIF-04/NOTIF-05/NOTIF-06 shipped, manual smoke walk deferred to milestone-end batch*
