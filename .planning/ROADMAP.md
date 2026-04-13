@@ -337,7 +337,10 @@ Plans:
   2. Traceability page is reachable via PolicyTabBar from any policy detail page (verifies Phase 7 discoverability)
   3. Auditor dashboard "Export Evidence Pack" button opens `EvidencePackDialog` directly (fixes Phase 9 audit gap — one-line fix, previously routed as Link to `/audit`)
   4. Phase 4 and Phase 7 VERIFICATION.md files are updated to `status: passed` with a re-verified timestamp
-**Plans:** TBD (run /gsd:plan-phase 15)
+**Plans:** 1 plan
+
+Plans:
+- [ ] 15-01-PLAN.md — Re-verify FIX-05 + FIX-06 (no code change), fix EV-08 (EvidencePackDialog trigger prop + auditor dashboard in-place mount), flip Phase 4/7/9 VERIFICATION.md to passed
 
 ### Phase 16: Flow 5 Smoke + Notification Dispatch Migration
 
