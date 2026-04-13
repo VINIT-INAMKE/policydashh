@@ -8,8 +8,7 @@ import { users } from '@/src/db/schema/users'
 import { policySections, policyDocuments } from '@/src/db/schema/documents'
 import { eq, and } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
-import { createNotification } from '@/src/lib/notifications'
-import { sendSectionAssignedEmail } from '@/src/lib/email'
+import { sendNotificationCreate } from '@/src/inngest/events'
 
 export const sectionAssignmentRouter = router({
   // Assign a user to a section
@@ -38,7 +37,9 @@ export const sectionAssignmentRouter = router({
           payload: { userId: input.userId, sectionId: input.sectionId },
         }).catch(console.error)
 
-        // Fire-and-forget notification + email to the assigned user
+        // NOTIF-04: replaces the old legacy notification + email pair. The
+        // notificationDispatchFn looks up the recipient's email inside its
+        // step.run('fetch-user-email') so the router no longer needs to.
         const [section] = await db
           .select({
             title: policySections.title,
@@ -50,7 +51,7 @@ export const sectionAssignmentRouter = router({
 
         const sectionName = section?.title ?? 'a section'
         let policyName = 'a policy'
-        let documentId = section?.documentId
+        const documentId = section?.documentId
 
         if (documentId) {
           const [doc] = await db
@@ -61,29 +62,17 @@ export const sectionAssignmentRouter = router({
           policyName = doc?.title ?? 'a policy'
         }
 
-        createNotification({
-          userId: input.userId,
-          type: 'section_assigned',
-          title: 'New section assigned',
-          body: `You have been assigned to \u201c${sectionName}\u201d in ${policyName}.`,
+        await sendNotificationCreate({
+          userId:     input.userId,
+          type:       'section_assigned',
+          title:      'New section assigned',
+          body:       `You have been assigned to \u201c${sectionName}\u201d in ${policyName}.`,
           entityType: 'section',
-          entityId: input.sectionId,
-          linkHref: documentId ? `/policies/${documentId}/sections/${input.sectionId}` : undefined,
-        }).catch(console.error)
-
-        // Fire-and-forget email
-        const [assignedUser] = await db
-          .select({ email: users.email })
-          .from(users)
-          .where(eq(users.id, input.userId))
-          .limit(1)
-
-        if (assignedUser?.email) {
-          sendSectionAssignedEmail(assignedUser.email, {
-            sectionName,
-            policyName,
-          }).catch(console.error)
-        }
+          entityId:   input.sectionId,
+          linkHref:   documentId ? `/policies/${documentId}/sections/${input.sectionId}` : undefined,
+          createdBy:  ctx.user.id,
+          action:     'assign',
+        })
 
         return assignment
       } catch (error: unknown) {
