@@ -12,10 +12,9 @@ import {
 } from '@/src/server/services/version.service'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
-import { eq, desc, inArray } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
-import { createNotification } from '@/src/lib/notifications'
-import { sendVersionPublishedEmail } from '@/src/lib/email'
+import { sendNotificationCreate } from '@/src/inngest/events'
 
 export const versionRouter = router({
   // List versions for a document (omit large fields)
@@ -127,8 +126,12 @@ export const versionRouter = router({
         },
       }).catch(console.error)
 
-      // Fire-and-forget: notify all assigned stakeholders + send emails
-      // Look up policy name
+      // NOTIF-04: fan out per-user notification.create events. The
+      // notificationDispatchFn handles both the DB insert (idempotent via
+      // idempotency_key) and the email send, so a single sendNotificationCreate
+      // call per user replaces the old legacy notification + email double-loop.
+      // Each event carries createdBy+action so dual-write during the
+      // transition window stays collision-free.
       const [doc] = await db
         .select({ title: policyDocuments.title })
         .from(policyDocuments)
@@ -145,35 +148,18 @@ export const versionRouter = router({
         .where(eq(policySections.documentId, version.documentId))
         .groupBy(sectionAssignments.userId)
 
-      // Fire-and-forget notification per assigned user
       for (const { userId } of assignedUsers) {
-        createNotification({
+        await sendNotificationCreate({
           userId,
-          type: 'version_published',
-          title: 'New version published',
-          body: `${policyName} has a new version: ${version.versionLabel}.`,
+          type:       'version_published',
+          title:      'New version published',
+          body:       `${policyName} has a new version: ${version.versionLabel}.`,
           entityType: 'version',
-          entityId: version.id,
-          linkHref: `/policies/${version.documentId}/versions/${version.id}`,
-        }).catch(console.error)
-      }
-
-      // Look up emails for assigned users and send fire-and-forget
-      if (assignedUsers.length > 0) {
-        const userIds = assignedUsers.map((u) => u.userId)
-        const usersWithEmail = await db
-          .select({ id: users.id, email: users.email })
-          .from(users)
-          .where(inArray(users.id, userIds))
-
-        for (const user of usersWithEmail) {
-          if (user.email) {
-            sendVersionPublishedEmail(user.email, {
-              policyName,
-              versionLabel: version.versionLabel,
-            }).catch(console.error)
-          }
-        }
+          entityId:   version.id,
+          linkHref:   `/policies/${version.documentId}/versions/${version.id}`,
+          createdBy:  ctx.user.id,
+          action:     'publish',
+        })
       }
 
       return version
