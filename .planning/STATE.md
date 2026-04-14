@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Phase 20.5 UI-SPEC approved
-last_updated: "2026-04-14T17:20:31.436Z"
+status: Ready to execute
+stopped_at: Completed 20.5-00-PLAN.md (Wave 0 RED contract)
+last_updated: "2026-04-14T21:08:54.673Z"
 progress:
   total_phases: 26
   completed_phases: 20
-  total_plans: 69
-  completed_plans: 69
+  total_plans: 73
+  completed_plans: 70
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 20 — cal-com-workshop-register
+**Current focus:** Phase 20.5 — public-research-framework-content-pages
 
 ## Current Position
 
-Phase: 20.5
-Plan: Not started
+Phase: 20.5 (public-research-framework-content-pages) — EXECUTING
+Plan: 2 of 4
 
 ## Performance Metrics
 
@@ -106,6 +106,7 @@ Plan: Not started
 | Phase 20-cal-com-workshop-register P02 | 5 min | 2 tasks | 6 files |
 | Phase 20 P05 | 11 | 2 tasks | 9 files |
 | Phase 20-cal-com-workshop-register P06 | 18min | 2 tasks | 9 files |
+| Phase 20.5 P00 | 7min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -263,6 +264,7 @@ Recent decisions affecting current work:
 - [Phase 20-cal-com-workshop-register]: Plan 20-06: /participate server-side mode-switch on searchParams.workshopId — JWT verified in page.tsx before rendering any client form; ExpiredLinkCard used for all three failure modes (no info leak)
 - [Phase 20-cal-com-workshop-register]: Plan 20-06: /api/intake/workshop-feedback submitterId fallback — users lookup by JWT email, fall back to workshops.createdBy so feedbackItems.submitterId NOT NULL stays satisfied without a schema migration
 - [Phase 20-cal-com-workshop-register]: Plan 20-06: z.guid() not z.uuid() in workshop-feedback body schema — Phase 16 precedent, accepts version-0 UUID fixtures
+- [Phase 20.5]: Wave 0 RED contract locked: six failing tests under tests/phase-20.5/ pin every PUB-06/07/08/D-17 artifact Plans 20.5-01, 02, 03 must create. Variable-path dynamic import pattern used throughout.
 
 ### Pending Todos
 
@@ -281,6 +283,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T17:20:31.419Z
-Stopped at: Phase 20.5 UI-SPEC approved
-Resume file: .planning/phases/20.5-public-research-framework-content-pages/20.5-UI-SPEC.md
+Last session: 2026-04-14T21:08:54.657Z
+Stopped at: Completed 20.5-00-PLAN.md (Wave 0 RED contract)
+Resume file: None
