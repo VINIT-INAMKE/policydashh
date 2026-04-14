@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 19-02-PLAN.md
-last_updated: "2026-04-14T11:37:25.755Z"
+stopped_at: Completed 19-01-PLAN.md
+last_updated: "2026-04-14T11:38:37.577Z"
 progress:
   total_phases: 26
   completed_phases: 18
   total_plans: 63
-  completed_plans: 59
+  completed_plans: 60
 ---
 
 # Project State
@@ -98,6 +98,7 @@ Plan: 3 of 6
 | Phase 18 P02 | 7min | 2 tasks | 3 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P00 | 21min | 2 tasks | 10 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P02 | 2min | 2 tasks | 2 files |
+| Phase 19-public-participate-intake-clerk-invite-turnstile P01 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -236,6 +237,8 @@ Recent decisions affecting current work:
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-00: @marsidev/react-turnstile resolved to ^1.5.0 (not 3.x) — npm registry major is 1, plan authorized 'no version pin'; 1.x API matches documented widget interface so no drift
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-02: use string-literal trigger { event: 'participate.intake' } instead of importing participateIntakeEvent — decouples Wave 2 parallel plans since 19-01 ships the EventType registration in parallel; Inngest resolves triggers by name at runtime
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-02: import sendWelcomeEmail from @/src/lib/email cross-plan seam — Wave 0 test mocks the import at module level so runtime is green; compile-time TypeScript diagnostic resolves when Plan 19-03 merges (canonical Wave 2 cross-seam pattern)
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-01: verifyTurnstile does not short-circuit on missing CLOUDFLARE_TURNSTILE_SECRET_KEY — secret passed verbatim (empty string fallback) so Wave 0 vi.stubGlobal('fetch') tests run the verify path; production fail-closed property preserved by Cloudflare /siteverify itself
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-01: emailHash schema uses z.string().regex(/^[0-9a-f]{64}$/) not min(64).max(64) — enforces lowercase-hex character class to match Wave 0 contract
 
 ### Pending Todos
 
@@ -254,6 +257,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T11:37:25.741Z
-Stopped at: Completed 19-02-PLAN.md
+Last session: 2026-04-14T11:38:37.560Z
+Stopped at: Completed 19-01-PLAN.md
 Resume file: None
