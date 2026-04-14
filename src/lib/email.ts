@@ -169,3 +169,66 @@ export async function sendWelcomeEmail(
     html,
   })
 }
+
+/**
+ * Send a workshop registration confirmation email (Phase 20 D-11).
+ *
+ * Called from workshopRegistrationReceivedFn (Plan 20-04) in a step.run
+ * block after Clerk invite. Same silent-no-op semantics as the rest of the
+ * helpers in this file. JSX template is dynamically imported so
+ * `vi.mock('@/src/lib/email')` in Inngest fn tests does not need to
+ * transform the .tsx file (Pitfall 8 — Phase 16/17/18/19 parity).
+ */
+export async function sendWorkshopRegistrationEmail(
+  to: string | null | undefined,
+  data: { name?: string | null; workshopTitle: string; scheduledAt: string },
+): Promise<void> {
+  if (!resend || !to) return
+
+  const { renderWorkshopRegistrationEmail } = await import(
+    './email-templates/workshop-registration'
+  )
+  const html = await renderWorkshopRegistrationEmail({
+    name: data.name ?? null,
+    workshopTitle: data.workshopTitle,
+    scheduledAt: data.scheduledAt,
+  })
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `You\u2019re registered for ${data.workshopTitle}`,
+    html,
+  })
+}
+
+/**
+ * Send a post-workshop feedback invite email (Phase 20 D-16).
+ *
+ * Called from workshopFeedbackInviteFn (Plan 20-05) in a step.run block,
+ * one per MEETING_ENDED attendee. `feedbackUrl` already has the signed
+ * 14-day JWT (D-17) baked in by the caller; this helper does NOT sign or
+ * inspect tokens. Same silent-no-op semantics as sibling helpers.
+ */
+export async function sendWorkshopFeedbackInviteEmail(
+  to: string | null | undefined,
+  data: { name?: string | null; workshopTitle: string; feedbackUrl: string },
+): Promise<void> {
+  if (!resend || !to) return
+
+  const { renderWorkshopFeedbackInviteEmail } = await import(
+    './email-templates/workshop-feedback-invite'
+  )
+  const html = await renderWorkshopFeedbackInviteEmail({
+    name: data.name ?? null,
+    workshopTitle: data.workshopTitle,
+    feedbackUrl: data.feedbackUrl,
+  })
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `Share your feedback on ${data.workshopTitle}`,
+    html,
+  })
+}
