@@ -9,6 +9,7 @@ import { feedbackItems } from '@/src/db/schema/feedback'
 import { policySections, policyDocuments } from '@/src/db/schema/documents'
 import { eq, and, isNull, desc } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
+import { sendEvidenceExportRequested } from '@/src/inngest/events'
 
 export const evidenceRouter = router({
   // Attach evidence artifact (file or link) to a feedback item or section
@@ -204,5 +205,43 @@ export const evidenceRouter = router({
         .orderBy(desc(feedbackItems.createdAt))
 
       return rows
+    }),
+
+  // EV-05: Async evidence pack export. Fires the evidence.export_requested
+  // Inngest event and returns immediately. The Inngest function assembles the
+  // pack, uploads to R2, and emails the requester a 24h presigned GET URL.
+  // Replaces the deleted sync GET /api/export/evidence-pack route.
+  requestExport: requirePermission('evidence:export')
+    .input(z.object({
+      // z.guid() (not z.uuid()) to match the Wave 0 test fixtures that use
+      // version-0 UUIDs (Zod 4's z.uuid() rejects them). Identical to the
+      // Phase 16 notification.create decision.
+      documentId: z.guid(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Pre-fetch user email at trigger time so the Inngest function doesn't
+      // need a DB lookup for the requester's address. Mirrors the Phase 17
+      // moderatorId-at-trigger-time pattern for workshop.completed.
+      const userEmail = ctx.user.email ?? null
+
+      await sendEvidenceExportRequested({
+        documentId:  input.documentId,
+        requestedBy: ctx.user.id,
+        userEmail,
+      })
+
+      // Fire-and-forget audit log for the REQUEST event (distinct from the
+      // final pack-assembled audit log written inside the Inngest function).
+      // Matches the Phase 9 sync route's audit pattern with async: true flag.
+      writeAuditLog({
+        actorId:    ctx.user.id,
+        actorRole:  ctx.user.role,
+        action:     ACTIONS.EVIDENCE_PACK_EXPORT,
+        entityType: 'document',
+        entityId:   input.documentId,
+        payload:    { async: true, stage: 'requested' },
+      }).catch(console.error)
+
+      return { status: 'queued' as const }
     }),
 })
