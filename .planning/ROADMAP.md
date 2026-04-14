@@ -397,7 +397,12 @@ Plans:
   3. fflate `Zip` stream assembles the archive and uploads to `evidence-packs/{policyId}-{timestamp}.zip` via R2 multipart upload without loading the full archive into memory
   4. Requester receives email with presigned-GET URL (24h expiry) and pack metadata (file count, total size, timestamp)
   5. Fallback path: if binary fetch times out, deliver a manifest-only pack with presigned links (documented as degraded-mode)
-**Plans:** TBD (run /gsd:plan-phase 18)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 18-00-PLAN.md — Wave 0 TDD scaffolds: RED contracts for evidencePackExport fn, email helper, dialog queued state
+- [ ] 18-01-PLAN.md — Backend: evidenceExportRequestedEvent + evidencePackExportFn (6-step pipeline) + sendEvidencePackReadyEmail + barrel registration
+- [ ] 18-02-PLAN.md — Trigger surface: evidence.requestExport tRPC mutation + dialog async conversion + sync route deletion
 
 ### Phase 19: Public `/participate` Intake (Clerk Invite + Turnstile)
 
