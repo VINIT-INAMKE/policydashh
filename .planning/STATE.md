@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 19-00-PLAN.md
-last_updated: "2026-04-14T11:32:24.058Z"
+stopped_at: Completed 19-02-PLAN.md
+last_updated: "2026-04-14T11:37:25.755Z"
 progress:
   total_phases: 26
   completed_phases: 18
   total_plans: 63
-  completed_plans: 58
+  completed_plans: 59
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 19 (Public /participate Intake (Clerk Invite + Turnstile)) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 
 ## Performance Metrics
 
@@ -97,6 +97,7 @@ Plan: 2 of 6
 | Phase 18 P01 | 30min | 2 tasks | 5 files |
 | Phase 18 P02 | 7min | 2 tasks | 3 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P00 | 21min | 2 tasks | 10 files |
+| Phase 19-public-participate-intake-clerk-invite-turnstile P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -233,6 +234,8 @@ Recent decisions affecting current work:
 - [Phase 18]: Plan 18-02: Atomic sync-route cutover — dialog rewrite + app/api/export/evidence-pack/route.ts deletion in the same commit, no dead endpoint interval
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-00: extended vitest.config.mts include glob to tests/**/*.test.ts (Rule 3) so tests/phase-19/ Wave 0 files are discovered; first phase to establish sibling tests/ directory convention alongside src/__tests__/
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-00: @marsidev/react-turnstile resolved to ^1.5.0 (not 3.x) — npm registry major is 1, plan authorized 'no version pin'; 1.x API matches documented widget interface so no drift
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-02: use string-literal trigger { event: 'participate.intake' } instead of importing participateIntakeEvent — decouples Wave 2 parallel plans since 19-01 ships the EventType registration in parallel; Inngest resolves triggers by name at runtime
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-02: import sendWelcomeEmail from @/src/lib/email cross-plan seam — Wave 0 test mocks the import at module level so runtime is green; compile-time TypeScript diagnostic resolves when Plan 19-03 merges (canonical Wave 2 cross-seam pattern)
 
 ### Pending Todos
 
@@ -251,6 +254,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T11:32:24.044Z
-Stopped at: Completed 19-00-PLAN.md
+Last session: 2026-04-14T11:37:25.741Z
+Stopped at: Completed 19-02-PLAN.md
 Resume file: None
