@@ -14,6 +14,7 @@ export const evidenceArtifacts = pgTable('evidence_artifacts', {
   fileSize:   integer('file_size'),
   uploaderId: uuid('uploader_id').notNull().references(() => users.id),
   createdAt:  timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  content:    text('content'),
 })
 
 export const feedbackEvidence = pgTable('feedback_evidence', {
