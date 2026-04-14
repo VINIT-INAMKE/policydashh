@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 18-00-PLAN.md
-last_updated: "2026-04-14T08:54:17.290Z"
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-04-14T09:08:50.714Z"
 progress:
   total_phases: 26
   completed_phases: 17
   total_plans: 57
-  completed_plans: 55
+  completed_plans: 56
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 18 (async-evidence-pack-export) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -94,6 +94,7 @@ Plan: 2 of 3
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P04 | 4min | 3 tasks | 5 files |
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P05 | 7min | 3 tasks | 7 files |
 | Phase 18-async-evidence-pack-export P00 | 40min | 4 tasks | 5 files |
+| Phase 18 P01 | 30min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -222,6 +223,9 @@ Recent decisions affecting current work:
 - [Phase 18-async-evidence-pack-export]: Plan 18-00 Wave 0: 4 RED test files lock 24 contracts (12 fn + 4 email + 3 dialog + 5 mutation) for Plans 18-01/18-02; 18-VALIDATION.md flipped nyquist_compliant + wave_0_complete to release Blocker 2 depends_on gate
 - [Phase 18-async-evidence-pack-export]: Plan 18-00: tRPC mutation RED tests probe router._def.procedures.requestExport to defeat createCaller Proxy false-positives — first appearance of this pattern in repo, future tRPC TDD waves should mirror
 - [Phase 18-async-evidence-pack-export]: Plan 18-00: dialog test uses .ts (not .tsx) via React.createElement to match plan files_modified verbatim; @testing-library/jest-dom not installed so plain @testing-library/dom queries (screen.getByText throws on miss) replace toBeInTheDocument matchers
+- [Phase 18]: Plan 18-01: Single-innerJoin + sql EXISTS subquery pattern keeps drizzle query chain 1 level deep to match Wave 0 test mock while producing correct SQL
+- [Phase 18]: Plan 18-01: Manual R2 key evidence-packs/{documentId}-{timestamp}.zip (not the generic helper) per Warning 4 / amended ROADMAP SC-3
+- [Phase 18]: Plan 18-01: PutObjectCommand single PUT with multipart upgrade path documented in file-level RFC JSDoc
 
 ### Pending Todos
 
@@ -240,6 +244,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T08:54:01.649Z
-Stopped at: Completed 18-00-PLAN.md
+Last session: 2026-04-14T09:08:40.569Z
+Stopped at: Completed 18-01-PLAN.md
 Resume file: None

@@ -170,9 +170,9 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 ### Async Evidence Pack (extensions)
 
-- [ ] **EV-05**: Evidence pack export is async via Inngest (not sync tRPC)
-- [ ] **EV-06**: Async evidence pack includes R2 binaries (recordings, screenshots, attachments) via streaming `fflate.Zip` + R2 multipart upload
-- [ ] **EV-07**: Completed evidence pack uploaded to R2 and download URL emailed to requester (24h presigned GET)
+- [x] **EV-05**: Evidence pack export is async via Inngest (not sync tRPC)
+- [x] **EV-06**: Async evidence pack includes R2 binaries (recordings, screenshots, attachments) via streaming `fflate.Zip` + R2 multipart upload
+- [x] **EV-07**: Completed evidence pack uploaded to R2 and download URL emailed to requester (24h presigned GET)
 - [x] **EV-08**: Phase 9 auditor dashboard "Export Evidence Pack" button opens `EvidencePackDialog` directly (not Link to `/audit`)
 
 ### Public Intake On-Ramp
@@ -376,9 +376,9 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | LLM-01 | Phase 17 | Complete |
 | LLM-02 | Phase 17 | Complete |
 | LLM-03 | Phase 17 | Complete |
-| EV-05 | Phase 18 | Pending |
-| EV-06 | Phase 18 | Pending |
-| EV-07 | Phase 18 | Pending |
+| EV-05 | Phase 18 | Complete |
+| EV-06 | Phase 18 | Complete |
+| EV-07 | Phase 18 | Complete |
 | INTAKE-01 | Phase 19 | Pending |
 | INTAKE-02 | Phase 19 | Pending |
 | INTAKE-03 | Phase 19 | Pending |
