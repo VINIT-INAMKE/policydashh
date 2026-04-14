@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 20.5-02-PLAN.md (/research public content page, PUB-06)
-last_updated: "2026-04-14T21:13:53.293Z"
+stopped_at: Completed 20.5-03-PLAN.md — Phase 20.5 integration done (6/6 Wave 0 GREEN)
+last_updated: "2026-04-14T21:36:28.755Z"
 progress:
   total_phases: 26
-  completed_phases: 20
+  completed_phases: 21
   total_plans: 73
-  completed_plans: 71
+  completed_plans: 73
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 20.5 (public-research-framework-content-pages) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -108,6 +108,7 @@ Plan: 2 of 4
 | Phase 20-cal-com-workshop-register P06 | 18min | 2 tasks | 9 files |
 | Phase 20.5 P00 | 7min | 3 tasks | 7 files |
 | Phase 20.5-public-research-framework-content-pages P02 | 2min | 2 tasks | 3 files |
+| Phase 20.5 P03 | 7min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -267,6 +268,8 @@ Recent decisions affecting current work:
 - [Phase 20-cal-com-workshop-register]: Plan 20-06: z.guid() not z.uuid() in workshop-feedback body schema — Phase 16 precedent, accepts version-0 UUID fixtures
 - [Phase 20.5]: Wave 0 RED contract locked: six failing tests under tests/phase-20.5/ pin every PUB-06/07/08/D-17 artifact Plans 20.5-01, 02, 03 must create. Variable-path dynamic import pattern used throughout.
 - [Phase 20.5-public-research-framework-content-pages]: Plan 20.5-02: /research Server Component + 'use client' ResearchTocAside island + 584-byte valid placeholder PDF flipped Wave 0 research-page-render test 4/4 GREEN in ~2min parallel with 20.5-01
+- [Phase 20.5]: 20.5-03: Backward-compatible PublicPolicyContent prop extension using optional modifier + conditional render — zero portal touch
+- [Phase 20.5]: 20.5-03: New components/ui/switch.tsx authored on base-ui (Rule 2 missing-primitive fix) matching existing Checkbox pattern
 
 ### Pending Todos
 
@@ -285,6 +288,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T21:13:53.278Z
-Stopped at: Completed 20.5-02-PLAN.md (/research public content page, PUB-06)
+Last session: 2026-04-14T21:36:28.739Z
+Stopped at: Completed 20.5-03-PLAN.md — Phase 20.5 integration done (6/6 Wave 0 GREEN)
 Resume file: None
