@@ -11,6 +11,7 @@ const MAX_FILE_SIZE: Record<string, number> = {
   image: 16 * 1024 * 1024,    // 16MB
   document: 32 * 1024 * 1024, // 32MB
   evidence: 32 * 1024 * 1024, // 32MB
+  recording: 25 * 1024 * 1024, // 25MB — Groq Whisper free-tier file-size cap (LLM-02)
 }
 
 const ALLOWED_TYPES: Record<string, string[]> = {
@@ -18,13 +19,30 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   image: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
   document: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   evidence: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  // Workshop recording uploads (WS-14). Audio MIME allowlist matches the
+  // Groq Whisper-supported formats; video containers are included because
+  // browser MediaRecorder and screen-recording tools commonly wrap audio
+  // streams in `video/mp4` / `video/webm`. Groq extracts the audio track.
+  recording: [
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/mp4',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/ogg',
+    'audio/webm',
+    'audio/flac',
+    'audio/x-m4a',
+    'video/mp4',
+    'video/webm',
+  ],
 }
 
 /**
  * POST /api/upload
  * Returns a presigned PUT URL for R2 upload.
  *
- * Body: { fileName: string, contentType: string, category: 'image' | 'document' | 'evidence', fileSize: number }
+ * Body: { fileName: string, contentType: string, category: 'image' | 'document' | 'evidence' | 'recording', fileSize: number }
  * Response: { uploadUrl: string, publicUrl: string, key: string }
  *
  * TODO: Add rate limiting via Upstash Redis (@upstash/ratelimit) to prevent
@@ -50,7 +68,7 @@ export async function POST(request: NextRequest) {
   const { fileName, contentType, category = 'evidence', fileSize } = body as {
     fileName: string
     contentType: string
-    category: 'image' | 'document' | 'evidence'
+    category: 'image' | 'document' | 'evidence' | 'recording'
     fileSize: number
   }
 
