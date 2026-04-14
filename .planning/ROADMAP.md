@@ -34,10 +34,14 @@ Decimal phases appear between their surrounding integers in numeric order.
  (completed 2026-04-13)
 - [x] **Phase 15: Stale Verification Closeout** - Re-verify Phase 4 FeedbackDetailSheet + Phase 7 traceability discoverability; fix Phase 9 Export Evidence Pack button
  (completed 2026-04-13)
-- [x] **Phase 16: Flow 5 Smoke + Notification Dispatch Migration** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency (completed 2026-04-13)
-- [x] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary (completed 2026-04-14)
-- [x] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery (completed 2026-04-14)
-- [x] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails (completed 2026-04-14)
+- [x] **Phase 16: Flow 5 Smoke + Notification Dispatch Migration** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency
+ (completed 2026-04-13)
+- [x] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary
+ (completed 2026-04-14)
+- [x] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery
+ (completed 2026-04-14)
+- [x] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails
+ (completed 2026-04-14)
 - [ ] **Phase 20: Cal.com Workshop Register (Flow 2)** - Public /workshops listing with cal.com embed, webhook handler, auto-user-create, MEETING_ENDED attendance, post-workshop feedback link
 - [ ] **Phase 20.5: Public /research + /framework Content** - Static /research content page; /framework draft consultation surface with per-section status badges and what-changed log
 - [ ] **Phase 21: Public Shell + LLM Consultation Summary + Theme** - Minimal public shell routing; llama-3.3-70b consultation summary per section with human review gate; policy-grade theme
@@ -440,7 +444,15 @@ Plans:
   5. `BOOKING_CREATED` handler creates `workshopRegistrations` row; if attendee email unknown, Clerk-invites via `invitations.createInvitation`
   6. `MEETING_ENDED` webhook (flat payload shape — NOT `BOOKING_COMPLETED` which doesn't exist) transitions workshop to `completed` status and auto-populates attendance from cal.com attendee list
   7. Post-workshop feedback link emailed to attendees; clicking it lands on a pre-filled feedback form with `workshopId` set, and submission creates a `workshopFeedbackLinks` row
-**Plans:** TBD (run /gsd:plan-phase 20)
+**Plans:** 6 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Migration 0011 + schema + Inngest events + lib helpers (cal-signature, feedback-token, email helpers)
+- [ ] 20-02-PLAN.md — Cal.com API client + workshopCreatedFn + admin create mutation + maxSeats UI
+- [ ] 20-03-PLAN.md — Cal webhook route (HMAC + 4 dispatchers) + Clerk userId backfill + proxy.ts /workshops
+- [ ] 20-04-PLAN.md — workshopRegistrationReceivedFn + workshopFeedbackInviteFn Inngest workers
+- [ ] 20-05-PLAN.md — Public /workshops SSR listing + cal-embed modal + spots-left badge
+- [ ] 20-06-PLAN.md — /participate mode-switch + workshop-feedback form + submit route + VALIDATION.md map
 
 ### Phase 20.5: Public `/research` + `/framework` Content Pages
 
