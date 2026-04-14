@@ -236,7 +236,10 @@ describe('evidenceExportRequestedEvent (schema + sender)', () => {
       requestedBy: '00000000-0000-0000-0000-000000000001',
       userEmail: null,
     })
-    await expect(ok.validate()).resolves.toBeDefined()
+    // Inngest v4 `.validate()` returns Promise<void>; "accepts" means it
+    // resolves without throwing. (Wave 0 draft wrote .toBeDefined which
+    // misread the Inngest API — Plan 18-01 Rule 3 blocker fix.)
+    await expect(ok.validate()).resolves.toBeUndefined()
   })
 
   it('sendEvidenceExportRequested calls inngest.send exactly once after .validate() passes', async () => {
