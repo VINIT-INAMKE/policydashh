@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Phase 20 planned — 6 plans, 3 waves
-last_updated: "2026-04-14T12:49:32.928Z"
+status: Ready to execute
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-04-14T13:11:57.440Z"
 progress:
   total_phases: 26
   completed_phases: 19
   total_plans: 69
-  completed_plans: 63
+  completed_plans: 64
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 19 — Public /participate Intake (Clerk Invite + Turnstile)
+**Current focus:** Phase 20 — cal-com-workshop-register
 
 ## Current Position
 
-Phase: 20
-Plan: Not started
+Phase: 20 (cal-com-workshop-register) — EXECUTING
+Plan: 2 of 6
 
 ## Performance Metrics
 
@@ -102,6 +102,7 @@ Plan: Not started
 | Phase 19-public-participate-intake-clerk-invite-turnstile P03 | 3min | 2 tasks | 2 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P04 | 4min | 2 tasks | 3 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P05 | 2min | 1 tasks | 2 files |
+| Phase 20-cal-com-workshop-register P01 | 7min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -250,6 +251,10 @@ Recent decisions affecting current work:
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-05: chose broader /api/intake(.*) wildcard over narrower /api/intake/participate(.*) — admits future intake endpoints without re-touching proxy.ts; cal.com webhooks live under already-public /api/webhooks so no namespace collision
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-05: append-at-end + comment header pattern for createRouteMatcher whitelist additions — preserves git blame, makes audits scriptable (grep -A3 'Phase 19' proxy.ts), ties each entry to its requirement IDs
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-05: phase-final acceptance gate quartet (extends Phase 14 pattern) — 1) Wave 0 contract test, 2) full phase suite, 3) tsc --noEmit, 4) git diff additions-only — all four GREEN before flipping VALIDATION.md status: approved
+- [Phase 20-cal-com-workshop-register]: HS256 feedback JWT via Node crypto — no jose/jsonwebtoken dependency added
+- [Phase 20-cal-com-workshop-register]: verifyCalSignature length-guards before timingSafeEqual — returns false for malformed/wrong-length signatures
+- [Phase 20-cal-com-workshop-register]: Migration 0011 applied via custom Neon HTTP runner (scripts/apply-migration-0011.mjs) with DO-block-aware statement splitter — canonical pattern for future DDL
+- [Phase 20-cal-com-workshop-register]: Dynamic import of .tsx templates inside sendWorkshopX helpers preserves vi.mock JSX-isolation (Phase 16/17/18/19 Pitfall 8 parity)
 
 ### Pending Todos
 
@@ -268,6 +273,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T12:49:32.911Z
-Stopped at: Phase 20 planned — 6 plans, 3 waves
-Resume file: .planning/phases/20-cal-com-workshop-register/20-01-PLAN.md
+Last session: 2026-04-14T13:11:57.423Z
+Stopped at: Completed 20-01-PLAN.md
+Resume file: None
