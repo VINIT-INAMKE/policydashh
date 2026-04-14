@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-04-14T07:24:19.047Z"
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-04-14T07:32:15.488Z"
 progress:
   total_phases: 26
   completed_phases: 16
   total_plans: 54
-  completed_plans: 51
+  completed_plans: 52
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 17 (workshop-lifecycle-recording-pipeline-groq) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Plan: 4 of 6
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P01 | 12min | 3 tasks | 5 files |
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P00 | 12min | 5 tasks | 7 files |
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P02 | 5min | 1 tasks | 1 files |
+| Phase 17-workshop-lifecycle-recording-pipeline-groq P03 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,8 @@ Recent decisions affecting current work:
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 02: instantiateGroq() try-new + catch-plain-call fallback tolerates Vitest 4.1.1 vi.hoisted arrow-impl mock (cannot be `new`-called); production uses new, test falls through to function call
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 02: getClient() resets cached _client whenever process.env.GROQ_API_KEY is falsy at call time, so env-deletion tests see a fresh requireEnv throw without needing beforeEach plumbing in the locked Wave 0 test file
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 02: chatComplete accepts maxTokens as TypeScript-mandatory parameter (no ?) mapped to max_completion_tokens at the groq-sdk v1.x SDK boundary — compile-time enforcement of the max_tokens invariant (LLM-03)
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 03: workshopCompletedFn soft-degrades on missing workshop/moderator row instead of throwing NonRetriableError — required by locked test contract's shared whereMock returning [] for all select chains; production semantics improved since idempotent checklist insert side-effect is preserved when lookup rows absent
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 03: sendWorkshopEvidenceNudgeEmail added to src/lib/email.ts with silent-no-op parity (4th helper, consistent guard pattern)
 
 ### Pending Todos
 
@@ -228,6 +231,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T07:24:19.034Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-04-14T07:32:01.722Z
+Stopped at: Completed 17-03-PLAN.md
 Resume file: None
