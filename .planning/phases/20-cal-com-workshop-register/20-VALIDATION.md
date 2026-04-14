@@ -2,8 +2,8 @@
 phase: 20
 slug: cal-com-workshop-register
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-14
 ---
 
@@ -38,9 +38,20 @@ created: 2026-04-14
 
 *Planner populates this table from RESEARCH.md `## Validation Architecture`. Every task with code changes must have either an `<automated>` verify command or a Wave 0 dependency.*
 
-| Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | WS-07..WS-15 | TBD | TBD | TBD | ⬜ pending |
+| Task ID   | Plan  | Wave | Requirement            | Test Type   | Automated Command                                                                             | File Exists | Status     |
+|-----------|-------|------|------------------------|-------------|-----------------------------------------------------------------------------------------------|-------------|------------|
+| 20-01-T1  | 20-01 | 0    | WS-07, WS-10, WS-11    | unit        | npx vitest run src/lib/__tests__/cal-signature.test.ts src/lib/__tests__/feedback-token.test.ts | ✅          | ✅ green   |
+| 20-01-T2  | 20-01 | 0    | WS-07, WS-15           | type-check  | npx tsc --noEmit                                                                              | ✅          | ✅ green   |
+| 20-02-T1  | 20-02 | 1    | WS-07                  | unit        | npx vitest run src/inngest/__tests__/workshop-created.test.ts                                 | ✅          | ✅ green   |
+| 20-02-T2  | 20-02 | 1    | WS-07                  | type-check  | npx tsc --noEmit                                                                              | ✅          | ✅ green   |
+| 20-03-T1  | 20-03 | 1    | WS-09, WS-10, WS-11    | integration | npx vitest run tests/phase-20/cal-webhook-route.test.ts                                       | ✅          | ⬜ pending |
+| 20-03-T2  | 20-03 | 1    | WS-10                  | type-check  | npx tsc --noEmit                                                                              | ✅          | ⬜ pending |
+| 20-04-T1  | 20-04 | 2    | WS-10                  | unit        | npx vitest run src/inngest/__tests__/workshop-registration-received.test.ts                   | ✅          | ⬜ pending |
+| 20-04-T2  | 20-04 | 2    | WS-15                  | unit        | npx vitest run src/inngest/__tests__/workshop-feedback-invite.test.ts                         | ✅          | ⬜ pending |
+| 20-05-T1  | 20-05 | 2    | WS-08                  | type-check  | npx tsc --noEmit                                                                              | ✅          | ⬜ pending |
+| 20-05-T2  | 20-05 | 2    | WS-07, WS-08           | integration | npx vitest run tests/phase-20/workshops-listing.test.tsx                                      | ✅          | ⬜ pending |
+| 20-06-T1  | 20-06 | 2    | WS-15                  | integration | npx vitest run tests/phase-20/participate-mode-switch.test.tsx                                | ✅          | ✅ green   |
+| 20-06-T2  | 20-06 | 2    | WS-15                  | integration | npx vitest run tests/phase-20/workshop-feedback-submit.test.ts                                | ✅          | ✅ green   |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
