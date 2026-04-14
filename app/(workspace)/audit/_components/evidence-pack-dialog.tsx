@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback, type ReactNode, type ReactElement } from 'react'
-import { CheckCircle, Download, Loader2, FileArchive } from 'lucide-react'
+import { useState, useCallback, useEffect, type ReactNode, type ReactElement } from 'react'
+import { CheckCircle, Loader2, FileArchive, AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,9 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Progress } from '@/components/ui/progress'
 
-type ExportState = 'idle' | 'loading' | 'complete' | 'error'
+type ExportState = 'idle' | 'queued' | 'error'
 
 interface EvidencePackDialogProps {
   trigger?: ReactNode
@@ -32,12 +32,11 @@ interface EvidencePackDialogProps {
 export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
   const [open, setOpen] = useState(false)
   const [policyId, setPolicyId] = useState('')
-  const [exportState, setExportState] = useState<ExportState>('idle')
-  const [progress, setProgress] = useState(0)
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [toastFired, setToastFired] = useState(false)
 
-  // Checklist state (all checked by default)
+  // Checklist state (all checked by default — display-only for now; the
+  // Inngest function exports the full pack. Per-section opt-in is a
+  // future enhancement.)
   const [checklist, setChecklist] = useState({
     stakeholders: true,
     feedbackMatrix: true,
@@ -46,59 +45,57 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
     workshopEvidence: true,
   })
 
-  // Fetch policy documents for the selector
   const { data: documents } = trpc.document.list.useQuery()
 
-  const handleExport = useCallback(async () => {
-    if (!policyId) return
-
-    setExportState('loading')
-    setProgress(10)
-    setErrorMessage(null)
-
-    try {
-      // Simulate progress stages
-      setProgress(30)
-      const response = await fetch(`/api/export/evidence-pack?documentId=${policyId}`)
-      setProgress(70)
-
-      if (!response.ok) {
-        throw new Error(`Export failed with status ${response.status}`)
-      }
-
-      const blob = await response.blob()
-      setProgress(100)
-
-      const url = URL.createObjectURL(blob)
-      setDownloadUrl(url)
-      setExportState('complete')
-    } catch (err) {
-      setExportState('error')
-      setErrorMessage(
-        err instanceof Error ? err.message : 'Export failed. Check your connection and try again.'
-      )
+  // Auto-select first policy when the document list loads so the Export Pack
+  // button becomes enabled immediately. Keeps the one-click path fast for
+  // auditors who almost always export the most-recent policy.
+  useEffect(() => {
+    if (!policyId && documents && documents.length > 0) {
+      setPolicyId(documents[0].id)
     }
-  }, [policyId])
+  }, [documents, policyId])
+
+  const requestExport = trpc.evidence.requestExport.useMutation()
+
+  // Derive UI state from the mutation hook so that a parent-provided mock
+  // (in tests) or a real server response both drive the same render path.
+  const exportState: ExportState = requestExport.isSuccess
+    ? 'queued'
+    : requestExport.isError
+      ? 'error'
+      : 'idle'
+
+  const errorMessage =
+    requestExport.error?.message ?? 'Export failed. Check your connection and try again.'
+
+  // Fire the success toast exactly once per successful mutation (not on every
+  // render while the hook remains in the success state).
+  useEffect(() => {
+    if (requestExport.isSuccess && !toastFired) {
+      toast.success('Your pack is being generated, you will get an email when ready')
+      setToastFired(true)
+    }
+    if (!requestExport.isSuccess && toastFired) {
+      setToastFired(false)
+    }
+  }, [requestExport.isSuccess, toastFired])
+
+  const handleExport = useCallback(() => {
+    if (!policyId) return
+    requestExport.mutate({ documentId: policyId })
+  }, [policyId, requestExport])
 
   const handleRetry = useCallback(() => {
-    setExportState('idle')
-    setProgress(0)
-    setDownloadUrl(null)
-    setErrorMessage(null)
-  }, [])
+    requestExport.reset()
+  }, [requestExport])
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     setOpen(nextOpen)
     if (!nextOpen) {
-      // Clean up on close
-      if (downloadUrl) {
-        URL.revokeObjectURL(downloadUrl)
-      }
       setPolicyId('')
-      setExportState('idle')
-      setProgress(0)
-      setDownloadUrl(null)
-      setErrorMessage(null)
+      setToastFired(false)
+      requestExport.reset()
       setChecklist({
         stakeholders: true,
         feedbackMatrix: true,
@@ -107,7 +104,9 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
         workshopEvidence: true,
       })
     }
-  }, [downloadUrl])
+  }, [requestExport])
+
+  const isSubmitting = requestExport.isPending
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -127,12 +126,12 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Export Evidence Pack</DialogTitle>
           <DialogDescription>
-            Export a structured ZIP containing all governance evidence for milestone review.
+            Request a structured ZIP of all governance evidence for milestone review.
+            You will receive an email with a 24-hour download link when the pack is ready.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Policy selector */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Policy</label>
             <Select value={policyId} onValueChange={(v) => setPolicyId(v ?? '')}>
@@ -149,7 +148,6 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
             </Select>
           </div>
 
-          {/* Contents checklist */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Contents</label>
             <div className="space-y-2">
@@ -158,7 +156,7 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
                 { key: 'feedbackMatrix' as const, label: 'Feedback matrix' },
                 { key: 'versionHistory' as const, label: 'Version history' },
                 { key: 'decisionLogs' as const, label: 'Decision logs' },
-                { key: 'workshopEvidence' as const, label: 'Workshop evidence (if any)' },
+                { key: 'workshopEvidence' as const, label: 'Workshop evidence (recordings, screenshots, attachments)' },
               ].map((item) => (
                 <label key={item.key} className="flex items-center gap-2 text-sm">
                   <Checkbox
@@ -173,37 +171,24 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
             </div>
           </div>
 
-          {/* Progress/Status area */}
-          {exportState === 'loading' && (
-            <div className="space-y-2">
-              <Progress
-                value={progress}
-                aria-label="Evidence pack generation progress"
-              />
-              <p className="text-sm text-muted-foreground">Preparing evidence pack...</p>
-            </div>
-          )}
-
-          {exportState === 'complete' && downloadUrl && (
-            <div className="flex items-center gap-2 rounded-md bg-muted p-3">
-              <CheckCircle className="size-5 text-green-600" />
-              <span className="flex-1 text-sm font-medium">Evidence pack ready.</span>
-              <a
-                href={downloadUrl}
-                download={`evidence-pack-${policyId}.zip`}
-                className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/80"
-              >
-                <Download className="size-3.5" />
-                Download ZIP
-              </a>
+          {exportState === 'queued' && (
+            <div className="flex items-start gap-2 rounded-md bg-muted p-3">
+              <CheckCircle className="mt-0.5 size-5 text-green-600" />
+              <div className="flex-1 text-sm">
+                <p className="font-medium">Your pack is being generated.</p>
+                <p className="text-muted-foreground">
+                  You will get an email when ready. You can safely close this dialog.
+                </p>
+              </div>
             </div>
           )}
 
           {exportState === 'error' && (
             <div className="space-y-2">
-              <p className="text-sm text-destructive">
-                {errorMessage || 'Export failed. Check your connection and try again.'}
-              </p>
+              <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3">
+                <AlertCircle className="mt-0.5 size-5 text-destructive" />
+                <p className="flex-1 text-sm text-destructive">{errorMessage}</p>
+              </div>
               <Button variant="outline" size="sm" onClick={handleRetry}>
                 Retry
               </Button>
@@ -217,20 +202,24 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
               Cancel
             </Button>
             <Button
-              disabled={!policyId}
+              disabled={!policyId || isSubmitting}
               onClick={handleExport}
             >
-              Export ZIP
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Requesting...
+                </>
+              ) : (
+                'Export Pack'
+              )}
             </Button>
           </DialogFooter>
         )}
 
-        {exportState === 'loading' && (
+        {exportState === 'queued' && (
           <DialogFooter>
-            <Button disabled>
-              <Loader2 className="size-4 animate-spin" />
-              Exporting...
-            </Button>
+            <Button onClick={() => handleOpenChange(false)}>Close</Button>
           </DialogFooter>
         )}
       </DialogContent>
