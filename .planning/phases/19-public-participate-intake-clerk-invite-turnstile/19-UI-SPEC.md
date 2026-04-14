@@ -1,10 +1,11 @@
 ---
 phase: 19
 slug: public-participate-intake-clerk-invite-turnstile
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-04-14
+reviewed_at: 2026-04-14
 ---
 
 # Phase 19 — UI Design Contract
