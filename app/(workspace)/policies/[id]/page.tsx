@@ -9,6 +9,7 @@ import { Pencil } from 'lucide-react'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { SectionSidebar } from './_components/section-sidebar'
 import { SectionContentView } from './_components/section-content-view'
+import { PublicDraftToggle } from './_components/public-draft-toggle'
 import { EditPolicyDialog } from '../_components/edit-policy-dialog'
 
 export default function PolicyDetailPage() {
@@ -96,6 +97,14 @@ export default function PolicyDetailPage() {
                 </Button>
               )}
             </div>
+            {canEdit && (
+              <div className="mt-4">
+                <PublicDraftToggle
+                  documentId={id}
+                  isPublicDraft={document.isPublicDraft ?? false}
+                />
+              </div>
+            )}
           </div>
 
           {/* Mobile section selector (visible below lg breakpoint) */}
