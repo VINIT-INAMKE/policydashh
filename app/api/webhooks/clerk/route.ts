@@ -1,8 +1,9 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
+import { workshopRegistrations } from '@/src/db/schema/workshops'
 import type { Role } from '@/src/lib/constants'
 import { ROLE_VALUES } from '@/src/lib/constants'
 
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
     const name = [first_name, last_name].filter(Boolean).join(' ') || null
 
     // Upsert: insert if new, update if exists (handles both events + missed webhooks)
-    await db.insert(users).values({
+    const [upserted] = await db.insert(users).values({
       clerkId: id,
       phone,
       email,
@@ -78,7 +79,24 @@ export async function POST(req: Request) {
         ...(metadataRole && ROLE_VALUES.includes(metadataRole as Role) ? { role } : {}),
         updatedAt: new Date(),
       },
-    })
+    }).returning({ id: users.id })
+
+    // Phase 20 (WS-10, D-11): backfill workshop_registrations.userId for any
+    // pre-existing rows matching this email — happens when cal.com booked the
+    // workshop before the Clerk invite round-trip completed. Fire-and-forget;
+    // must never block the webhook ack.
+    const newUserId = upserted?.id ?? null
+    if (email && newUserId) {
+      await db.update(workshopRegistrations)
+        .set({ userId: newUserId })
+        .where(and(
+          eq(workshopRegistrations.email, email),
+          isNull(workshopRegistrations.userId),
+        ))
+        .catch((err) => {
+          console.error('[clerk-webhook] workshopRegistrations userId backfill failed', err)
+        })
+    }
   }
 
   return Response.json({ success: true })
