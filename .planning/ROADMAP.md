@@ -265,7 +265,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 16. Flow 5 Smoke + Notification Migration | 5/5 | Complete    | 2026-04-13 |
 | 17. Workshop Lifecycle + Recording Pipeline | 6/6 | Complete    | 2026-04-14 |
 | 18. Async Evidence Pack Export | 3/3 | Complete    | 2026-04-14 |
-| 19. Public /participate Intake | 6/6 | Complete   | 2026-04-14 |
+| 19. Public /participate Intake | 6/6 | Complete    | 2026-04-14 |
 | 20. Cal.com Workshop Register | 0/0 | v0.2 Planning | - |
 | 20.5. Public /research + /framework Pages | 0/0 | v0.2 Planning | - |
 | 21. Public Shell + Consultation Summary + Theme | 0/0 | v0.2 Planning | - |
