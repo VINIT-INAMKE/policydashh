@@ -64,10 +64,11 @@ Shipped in milestone v0.1 (11 core phases + 2 fix/consolidation phases). See `.p
 - [x] FIX-07 automated regression coverage via fully-green `create-draft-cr.test.ts` (5/5, error paths included)
 - [ ] Manual Flow 5 end-to-end smoke walk on running dev server (deferred to `/gsd:complete-milestone` batch — full procedure in `16-SMOKE.md`)
 
-**Automation pipeline (Phases 17–18)**
-- [ ] Workshop lifecycle status machine (upcoming/in_progress/completed/archived)
-- [ ] Workshop evidence checklist auto-creation with 72h and 7d moderator nudges
-- [ ] Workshop recording → Whisper transcription → llama summary via Groq (human-reviewed before publish)
+**Automation pipeline (Phases 17–18)** — Phase 17 ✓ Complete (2026-04-14, smoke walk deferred to milestone-end batch)
+- [x] Workshop lifecycle status machine (upcoming/in_progress/completed/archived) — Validated in Phase 17
+- [x] Workshop evidence checklist auto-creation with 72h and 7d moderator nudges — Validated in Phase 17
+- [x] Workshop recording → Whisper transcription → llama summary via Groq (human-reviewed before publish) — Validated in Phase 17
+- [ ] Manual Phase 17 smoke walk on running dev server (deferred to `/gsd:complete-milestone` batch — procedure in `17-SMOKE.md`)
 - [ ] Async evidence pack export via Inngest with R2 binaries and presigned-GET email delivery
 
 **Public consultation surface (Phases 19–21)**
@@ -249,4 +250,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 — Phase 16 (Flow 5 Smoke + Notification Dispatch Migration) complete; FIX-07/NOTIF-04/NOTIF-05/NOTIF-06 shipped, manual smoke walk deferred to milestone-end batch*
+*Last updated: 2026-04-14 — Phase 17 (Workshop Lifecycle + Recording Pipeline) complete; WS-06/WS-12/WS-13/WS-14/LLM-01/LLM-02/LLM-03 shipped via Groq SDK wrapper + workshop.completed Inngest nudges + Whisper/llama recording pipeline. Manual smoke walk deferred to milestone-end batch per 17-SMOKE.md.*
