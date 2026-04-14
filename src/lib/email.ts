@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { renderWelcomeEmail } from './email-templates/welcome-email'
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -138,5 +139,33 @@ export async function sendEvidencePackReadyEmail(
     to,
     subject,
     text,
+  })
+}
+
+/**
+ * Send the Phase 19 welcome email to a /participate submitter.
+ * Fire-and-forget-safe: silently no-ops if Resend unconfigured or recipient null.
+ * Rendered HTML from renderWelcomeEmail — one of 6 org-bucket variants.
+ *
+ * Called from src/inngest/functions/participate-intake.ts in a step.run block.
+ */
+export async function sendWelcomeEmail(
+  to: string | null | undefined,
+  data: { name: string; orgType: string; email: string },
+): Promise<void> {
+  if (!resend || !to) return
+
+  const html = await renderWelcomeEmail({
+    name: data.name,
+    email: data.email,
+    orgType: data.orgType,
+  })
+  const firstName = data.name.split(' ')[0] ?? data.name
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `Welcome to the consultation, ${firstName}`,
+    html,
   })
 }
