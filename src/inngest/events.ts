@@ -175,3 +175,27 @@ export async function sendWorkshopCompleted(
   await event.validate()
   await inngest.send(event)
 }
+
+// -- workshop.recording_uploaded -----------------------------------------
+
+const workshopRecordingUploadedSchema = z.object({
+  workshopId:         z.guid(),
+  workshopArtifactId: z.guid(),  // workshopArtifacts.id (the link row PK)
+  r2Key:              z.string().min(1),
+  moderatorId:        z.guid(),
+})
+
+export const workshopRecordingUploadedEvent = eventType(
+  'workshop.recording_uploaded',
+  { schema: workshopRecordingUploadedSchema },
+)
+
+export type WorkshopRecordingUploadedData = z.infer<typeof workshopRecordingUploadedSchema>
+
+export async function sendWorkshopRecordingUploaded(
+  data: WorkshopRecordingUploadedData,
+): Promise<void> {
+  const event = workshopRecordingUploadedEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}

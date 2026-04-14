@@ -14,7 +14,10 @@ import { users } from '@/src/db/schema/users'
 import { policySections, policyDocuments } from '@/src/db/schema/documents'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { workflowTransitions } from '@/src/db/schema/workflow'
-import { sendWorkshopCompleted } from '@/src/inngest/events'
+import {
+  sendWorkshopCompleted,
+  sendWorkshopRecordingUploaded,
+} from '@/src/inngest/events'
 import { eq, gte, lt, desc, and, count } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
@@ -257,6 +260,10 @@ export const workshopRouter = router({
       artifactType: z.enum(['promo', 'recording', 'summary', 'attendance', 'other']),
       fileName: z.string().optional(),
       fileSize: z.number().optional(),
+      // r2Key is required for the recording pipeline (WS-14): the Inngest
+      // function needs the raw R2 object key to call getDownloadUrl on,
+      // because the public URL is not signed and not useful to Groq's fetch.
+      r2Key: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Insert into evidenceArtifacts first
@@ -272,14 +279,18 @@ export const workshopRouter = router({
         })
         .returning()
 
-      // Then link to workshop — sequential, no transaction (Neon HTTP driver)
-      await db
+      // Then link to workshop — sequential, no transaction (Neon HTTP driver).
+      // Capture the inserted workshopArtifact row id so we can pass it to the
+      // recording pipeline event below (it identifies the link-row, not the
+      // underlying evidence artifact).
+      const [workshopArtifact] = await db
         .insert(workshopArtifacts)
         .values({
           workshopId: input.workshopId,
           artifactId: artifact.id,
           artifactType: input.artifactType,
         })
+        .returning({ id: workshopArtifacts.id })
 
       writeAuditLog({
         actorId: ctx.user.id,
@@ -289,6 +300,19 @@ export const workshopRouter = router({
         entityId: input.workshopId,
         payload: { artifactId: artifact.id, artifactType: input.artifactType, title: input.title },
       }).catch(console.error)
+
+      // Fire the Inngest pipeline for recording uploads (WS-14). We only
+      // emit when the caller supplied both artifactType='recording' and a
+      // usable r2Key — uploads via the public URL form (e.g. external link
+      // artifacts) never enter the Groq pipeline.
+      if (input.artifactType === 'recording' && input.r2Key) {
+        await sendWorkshopRecordingUploaded({
+          workshopId:         input.workshopId,
+          workshopArtifactId: workshopArtifact.id,
+          r2Key:              input.r2Key,
+          moderatorId:        ctx.user.id,
+        })
+      }
 
       return artifact
     }),
