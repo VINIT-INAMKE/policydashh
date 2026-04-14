@@ -1,6 +1,7 @@
 import { helloFn } from './hello'
 import { feedbackReviewedFn } from './feedback-reviewed'
 import { notificationDispatchFn } from './notification-dispatch'
+import { workshopCompletedFn } from './workshop-completed'
 
 /**
  * The array of Inngest functions mounted at /api/inngest.
@@ -9,4 +10,9 @@ import { notificationDispatchFn } from './notification-dispatch'
  * here, and append it to the functions array below. The route handler at
  * app/api/inngest/route.ts imports this array and hands it to serve().
  */
-export const functions = [helloFn, feedbackReviewedFn, notificationDispatchFn]
+export const functions = [
+  helloFn,
+  feedbackReviewedFn,
+  notificationDispatchFn,
+  workshopCompletedFn,
+]
