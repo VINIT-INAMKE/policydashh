@@ -53,8 +53,12 @@ vi.mock('@/src/inngest/events', () => ({
 vi.mock('@/src/db', () => {
   const tableNameFor = (t: unknown): string => {
     if (t && typeof t === 'object') {
-      const maybeName = (t as { _?: { name?: string } })._?.name
-      if (maybeName) return maybeName
+      // Drizzle stores the table name under Symbol(drizzle:Name)
+      const sym = Object.getOwnPropertySymbols(t).find(s => s.toString() === 'Symbol(drizzle:Name)')
+      if (sym) {
+        const val = (t as unknown as Record<symbol, unknown>)[sym]
+        if (typeof val === 'string') return val
+      }
     }
     return 'unknown'
   }
@@ -88,6 +92,29 @@ vi.mock('@/src/db', () => {
     }
   })
 
+  // Extract string literal values from a drizzle SQL expression tree without
+  // tripping on circular PgTable ↔ Column references. We walk the object and
+  // concatenate every string / number primitive we encounter.
+  const extractWhereText = (node: unknown, seen = new WeakSet<object>()): string => {
+    if (node === null || node === undefined) return ''
+    if (typeof node === 'string') return node + ' '
+    if (typeof node === 'number' || typeof node === 'boolean') return String(node) + ' '
+    if (typeof node !== 'object') return ''
+    if (seen.has(node as object)) return ''
+    seen.add(node as object)
+    let out = ''
+    for (const key of Object.keys(node as Record<string, unknown>)) {
+      // Skip table/column back-references that cause cycles
+      if (key === 'table' || key === 'columns') continue
+      try {
+        out += extractWhereText((node as Record<string, unknown>)[key], seen)
+      } catch {
+        // ignore unserializable branches
+      }
+    }
+    return out
+  }
+
   const updateMock = vi.fn((table: unknown) => {
     const tName = tableNameFor(table)
     return {
@@ -96,7 +123,7 @@ vi.mock('@/src/db', () => {
           mocks.dbUpdateCalls.push({
             table: tName,
             set: setArg,
-            where: typeof whereArg === 'object' ? JSON.stringify(whereArg) : String(whereArg),
+            where: typeof whereArg === 'object' ? extractWhereText(whereArg) : String(whereArg),
           })
           return {
             catch: (_fn: unknown) => Promise.resolve(undefined),
