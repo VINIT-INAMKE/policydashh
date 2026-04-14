@@ -2,6 +2,7 @@ import { helloFn } from './hello'
 import { feedbackReviewedFn } from './feedback-reviewed'
 import { notificationDispatchFn } from './notification-dispatch'
 import { workshopCompletedFn } from './workshop-completed'
+import { workshopRecordingProcessedFn } from './workshop-recording-processed'
 
 /**
  * The array of Inngest functions mounted at /api/inngest.
@@ -15,4 +16,5 @@ export const functions = [
   feedbackReviewedFn,
   notificationDispatchFn,
   workshopCompletedFn,
+  workshopRecordingProcessedFn,
 ]
