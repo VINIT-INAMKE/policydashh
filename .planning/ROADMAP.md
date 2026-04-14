@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
  (completed 2026-04-13)
 - [x] **Phase 16: Flow 5 Smoke + Notification Dispatch Migration** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency (completed 2026-04-13)
 - [x] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary (completed 2026-04-14)
-- [ ] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery
+- [x] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery (completed 2026-04-14)
 - [ ] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails
 - [ ] **Phase 20: Cal.com Workshop Register (Flow 2)** - Public /workshops listing with cal.com embed, webhook handler, auto-user-create, MEETING_ENDED attendance, post-workshop feedback link
 - [ ] **Phase 20.5: Public /research + /framework Content** - Static /research content page; /framework draft consultation surface with per-section status badges and what-changed log
@@ -264,7 +264,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 15. Stale Verification Closeout | 1/1 | Complete    | 2026-04-13 |
 | 16. Flow 5 Smoke + Notification Migration | 5/5 | Complete    | 2026-04-13 |
 | 17. Workshop Lifecycle + Recording Pipeline | 6/6 | Complete    | 2026-04-14 |
-| 18. Async Evidence Pack Export | 2/3 | In Progress|  |
+| 18. Async Evidence Pack Export | 3/3 | Complete   | 2026-04-14 |
 | 19. Public /participate Intake | 0/0 | v0.2 Planning | - |
 | 20. Cal.com Workshop Register | 0/0 | v0.2 Planning | - |
 | 20.5. Public /research + /framework Pages | 0/0 | v0.2 Planning | - |
@@ -397,12 +397,12 @@ Plans:
   3. fflate `zipSync` assembles the archive and uploads to `evidence-packs/{documentId}-{timestamp}.zip` via R2 `PutObjectCommand`. Multipart streaming upload is documented as a deferred upgrade path (see `evidence-pack-export.ts` JSDoc) — current pack sizes are bounded by single-policy scope.
   4. Requester receives email with presigned-GET URL (24h expiry) and pack metadata (file count, total size, timestamp)
   5. Fallback path: if binary fetch times out, deliver a manifest-only pack with presigned links (documented as degraded-mode)
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 18-00-PLAN.md — Wave 0 TDD scaffolds: RED contracts for evidencePackExport fn, email helper, dialog queued state
 - [x] 18-01-PLAN.md — Backend: evidenceExportRequestedEvent + evidencePackExportFn (6-step pipeline) + sendEvidencePackReadyEmail + barrel registration
-- [ ] 18-02-PLAN.md — Trigger surface: evidence.requestExport tRPC mutation + dialog async conversion + sync route deletion
+- [x] 18-02-PLAN.md — Trigger surface: evidence.requestExport tRPC mutation + dialog async conversion + sync route deletion
 
 ### Phase 19: Public `/participate` Intake (Clerk Invite + Turnstile)
 

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to execute
-stopped_at: Completed 18-01-PLAN.md
-last_updated: "2026-04-14T09:08:50.714Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-04-14T09:20:32.535Z"
 progress:
   total_phases: 26
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 57
-  completed_plans: 56
+  completed_plans: 57
 ---
 
 # Project State
@@ -95,6 +95,7 @@ Plan: 3 of 3
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P05 | 7min | 3 tasks | 7 files |
 | Phase 18-async-evidence-pack-export P00 | 40min | 4 tasks | 5 files |
 | Phase 18 P01 | 30min | 2 tasks | 5 files |
+| Phase 18 P02 | 7min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -226,6 +227,9 @@ Recent decisions affecting current work:
 - [Phase 18]: Plan 18-01: Single-innerJoin + sql EXISTS subquery pattern keeps drizzle query chain 1 level deep to match Wave 0 test mock while producing correct SQL
 - [Phase 18]: Plan 18-01: Manual R2 key evidence-packs/{documentId}-{timestamp}.zip (not the generic helper) per Warning 4 / amended ROADMAP SC-3
 - [Phase 18]: Plan 18-01: PutObjectCommand single PUT with multipart upgrade path documented in file-level RFC JSDoc
+- [Phase 18]: Plan 18-02: z.guid() (not z.uuid()) for requestExport input — Phase 16 precedent for Zod 4 + version-0 UUID fixtures
+- [Phase 18]: Plan 18-02: Dialog UI state derived from mutation hook (isSuccess/isError) — unifies test-mode (parent-provided mocks) and production render paths
+- [Phase 18]: Plan 18-02: Atomic sync-route cutover — dialog rewrite + app/api/export/evidence-pack/route.ts deletion in the same commit, no dead endpoint interval
 
 ### Pending Todos
 
@@ -244,6 +248,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T09:08:40.569Z
-Stopped at: Completed 18-01-PLAN.md
+Last session: 2026-04-14T09:20:32.522Z
+Stopped at: Completed 18-02-PLAN.md
 Resume file: None
