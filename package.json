@@ -47,6 +47,7 @@
     "diff": "^8.0.4",
     "drizzle-orm": "^0.45.1",
     "fflate": "^0.8.2",
+    "groq-sdk": "1.1.2",
     "inngest": "^4.2.1",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.6.0",
