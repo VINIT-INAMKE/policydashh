@@ -74,6 +74,8 @@ export const ACTIONS = {
   WORKSHOP_SECTION_UNLINK:  'workshop.section_unlink',
   WORKSHOP_FEEDBACK_LINK:   'workshop.feedback_link',
   WORKSHOP_FEEDBACK_UNLINK: 'workshop.feedback_unlink',
+  WORKSHOP_TRANSITION:        'workshop.transition',
+  WORKSHOP_ARTIFACT_APPROVE:  'workshop.artifact_approve',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]

@@ -154,3 +154,24 @@ export function computeNotificationIdempotencyKey(parts: {
 }): string {
   return `${parts.createdBy}:${parts.entityType ?? ''}:${parts.entityId ?? ''}:${parts.action}`
 }
+
+// -- workshop.completed ---------------------------------------------------
+
+const workshopCompletedSchema = z.object({
+  workshopId:  z.guid(),
+  moderatorId: z.guid(),
+})
+
+export const workshopCompletedEvent = eventType('workshop.completed', {
+  schema: workshopCompletedSchema,
+})
+
+export type WorkshopCompletedData = z.infer<typeof workshopCompletedSchema>
+
+export async function sendWorkshopCompleted(
+  data: WorkshopCompletedData,
+): Promise<void> {
+  const event = workshopCompletedEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}

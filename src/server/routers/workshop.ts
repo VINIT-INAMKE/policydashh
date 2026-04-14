@@ -13,8 +13,17 @@ import { evidenceArtifacts } from '@/src/db/schema/evidence'
 import { users } from '@/src/db/schema/users'
 import { policySections, policyDocuments } from '@/src/db/schema/documents'
 import { feedbackItems } from '@/src/db/schema/feedback'
+import { workflowTransitions } from '@/src/db/schema/workflow'
+import { sendWorkshopCompleted } from '@/src/inngest/events'
 import { eq, gte, lt, desc, and, count } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
+
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  upcoming:    ['in_progress'],
+  in_progress: ['completed'],
+  completed:   ['archived'],
+  archived:    [],
+}
 
 export const workshopRouter = router({
   // Create a new workshop event
@@ -436,6 +445,97 @@ export const workshopRouter = router({
         entityType: 'workshop',
         entityId: input.workshopId,
         payload: { feedbackId: input.feedbackId },
+      }).catch(console.error)
+
+      return { success: true }
+    }),
+
+  // Transition workshop through its status lifecycle (WS-06)
+  transition: requirePermission('workshop:manage')
+    .input(z.object({
+      workshopId: z.string().uuid(),
+      toStatus: z.enum(['in_progress', 'completed', 'archived']),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const [existing] = await db
+        .select({
+          id: workshops.id,
+          status: workshops.status,
+          createdBy: workshops.createdBy,
+        })
+        .from(workshops)
+        .where(eq(workshops.id, input.workshopId))
+        .limit(1)
+
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Workshop not found' })
+      }
+
+      const allowedNext = ALLOWED_TRANSITIONS[existing.status] ?? []
+      if (!allowedNext.includes(input.toStatus)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Invalid transition: ${existing.status} → ${input.toStatus}. Allowed next states: ${allowedNext.join(', ') || '(none — terminal)'}`,
+        })
+      }
+
+      await db
+        .update(workshops)
+        .set({ status: input.toStatus, updatedAt: new Date() })
+        .where(eq(workshops.id, input.workshopId))
+
+      await db.insert(workflowTransitions).values({
+        entityType: 'workshop',
+        entityId:   input.workshopId,
+        fromState:  existing.status,
+        toState:    input.toStatus,
+        actorId:    ctx.user.id,
+        metadata:   { triggeredBy: 'workshop.transition' },
+      })
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_TRANSITION,
+        entityType: 'workshop',
+        entityId: input.workshopId,
+        payload: { fromStatus: existing.status, toStatus: input.toStatus },
+      }).catch(console.error)
+
+      if (input.toStatus === 'completed') {
+        await sendWorkshopCompleted({
+          workshopId: input.workshopId,
+          moderatorId: existing.createdBy,
+        })
+      }
+
+      return { success: true, fromStatus: existing.status, toStatus: input.toStatus }
+    }),
+
+  // Approve a draft artifact (flip reviewStatus from 'draft' to 'approved') — WS-14
+  approveArtifact: requirePermission('workshop:manage')
+    .input(z.object({
+      workshopId: z.string().uuid(),
+      workshopArtifactId: z.string().uuid(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await db
+        .update(workshopArtifacts)
+        .set({ reviewStatus: 'approved' })
+        .where(
+          and(
+            eq(workshopArtifacts.id, input.workshopArtifactId),
+            eq(workshopArtifacts.workshopId, input.workshopId),
+          ),
+        )
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_ARTIFACT_APPROVE,
+        entityType: 'workshop',
+        entityId: input.workshopId,
+        payload: { workshopArtifactId: input.workshopArtifactId },
       }).catch(console.error)
 
       return { success: true }
