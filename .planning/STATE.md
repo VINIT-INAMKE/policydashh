@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to execute
-stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-04-14T16:32:54.523Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 20-06-PLAN.md
+last_updated: "2026-04-14T16:46:40.529Z"
 progress:
   total_phases: 26
   completed_phases: 19
   total_plans: 69
-  completed_plans: 66
+  completed_plans: 68
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 20 (cal-com-workshop-register) — EXECUTING
-Plan: 4 of 6
+Plan: 6 of 6
 
 ## Performance Metrics
 
@@ -104,6 +104,8 @@ Plan: 4 of 6
 | Phase 19-public-participate-intake-clerk-invite-turnstile P05 | 2min | 1 tasks | 2 files |
 | Phase 20-cal-com-workshop-register P01 | 7min | 2 tasks | 13 files |
 | Phase 20-cal-com-workshop-register P02 | 5 min | 2 tasks | 6 files |
+| Phase 20 P05 | 11 | 2 tasks | 9 files |
+| Phase 20-cal-com-workshop-register P06 | 18min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -258,6 +260,9 @@ Recent decisions affecting current work:
 - [Phase 20-cal-com-workshop-register]: Dynamic import of .tsx templates inside sendWorkshopX helpers preserves vi.mock JSX-isolation (Phase 16/17/18/19 Pitfall 8 parity)
 - [Phase 20-cal-com-workshop-register]: workshopCreatedFn error policy: CalApiError.status >= 500 (incl. network/parse failures) → retry; < 500 → NonRetriableError; workshop row persists regardless per D-03
 - [Phase 20-cal-com-workshop-register]: Admin create mutation emits sendWorkshopCreated as fire-and-forget after insert + audit log; maxSeats NULL = open registration (D-07)
+- [Phase 20-cal-com-workshop-register]: Plan 20-06: /participate server-side mode-switch on searchParams.workshopId — JWT verified in page.tsx before rendering any client form; ExpiredLinkCard used for all three failure modes (no info leak)
+- [Phase 20-cal-com-workshop-register]: Plan 20-06: /api/intake/workshop-feedback submitterId fallback — users lookup by JWT email, fall back to workshops.createdBy so feedbackItems.submitterId NOT NULL stays satisfied without a schema migration
+- [Phase 20-cal-com-workshop-register]: Plan 20-06: z.guid() not z.uuid() in workshop-feedback body schema — Phase 16 precedent, accepts version-0 UUID fixtures
 
 ### Pending Todos
 
@@ -276,6 +281,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T16:27:47.967Z
-Stopped at: Completed 20-02-PLAN.md
+Last session: 2026-04-14T16:46:25.574Z
+Stopped at: Completed 20-06-PLAN.md
 Resume file: None
