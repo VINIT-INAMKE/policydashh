@@ -270,7 +270,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 17. Workshop Lifecycle + Recording Pipeline | 6/6 | Complete    | 2026-04-14 |
 | 18. Async Evidence Pack Export | 3/3 | Complete    | 2026-04-14 |
 | 19. Public /participate Intake | 6/6 | Complete    | 2026-04-14 |
-| 20. Cal.com Workshop Register | 2/6 | In Progress|  |
+| 20. Cal.com Workshop Register | 3/6 | In Progress|  |
 | 20.5. Public /research + /framework Pages | 0/0 | v0.2 Planning | - |
 | 21. Public Shell + Consultation Summary + Theme | 0/0 | v0.2 Planning | - |
 | 22. Milestone Entity + SHA256 Hashing | 0/0 | v0.2 Planning | - |
@@ -444,12 +444,12 @@ Plans:
   5. `BOOKING_CREATED` handler creates `workshopRegistrations` row; if attendee email unknown, Clerk-invites via `invitations.createInvitation`
   6. `MEETING_ENDED` webhook (flat payload shape — NOT `BOOKING_COMPLETED` which doesn't exist) transitions workshop to `completed` status and auto-populates attendance from cal.com attendee list
   7. Post-workshop feedback link emailed to attendees; clicking it lands on a pre-filled feedback form with `workshopId` set, and submission creates a `workshopFeedbackLinks` row
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 Plans:
 - [x] 20-01-PLAN.md — Migration 0011 + schema + Inngest events + lib helpers (cal-signature, feedback-token, email helpers)
 - [x] 20-02-PLAN.md — Cal.com API client + workshopCreatedFn + admin create mutation + maxSeats UI
-- [ ] 20-03-PLAN.md — Cal webhook route (HMAC + 4 dispatchers) + Clerk userId backfill + proxy.ts /workshops
+- [x] 20-03-PLAN.md — Cal webhook route (HMAC + 4 dispatchers) + Clerk userId backfill + proxy.ts /workshops
 - [ ] 20-04-PLAN.md — workshopRegistrationReceivedFn + workshopFeedbackInviteFn Inngest workers
 - [ ] 20-05-PLAN.md — Public /workshops SSR listing + cal-embed modal + spots-left badge
 - [ ] 20-06-PLAN.md — /participate mode-switch + workshop-feedback form + submit route + VALIDATION.md map

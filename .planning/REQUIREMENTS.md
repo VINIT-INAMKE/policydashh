@@ -160,7 +160,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [x] **WS-06**: `workshops.status` enum (`upcoming` → `in_progress` → `completed` → `archived`) with audited state transitions
 - [x] **WS-07**: Workshop linked to cal.com event type via `calcomEventTypeId` FK on `workshops`
 - [ ] **WS-08**: Public `/workshops` listing shows upcoming workshops with cal.com embed for registration
-- [ ] **WS-09**: Cal.com webhook handler verifies HMAC-SHA256 signature on raw request body before processing
+- [x] **WS-09**: Cal.com webhook handler verifies HMAC-SHA256 signature on raw request body before processing
 - [x] **WS-10**: Cal.com `BOOKING_CREATED` webhook creates `workshopRegistrations` row, auto-inviting unknown emails via Clerk
 - [x] **WS-11**: Cal.com `MEETING_ENDED` webhook transitions workshop to `completed` and auto-populates attendance
 - [x] **WS-12**: `workshopCompleted` Inngest fn fires 72h + 7d moderator nudges on missing evidence checklist slots
@@ -388,7 +388,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | INTAKE-07 | Phase 19 | Complete |
 | WS-07 | Phase 20 | Complete |
 | WS-08 | Phase 20 | Pending |
-| WS-09 | Phase 20 | Pending |
+| WS-09 | Phase 20 | Complete |
 | WS-10 | Phase 20 | Complete |
 | WS-11 | Phase 20 | Complete |
 | WS-15 | Phase 20 | Complete |
