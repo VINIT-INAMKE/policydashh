@@ -264,7 +264,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 15. Stale Verification Closeout | 1/1 | Complete    | 2026-04-13 |
 | 16. Flow 5 Smoke + Notification Migration | 5/5 | Complete    | 2026-04-13 |
 | 17. Workshop Lifecycle + Recording Pipeline | 6/6 | Complete    | 2026-04-14 |
-| 18. Async Evidence Pack Export | 0/0 | v0.2 Planning | - |
+| 18. Async Evidence Pack Export | 1/3 | In Progress|  |
 | 19. Public /participate Intake | 0/0 | v0.2 Planning | - |
 | 20. Cal.com Workshop Register | 0/0 | v0.2 Planning | - |
 | 20.5. Public /research + /framework Pages | 0/0 | v0.2 Planning | - |
@@ -394,13 +394,13 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Admin or Auditor clicks "Export Evidence Pack" → receives toast "Your pack is being generated, you'll get an email when ready"
   2. `evidencePackExport` Inngest fn gathers metadata (CSVs/JSONs) and fetches R2 binaries (recordings, screenshots, attachments) via streaming download
-  3. fflate `Zip` stream assembles the archive and uploads to `evidence-packs/{policyId}-{timestamp}.zip` via R2 multipart upload without loading the full archive into memory
+  3. fflate `zipSync` assembles the archive and uploads to `evidence-packs/{documentId}-{timestamp}.zip` via R2 `PutObjectCommand`. Multipart streaming upload is documented as a deferred upgrade path (see `evidence-pack-export.ts` JSDoc) — current pack sizes are bounded by single-policy scope.
   4. Requester receives email with presigned-GET URL (24h expiry) and pack metadata (file count, total size, timestamp)
   5. Fallback path: if binary fetch times out, deliver a manifest-only pack with presigned links (documented as degraded-mode)
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 18-00-PLAN.md — Wave 0 TDD scaffolds: RED contracts for evidencePackExport fn, email helper, dialog queued state
+- [x] 18-00-PLAN.md — Wave 0 TDD scaffolds: RED contracts for evidencePackExport fn, email helper, dialog queued state
 - [ ] 18-01-PLAN.md — Backend: evidenceExportRequestedEvent + evidencePackExportFn (6-step pipeline) + sendEvidencePackReadyEmail + barrel registration
 - [ ] 18-02-PLAN.md — Trigger surface: evidence.requestExport tRPC mutation + dialog async conversion + sync route deletion
 

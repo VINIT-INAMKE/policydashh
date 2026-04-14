@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Completed 17-05-PLAN.md
-last_updated: "2026-04-14T08:01:11.704Z"
+status: Ready to execute
+stopped_at: Completed 18-00-PLAN.md
+last_updated: "2026-04-14T08:54:17.290Z"
 progress:
   total_phases: 26
   completed_phases: 17
-  total_plans: 54
-  completed_plans: 54
+  total_plans: 57
+  completed_plans: 55
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 17 — workshop-lifecycle-recording-pipeline-groq
+**Current focus:** Phase 18 — async-evidence-pack-export
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
+Phase: 18 (async-evidence-pack-export) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -93,6 +93,7 @@ Plan: Not started
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P03 | 4min | 2 tasks | 4 files |
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P04 | 4min | 3 tasks | 5 files |
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P05 | 7min | 3 tasks | 7 files |
+| Phase 18-async-evidence-pack-export P00 | 40min | 4 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -218,6 +219,9 @@ Recent decisions affecting current work:
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 04: Buffer-base64 at step.run boundaries — JSON-safe step memoization for binary payloads (Inngest Pitfall 2)
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 04: concurrency.limit=2 on named 'groq-transcription' key caps parallel Groq calls across all functions using that key (rate-limit ceiling)
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 04: transcript + summary evidence artifacts use artifactType='summary' (not a new enum variant) with url='' sentinel and content column carrying payload — zero migration churn
+- [Phase 18-async-evidence-pack-export]: Plan 18-00 Wave 0: 4 RED test files lock 24 contracts (12 fn + 4 email + 3 dialog + 5 mutation) for Plans 18-01/18-02; 18-VALIDATION.md flipped nyquist_compliant + wave_0_complete to release Blocker 2 depends_on gate
+- [Phase 18-async-evidence-pack-export]: Plan 18-00: tRPC mutation RED tests probe router._def.procedures.requestExport to defeat createCaller Proxy false-positives — first appearance of this pattern in repo, future tRPC TDD waves should mirror
+- [Phase 18-async-evidence-pack-export]: Plan 18-00: dialog test uses .ts (not .tsx) via React.createElement to match plan files_modified verbatim; @testing-library/jest-dom not installed so plain @testing-library/dom queries (screen.getByText throws on miss) replace toBeInTheDocument matchers
 
 ### Pending Todos
 
@@ -236,6 +240,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T07:51:57.779Z
-Stopped at: Completed 17-05-PLAN.md
+Last session: 2026-04-14T08:54:01.649Z
+Stopped at: Completed 18-00-PLAN.md
 Resume file: None
