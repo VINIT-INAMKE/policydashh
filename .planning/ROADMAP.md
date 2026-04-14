@@ -263,7 +263,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 14. Collab Rollback | 4/4 | Complete    | 2026-04-13 |
 | 15. Stale Verification Closeout | 1/1 | Complete    | 2026-04-13 |
 | 16. Flow 5 Smoke + Notification Migration | 5/5 | Complete    | 2026-04-13 |
-| 17. Workshop Lifecycle + Recording Pipeline | 2/6 | In Progress|  |
+| 17. Workshop Lifecycle + Recording Pipeline | 3/6 | In Progress|  |
 | 18. Async Evidence Pack Export | 0/0 | v0.2 Planning | - |
 | 19. Public /participate Intake | 0/0 | v0.2 Planning | - |
 | 20. Cal.com Workshop Register | 0/0 | v0.2 Planning | - |
@@ -376,12 +376,12 @@ Plans:
   4. Moderator uploads a workshop recording → `workshopRecordingProcessed` Inngest fn transcribes via Whisper-large-v3-turbo and summarizes via llama-3.1-8b-instant
   5. Transcript and summary appear as workshop artifacts in draft state; moderator reviews and approves before they become visible beyond admins
   6. Uploads > 25MB are rejected at R2 presign step; `src/lib/llm.ts` wrapper enforces `max_tokens` on every Groq chat call
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 Plans:
 - [x] 17-00-PLAN.md — Wave 0 scaffolds: install groq-sdk, add GROQ_API_KEY to .env.example, create 4 RED test files
 - [x] 17-01-PLAN.md — Migration 0010 schema substrate + workshop.transition/approveArtifact mutations + workshop.completed Inngest event (WS-06)
-- [ ] 17-02-PLAN.md — src/lib/llm.ts Groq SDK wrapper with chatComplete/transcribeAudio/summarizeTranscript (LLM-01/02/03)
+- [x] 17-02-PLAN.md — src/lib/llm.ts Groq SDK wrapper with chatComplete/transcribeAudio/summarizeTranscript (LLM-01/02/03)
 - [ ] 17-03-PLAN.md — workshopCompletedFn Inngest function: checklist creation + 72h/7d nudges (WS-12, WS-13)
 - [ ] 17-04-PLAN.md — R2 recording category + workshopRecordingProcessedFn 4-step pipeline (WS-14)
 - [ ] 17-05-PLAN.md — UI surfaces + 17-SMOKE.md deferred placeholder
