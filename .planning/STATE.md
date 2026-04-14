@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-04-14T07:32:15.488Z"
+stopped_at: Completed 17-04-PLAN.md
+last_updated: "2026-04-14T07:42:13.634Z"
 progress:
   total_phases: 26
   completed_phases: 16
   total_plans: 54
-  completed_plans: 52
+  completed_plans: 53
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 17 (workshop-lifecycle-recording-pipeline-groq) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 
 ## Performance Metrics
 
@@ -91,6 +91,7 @@ Plan: 5 of 6
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P00 | 12min | 5 tasks | 7 files |
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P02 | 5min | 1 tasks | 1 files |
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P03 | 4min | 2 tasks | 4 files |
+| Phase 17-workshop-lifecycle-recording-pipeline-groq P04 | 4min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,9 @@ Recent decisions affecting current work:
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 02: chatComplete accepts maxTokens as TypeScript-mandatory parameter (no ?) mapped to max_completion_tokens at the groq-sdk v1.x SDK boundary — compile-time enforcement of the max_tokens invariant (LLM-03)
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 03: workshopCompletedFn soft-degrades on missing workshop/moderator row instead of throwing NonRetriableError — required by locked test contract's shared whereMock returning [] for all select chains; production semantics improved since idempotent checklist insert side-effect is preserved when lookup rows absent
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 03: sendWorkshopEvidenceNudgeEmail added to src/lib/email.ts with silent-no-op parity (4th helper, consistent guard pattern)
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 04: Buffer-base64 at step.run boundaries — JSON-safe step memoization for binary payloads (Inngest Pitfall 2)
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 04: concurrency.limit=2 on named 'groq-transcription' key caps parallel Groq calls across all functions using that key (rate-limit ceiling)
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 04: transcript + summary evidence artifacts use artifactType='summary' (not a new enum variant) with url='' sentinel and content column carrying payload — zero migration churn
 
 ### Pending Todos
 
@@ -231,6 +235,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T07:32:01.722Z
-Stopped at: Completed 17-03-PLAN.md
+Last session: 2026-04-14T07:42:01.410Z
+Stopped at: Completed 17-04-PLAN.md
 Resume file: None
