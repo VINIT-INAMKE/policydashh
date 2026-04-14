@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to plan
-stopped_at: Completed 19-05-PLAN.md (Phase 19 complete)
-last_updated: "2026-04-14T11:57:24.396Z"
+stopped_at: Phase 20 context gathered
+last_updated: "2026-04-14T12:11:38.270Z"
 progress:
   total_phases: 26
   completed_phases: 19
@@ -268,6 +268,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T11:50:52.561Z
-Stopped at: Completed 19-05-PLAN.md (Phase 19 complete)
-Resume file: None
+Last session: 2026-04-14T12:11:38.255Z
+Stopped at: Phase 20 context gathered
+Resume file: .planning/phases/20-cal-com-workshop-register/20-CONTEXT.md
