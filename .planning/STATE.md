@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 19-04-PLAN.md
-last_updated: "2026-04-14T11:46:37.013Z"
+stopped_at: Completed 19-05-PLAN.md (Phase 19 complete)
+last_updated: "2026-04-14T11:50:59.941Z"
 progress:
   total_phases: 26
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 63
-  completed_plans: 62
+  completed_plans: 63
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 19 (Public /participate Intake (Clerk Invite + Turnstile)) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 
 ## Performance Metrics
 
@@ -101,6 +101,7 @@ Plan: 4 of 6
 | Phase 19-public-participate-intake-clerk-invite-turnstile P01 | 4min | 2 tasks | 2 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P03 | 3min | 2 tasks | 2 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P04 | 4min | 2 tasks | 3 files |
+| Phase 19-public-participate-intake-clerk-invite-turnstile P05 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -246,6 +247,9 @@ Recent decisions affecting current work:
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-04: base-ui Select<string> requires value: string | null — adapt empty-string FormState with value={state.X || null} + onValueChange={(v) => update('X', v ?? '')} (canonical adapter for empty-string-default form state)
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-04: Public form pattern = server page shell + client form island + client success island + form-replace state (no redirect) — preserves URL, blocks back-button double-submit, no info leak per INTAKE-06
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-04: Auto-approved checkpoint:human-verify task per user preference to defer per-phase smoke walks to end-of-milestone — 14-step visual walk rolled into v0.2 milestone smoke walk, NOT skipped
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-05: chose broader /api/intake(.*) wildcard over narrower /api/intake/participate(.*) — admits future intake endpoints without re-touching proxy.ts; cal.com webhooks live under already-public /api/webhooks so no namespace collision
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-05: append-at-end + comment header pattern for createRouteMatcher whitelist additions — preserves git blame, makes audits scriptable (grep -A3 'Phase 19' proxy.ts), ties each entry to its requirement IDs
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-05: phase-final acceptance gate quartet (extends Phase 14 pattern) — 1) Wave 0 contract test, 2) full phase suite, 3) tsc --noEmit, 4) git diff additions-only — all four GREEN before flipping VALIDATION.md status: approved
 
 ### Pending Todos
 
@@ -264,6 +268,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T11:46:24.682Z
-Stopped at: Completed 19-04-PLAN.md
+Last session: 2026-04-14T11:50:52.561Z
+Stopped at: Completed 19-05-PLAN.md (Phase 19 complete)
 Resume file: None

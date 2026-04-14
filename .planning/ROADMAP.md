@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 16: Flow 5 Smoke + Notification Dispatch Migration** - Flow 5 E2E smoke; migrate createNotification callsites to notification.create Inngest event with idempotency (completed 2026-04-13)
 - [x] **Phase 17: Workshop Lifecycle + Recording Pipeline** - workshops.status state machine, evidence checklist, workshopCompleted nudges, Groq Whisper transcription + llama summary (completed 2026-04-14)
 - [x] **Phase 18: Async Evidence Pack Export** - Inngest evidencePackExport with R2 streaming binaries and 24h presigned GET email delivery (completed 2026-04-14)
-- [ ] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails
+- [x] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails (completed 2026-04-14)
 - [ ] **Phase 20: Cal.com Workshop Register (Flow 2)** - Public /workshops listing with cal.com embed, webhook handler, auto-user-create, MEETING_ENDED attendance, post-workshop feedback link
 - [ ] **Phase 20.5: Public /research + /framework Content** - Static /research content page; /framework draft consultation surface with per-section status badges and what-changed log
 - [ ] **Phase 21: Public Shell + LLM Consultation Summary + Theme** - Minimal public shell routing; llama-3.3-70b consultation summary per section with human review gate; policy-grade theme
@@ -265,7 +265,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 16. Flow 5 Smoke + Notification Migration | 5/5 | Complete    | 2026-04-13 |
 | 17. Workshop Lifecycle + Recording Pipeline | 6/6 | Complete    | 2026-04-14 |
 | 18. Async Evidence Pack Export | 3/3 | Complete    | 2026-04-14 |
-| 19. Public /participate Intake | 5/6 | In Progress|  |
+| 19. Public /participate Intake | 6/6 | Complete   | 2026-04-14 |
 | 20. Cal.com Workshop Register | 0/0 | v0.2 Planning | - |
 | 20.5. Public /research + /framework Pages | 0/0 | v0.2 Planning | - |
 | 21. Public Shell + Consultation Summary + Theme | 0/0 | v0.2 Planning | - |
@@ -417,7 +417,7 @@ Plans:
   5. Role-tailored welcome email sent via Resend per 6 org buckets (government / industry / legal / academia / civil_society / internal) — 6 templates
   6. Existing Clerk user routed to their existing account, no duplicate invite, still receives welcome email
   7. Turnstile failure, rate limit hit, and Clerk errors surfaced cleanly in the UI without exposing internals
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 19-00-PLAN.md — Wave 0 RED tests (4 files) + @marsidev/react-turnstile install + Turnstile env vars
@@ -425,7 +425,7 @@ Plans:
 - [x] 19-02-PLAN.md — participateIntakeFn Inngest function (rateLimit + Clerk invitations.createInvitation + welcome email step)
 - [x] 19-03-PLAN.md — WelcomeEmail react-email component (6 org buckets) + sendWelcomeEmail helper in src/lib/email.ts
 - [x] 19-04-PLAN.md — Public /participate page shell + client form (8 fields + Turnstile) + success panel
-- [ ] 19-05-PLAN.md — proxy.ts public-route whitelist (/participate + /api/intake) + end-to-end smoke walk
+- [x] 19-05-PLAN.md — proxy.ts public-route whitelist (/participate + /api/intake) + end-to-end smoke walk
 
 ### Phase 20: Cal.com Workshop Register
 

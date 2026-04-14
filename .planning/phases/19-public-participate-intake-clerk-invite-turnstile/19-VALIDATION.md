@@ -1,7 +1,7 @@
 ---
 phase: 19
 slug: public-participate-intake-clerk-invite-turnstile
-status: draft
+status: approved
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-04-14
@@ -76,4 +76,4 @@ created: 2026-04-14
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-04-14 — all 4 Wave 0 contracts GREEN, full phase-19 suite (25/25) GREEN at end of Plan 19-05.
