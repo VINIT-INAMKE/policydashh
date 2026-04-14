@@ -5,6 +5,7 @@ import { workshopCompletedFn } from './workshop-completed'
 import { workshopRecordingProcessedFn } from './workshop-recording-processed'
 import { evidencePackExportFn } from './evidence-pack-export'
 import { participateIntakeFn } from './participate-intake'
+import { workshopCreatedFn } from './workshop-created'
 
 /**
  * The array of Inngest functions mounted at /api/inngest.
@@ -21,4 +22,5 @@ export const functions = [
   workshopRecordingProcessedFn,
   evidencePackExportFn, // Phase 18
   participateIntakeFn,  // Phase 19
+  workshopCreatedFn,    // Phase 20 Plan 02 — cal.com event-type provisioning
 ]

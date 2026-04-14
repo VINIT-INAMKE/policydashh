@@ -51,14 +51,22 @@ vi.mock('@/src/db', () => ({
 }))
 
 // Mock the cal.com client so the fn under test never issues a real fetch.
-// We still import and re-export the real CalApiError class so instanceof
-// checks inside the function under test resolve against the same constructor
-// the tests throw. The trick: import the real module synchronously at the
-// top of the mock factory via vi.importActual.
-vi.mock('@/src/lib/calcom', async () => {
-  const actual = await vi.importActual<typeof import('@/src/lib/calcom')>('@/src/lib/calcom')
+// We redefine CalApiError inside the mock factory (rather than importActual
+// the real module) because `src/lib/calcom.ts` imports `server-only`, which
+// blocks test-context module loads. The mocked CalApiError ctor must match
+// the real shape — status getter + Error subclass — so the fn under test's
+// `err instanceof CalApiError` check resolves against this same constructor.
+vi.mock('@/src/lib/calcom', () => {
+  class CalApiError extends Error {
+    public readonly status: number
+    constructor(status: number, message: string) {
+      super(message)
+      this.name = 'CalApiError'
+      this.status = status
+    }
+  }
   return {
-    ...actual,
+    CalApiError,
     createCalEventType: mocks.createCalEventTypeMock,
   }
 })
@@ -79,9 +87,10 @@ beforeAll(async () => {
     // eslint-disable-next-line no-console
     console.warn('[workshop-created.test] target module not yet implemented:', (err as Error).message)
   }
-  const calcomPath = ['..', '..', 'lib', 'calcom'].join('/')
+  // Resolve CalApiError through the same module path the fn under test uses
+  // so the ctor identity matches (the mock factory above intercepts this).
   try {
-    const mod = (await import(/* @vite-ignore */ calcomPath)) as {
+    const mod = (await import('@/src/lib/calcom')) as {
       CalApiError?: new (status: number, message: string) => Error
     }
     CalApiErrorCtor = mod.CalApiError ?? null
