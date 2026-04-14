@@ -8,6 +8,9 @@ const isPublicRoute = createRouteMatcher([
   '/api/inngest(.*)',
   '/portal(.*)',
   '/api/export/policy-pdf(.*)',
+  // Phase 19 — public intake form + submit endpoint (INTAKE-01, INTAKE-07)
+  '/participate(.*)',
+  '/api/intake(.*)',
 ])
 
 export default clerkMiddleware(async (auth, request) => {
