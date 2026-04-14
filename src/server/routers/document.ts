@@ -220,6 +220,38 @@ export const documentRouter = router({
       return updated
     }),
 
+  // Toggle public draft flag — Phase 20.5 D-02 / PUB-07.
+  // Uses 'document:update' permission (admin + policy_lead).
+  // Note: CONTEXT.md references 'policy:manage' but that permission does NOT
+  // exist in src/lib/permissions.ts. 'document:update' is the correct key.
+  setPublicDraft: requirePermission('document:update')
+    .input(z.object({
+      id: z.string().uuid(),
+      isPublicDraft: z.boolean(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const [updated] = await db
+        .update(policyDocuments)
+        .set({ isPublicDraft: input.isPublicDraft, updatedAt: new Date() })
+        .where(eq(policyDocuments.id, input.id))
+        .returning()
+
+      if (!updated) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' })
+      }
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.DOCUMENT_SET_PUBLIC_DRAFT,
+        entityType: 'document',
+        entityId: updated.id,
+        payload: { isPublicDraft: input.isPublicDraft },
+      }).catch(console.error)
+
+      return updated
+    }),
+
   // Delete a policy document (sections cascade automatically)
   delete: requirePermission('document:delete')
     .input(z.object({ id: z.string().uuid() }))

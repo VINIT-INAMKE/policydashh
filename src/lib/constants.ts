@@ -35,6 +35,7 @@ export const ACTIONS = {
   DOCUMENT_CREATE: 'document.create',
   DOCUMENT_UPDATE: 'document.update',
   DOCUMENT_DELETE: 'document.delete',
+  DOCUMENT_SET_PUBLIC_DRAFT: 'document.set_public_draft',
   SECTION_CREATE: 'section.create',
   SECTION_DELETE: 'section.delete',
   SECTION_REORDER: 'section.reorder',

@@ -46,6 +46,7 @@ describe('document.setPublicDraft — PUB-07 mutation contract', () => {
       }),
     })
     const caller = documentRouter.createCaller({
+      userId: 'u-admin',
       user: { id: 'u-admin', role: 'admin' },
     })
     await caller.setPublicDraft({
