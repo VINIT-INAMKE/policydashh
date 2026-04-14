@@ -18,6 +18,11 @@ export const feedbackStatusEnum = pgEnum('feedback_status', [
   'submitted', 'under_review', 'accepted', 'partially_accepted', 'rejected', 'closed',
 ])
 
+// Phase 20 — distinguishes public /participate intake feedback from
+// post-workshop feedback submitted via the JWT deep-link flow. Nullable
+// because legacy rows (Phases 1-19) carry no source.
+export const feedbackSourceEnum = pgEnum('feedback_source', ['intake', 'workshop'])
+
 export const feedbackItems = pgTable('feedback', {
   id:                uuid('id').primaryKey().defaultRandom(),
   readableId:        text('readable_id').notNull().unique(),
@@ -37,6 +42,7 @@ export const feedbackItems = pgTable('feedback', {
   reviewedAt:        timestamp('reviewed_at', { withTimezone: true }),
   resolvedInVersionId: uuid('resolved_in_version_id'),  // FK to documentVersions — constraint in SQL migration only (avoids circular import)
   xstateSnapshot:    jsonb('xstate_snapshot').$type<Record<string, unknown> | null>(),
+  source:            feedbackSourceEnum('source'),
   createdAt:         timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:         timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

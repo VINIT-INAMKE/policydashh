@@ -256,3 +256,82 @@ export async function sendParticipateIntake(data: ParticipateIntakeData): Promis
   await event.validate()
   await inngest.send(event)
 }
+
+// -- workshop.created ----------------------------------------------------
+// Phase 20 D-01 — admin creates a workshop; async cal.com event-type
+// provisioning runs in Inngest so the tRPC mutation stays fast.
+
+const workshopCreatedSchema = z.object({
+  workshopId: z.guid(),
+  moderatorId: z.guid(),
+})
+
+export const workshopCreatedEvent = eventType('workshop.created', {
+  schema: workshopCreatedSchema,
+})
+
+export type WorkshopCreatedData = z.infer<typeof workshopCreatedSchema>
+
+export async function sendWorkshopCreated(data: WorkshopCreatedData): Promise<void> {
+  const event = workshopCreatedEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
+
+// -- workshop.registration.received --------------------------------------
+// Phase 20 D-11 — cal.com webhook INSERTs a workshop_registrations row,
+// then emits this event so Clerk invite + confirmation email run async.
+// Reused by D-12 walk-in synthetic rows.
+
+const workshopRegistrationReceivedSchema = z.object({
+  workshopId: z.guid(),
+  email: z.string().email(),
+  // SHA-256 hex (64 lowercase chars) — same rate-limit key shape as
+  // participate.intake; used by workshopRegistrationReceivedFn rateLimit.
+  emailHash: z.string().regex(/^[0-9a-f]{64}$/, 'emailHash must be SHA-256 hex (64 lowercase chars)'),
+  name: z.string(),
+  bookingUid: z.string().min(1),
+  source: z.enum(['cal_booking', 'walk_in']),
+})
+
+export const workshopRegistrationReceivedEvent = eventType(
+  'workshop.registration.received',
+  { schema: workshopRegistrationReceivedSchema },
+)
+
+export type WorkshopRegistrationReceivedData = z.infer<typeof workshopRegistrationReceivedSchema>
+
+export async function sendWorkshopRegistrationReceived(
+  data: WorkshopRegistrationReceivedData,
+): Promise<void> {
+  const event = workshopRegistrationReceivedEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
+
+// -- workshop.feedback.invite --------------------------------------------
+// Phase 20 D-16 — MEETING_ENDED handler emits one event per attendee;
+// workshopFeedbackInviteFn sends the Resend email with the signed JWT
+// deep-link (D-17) to the /participate?workshopId=...&token=... route.
+
+const workshopFeedbackInviteSchema = z.object({
+  workshopId: z.guid(),
+  email: z.string().email(),
+  name: z.string(),
+  attendeeUserId: z.guid().nullable(),
+})
+
+export const workshopFeedbackInviteEvent = eventType(
+  'workshop.feedback.invite',
+  { schema: workshopFeedbackInviteSchema },
+)
+
+export type WorkshopFeedbackInviteData = z.infer<typeof workshopFeedbackInviteSchema>
+
+export async function sendWorkshopFeedbackInvite(
+  data: WorkshopFeedbackInviteData,
+): Promise<void> {
+  const event = workshopFeedbackInviteEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}

@@ -20,17 +20,28 @@ export const checklistSlotStatusEnum = pgEnum('checklist_slot_status', ['empty',
 
 export const artifactReviewStatusEnum = pgEnum('artifact_review_status', ['draft', 'approved'])
 
+// Phase 20 — cal.com workshop registration lifecycle
+export const registrationStatusEnum = pgEnum('registration_status', [
+  'registered', 'cancelled', 'rescheduled',
+])
+
+export const attendanceSourceEnum = pgEnum('attendance_source', [
+  'cal_meeting_ended', 'manual',
+])
+
 export const workshops = pgTable('workshops', {
-  id:               uuid('id').primaryKey().defaultRandom(),
-  title:            text('title').notNull(),
-  description:      text('description'),
-  scheduledAt:      timestamp('scheduled_at', { withTimezone: true }).notNull(),
-  durationMinutes:  integer('duration_minutes'),
-  registrationLink: text('registration_link'),
-  status:           workshopStatusEnum('status').notNull().default('upcoming'),
-  createdBy:        uuid('created_by').notNull().references(() => users.id),
-  createdAt:        timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt:        timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  id:                  uuid('id').primaryKey().defaultRandom(),
+  title:               text('title').notNull(),
+  description:         text('description'),
+  scheduledAt:         timestamp('scheduled_at', { withTimezone: true }).notNull(),
+  durationMinutes:     integer('duration_minutes'),
+  registrationLink:    text('registration_link'),
+  status:              workshopStatusEnum('status').notNull().default('upcoming'),
+  calcomEventTypeId:   text('calcom_event_type_id'),
+  maxSeats:            integer('max_seats'),
+  createdBy:           uuid('created_by').notNull().references(() => users.id),
+  createdAt:           timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:           timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const workshopArtifacts = pgTable('workshop_artifacts', {
@@ -65,4 +76,27 @@ export const workshopEvidenceChecklist = pgTable('workshop_evidence_checklist', 
   createdAt:   timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('workshop_evidence_checklist_uniq').on(t.workshopId, t.slot),
+])
+
+// Phase 20 — cal.com-driven workshop registrations. One row per cal.com booking
+// (unique on bookingUid) plus synthetic walk-in rows created when MEETING_ENDED
+// reports an attendee email with no prior booking. Attendance is surfaced via
+// `attendedAt IS NOT NULL` — no separate attendance table (D-10).
+export const workshopRegistrations = pgTable('workshop_registrations', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+  workshopId:       uuid('workshop_id').notNull().references(() => workshops.id, { onDelete: 'cascade' }),
+  bookingUid:       text('booking_uid').notNull(),
+  email:            text('email').notNull(),
+  emailHash:        text('email_hash').notNull(),
+  name:             text('name'),
+  userId:           uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  status:           registrationStatusEnum('status').notNull().default('registered'),
+  cancelledAt:      timestamp('cancelled_at', { withTimezone: true }),
+  attendedAt:       timestamp('attended_at', { withTimezone: true }),
+  attendanceSource: attendanceSourceEnum('attendance_source'),
+  bookingStartTime: timestamp('booking_start_time', { withTimezone: true }).notNull(),
+  createdAt:        timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:        timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('workshop_registrations_booking_uid_uniq').on(t.bookingUid),
 ])
