@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-04-13T22:33:16.892Z"
+status: Ready to execute
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-04-14T07:12:31.040Z"
 progress:
   total_phases: 26
   completed_phases: 16
-  total_plans: 48
-  completed_plans: 48
+  total_plans: 54
+  completed_plans: 49
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 16 — flow-5-smoke-notification-dispatch-migration
+**Current focus:** Phase 17 — workshop-lifecycle-recording-pipeline-groq
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
+Phase: 17 (workshop-lifecycle-recording-pipeline-groq) — EXECUTING
+Plan: 2 of 6
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Plan: Not started
 | Phase 16-flow-5-smoke-notification-dispatch-migration P01 | 4min | 2 tasks | 3 files |
 | Phase 16 P02 | 3min | 2 tasks | 2 files |
 | Phase 16-flow-5-smoke-notification-dispatch-migration P03 | 6min | 4 tasks | 4 files |
+| Phase 17-workshop-lifecycle-recording-pipeline-groq P01 | 12min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -199,6 +200,9 @@ Recent decisions affecting current work:
 - [Phase 16]: Route notification-dispatch email through sendFeedbackReviewedEmail helper (not raw Resend) to satisfy locked Wave 0 test contract — Phase 16 shortcut, per-type templates deferred to 17+
 - [Phase 16]: NonRetriableError only for missing user row; transient DB/Resend failures bubble as plain Error so Inngest consumes the full 3-retry budget on recoverable cases
 - [Phase 16]: All 7 createNotification router callsites migrated to awaited sendNotificationCreate; legacy helper retained in src/lib/notifications.ts for dual-write transition safety
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: ALLOWED_TRANSITIONS const map encodes workshop state machine; transition mutation validates server-side and writes workflow_transitions audit row
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: workshop.completed Inngest event fires awaited (not fire-and-forget) so transition fails if Inngest send fails
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: workshop.completed.moderatorId uses workshops.createdBy not actor (RESEARCH OQ3); enables nudge routing in Plan 03
 
 ### Pending Todos
 
@@ -217,6 +221,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T22:15:19.937Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-04-14T07:12:31.002Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None

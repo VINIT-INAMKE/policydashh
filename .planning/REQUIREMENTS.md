@@ -157,7 +157,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 ### Workshop Lifecycle (extensions)
 
-- [ ] **WS-06**: `workshops.status` enum (`upcoming` → `in_progress` → `completed` → `archived`) with audited state transitions
+- [x] **WS-06**: `workshops.status` enum (`upcoming` → `in_progress` → `completed` → `archived`) with audited state transitions
 - [ ] **WS-07**: Workshop linked to cal.com event type via `calcomEventTypeId` FK on `workshops`
 - [ ] **WS-08**: Public `/workshops` listing shows upcoming workshops with cal.com embed for registration
 - [ ] **WS-09**: Cal.com webhook handler verifies HMAC-SHA256 signature on raw request body before processing
@@ -369,7 +369,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | NOTIF-04 | Phase 16 | Complete |
 | NOTIF-05 | Phase 16 | Complete |
 | NOTIF-06 | Phase 16 | Complete |
-| WS-06 | Phase 17 | Pending |
+| WS-06 | Phase 17 | Complete |
 | WS-12 | Phase 17 | Pending |
 | WS-13 | Phase 17 | Pending |
 | WS-14 | Phase 17 | Pending |
