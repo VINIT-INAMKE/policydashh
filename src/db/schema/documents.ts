@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, integer, jsonb, boolean } from 'drizzle-orm/pg-core'
 
 export const policyDocuments = pgTable('policy_documents', {
   id:          uuid('id').primaryKey().defaultRandom(),
@@ -6,6 +6,7 @@ export const policyDocuments = pgTable('policy_documents', {
   description: text('description'),
   createdAt:   timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:   timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  isPublicDraft: boolean('is_public_draft').notNull().default(false),
 })
 
 export const policySections = pgTable('policy_sections', {
