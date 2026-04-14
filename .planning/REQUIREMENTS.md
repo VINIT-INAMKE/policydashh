@@ -177,13 +177,13 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 ### Public Intake On-Ramp
 
-- [ ] **INTAKE-01**: Public can submit `/participate` form with role, organization type, expertise, email, and interest
-- [ ] **INTAKE-02**: Cloudflare Turnstile captcha gates the `/participate` form server-side before any processing
-- [ ] **INTAKE-03**: `/participate` submission triggers `participateIntake` Inngest fn (rate-limited, idempotent per emailHash)
-- [ ] **INTAKE-04**: Submission auto-creates a Clerk user via `invitations.createInvitation` when email is unknown (role pre-assigned to `stakeholder`)
-- [ ] **INTAKE-05**: Role-tailored welcome email sent per 6 org buckets (government, industry, legal, academia, civil_society, internal) via Resend
-- [ ] **INTAKE-06**: Existing Clerk user on `/participate` submission is routed to existing account with no duplicate invite
-- [ ] **INTAKE-07**: `/participate` form is reachable without authentication
+- [x] **INTAKE-01**: Public can submit `/participate` form with role, organization type, expertise, email, and interest
+- [x] **INTAKE-02**: Cloudflare Turnstile captcha gates the `/participate` form server-side before any processing
+- [x] **INTAKE-03**: `/participate` submission triggers `participateIntake` Inngest fn (rate-limited, idempotent per emailHash)
+- [x] **INTAKE-04**: Submission auto-creates a Clerk user via `invitations.createInvitation` when email is unknown (role pre-assigned to `stakeholder`)
+- [x] **INTAKE-05**: Role-tailored welcome email sent per 6 org buckets (government, industry, legal, academia, civil_society, internal) via Resend
+- [x] **INTAKE-06**: Existing Clerk user on `/participate` submission is routed to existing account with no duplicate invite
+- [x] **INTAKE-07**: `/participate` form is reachable without authentication
 
 ### Public Surface Extensions
 
@@ -379,13 +379,13 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | EV-05 | Phase 18 | Complete |
 | EV-06 | Phase 18 | Complete |
 | EV-07 | Phase 18 | Complete |
-| INTAKE-01 | Phase 19 | Pending |
-| INTAKE-02 | Phase 19 | Pending |
-| INTAKE-03 | Phase 19 | Pending |
-| INTAKE-04 | Phase 19 | Pending |
-| INTAKE-05 | Phase 19 | Pending |
-| INTAKE-06 | Phase 19 | Pending |
-| INTAKE-07 | Phase 19 | Pending |
+| INTAKE-01 | Phase 19 | Complete |
+| INTAKE-02 | Phase 19 | Complete |
+| INTAKE-03 | Phase 19 | Complete |
+| INTAKE-04 | Phase 19 | Complete |
+| INTAKE-05 | Phase 19 | Complete |
+| INTAKE-06 | Phase 19 | Complete |
+| INTAKE-07 | Phase 19 | Complete |
 | WS-07 | Phase 20 | Pending |
 | WS-08 | Phase 20 | Pending |
 | WS-09 | Phase 20 | Pending |

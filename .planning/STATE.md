@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-04-14T09:25:53.406Z"
+status: Ready to execute
+stopped_at: Completed 19-00-PLAN.md
+last_updated: "2026-04-14T11:32:24.058Z"
 progress:
   total_phases: 26
   completed_phases: 18
-  total_plans: 57
-  completed_plans: 57
+  total_plans: 63
+  completed_plans: 58
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 18 — async-evidence-pack-export
+**Current focus:** Phase 19 — Public /participate Intake (Clerk Invite + Turnstile)
 
 ## Current Position
 
-Phase: 19
-Plan: Not started
+Phase: 19 (Public /participate Intake (Clerk Invite + Turnstile)) — EXECUTING
+Plan: 2 of 6
 
 ## Performance Metrics
 
@@ -96,6 +96,7 @@ Plan: Not started
 | Phase 18-async-evidence-pack-export P00 | 40min | 4 tasks | 5 files |
 | Phase 18 P01 | 30min | 2 tasks | 5 files |
 | Phase 18 P02 | 7min | 2 tasks | 3 files |
+| Phase 19-public-participate-intake-clerk-invite-turnstile P00 | 21min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -230,6 +231,8 @@ Recent decisions affecting current work:
 - [Phase 18]: Plan 18-02: z.guid() (not z.uuid()) for requestExport input — Phase 16 precedent for Zod 4 + version-0 UUID fixtures
 - [Phase 18]: Plan 18-02: Dialog UI state derived from mutation hook (isSuccess/isError) — unifies test-mode (parent-provided mocks) and production render paths
 - [Phase 18]: Plan 18-02: Atomic sync-route cutover — dialog rewrite + app/api/export/evidence-pack/route.ts deletion in the same commit, no dead endpoint interval
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-00: extended vitest.config.mts include glob to tests/**/*.test.ts (Rule 3) so tests/phase-19/ Wave 0 files are discovered; first phase to establish sibling tests/ directory convention alongside src/__tests__/
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-00: @marsidev/react-turnstile resolved to ^1.5.0 (not 3.x) — npm registry major is 1, plan authorized 'no version pin'; 1.x API matches documented widget interface so no drift
 
 ### Pending Todos
 
@@ -248,6 +251,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T09:20:32.522Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-04-14T11:32:24.044Z
+Stopped at: Completed 19-00-PLAN.md
 Resume file: None
