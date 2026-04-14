@@ -8,6 +8,7 @@ import {
   workshopArtifacts,
   workshopSectionLinks,
   workshopFeedbackLinks,
+  workshopEvidenceChecklist,
 } from '@/src/db/schema/workshops'
 import { evidenceArtifacts } from '@/src/db/schema/evidence'
 import { users } from '@/src/db/schema/users'
@@ -111,6 +112,7 @@ export const workshopRouter = router({
           scheduledAt: workshops.scheduledAt,
           durationMinutes: workshops.durationMinutes,
           registrationLink: workshops.registrationLink,
+          status: workshops.status,
           createdBy: workshops.createdBy,
           createdAt: workshops.createdAt,
           updatedAt: workshops.updatedAt,
@@ -360,12 +362,33 @@ export const workshopRouter = router({
           uploaderId: evidenceArtifacts.uploaderId,
           createdAt: evidenceArtifacts.createdAt,
           artifactType: workshopArtifacts.artifactType,
+          reviewStatus: workshopArtifacts.reviewStatus,
+          workshopArtifactId: workshopArtifacts.id,
           uploaderName: users.name,
         })
         .from(workshopArtifacts)
         .innerJoin(evidenceArtifacts, eq(workshopArtifacts.artifactId, evidenceArtifacts.id))
         .leftJoin(users, eq(evidenceArtifacts.uploaderId, users.id))
         .where(eq(workshopArtifacts.workshopId, input.workshopId))
+
+      return rows
+    }),
+
+  // List evidence checklist for a workshop (WS-13)
+  listChecklist: requirePermission('workshop:read')
+    .input(z.object({ workshopId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const rows = await db
+        .select({
+          id:         workshopEvidenceChecklist.id,
+          slot:       workshopEvidenceChecklist.slot,
+          status:     workshopEvidenceChecklist.status,
+          artifactId: workshopEvidenceChecklist.artifactId,
+          filledAt:   workshopEvidenceChecklist.filledAt,
+          createdAt:  workshopEvidenceChecklist.createdAt,
+        })
+        .from(workshopEvidenceChecklist)
+        .where(eq(workshopEvidenceChecklist.workshopId, input.workshopId))
 
       return rows
     }),
