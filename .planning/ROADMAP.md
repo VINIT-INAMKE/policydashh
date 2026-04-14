@@ -417,7 +417,15 @@ Plans:
   5. Role-tailored welcome email sent via Resend per 6 org buckets (government / industry / legal / academia / civil_society / internal) — 6 templates
   6. Existing Clerk user routed to their existing account, no duplicate invite, still receives welcome email
   7. Turnstile failure, rate limit hit, and Clerk errors surfaced cleanly in the UI without exposing internals
-**Plans:** TBD (run /gsd:plan-phase 19)
+**Plans:** 6 plans
+
+Plans:
+- [ ] 19-00-PLAN.md — Wave 0 RED tests (4 files) + @marsidev/react-turnstile install + Turnstile env vars
+- [ ] 19-01-PLAN.md — participate.intake event + POST /api/intake/participate Route Handler (Turnstile verify + emailHash + event send)
+- [ ] 19-02-PLAN.md — participateIntakeFn Inngest function (rateLimit + Clerk invitations.createInvitation + welcome email step)
+- [ ] 19-03-PLAN.md — WelcomeEmail react-email component (6 org buckets) + sendWelcomeEmail helper in src/lib/email.ts
+- [ ] 19-04-PLAN.md — Public /participate page shell + client form (8 fields + Turnstile) + success panel
+- [ ] 19-05-PLAN.md — proxy.ts public-route whitelist (/participate + /api/intake) + end-to-end smoke walk
 
 ### Phase 20: Cal.com Workshop Register
 
