@@ -222,3 +222,37 @@ export async function sendEvidenceExportRequested(
   await event.validate()
   await inngest.send(event)
 }
+
+// -- participate.intake ------------------------------------------------
+
+const participateIntakeSchema = z.object({
+  // SHA-256 hex of lowercased trimmed email — used as rate-limit key
+  emailHash: z.string().regex(/^[0-9a-f]{64}$/, 'emailHash must be SHA-256 hex (64 lowercase chars)'),
+  email: z.string().email(),
+  name: z.string().min(2).max(120),
+  orgType: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal']),
+  expertise: z.string().min(20).max(1000),
+  howHeard: z.string().max(100).optional(),
+})
+
+export const participateIntakeEvent = eventType('participate.intake', {
+  schema: participateIntakeSchema,
+})
+
+export type ParticipateIntakeData = z.infer<typeof participateIntakeSchema>
+
+/**
+ * Fire a participate.intake event. Route Handler calls this AFTER verifying
+ * Turnstile so rate-limiting and Clerk work happen entirely inside the
+ * Inngest worker (INTAKE-03).
+ *
+ * Rate limiting: `participateIntakeFn` in src/inngest/functions/participate-intake.ts
+ * configures `rateLimit: { key: 'event.data.emailHash', limit: 1, period: '15m' }`.
+ * This helper does NOT rate-limit — it simply accepts, validates, and hands
+ * off to Inngest, which enforces the limit at run-start time.
+ */
+export async function sendParticipateIntake(data: ParticipateIntakeData): Promise<void> {
+  const event = participateIntakeEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
