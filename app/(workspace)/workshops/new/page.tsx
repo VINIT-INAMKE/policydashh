@@ -29,6 +29,9 @@ export default function CreateWorkshopPage() {
   const [description, setDescription] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
   const [durationMinutes, setDurationMinutes] = useState('')
+  // Phase 20 WS-07 (D-07): optional capacity; blank string → undefined → null
+  // in DB which means "open registration" on the public listing.
+  const [maxSeats, setMaxSeats] = useState('')
   const [registrationLink, setRegistrationLink] = useState('')
 
   const createMutation = trpc.workshop.create.useMutation({
@@ -49,6 +52,7 @@ export default function CreateWorkshopPage() {
 
     const isoDate = new Date(scheduledAt).toISOString()
     const dur = durationMinutes ? parseInt(durationMinutes, 10) : undefined
+    const seats = maxSeats ? parseInt(maxSeats, 10) : undefined
     const regLink = registrationLink.trim() || undefined
 
     createMutation.mutate({
@@ -56,6 +60,7 @@ export default function CreateWorkshopPage() {
       description: description.trim() || undefined,
       scheduledAt: isoDate,
       durationMinutes: dur && dur > 0 ? dur : undefined,
+      maxSeats: seats && seats > 0 ? seats : undefined,
       registrationLink: regLink,
     })
   }
@@ -121,6 +126,21 @@ export default function CreateWorkshopPage() {
                 placeholder="e.g., 90"
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="workshop-maxseats">
+                Maximum seats <span className="text-muted-foreground text-xs">(optional — leave blank for open registration)</span>
+              </Label>
+              <Input
+                id="workshop-maxseats"
+                type="number"
+                min="1"
+                max="10000"
+                placeholder="e.g., 50"
+                value={maxSeats}
+                onChange={(e) => setMaxSeats(e.target.value)}
               />
             </div>
 

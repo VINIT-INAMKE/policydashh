@@ -18,6 +18,7 @@ import { workflowTransitions } from '@/src/db/schema/workflow'
 import {
   sendWorkshopCompleted,
   sendWorkshopRecordingUploaded,
+  sendWorkshopCreated,
 } from '@/src/inngest/events'
 import { eq, gte, lt, desc, and, count } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
@@ -38,6 +39,10 @@ export const workshopRouter = router({
       scheduledAt: z.string().datetime(),
       durationMinutes: z.number().int().positive().optional(),
       registrationLink: z.string().url().optional(),
+      // Phase 20 WS-07 (D-07): optional per-workshop capacity. NULL in the DB
+      // means "open registration" (no "X spots left" badge on the public
+      // listing). Admins set this on the create form.
+      maxSeats: z.number().int().min(1).max(10000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const [workshop] = await db
@@ -48,6 +53,7 @@ export const workshopRouter = router({
           scheduledAt: new Date(input.scheduledAt),
           durationMinutes: input.durationMinutes ?? null,
           registrationLink: input.registrationLink ?? null,
+          maxSeats: input.maxSeats ?? null,
           createdBy: ctx.user.id,
         })
         .returning()
@@ -59,6 +65,18 @@ export const workshopRouter = router({
         entityType: 'workshop',
         entityId: workshop.id,
         payload: { title: input.title },
+      }).catch(console.error)
+
+      // Phase 20 WS-07 (D-01, D-03): async cal.com event-type provisioning.
+      // Fire-and-forget — the workshop row persists even if the Inngest send
+      // itself fails (e.g. Inngest down), and the downstream
+      // `workshopCreatedFn` handles cal.com 5xx/4xx via its own retry policy.
+      // Public listing (Plan 20-05) gates the embed on
+      // `calcomEventTypeId IS NOT NULL`, so a failed provisioning just hides
+      // the embed until an admin retries.
+      sendWorkshopCreated({
+        workshopId: workshop.id,
+        moderatorId: ctx.user.id,
       }).catch(console.error)
 
       return workshop
