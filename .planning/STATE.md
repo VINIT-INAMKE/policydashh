@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 20-01-PLAN.md
-last_updated: "2026-04-14T13:11:57.440Z"
+stopped_at: Completed 20-02-PLAN.md
+last_updated: "2026-04-14T16:27:55.956Z"
 progress:
   total_phases: 26
   completed_phases: 19
   total_plans: 69
-  completed_plans: 64
+  completed_plans: 65
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 20 (cal-com-workshop-register) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 
 ## Performance Metrics
 
@@ -103,6 +103,7 @@ Plan: 2 of 6
 | Phase 19-public-participate-intake-clerk-invite-turnstile P04 | 4min | 2 tasks | 3 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P05 | 2min | 1 tasks | 2 files |
 | Phase 20-cal-com-workshop-register P01 | 7min | 2 tasks | 13 files |
+| Phase 20-cal-com-workshop-register P02 | 5 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -255,6 +256,8 @@ Recent decisions affecting current work:
 - [Phase 20-cal-com-workshop-register]: verifyCalSignature length-guards before timingSafeEqual — returns false for malformed/wrong-length signatures
 - [Phase 20-cal-com-workshop-register]: Migration 0011 applied via custom Neon HTTP runner (scripts/apply-migration-0011.mjs) with DO-block-aware statement splitter — canonical pattern for future DDL
 - [Phase 20-cal-com-workshop-register]: Dynamic import of .tsx templates inside sendWorkshopX helpers preserves vi.mock JSX-isolation (Phase 16/17/18/19 Pitfall 8 parity)
+- [Phase 20-cal-com-workshop-register]: workshopCreatedFn error policy: CalApiError.status >= 500 (incl. network/parse failures) → retry; < 500 → NonRetriableError; workshop row persists regardless per D-03
+- [Phase 20-cal-com-workshop-register]: Admin create mutation emits sendWorkshopCreated as fire-and-forget after insert + audit log; maxSeats NULL = open registration (D-07)
 
 ### Pending Todos
 
@@ -273,6 +276,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T13:11:57.423Z
-Stopped at: Completed 20-01-PLAN.md
+Last session: 2026-04-14T16:27:47.967Z
+Stopped at: Completed 20-02-PLAN.md
 Resume file: None
