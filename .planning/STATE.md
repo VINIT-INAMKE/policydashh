@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 19-03-PLAN.md
-last_updated: "2026-04-14T11:39:02.818Z"
+stopped_at: Completed 19-04-PLAN.md
+last_updated: "2026-04-14T11:46:37.013Z"
 progress:
   total_phases: 26
   completed_phases: 18
   total_plans: 63
-  completed_plans: 61
+  completed_plans: 62
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 19 (Public /participate Intake (Clerk Invite + Turnstile)) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 
 ## Performance Metrics
 
@@ -100,6 +100,7 @@ Plan: 3 of 6
 | Phase 19-public-participate-intake-clerk-invite-turnstile P02 | 2min | 2 tasks | 2 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P01 | 4min | 2 tasks | 2 files |
 | Phase 19-public-participate-intake-clerk-invite-turnstile P03 | 3min | 2 tasks | 2 files |
+| Phase 19-public-participate-intake-clerk-invite-turnstile P04 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -242,6 +243,9 @@ Recent decisions affecting current work:
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-01: emailHash schema uses z.string().regex(/^[0-9a-f]{64}$/) not min(64).max(64) — enforces lowercase-hex character class to match Wave 0 contract
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-03: Literal \u2019 curly apostrophe in JSX for hero line — react-email render() converts &apos; to &#x27; which fails test contract; unicode codepoint preserved verbatim
 - [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-03: Separate src/lib/email-templates/ directory keeps JSX out of sendX helper boundary — enables vi.mock @/src/lib/email without JSX transform in Inngest tests (Pitfall 8 parity with Phase 16/17/18)
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-04: base-ui Select<string> requires value: string | null — adapt empty-string FormState with value={state.X || null} + onValueChange={(v) => update('X', v ?? '')} (canonical adapter for empty-string-default form state)
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-04: Public form pattern = server page shell + client form island + client success island + form-replace state (no redirect) — preserves URL, blocks back-button double-submit, no info leak per INTAKE-06
+- [Phase 19-public-participate-intake-clerk-invite-turnstile]: Plan 19-04: Auto-approved checkpoint:human-verify task per user preference to defer per-phase smoke walks to end-of-milestone — 14-step visual walk rolled into v0.2 milestone smoke walk, NOT skipped
 
 ### Pending Todos
 
@@ -260,6 +264,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T11:38:56.563Z
-Stopped at: Completed 19-03-PLAN.md
+Last session: 2026-04-14T11:46:24.682Z
+Stopped at: Completed 19-04-PLAN.md
 Resume file: None

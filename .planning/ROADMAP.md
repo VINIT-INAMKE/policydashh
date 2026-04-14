@@ -265,7 +265,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 16. Flow 5 Smoke + Notification Migration | 5/5 | Complete    | 2026-04-13 |
 | 17. Workshop Lifecycle + Recording Pipeline | 6/6 | Complete    | 2026-04-14 |
 | 18. Async Evidence Pack Export | 3/3 | Complete    | 2026-04-14 |
-| 19. Public /participate Intake | 4/6 | In Progress|  |
+| 19. Public /participate Intake | 5/6 | In Progress|  |
 | 20. Cal.com Workshop Register | 0/0 | v0.2 Planning | - |
 | 20.5. Public /research + /framework Pages | 0/0 | v0.2 Planning | - |
 | 21. Public Shell + Consultation Summary + Theme | 0/0 | v0.2 Planning | - |
@@ -417,14 +417,14 @@ Plans:
   5. Role-tailored welcome email sent via Resend per 6 org buckets (government / industry / legal / academia / civil_society / internal) — 6 templates
   6. Existing Clerk user routed to their existing account, no duplicate invite, still receives welcome email
   7. Turnstile failure, rate limit hit, and Clerk errors surfaced cleanly in the UI without exposing internals
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 - [x] 19-00-PLAN.md — Wave 0 RED tests (4 files) + @marsidev/react-turnstile install + Turnstile env vars
 - [x] 19-01-PLAN.md — participate.intake event + POST /api/intake/participate Route Handler (Turnstile verify + emailHash + event send)
 - [x] 19-02-PLAN.md — participateIntakeFn Inngest function (rateLimit + Clerk invitations.createInvitation + welcome email step)
 - [x] 19-03-PLAN.md — WelcomeEmail react-email component (6 org buckets) + sendWelcomeEmail helper in src/lib/email.ts
-- [ ] 19-04-PLAN.md — Public /participate page shell + client form (8 fields + Turnstile) + success panel
+- [x] 19-04-PLAN.md — Public /participate page shell + client form (8 fields + Turnstile) + success panel
 - [ ] 19-05-PLAN.md — proxy.ts public-route whitelist (/participate + /api/intake) + end-to-end smoke walk
 
 ### Phase 20: Cal.com Workshop Register
