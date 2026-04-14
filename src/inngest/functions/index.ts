@@ -4,6 +4,7 @@ import { notificationDispatchFn } from './notification-dispatch'
 import { workshopCompletedFn } from './workshop-completed'
 import { workshopRecordingProcessedFn } from './workshop-recording-processed'
 import { evidencePackExportFn } from './evidence-pack-export'
+import { participateIntakeFn } from './participate-intake'
 
 /**
  * The array of Inngest functions mounted at /api/inngest.
@@ -19,4 +20,5 @@ export const functions = [
   workshopCompletedFn,
   workshopRecordingProcessedFn,
   evidencePackExportFn, // Phase 18
+  participateIntakeFn,  // Phase 19
 ]
