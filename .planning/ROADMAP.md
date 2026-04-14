@@ -271,7 +271,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 18. Async Evidence Pack Export | 3/3 | Complete    | 2026-04-14 |
 | 19. Public /participate Intake | 6/6 | Complete    | 2026-04-14 |
 | 20. Cal.com Workshop Register | 6/6 | Complete    | 2026-04-14 |
-| 20.5. Public /research + /framework Pages | 1/4 | In Progress|  |
+| 20.5. Public /research + /framework Pages | 2/4 | In Progress|  |
 | 21. Public Shell + Consultation Summary + Theme | 0/0 | v0.2 Planning | - |
 | 22. Milestone Entity + SHA256 Hashing | 0/0 | v0.2 Planning | - |
 | 23. Cardano Preview-Net Anchoring | 0/0 | v0.2 Planning | - |
@@ -464,10 +464,10 @@ Plans:
   2. Public `/framework` page lists documents tagged `isPublicDraft: true` with per-section status badges: Draft / Under Review / Validated (derived from section-level CR and review state)
   3. `/framework` shows a "what changed" log aggregating recent CR merges per section with dates and short summaries (no stakeholder identity surfaced)
   4. Both pages load without authentication; `proxy.ts` `publicRoutes` explicitly allow them
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 - [x] 20.5-00-PLAN.md — Wave 0 RED contract: 6 failing tests (section status, framework log, setPublicDraft mutation, research-page render, framework-page render, proxy whitelist)
 - [ ] 20.5-01-PLAN.md — Migration 0012 + isPublicDraft schema + framework-log.service.ts + document.setPublicDraft mutation
-- [ ] 20.5-02-PLAN.md — /research static page + ResearchTocAside client component + placeholder PDF asset
+- [x] 20.5-02-PLAN.md — /research static page + ResearchTocAside client component + placeholder PDF asset
 - [ ] 20.5-03-PLAN.md — /framework + /framework/[policyId] pages + SectionStatusBadge + WhatChangedLog + proxy.ts whitelist + workspace toggle
 
 ### Phase 21: Public Shell + Consultation Summary LLM + Theme
