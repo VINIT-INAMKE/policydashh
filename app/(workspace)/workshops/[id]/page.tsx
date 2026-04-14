@@ -22,6 +22,8 @@ import { ArtifactList } from './_components/artifact-list'
 import { ArtifactAttachDialog } from './_components/artifact-attach-dialog'
 import { SectionLinkPicker } from './_components/section-link-picker'
 import { FeedbackLinkPicker } from './_components/feedback-link-picker'
+import { StatusTransitionButtons } from './_components/status-transition-buttons'
+import { EvidenceChecklist } from './_components/evidence-checklist'
 
 export default function WorkshopDetailPage() {
   const params = useParams<{ id: string }>()
@@ -90,6 +92,12 @@ export default function WorkshopDetailPage() {
       {/* Left panel */}
       <div className="w-full space-y-4 rounded-lg border-r bg-muted p-4 lg:w-80 lg:shrink-0">
         <h1 className="text-[28px] font-semibold leading-tight">{workshop.title}</h1>
+
+        <StatusTransitionButtons
+          workshopId={workshopId}
+          currentStatus={workshop.status}
+          canManage={canManage}
+        />
 
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Calendar className="size-3.5" />
@@ -255,6 +263,10 @@ export default function WorkshopDetailPage() {
         </div>
 
         <ArtifactList workshopId={workshopId} canManage={canManage} />
+
+        <div className="mt-8">
+          <EvidenceChecklist workshopId={workshopId} />
+        </div>
       </div>
 
       {/* Dialogs / Pickers */}

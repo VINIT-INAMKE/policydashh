@@ -53,6 +53,16 @@ export function ArtifactList({ workshopId, canManage }: ArtifactListProps) {
     },
   })
 
+  const approveMutation = trpc.workshop.approveArtifact.useMutation({
+    onSuccess: () => {
+      toast.success('Artifact approved.')
+      utils.workshop.listArtifacts.invalidate({ workshopId })
+    },
+    onError: (err) => {
+      toast.error(`Couldn't approve the artifact: ${err.message}`)
+    },
+  })
+
   if (artifactsQuery.isLoading) {
     return (
       <div className="space-y-2">
@@ -105,6 +115,11 @@ export function ArtifactList({ workshopId, canManage }: ArtifactListProps) {
                   <Badge variant="secondary">
                     {capitalizeFirst(artifact.artifactType)}
                   </Badge>
+                  {artifact.reviewStatus === 'draft' && (
+                    <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      Draft
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <span>{artifact.uploaderName ?? 'Unknown'}</span>
@@ -121,13 +136,31 @@ export function ArtifactList({ workshopId, canManage }: ArtifactListProps) {
                 )}
               </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.open(artifact.url, '_blank')}
-              >
-                <ExternalLink className="size-3.5" />
-              </Button>
+              {canManage && artifact.reviewStatus === 'draft' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={approveMutation.isPending}
+                  onClick={() =>
+                    approveMutation.mutate({
+                      workshopId,
+                      workshopArtifactId: artifact.workshopArtifactId,
+                    })
+                  }
+                >
+                  Approve
+                </Button>
+              )}
+
+              {artifact.url && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(artifact.url, '_blank')}
+                >
+                  <ExternalLink className="size-3.5" />
+                </Button>
+              )}
 
               {canManage && (
                 <Button
