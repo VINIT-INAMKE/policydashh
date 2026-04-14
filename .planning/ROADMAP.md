@@ -464,7 +464,11 @@ Plans:
   2. Public `/framework` page lists documents tagged `isPublicDraft: true` with per-section status badges: Draft / Under Review / Validated (derived from section-level CR and review state)
   3. `/framework` shows a "what changed" log aggregating recent CR merges per section with dates and short summaries (no stakeholder identity surfaced)
   4. Both pages load without authentication; `proxy.ts` `publicRoutes` explicitly allow them
-**Plans:** TBD (run /gsd:plan-phase 20.5)
+**Plans:** 4 plans
+- [ ] 20.5-00-PLAN.md — Wave 0 RED contract: 6 failing tests (section status, framework log, setPublicDraft mutation, research-page render, framework-page render, proxy whitelist)
+- [ ] 20.5-01-PLAN.md — Migration 0012 + isPublicDraft schema + framework-log.service.ts + document.setPublicDraft mutation
+- [ ] 20.5-02-PLAN.md — /research static page + ResearchTocAside client component + placeholder PDF asset
+- [ ] 20.5-03-PLAN.md — /framework + /framework/[policyId] pages + SectionStatusBadge + WhatChangedLog + proxy.ts whitelist + workspace toggle
 
 ### Phase 21: Public Shell + Consultation Summary LLM + Theme
 
