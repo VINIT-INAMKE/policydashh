@@ -93,3 +93,50 @@ export async function sendWorkshopEvidenceNudgeEmail(
       `Upload the missing items at: ${workshopUrl}`,
   })
 }
+
+/**
+ * Send an email to a requester when their async evidence pack export is ready.
+ *
+ * Silent no-op when RESEND_API_KEY is unset or `to` is null/undefined
+ * (phone-only user). Errors bubble as plain Error so the Inngest send-email
+ * step retries via Inngest's retry budget.
+ *
+ * Used by evidencePackExportFn (Plan 18-01). EV-07.
+ */
+export async function sendEvidencePackReadyEmail(
+  to: string | null | undefined,
+  data: {
+    documentTitle: string
+    downloadUrl: string
+    fileCount: number
+    totalSizeBytes: number
+    expiresAt: string  // ISO timestamp
+    degraded?: boolean  // true if some binaries unavailable
+  },
+): Promise<void> {
+  if (!resend || !to) return
+
+  const sizeMb = (data.totalSizeBytes / (1024 * 1024)).toFixed(2)
+  const subject = data.degraded
+    ? `Evidence pack ready (partial): ${data.documentTitle}`
+    : `Evidence pack ready: ${data.documentTitle}`
+
+  const degradedNote = data.degraded
+    ? `\n\nNote: Some files were unavailable at export time and have been replaced ` +
+      `with UNAVAILABLE.txt placeholders containing direct download links. ` +
+      `See inside the pack for details.\n`
+    : ''
+
+  const text =
+    `Your evidence pack for "${data.documentTitle}" is ready.\n\n` +
+    `Download (expires ${data.expiresAt}):\n${data.downloadUrl}\n\n` +
+    `Pack contents: ${data.fileCount} files, ${sizeMb} MB total.` +
+    degradedNote
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject,
+    text,
+  })
+}

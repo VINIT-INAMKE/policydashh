@@ -199,3 +199,26 @@ export async function sendWorkshopRecordingUploaded(
   await event.validate()
   await inngest.send(event)
 }
+
+// -- evidence.export_requested -------------------------------------------
+
+// Use z.guid() per Phase 16 decision: z.uuid() rejects version-0 test fixtures.
+const evidenceExportRequestedSchema = z.object({
+  documentId:  z.guid(),
+  requestedBy: z.guid(),
+  userEmail:   z.string().email().nullable(),
+})
+
+export const evidenceExportRequestedEvent = eventType('evidence.export_requested', {
+  schema: evidenceExportRequestedSchema,
+})
+
+export type EvidenceExportRequestedData = z.infer<typeof evidenceExportRequestedSchema>
+
+export async function sendEvidenceExportRequested(
+  data: EvidenceExportRequestedData,
+): Promise<void> {
+  const event = evidenceExportRequestedEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}

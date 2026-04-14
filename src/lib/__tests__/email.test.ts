@@ -21,8 +21,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 const sendMock = vi.fn().mockResolvedValue({ id: 'mock' })
 
+// Vitest v4 requires a `function` (or class) — not an arrow — inside
+// mockImplementation when the mock is used with `new`. See
+// https://vitest.dev/api/vi#vi-spyon. Wave 0 test factory predated v4 and
+// used an arrow; Plan 18-01 (Rule 3 blocker fix) converts to a function.
 vi.mock('resend', () => ({
-  Resend: vi.fn().mockImplementation(() => ({ emails: { send: sendMock } })),
+  Resend: vi.fn().mockImplementation(function () {
+    return { emails: { send: sendMock } }
+  }),
 }))
 
 describe('sendEvidencePackReadyEmail', () => {
