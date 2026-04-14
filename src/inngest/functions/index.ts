@@ -6,6 +6,8 @@ import { workshopRecordingProcessedFn } from './workshop-recording-processed'
 import { evidencePackExportFn } from './evidence-pack-export'
 import { participateIntakeFn } from './participate-intake'
 import { workshopCreatedFn } from './workshop-created'
+import { workshopRegistrationReceivedFn } from './workshop-registration-received'
+import { workshopFeedbackInviteFn } from './workshop-feedback-invite'
 
 /**
  * The array of Inngest functions mounted at /api/inngest.
@@ -23,4 +25,6 @@ export const functions = [
   evidencePackExportFn, // Phase 18
   participateIntakeFn,  // Phase 19
   workshopCreatedFn,    // Phase 20 Plan 02 — cal.com event-type provisioning
+  workshopRegistrationReceivedFn,  // Phase 20 Plan 04 — Clerk invite + confirmation email
+  workshopFeedbackInviteFn,  // Phase 20 Plan 04 — post-workshop feedback JWT deep-link email
 ]
