@@ -72,9 +72,10 @@ Shipped in milestone v0.1 (11 core phases + 2 fix/consolidation phases). See `.p
 - [ ] Manual Phase 17 smoke walk on running dev server (deferred to `/gsd:complete-milestone` batch — procedure in `17-SMOKE.md`)
 - [ ] Manual Phase 18 smoke walk on running dev server (deferred to `/gsd:complete-milestone` batch — real Inngest dev server + Resend sandbox + R2 dev bucket end-to-end)
 
-**Public consultation surface (Phases 19–21)**
-- [ ] Public `/participate` form with Cloudflare Turnstile and Clerk-invite auto-register
-- [ ] `participateIntake` Inngest fn with role-tailored welcome emails
+**Public consultation surface (Phases 19–21)** — Phase 19 ✓ Complete (2026-04-14, smoke walk deferred to milestone-end batch)
+- [x] Public `/participate` form with Cloudflare Turnstile and Clerk-invite auto-register — Validated in Phase 19 (INTAKE-01/02/07; server component shell at `app/(public)/participate/page.tsx`, client form with `@marsidev/react-turnstile`, POST → `app/api/intake/participate/route.ts` verifies Turnstile via `https://challenges.cloudflare.com/turnstile/v0/siteverify` before SHA-256 emailHash + `sendParticipateIntake` Inngest event, `proxy.ts` whitelists `/participate(.*)` and `/api/intake(.*)`)
+- [x] `participateIntake` Inngest fn with role-tailored welcome emails — Validated in Phase 19 (INTAKE-03/04/05/06; `participateIntakeFn` with `rateLimit: { key: 'event.data.emailHash', limit: 1, period: '15m' }`, `clerkClient().invitations.createInvitation({ ignoreExisting: true, publicMetadata: { role, orgType } })`, `sendWelcomeEmail` via 6-bucket react-email component — government / industry / legal / academia / civil_society / internal)
+- [ ] Manual Phase 19 smoke walk on running dev server (deferred to `/gsd:complete-milestone` batch — real browser + Cloudflare Turnstile challenge + Clerk Dev dashboard + Resend inbox end-to-end, 7 items persisted in `19-HUMAN-UAT.md`)
 - [ ] Public `/workshops` listing and `/workshops/[id]/register` cal.com embed
 - [ ] Cal.com webhook handler creating workshopRegistrations + Clerk-inviting new users
 - [ ] Attendance auto-populated from cal.com BOOKING_COMPLETED webhook
@@ -251,4 +252,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 — Phase 18 (Async Evidence Pack Export) complete; EV-05/EV-06/EV-07 shipped via `evidence.requestExport` tRPC mutation → `evidencePackExportFn` 6-step Inngest pipeline (metadata gather → list binary artifacts → fetch from R2 with 30s timeout → fflate `zipSync` + `PutObjectCommand` to `evidence-packs/{documentId}-{timestamp}.zip` → 24h presigned GET → Resend email). Degraded-mode `UNAVAILABLE.txt` placeholders for failed binaries. Legacy sync `app/api/export/evidence-pack/route.ts` deleted in atomic cutover. Manual Phase 17/18 smoke walks deferred to milestone-end batch.*
+*Last updated: 2026-04-14 — Phase 19 (Public `/participate` Intake with Clerk Invite + Turnstile) complete; INTAKE-01..07 shipped. Public form at `app/(public)/participate/page.tsx` (server shell + client form + `@marsidev/react-turnstile`) POSTs to `app/api/intake/participate/route.ts`, which verifies Turnstile server-side before SHA-256 emailHash + `participate.intake` Inngest event. `participateIntakeFn` rate-limits per emailHash (15m/1), calls `clerkClient().invitations.createInvitation({ ignoreExisting: true, publicMetadata: { role, orgType } })`, then sends `sendWelcomeEmail` via a single 6-bucket react-email component (government / industry / legal / academia / civil_society / internal) — INTAKE-06 no-info-leak preserved (welcome email always sent). `proxy.ts` whitelists `/participate(.*)` + `/api/intake(.*)`. 25/25 phase-19 tests green; 7 real-browser / third-party items persisted in `19-HUMAN-UAT.md` and deferred to the v0.2 milestone smoke walk per project policy.*
