@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { router, requirePermission } from '@/src/trpc/init'
+import { router, requirePermission, publicProcedure } from '@/src/trpc/init'
+import { listPublicWorkshops } from '@/src/server/queries/workshops-public'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'
@@ -605,4 +606,14 @@ export const workshopRouter = router({
 
       return { success: true }
     }),
+
+  // Phase 20 Plan 20-05 (D-05, D-06, D-07, D-08, WS-08):
+  // Public listing of workshops with cal.com event types, unauthenticated.
+  // Wraps the `listPublicWorkshops` helper in `src/server/queries/workshops-public.ts`
+  // so tRPC clients (future admin preview, /workshops SSR page can also call
+  // directly) share the same cached spots-left query. unstable_cache handles
+  // the 60s revalidate + per-workshopId tagging (research Option B).
+  listPublicWorkshops: publicProcedure.query(async () => {
+    return listPublicWorkshops()
+  }),
 })
