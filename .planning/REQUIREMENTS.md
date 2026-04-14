@@ -163,9 +163,9 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [ ] **WS-09**: Cal.com webhook handler verifies HMAC-SHA256 signature on raw request body before processing
 - [ ] **WS-10**: Cal.com `BOOKING_CREATED` webhook creates `workshopRegistrations` row, auto-inviting unknown emails via Clerk
 - [ ] **WS-11**: Cal.com `MEETING_ENDED` webhook transitions workshop to `completed` and auto-populates attendance
-- [ ] **WS-12**: `workshopCompleted` Inngest fn fires 72h + 7d moderator nudges on missing evidence checklist slots
-- [ ] **WS-13**: Workshop has evidence checklist with required artifact slots (`registration_export`, `screenshot`, `recording`, `attendance`, `summary`)
-- [ ] **WS-14**: Moderator recording upload triggers Groq Whisper transcription + llama summary pipeline (moderator-reviewed before publish)
+- [x] **WS-12**: `workshopCompleted` Inngest fn fires 72h + 7d moderator nudges on missing evidence checklist slots
+- [x] **WS-13**: Workshop has evidence checklist with required artifact slots (`registration_export`, `screenshot`, `recording`, `attendance`, `summary`)
+- [x] **WS-14**: Moderator recording upload triggers Groq Whisper transcription + llama summary pipeline (moderator-reviewed before publish)
 - [ ] **WS-15**: Post-workshop feedback link is emailed to attendees and back-links to the workshop via `workshopFeedbackLinks`
 
 ### Async Evidence Pack (extensions)
@@ -195,9 +195,9 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 ### LLM-Assisted Content (Groq)
 
-- [ ] **LLM-01**: Groq SDK wrapper (`src/lib/llm.ts`) routes tasks to appropriate models with fail-fast env validation via `requireEnv('GROQ_API_KEY')`
-- [ ] **LLM-02**: Workshop recording is transcribed via `whisper-large-v3-turbo` within Inngest `step.run` (uploads > 25 MB rejected at R2 presign step)
-- [ ] **LLM-03**: Workshop transcript is summarized via `llama-3.1-8b-instant` with structured output (key discussion points, decisions, action items)
+- [x] **LLM-01**: Groq SDK wrapper (`src/lib/llm.ts`) routes tasks to appropriate models with fail-fast env validation via `requireEnv('GROQ_API_KEY')`
+- [x] **LLM-02**: Workshop recording is transcribed via `whisper-large-v3-turbo` within Inngest `step.run` (uploads > 25 MB rejected at R2 presign step)
+- [x] **LLM-03**: Workshop transcript is summarized via `llama-3.1-8b-instant` with structured output (key discussion points, decisions, action items)
 - [ ] **LLM-04**: Per-section consultation summary prose is generated via `llama-3.3-70b-versatile` from aggregated accepted feedback
 - [ ] **LLM-05**: Consultation summary cached in `documentVersions.consultationSummary` (JSONB) and auto-regenerated on every `version.published` event
 - [ ] **LLM-06**: Consultation summary generation sees only anonymized feedback content (bodies without submitter identity)
@@ -370,12 +370,12 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | NOTIF-05 | Phase 16 | Complete |
 | NOTIF-06 | Phase 16 | Complete |
 | WS-06 | Phase 17 | Complete |
-| WS-12 | Phase 17 | Pending |
-| WS-13 | Phase 17 | Pending |
-| WS-14 | Phase 17 | Pending |
-| LLM-01 | Phase 17 | Pending |
-| LLM-02 | Phase 17 | Pending |
-| LLM-03 | Phase 17 | Pending |
+| WS-12 | Phase 17 | Complete |
+| WS-13 | Phase 17 | Complete |
+| WS-14 | Phase 17 | Complete |
+| LLM-01 | Phase 17 | Complete |
+| LLM-02 | Phase 17 | Complete |
+| LLM-03 | Phase 17 | Complete |
 | EV-05 | Phase 18 | Pending |
 | EV-06 | Phase 18 | Pending |
 | EV-07 | Phase 18 | Pending |

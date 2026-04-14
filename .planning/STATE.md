@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-04-14T07:12:31.040Z"
+stopped_at: Completed 17-00-PLAN.md
+last_updated: "2026-04-14T07:14:56.319Z"
 progress:
   total_phases: 26
   completed_phases: 16
   total_plans: 54
-  completed_plans: 49
+  completed_plans: 50
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 17 (workshop-lifecycle-recording-pipeline-groq) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 
 ## Performance Metrics
 
@@ -88,6 +88,7 @@ Plan: 2 of 6
 | Phase 16 P02 | 3min | 2 tasks | 2 files |
 | Phase 16-flow-5-smoke-notification-dispatch-migration P03 | 6min | 4 tasks | 4 files |
 | Phase 17-workshop-lifecycle-recording-pipeline-groq P01 | 12min | 3 tasks | 5 files |
+| Phase 17-workshop-lifecycle-recording-pipeline-groq P00 | 12min | 5 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -203,6 +204,8 @@ Recent decisions affecting current work:
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: ALLOWED_TRANSITIONS const map encodes workshop state machine; transition mutation validates server-side and writes workflow_transitions audit row
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: workshop.completed Inngest event fires awaited (not fire-and-forget) so transition fails if Inngest send fails
 - [Phase 17-workshop-lifecycle-recording-pipeline-groq]: workshop.completed.moderatorId uses workshops.createdBy not actor (RESEARCH OQ3); enables nudge routing in Plan 03
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Plan 16 Pattern 2 (variable-path dynamic import via array.join + /* @vite-ignore */) is the canonical mechanism for any TDD RED contract whose target module does not yet exist on disk — applied uniformly to all 4 Wave 0 test files in 17-00
+- [Phase 17-workshop-lifecycle-recording-pipeline-groq]: Pin groq-sdk to exact 1.1.2 (caret stripped after npm install) — RESEARCH validated this exact version, no semver drift permitted
 
 ### Pending Todos
 
@@ -221,6 +224,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T07:12:31.002Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-04-14T07:14:42.684Z
+Stopped at: Completed 17-00-PLAN.md
 Resume file: None
