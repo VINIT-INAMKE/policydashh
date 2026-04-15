@@ -504,7 +504,14 @@ Plans:
   4. `src/lib/hashing.ts` produces deterministic SHA256 hashes for `policyVersion`, `workshop`, `evidenceBundle`, `milestone` inputs
   5. Canonical JSON pass (RFC 8785 JCS or explicit sort+stringify) normalizes input before hashing
   6. Golden-fixture tests verify hash stability across permuted inputs, nested objects, and array orderings — failure means hash is non-deterministic and anchoring cannot proceed
-**Plans:** TBD (run /gsd:plan-phase 22)
+**Plans:** 5 plans in 4 waves
+
+Plans:
+- [ ] 22-00-PLAN.md — Wave 0 (TDD): canonicalize@3.0.0 install + RED hashing/router/schema tests + 6 golden-fixture scaffolds + Nyquist gate flip
+- [ ] 22-01-PLAN.md — Wave 1: milestones schema + 0014 migration + milestoneId FK on 4 child tables + ACTIONS/PERMISSIONS constants
+- [ ] 22-02-PLAN.md — Wave 1: src/lib/hashing.ts (canonicalize wrapper + sha256Hex + 6 hash functions) + fill fixture expectedHash values
+- [ ] 22-03-PLAN.md — Wave 2: milestoneRouter (create, list, getById, attachEntity, detachEntity, markReady) + appRouter.milestone registration
+- [ ] 22-04-PLAN.md — Wave 3: admin milestone UI (PolicyTabBar tab + index page + detail page + 4 entity tabs + mark-ready button)
 
 ### Phase 23: Cardano Preview-Net Anchoring
 
