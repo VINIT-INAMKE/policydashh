@@ -10,6 +10,7 @@ import { versionRouter } from './version'
 import { traceabilityRouter } from './traceability'
 import { notificationRouter } from './notification'
 import { workshopRouter } from './workshop'
+import { consultationSummaryRouter } from './consultation-summary'
 
 export const appRouter = router({
   user: userRouter,
@@ -20,6 +21,7 @@ export const appRouter = router({
   evidence: evidenceRouter,
   changeRequest: changeRequestRouter,
   version: versionRouter,
+  consultationSummary: consultationSummaryRouter,
   traceability: traceabilityRouter,
   notification: notificationRouter,
   workshop: workshopRouter,
