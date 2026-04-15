@@ -477,13 +477,20 @@ Plans:
 **Requirements:** LLM-04, LLM-05, LLM-06, LLM-07, LLM-08, PUB-09, PUB-10
 **Success Criteria** (what must be TRUE):
   1. Minimal public shell (header, footer) wraps `/`, `/participate`, `/workshops`, `/research`, `/framework`, `/portal` with consistent navigation; landing page at `/` is deferred but shell routes exist
-  2. Policy-grade theme applied: white/off-white base, dark blue/slate typography, saffron or teal accent, document cards (verified against reference design in `newDoc2.md`)
+  2. Policy-grade theme applied: cream `#f7fafc` surface, navy `#000a1e` typography, emerald `#179d53` accent, Newsreader serif headings + Inter sans body — sourced from the existing `.cl-landing` palette in `app/globals.css` lines 361–468 per Phase 21 D-01 (supersedes the saffron/teal guidance in `newDoc2.md` — working code beats specs)
   3. `version.published` event triggers `consultationSummaryGenerate` Inngest fn that calls llama-3.3-70b-versatile with anonymized accepted-feedback content grouped by section
   4. LLM output cached in `documentVersions.consultationSummary` (JSONB) with status `pending`; never rendered publicly until moderator reviews and marks `approved`
   5. Guardrail regex scans generated text for stakeholder name patterns and blocks publish if any match (belt-and-suspenders alongside anonymization at input)
   6. Consultation summary only visible publicly when status is `approved`; draft versions show "Summary under review" placeholder
   7. Moderator review modal shows pending/draft summaries with side-by-side raw feedback counts for verification
-**Plans:** TBD (run /gsd:plan-phase 21)
+**Plans:** 5 plans
+
+Plans:
+- [ ] 21-00-PLAN.md — Wave 0: Migration 0013 (consultationSummary JSONB) + contract type module + 5 RED test stubs (service, Inngest fn, tRPC router, public-header, section-summary-block) + VALIDATION flip
+- [ ] 21-01-PLAN.md — Wave 1: LLM backend (anonymization, guardrail pattern, generateConsultationSummary helper, versionPublishedEvent registration + emission, consultationSummaryGenerateFn Inngest function)
+- [ ] 21-02-PLAN.md — Wave 1: Public shell refactor ((public)/layout.tsx owns .cl-landing + fonts, PublicHeader client component with sticky glass nav + mobile hamburger, PublicFooter, remove manual .cl-landing from participate/workshops pages)
+- [ ] 21-03-PLAN.md — Wave 2: Moderator review gate (consultationSummary tRPC router with 5 procedures + audit invariant, SummaryReviewCard mounted inline inside VersionDetail for published versions)
+- [ ] 21-04-PLAN.md — Wave 2: Public render integration (SectionSummaryBlock + SummaryPlaceholderCard + FrameworkSummaryBlock + PublicPolicyContent prop extension + portal page summary projection + remove stale consultation-summary subroute link)
 
 ### Phase 22: Milestone Entity + SHA256 Hashing Service
 

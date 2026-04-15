@@ -30,7 +30,7 @@ reviewed_at: 2026-04-15
 | Surface | Theme | Scope |
 |---------|-------|-------|
 | All `(public)` routes — shell, portal, framework, workshops, participate, research | `.cl-landing` CSS-var palette | Promoted from scoped to layout-owned per D-02 |
-| Workspace moderator review card on `/policies/[id]/versions/[versionId]` | shadcn base-nova workspace theme (existing) | No new tokens — sits inside existing workspace chrome |
+| Workspace moderator review card mounted inside `VersionDetail` inline panel on `/policies/[id]/versions` | shadcn base-nova workspace theme (existing) | No new tokens — sits inside existing workspace chrome (no `[versionId]` sub-route exists) |
 
 **Source of truth:** `app/globals.css` lines 361–468 (`.cl-landing` block). Do NOT invent new tokens. Map every public surface decision to an existing `--cl-*` variable.
 
@@ -179,7 +179,7 @@ Per-section status badge colors (using shadcn `variant` or inline):
 | `PublicHeader` | `app/(public)/_components/public-header.tsx` | `.cl-landing` | Logo + nav links + active state + mobile hamburger |
 | `PublicFooter` | `app/(public)/_components/public-footer.tsx` | `.cl-landing` | Single row, "Published by PolicyDash" + "Internal Login" |
 | `PublicShellLayout` | `app/(public)/layout.tsx` (full rewrite) | `.cl-landing` | Owns `.cl-landing` className, font variables, renders header + footer |
-| `SummaryReviewCard` | `app/(workspace)/policies/[id]/versions/[versionId]/_components/summary-review-card.tsx` | shadcn workspace | Side-by-side moderator review surface |
+| `SummaryReviewCard` | `app/(workspace)/policies/[id]/versions/_components/summary-review-card.tsx` | shadcn workspace | Side-by-side moderator review surface — mounted INSIDE existing `VersionDetail` inline panel (no `[versionId]` sub-route exists in workspace per Phase 21 RESEARCH Finding #3) |
 | `SectionSummaryBlock` | `app/(public)/portal/[policyId]/_components/section-summary-block.tsx` | `.cl-landing` | Approved prose OR "Summary under review" placeholder per section |
 | `SummaryPlaceholderCard` | `app/(public)/portal/[policyId]/_components/summary-placeholder-card.tsx` | `.cl-landing` | Muted card for pending/blocked/error states |
 | `FrameworkSummaryBlock` | `app/(public)/framework/_components/framework-summary-block.tsx` | `.cl-landing` | Summary block below what-changed log on /framework |
