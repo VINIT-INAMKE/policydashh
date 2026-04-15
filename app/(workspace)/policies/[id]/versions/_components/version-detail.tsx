@@ -11,6 +11,7 @@ import { VersionStatusBadge } from './version-status-badge'
 import { VersionChangelog } from './version-changelog'
 import { PublishDialog } from './publish-dialog'
 import { VersionComparisonSelector } from './version-comparison-selector'
+import { SummaryReviewCard } from './summary-review-card'
 
 function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -142,6 +143,14 @@ export function VersionDetail({ versionId, documentId, versions, canPublish = fa
           Publish Version
         </Button>
       ) : null}
+
+      {/* Consultation summary moderator review — only for published versions */}
+      {version.isPublished && (
+        <>
+          <Separator />
+          <SummaryReviewCard versionId={version.id} />
+        </>
+      )}
 
       <Separator />
 
