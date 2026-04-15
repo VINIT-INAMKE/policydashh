@@ -3,8 +3,9 @@
  * whose consultation summary is pending, blocked, or errored.
  *
  * Used by SectionSummaryBlock (portal) when a section has an entry in
- * the JSONB but its status !== 'approved'. NEVER receives sourceFeedbackIds
- * or any internal-only field per Phase 21 Pitfall 1.
+ * the JSONB but its status !== 'approved'. Takes ZERO props — the only
+ * information it displays is static copy, so no internal-only metadata
+ * can cross into this component (Phase 21 Pitfall 1).
  */
 export function SummaryPlaceholderCard() {
   return (
