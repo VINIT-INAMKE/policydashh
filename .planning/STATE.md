@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 22-00-PLAN.md (Wave 0 Nyquist TDD gate — unblocked 22-01..04)
-last_updated: "2026-04-15T14:11:22.245Z"
+stopped_at: "Completed 22-01-PLAN.md (Wave 1 parallel with 22-02) — milestones schema + 0014 migration + milestoneId FK + MILESTONE_* ACTIONS + milestone:manage/read PERMISSIONS"
+last_updated: "2026-04-15T14:31:40.216Z"
 progress:
   total_phases: 26
   completed_phases: 22
   total_plans: 83
-  completed_plans: 79
+  completed_plans: 81
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 22 (milestone-entity-sha256-hashing-service) — EXECUTING
-Plan: 2 of 5
+Plan: 4 of 5
 
 ## Performance Metrics
 
@@ -115,6 +115,7 @@ Plan: 2 of 5
 | Phase 21-public-shell-consultation-summary-llm-theme P03 | 9min | 2 tasks | 5 files |
 | Phase 21-public-shell-consultation-summary-llm-theme P04 | 13min | 3 tasks | 6 files |
 | Phase 22-milestone-entity-sha256-hashing-service P00 | 8min | 5 tasks | 12 files |
+| Phase 22-milestone-entity-sha256-hashing-service P01 | 15min | 4 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -296,6 +297,10 @@ Recent decisions affecting current work:
 - [Phase 22-milestone-entity-sha256-hashing-service]: Wave 0 TDD gate: ship ALL tests RED + fixture scaffolds + gate flags in one plan before implementation waves (Plans 22-01..04 can run parallel against frozen Nyquist contract)
 - [Phase 22-milestone-entity-sha256-hashing-service]: Stable cross-file fixture UUIDs — policy-version.json id reused in milestone.json manifest for D-01a position-independence invariant test
 - [Phase 22-milestone-entity-sha256-hashing-service]: canonicalize@3.0.0 chosen as RFC 8785 JCS reference (zero runtime deps); empty expectedHash placeholder filled by Plan 22-02 implementation wave
+- [Phase 22-milestone-entity-sha256-hashing-service]: Plan 22-01: FK-in-SQL-only for all 4 milestoneId child columns (no .references() in Drizzle) — avoids circular schema imports, follows resolvedInVersionId precedent
+- [Phase 22-milestone-entity-sha256-hashing-service]: Plan 22-01: ON DELETE SET NULL (not CASCADE) on all 4 milestoneId FKs — milestones are additive metadata; deleting unlinks child entities rather than cascade-deleting
+- [Phase 22-milestone-entity-sha256-hashing-service]: Plan 22-01: milestone:manage → [ADMIN, POLICY_LEAD] (not workshop_moderator) — milestones are per-policy; CONTEXT.md 'admin and moderator' maps to version:manage precedent since no policy_moderator role exists
+- [Phase 22-milestone-entity-sha256-hashing-service]: Plan 22-01: Created scripts/apply-migration-0014.mjs (per-migration Neon HTTP runner following 0011/0012/0013 convention) — Pattern 2 hand-written DDL pattern; applied + idempotency re-verified on dev DB
 
 ### Pending Todos
 
@@ -314,6 +319,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T14:11:22.230Z
-Stopped at: Completed 22-00-PLAN.md (Wave 0 Nyquist TDD gate — unblocked 22-01..04)
+Last session: 2026-04-15T14:31:16.451Z
+Stopped at: Completed 22-01-PLAN.md (Wave 1 parallel with 22-02) — milestones schema + 0014 migration + milestoneId FK + MILESTONE_* ACTIONS + milestone:manage/read PERMISSIONS
 Resume file: None
