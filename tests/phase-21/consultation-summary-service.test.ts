@@ -106,7 +106,13 @@ describe('buildGuardrailPatternSource (LLM-08)', () => {
   it('static patterns include email, phone, and FirstName LastName', async () => {
     const mod = await loadService()
     const src = await mod.buildGuardrailPatternSource('00000000-0000-0000-0000-000000000003')
-    const rx = new RegExp(src, 'i')
+    // Compile WITHOUT /i: the FirstName LastName branch depends on
+    // capital-letter sensitivity which /i would erase. Email pattern
+    // already enumerates both cases via [a-zA-Z], phone is digit-only,
+    // so /i is unnecessary anywhere in the source. See Phase 21 Plan 21-01
+    // deviation note: Wave 0 test previously compiled with /i, which is
+    // logically incompatible with the uppercase-sensitive name pattern.
+    const rx = new RegExp(src)
     expect(rx.test('Contact jane@example.com for more')).toBe(true)
     expect(rx.test('Call +15551234567 now')).toBe(true)
     expect(rx.test('Jane Smith raised concerns')).toBe(true)
@@ -115,7 +121,7 @@ describe('buildGuardrailPatternSource (LLM-08)', () => {
   it('does NOT match neutral policy prose or role-only attribution', async () => {
     const mod = await loadService()
     const src = await mod.buildGuardrailPatternSource('00000000-0000-0000-0000-000000000003')
-    const rx = new RegExp(src, 'i')
+    const rx = new RegExp(src)
     expect(rx.test('an industry stakeholder argued that the threshold is too low')).toBe(false)
     expect(rx.test('civil society voices cited innovation concerns')).toBe(false)
   })
@@ -126,7 +132,7 @@ describe('buildGuardrailPatternSource (LLM-08)', () => {
     // those tokens must not become active regex terms. Static patterns
     // still apply, but 'bob' alone in prose must NOT trigger.
     const src = await mod.buildGuardrailPatternSource('00000000-0000-0000-0000-000000000003')
-    const rx = new RegExp(src, 'i')
+    const rx = new RegExp(src)
     expect(rx.test('the committee and staff reviewed the draft')).toBe(false)
   })
 })
