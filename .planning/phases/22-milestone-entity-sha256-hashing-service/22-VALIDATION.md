@@ -1,9 +1,9 @@
 ---
 phase: 22
 slug: milestone-entity-sha256-hashing-service
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: wave_0_complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-15
 ---
 
@@ -42,11 +42,11 @@ created: 2026-04-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 22-00-01 | 00 | 0 | VERIFY-04, VERIFY-05 | unit (hashing RED) | `npx vitest run --reporter=dot src/lib/__tests__/hashing.test.ts` | after Plan 00 | pending |
-| 22-00-02 | 00 | 0 | VERIFY-04, VERIFY-05 | unit (golden fixtures) | `test -d src/lib/__tests__/fixtures/hashing && ls src/lib/__tests__/fixtures/hashing/*.json \| wc -l` | after Plan 00 | pending |
-| 22-00-03 | 00 | 0 | VERIFY-03 | unit (tRPC RED) | `npx vitest run --reporter=dot src/server/routers/__tests__/milestone.test.ts` | after Plan 00 | pending |
-| 22-00-04 | 00 | 0 | VERIFY-02 | unit (schema RED) | `npx vitest run --reporter=dot src/db/schema/__tests__/milestones.test.ts` | after Plan 00 | pending |
-| 22-00-05 | 00 | 0 | — | doc | `grep -q "nyquist_compliant: true" .planning/phases/22-milestone-entity-sha256-hashing-service/22-VALIDATION.md` | ✓ | pending |
+| 22-00-01 | 00 | 0 | VERIFY-04, VERIFY-05 | unit (hashing RED) | `npx vitest run --reporter=dot src/lib/__tests__/hashing.test.ts` | ✓ | wave_0_complete |
+| 22-00-02 | 00 | 0 | VERIFY-04, VERIFY-05 | unit (golden fixtures) | `test -d src/lib/__tests__/fixtures/hashing && ls src/lib/__tests__/fixtures/hashing/*.json \| wc -l` | ✓ | wave_0_complete |
+| 22-00-03 | 00 | 0 | VERIFY-03 | unit (tRPC RED) | `npx vitest run --reporter=dot src/server/routers/__tests__/milestone.test.ts` | ✓ | wave_0_complete |
+| 22-00-04 | 00 | 0 | VERIFY-02 | unit (schema RED) | `npx vitest run --reporter=dot src/db/schema/__tests__/milestones.test.ts` | ✓ | wave_0_complete |
+| 22-00-05 | 00 | 0 | — | doc | `grep -q "nyquist_compliant: true" .planning/phases/22-milestone-entity-sha256-hashing-service/22-VALIDATION.md` | ✓ | wave_0_complete |
 | 22-01-01 | 01 | 1 | VERIFY-01 | unit (milestones schema) | `npx vitest run --reporter=dot src/db/schema/__tests__/milestones.test.ts` | after Plan 01 | pending |
 | 22-01-02 | 01 | 1 | VERIFY-02 | unit (milestoneId FK on 4 tables) | `npx vitest run --reporter=dot src/db/schema/__tests__/milestones.test.ts` | after Plan 01 | pending |
 | 22-01-03 | 01 | 1 | VERIFY-01 | integration (SQL migration applies cleanly) | `node scripts/apply-migration.mjs src/db/migrations/0014_milestones_hashing.sql` | after Plan 01 | pending |
@@ -79,12 +79,12 @@ Fixture files at `src/lib/__tests__/fixtures/hashing/`:
 
 ## Wave 0 Requirements
 
-- [ ] `src/lib/__tests__/hashing.test.ts` — RED contract for canonicalize wrapper + 6 hash functions + permutation + golden fixtures (VERIFY-04, VERIFY-05)
-- [ ] `src/lib/__tests__/fixtures/hashing/{policy-version,workshop,feedback-item,evidence-artifact,evidence-bundle,milestone}.json` — 6 fixture files with `expectedHash: ""`
-- [ ] `src/server/routers/__tests__/milestone.test.ts` — RED contract for milestoneRouter 6 procedures + state machine invariants (VERIFY-03)
-- [ ] `src/db/schema/__tests__/milestones.test.ts` — RED contract for schema shape + milestoneId FK on 4 target tables (VERIFY-01, VERIFY-02)
-- [ ] `npm install canonicalize` — v3.0.0, zero runtime deps, RFC 8785 JCS reference implementation (required before tests can even parse)
-- [ ] 22-VALIDATION.md frontmatter: flip `nyquist_compliant` → `true` and `wave_0_complete` → `true` (gates Plans 22-01 through 22-04)
+- [x] `src/lib/__tests__/hashing.test.ts` — RED contract for canonicalize wrapper + 6 hash functions + permutation + golden fixtures (VERIFY-04, VERIFY-05)
+- [x] `src/lib/__tests__/fixtures/hashing/{policy-version,workshop,feedback-item,evidence-artifact,evidence-bundle,milestone}.json` — 6 fixture files with `expectedHash: ""`
+- [x] `src/server/routers/__tests__/milestone.test.ts` — RED contract for milestoneRouter 6 procedures + state machine invariants (VERIFY-03)
+- [x] `src/db/schema/__tests__/milestones.test.ts` — RED contract for schema shape + milestoneId FK on 4 target tables (VERIFY-01, VERIFY-02)
+- [x] `npm install canonicalize` — v3.0.0, zero runtime deps, RFC 8785 JCS reference implementation (required before tests can even parse)
+- [x] 22-VALIDATION.md frontmatter: flip `nyquist_compliant` → `true` and `wave_0_complete` → `true` (gates Plans 22-01 through 22-04)
 
 *Wave 0 ships ALL tests RED — no implementation. This locks the Nyquist contract Plans 22-01 through 22-04 must satisfy.*
 
