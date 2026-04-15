@@ -1,0 +1,19 @@
+{
+  "input": {
+    "id": "d4444444-4444-4444-4444-444444444444",
+    "title": "Stakeholder Kickoff",
+    "scheduledAt": "2026-04-20T14:00:00.000Z",
+    "durationMinutes": 90,
+    "status": "completed",
+    "createdBy": "c3333333-3333-3333-3333-333333333333",
+    "linkedArtifactIds": [
+      "11111111-aaaa-aaaa-aaaa-111111111111",
+      "22222222-aaaa-aaaa-aaaa-222222222222",
+      "33333333-aaaa-aaaa-aaaa-333333333333"
+    ],
+    "linkedFeedbackIds": [
+      "e5555555-5555-5555-5555-555555555555"
+    ]
+  },
+  "expectedHash": ""
+}

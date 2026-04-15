@@ -1,0 +1,35 @@
+{
+  "input": [
+    {
+      "id": "11111111-aaaa-aaaa-aaaa-111111111111",
+      "title": "Stakeholder survey Q1 2026",
+      "type": "file",
+      "url": "https://storage.example.com/evidence/survey-q1.pdf",
+      "fileName": "survey-q1.pdf",
+      "fileSize": 524288,
+      "uploaderId": "c3333333-3333-3333-3333-333333333333",
+      "content": null
+    },
+    {
+      "id": "22222222-aaaa-aaaa-aaaa-222222222222",
+      "title": "External policy reference",
+      "type": "link",
+      "url": "https://example.gov/reference-doc",
+      "fileName": null,
+      "fileSize": null,
+      "uploaderId": "c3333333-3333-3333-3333-333333333333",
+      "content": null
+    },
+    {
+      "id": "33333333-aaaa-aaaa-aaaa-333333333333",
+      "title": "Legal analysis memo",
+      "type": "file",
+      "url": "https://storage.example.com/evidence/legal-memo.pdf",
+      "fileName": "legal-memo.pdf",
+      "fileSize": 131072,
+      "uploaderId": "c3333333-3333-3333-3333-333333333333",
+      "content": "Summary of legal implications."
+    }
+  ],
+  "expectedHash": ""
+}
