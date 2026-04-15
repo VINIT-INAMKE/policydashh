@@ -1,7 +1,8 @@
 ---
 phase: 22
 slug: milestone-entity-sha256-hashing-service
-status: draft
+status: approved
+reviewed_at: 2026-04-15
 shadcn_initialized: true
 preset: base-nova / neutral / cssVariables
 created: 2026-04-15
@@ -64,14 +65,15 @@ Font: Geist Sans (`--font-sans`). Mono: Geist Mono (`--font-mono`) for hash disp
 | Role         | Size  | Weight          | Line Height | Usage                                              |
 |--------------|-------|-----------------|-------------|----------------------------------------------------|
 | Body         | 14px  | 400 (regular)   | 1.5         | Entity list rows, tab content, form helper text    |
-| Label        | 14px  | 500 (medium)    | 1.5         | Form labels, slot status labels, section headers   |
 | Heading      | 16px  | 600 (semibold)  | 1.25        | Page/dialog headings, detail page milestone title  |
 | Display      | 20px  | 600 (semibold)  | 1.2         | Section page title (h1 in milestone index page header) |
 | Mono (hash)  | 12px  | 400 (regular)   | 1.5         | SHA256 hash display when content_hash is set       |
 
+Exactly 2 weights declared: 400 (regular) and 600 (semibold). All former `font-medium` (500) usages are promoted to `font-semibold` (600) for stronger visual contrast.
+
 Tailwind class reference:
 - Body: `text-sm` (14px)
-- Label: `text-sm font-medium`
+- Label / emphasis: `text-sm font-semibold`
 - Heading: `text-base font-semibold`
 - Display: `text-xl font-semibold`
 - Mono hash: `font-mono text-xs text-muted-foreground`
@@ -101,7 +103,7 @@ Map milestone states to existing color vocabulary used by `cr-status-badge.tsx` 
 | `defining`  | `bg-muted`                                          | `text-muted-foreground`                             | none              | Neutral/inactive — matches CR "Drafting" |
 | `ready`     | `bg-[var(--status-cr-approved-bg)]`                 | `text-[var(--status-cr-approved-text)]`             | `CheckCircle` (lucide, size-3) | Completed/green — matches CR "Approved" |
 | `anchoring` | `bg-primary/10`                                     | `text-primary`                                      | `Loader2` (lucide, size-3, animate-spin) | In-progress/blue — matches CR "In Review" |
-| `anchored`  | `bg-[var(--status-cr-merged-bg)]`                   | `text-[var(--status-cr-merged-text)]`               | `Lock` (lucide, size-3) | Immutable/indigo — matches version "Published · Immutable" treatment |
+| `anchored`  | `bg-[var(--status-cr-merged-bg)]`                   | `bg-[var(--status-cr-merged-text)]`                 | `Lock` (lucide, size-3) | Immutable/indigo — matches version "Published · Immutable" treatment |
 
 The `anchoring` and `anchored` states are designed here for Phase 23 forward-compatibility. Phase 22 ships `defining` and `ready` display; `anchoring` and `anchored` are rendered as badges but their transitions are Phase 23 dead-code paths.
 
@@ -156,14 +158,14 @@ Accent reserved for: "Create milestone" button, "Mark ready" button (enabled sta
 
 **MilestoneList:**
 - Each row is a `Card` with `hover:shadow-sm` transition
-- Row contents (left to right): milestone title (`text-sm font-medium`), description snippet truncated to 1 line (`text-sm text-muted-foreground line-clamp-1`), `MilestoneStatusBadge`, created date (`text-xs text-muted-foreground`), `ChevronRight` icon
+- Row contents (left to right): milestone title (`text-sm font-semibold`), description snippet truncated to 1 line (`text-sm text-muted-foreground line-clamp-1`), `MilestoneStatusBadge`, created date (`text-xs text-muted-foreground`), `ChevronRight` icon
 - Click navigates to `/policies/[id]/milestones/[milestoneId]`
 - Card padding: `p-4` (16px)
 - Gap between cards: `space-y-2` (8px)
 
 **Empty state (no milestones yet):**
 - Centered vertically in content area
-- Heading: `"No milestones yet"` — `text-sm font-medium`
+- Heading: `"No milestones yet"` — `text-sm font-semibold`
 - Body: `"Create a milestone to group versions, workshops, feedback, and evidence for Cardano anchoring."` — `text-sm text-muted-foreground`
 - CTA: same "Create milestone" `Button` below the body text
 
@@ -185,7 +187,7 @@ Accent reserved for: "Create milestone" button, "Mark ready" button (enabled sta
 | Required evidence | `Input` type=number | min 0, default 0   | label `"Evidence artifacts"`, helper `"Minimum linked artifacts"` |
 
 **Slot input layout:** 2×2 grid (`grid grid-cols-2 gap-4`) for the 4 number inputs
-**Footer:** Cancel button (variant=`"outline"`) + "Create milestone" submit button (variant=`"default"`), right-aligned
+**Footer:** Discard button (variant=`"outline"`) + "Create milestone" submit button (variant=`"default"`), right-aligned
 **Submit state:** Submit button shows `Loader2` spinner + `"Creating…"` label while mutation is pending; disabled during pending
 **Success:** Dialog closes, router refreshes, user lands on new milestone detail page automatically
 
@@ -228,7 +230,7 @@ Examples:
 - Met: `"Versions: 2 / 1"` + `CheckCircle` lucide icon size-3.5 in emerald-600 (`text-[var(--status-cr-approved-text)]`)
 - Unmet: `"Workshops: 0 / 1"` + `X` lucide icon size-3.5 in `text-destructive`
 
-Typography: `text-sm` label + count, `font-medium` for the count portion only
+Typography: `text-sm` label + count, `font-semibold` for the count portion only
 Spacing: `inline-flex items-center gap-1`
 
 #### MilestoneDetailTabs — 4 tabs
@@ -250,7 +252,7 @@ Tab content area: `pt-4` (16px top padding), full width, `min-h-[240px]`
 Each tab renders a list of entities of that type belonging to this policy. Two sections within the tab:
 
 **Section A — "Attached to this milestone" (top)**
-- Header: `"Attached"` label `text-xs font-medium text-muted-foreground uppercase tracking-wide`
+- Header: `"Attached"` label `text-xs font-semibold text-muted-foreground uppercase tracking-wide`
 - List of entities already linked (`milestoneId = this milestone`)
 - Each row: `Checkbox` (checked, clicking removes) + entity display name + metadata (date / label)
 - Checked checkbox: `aria-label="Remove [entity name] from milestone"`
@@ -282,7 +284,7 @@ Shown inline in `MilestoneDetailHeader` when `markReady` mutation fails with unm
 Layout: `rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 mt-3`
 
 Content:
-- Heading: `"Cannot mark ready — requirements not met"` (`text-sm font-medium text-destructive`)
+- Heading: `"Cannot mark ready — requirements not met"` (`text-sm font-semibold text-destructive`)
 - Unordered list of unmet slots, one per line: `"Workshops: 0 linked, 1 required"` (`text-sm text-muted-foreground`)
 - Each list item prefixed with `X` lucide icon size-3.5 `text-destructive`
 
@@ -339,7 +341,7 @@ Use `Badge` from `@/components/ui/badge` with `variant="secondary"` + className 
 | Hash display label              | `"SHA256:"`                                                                                |
 | Attach checkbox aria-label      | `"Add [entity name] to milestone"`                                                         |
 | Detach checkbox aria-label      | `"Remove [entity name] from milestone"`                                                    |
-| Cancel button                   | `"Cancel"`                                                                                 |
+| Discard button                  | `"Discard"`                                                                                |
 | Toast: milestone created        | `"Milestone created"` (sonner success toast)                                               |
 | Toast: entity attached          | `"[Entity type] added to milestone"` (e.g. "Version added to milestone")                  |
 | Toast: entity detached          | `"[Entity type] removed from milestone"`                                                   |
