@@ -21,8 +21,8 @@ created: 2026-04-15
 | Preset | base-nova / neutral / CSS variables — `components.json` confirmed |
 | Component library | base-ui (via shadcn base-nova; NOT Radix) |
 | Icon library | lucide-react (per `components.json` `"iconLibrary": "lucide"`) |
-| Font — headline | Newsreader (serif) — `--font-cl-headline` variable, weights 400/600/700 |
-| Font — body | Inter (sans) — `--font-cl-body` variable, weights 400/500/600 |
+| Font — headline | Newsreader (serif) — `--font-cl-headline` variable, weights 400/600 |
+| Font — body | Inter (sans) — `--font-cl-body` variable, weights 400/600 |
 
 **Theme split:** This phase has TWO distinct theme contexts.
 
@@ -51,7 +51,7 @@ Standard 8-point scale — all values multiples of 4. Applies to both theme cont
 
 **Exceptions:**
 
-- Mobile hamburger tap target: 44px minimum hit area (accessibility floor — wraps a 24px icon with `p-[10px]`)
+- Mobile hamburger tap target: 44px minimum hit area (accessibility floor — wraps a 24px icon with `p-3`)
 - Public nav link active underline: 2px border-bottom (not a spacing token; visual only)
 - Summary card divider between sections on `/portal`: `my-12` (`hr` separator — carried forward from `PublicPolicyContent` existing pattern)
 
