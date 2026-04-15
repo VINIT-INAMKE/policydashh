@@ -12,6 +12,9 @@ export default defineConfig({
       'src/**/*.test.tsx',
       'tests/**/*.test.ts',
       'tests/**/*.test.tsx',
+      // Phase 21: enable app/**/__tests__ discovery for (public) route components
+      'app/**/*.test.ts',
+      'app/**/*.test.tsx',
     ],
     passWithNoTests: true,
   },
