@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Phase 21 plans approved (5 plans, 3 waves, 16 tasks)
-last_updated: "2026-04-15T09:35:02.851Z"
+status: Ready to execute
+stopped_at: Completed 21-00-PLAN.md — 5/5 tasks, 5 commits, Wave 0 contract lock
+last_updated: "2026-04-15T09:49:44.821Z"
 progress:
   total_phases: 26
   completed_phases: 21
   total_plans: 78
-  completed_plans: 73
+  completed_plans: 74
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 20.5 — public-research-framework-content-pages
+**Current focus:** Phase 21 — public-shell-consultation-summary-llm-theme
 
 ## Current Position
 
-Phase: 21
-Plan: Not started
+Phase: 21 (public-shell-consultation-summary-llm-theme) — EXECUTING
+Plan: 2 of 5
 
 ## Performance Metrics
 
@@ -109,6 +109,7 @@ Plan: Not started
 | Phase 20.5 P00 | 7min | 3 tasks | 7 files |
 | Phase 20.5-public-research-framework-content-pages P02 | 2min | 2 tasks | 3 files |
 | Phase 20.5 P03 | 7min | 3 tasks | 10 files |
+| Phase 21-public-shell-consultation-summary-llm-theme P00 | 8min | 5 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -270,6 +271,10 @@ Recent decisions affecting current work:
 - [Phase 20.5-public-research-framework-content-pages]: Plan 20.5-02: /research Server Component + 'use client' ResearchTocAside island + 584-byte valid placeholder PDF flipped Wave 0 research-page-render test 4/4 GREEN in ~2min parallel with 20.5-01
 - [Phase 20.5]: 20.5-03: Backward-compatible PublicPolicyContent prop extension using optional modifier + conditional render — zero portal touch
 - [Phase 20.5]: 20.5-03: New components/ui/switch.tsx authored on base-ui (Rule 2 missing-primitive fix) matching existing Checkbox pattern
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Plan 21-00: Pattern 2 variable-path dynamic import reused for all 5 Wave 0 RED contracts (3 backend + 2 frontend); modules not yet written intentionally fail at import time, locking Plans 21-01/02/03/04
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Plan 21-00: ApprovedSummarySection projection type enforces LLM-08 privacy at (public) component prop boundary — sourceFeedbackIds / feedbackCount / edited / generatedAt cannot type-check into a public route component
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Plan 21-00: consultation-summary.service.ts shipped as pure-type module (zero runtime imports) — Plan 21-01 extends it with anonymize / guardrail / generate functions without touching the locked Wave 0 type exports
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Plan 21-00: vitest.config.mts include glob extended to app/**/*.test.ts(x) — required for (public) route group __tests__ discoverability; plan Task 4 pre-authorized this edit
 
 ### Pending Todos
 
@@ -288,6 +293,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T09:35:02.826Z
-Stopped at: Phase 21 plans approved (5 plans, 3 waves, 16 tasks)
-Resume file: .planning/phases/21-public-shell-consultation-summary-llm-theme/21-00-PLAN.md
+Last session: 2026-04-15T09:49:44.801Z
+Stopped at: Completed 21-00-PLAN.md — 5/5 tasks, 5 commits, Wave 0 contract lock
+Resume file: None
