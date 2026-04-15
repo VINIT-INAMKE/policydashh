@@ -1,10 +1,11 @@
 ---
 phase: 21
 slug: public-shell-consultation-summary-llm-theme
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-04-15
+reviewed_at: 2026-04-15
 ---
 
 # Phase 21 — UI Design Contract
@@ -151,6 +152,7 @@ Per-section status badge colors (using shadcn `variant` or inline):
 | Right panel label | `Source Feedback` |
 | Right panel subline | `{N} accepted feedback items contributed to this section` |
 | Approve button | `Approve Section` |
+| Save button (inline edit, replaces Approve while editing) | `Save Changes` |
 | Regenerate button | `Regenerate Section` |
 | Per-section pending badge | `Pending` |
 | Per-section approved badge | `Approved` |
@@ -215,7 +217,7 @@ No new shadcn installs required. All components used in the moderator review car
 
 - **Layout:** Two-column grid at `md` breakpoint: `grid grid-cols-1 md:grid-cols-[1fr_320px] gap-6`. Left = prose editor. Right = source feedback panel.
 - **Right panel (source feedback):** Fixed width 320px on desktop. Scrollable list of truncated feedback bodies (`line-clamp-3`). Shows: role badge (government / industry / etc.) + truncated body. Stakeholder names NOT shown (privacy enforcement per D-07 and Phase 9 PUB-05 precedent). Shows count: "4 accepted feedback items."
-- **Left panel textarea:** Visible only when moderator clicks the edit icon on a section. Default shows rendered prose (non-editable). Click-to-edit reveals `<Textarea>` with the prose pre-filled. Save button replaces Approve for one interaction cycle. The edit icon button MUST carry `aria-label="Edit section summary"` — it is an icon-only control with no visible text label.
+- **Left panel textarea:** Visible only when moderator clicks the edit icon on a section. Default shows rendered prose (non-editable). Click-to-edit reveals `<Textarea>` with the prose pre-filled. The Approve button is replaced by a `Save Changes` button for the duration of the edit cycle; clicking Save persists the edited prose, sets `edited: true` in the JSONB, and restores the Approve button. The edit icon button MUST carry `aria-label="Edit section summary"` — it is an icon-only control with no visible text label.
 - **Per-section status badge:** Pill badge positioned in the section header row, right-aligned. Uses colors from Color section above.
 - **Regenerate button:** `variant="outline"` Button, icon `lucide RefreshCw` 16px left of text. Sits in the section header row, left of the status badge.
 - **Approve button:** `variant="default"` Button (workspace primary). Disabled when section is `approved`. After approval, button label becomes "Approved" with `lucide Check` icon and disabled state.
