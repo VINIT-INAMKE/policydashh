@@ -198,11 +198,11 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [x] **LLM-01**: Groq SDK wrapper (`src/lib/llm.ts`) routes tasks to appropriate models with fail-fast env validation via `requireEnv('GROQ_API_KEY')`
 - [x] **LLM-02**: Workshop recording is transcribed via `whisper-large-v3-turbo` within Inngest `step.run` (uploads > 25 MB rejected at R2 presign step)
 - [x] **LLM-03**: Workshop transcript is summarized via `llama-3.1-8b-instant` with structured output (key discussion points, decisions, action items)
-- [ ] **LLM-04**: Per-section consultation summary prose is generated via `llama-3.3-70b-versatile` from aggregated accepted feedback
-- [ ] **LLM-05**: Consultation summary cached in `documentVersions.consultationSummary` (JSONB) and auto-regenerated on every `version.published` event
-- [ ] **LLM-06**: Consultation summary generation sees only anonymized feedback content (bodies without submitter identity)
+- [x] **LLM-04**: Per-section consultation summary prose is generated via `llama-3.3-70b-versatile` from aggregated accepted feedback
+- [x] **LLM-05**: Consultation summary cached in `documentVersions.consultationSummary` (JSONB) and auto-regenerated on every `version.published` event
+- [x] **LLM-06**: Consultation summary generation sees only anonymized feedback content (bodies without submitter identity)
 - [ ] **LLM-07**: All LLM outputs enter a human review gate (`pending → draft → approved`) before any public rendering
-- [ ] **LLM-08**: LLM output guardrail regex detects stakeholder names leaking through summaries and blocks publish
+- [x] **LLM-08**: LLM output guardrail regex detects stakeholder names leaking through summaries and blocks publish
 
 ### Engagement Tracking & UX Extensions
 
@@ -395,11 +395,11 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | PUB-06 | Phase 20.5 | Complete |
 | PUB-07 | Phase 20.5 | Complete |
 | PUB-08 | Phase 20.5 | Complete |
-| LLM-04 | Phase 21 | Pending |
-| LLM-05 | Phase 21 | Pending |
-| LLM-06 | Phase 21 | Pending |
+| LLM-04 | Phase 21 | Complete |
+| LLM-05 | Phase 21 | Complete |
+| LLM-06 | Phase 21 | Complete |
 | LLM-07 | Phase 21 | Pending |
-| LLM-08 | Phase 21 | Pending |
+| LLM-08 | Phase 21 | Complete |
 | PUB-09 | Phase 21 | Complete |
 | PUB-10 | Phase 21 | Complete |
 | VERIFY-01 | Phase 22 | Pending |

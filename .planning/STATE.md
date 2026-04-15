@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 21-02-PLAN.md — 2/2 tasks, 2 commits, PUB-09 RED test GREEN, parallel wave 1 agent
-last_updated: "2026-04-15T10:05:10.992Z"
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-04-15T10:15:13.925Z"
 progress:
   total_phases: 26
   completed_phases: 21
   total_plans: 78
-  completed_plans: 75
+  completed_plans: 76
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 21 (public-shell-consultation-summary-llm-theme) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Performance Metrics
 
@@ -111,6 +111,7 @@ Plan: 2 of 5
 | Phase 20.5 P03 | 7min | 3 tasks | 10 files |
 | Phase 21-public-shell-consultation-summary-llm-theme P00 | 8min | 5 tasks | 11 files |
 | Phase 21-public-shell-consultation-summary-llm-theme P02 | 8min | 2 tasks | 5 files |
+| Phase 21-public-shell-consultation-summary-llm-theme P01 | 18min | 4 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -278,6 +279,10 @@ Recent decisions affecting current work:
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Plan 21-00: vitest.config.mts include glob extended to app/**/*.test.ts(x) — required for (public) route group __tests__ discoverability; plan Task 4 pre-authorized this edit
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Nested layout owns cl-landing className and font variables; pages render plain min-h-screen divs and inherit palette automatically (Plan 21-02)
 - [Phase 21-public-shell-consultation-summary-llm-theme]: PublicHeader is a client component (usePathname + mobile menu state); PublicFooter is a server component — client/server split isolated at the chrome boundary (Plan 21-02)
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Type-only import from llm.ts to consultation-summary.service.ts breaks runtime cycle (TS erases at build time)
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Guardrail regex compiled WITHOUT /i flag because JS regex cannot encode uppercase-only under /i (name pattern needs case sensitivity; email uses explicit [a-zA-Z]; phone digit-only)
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Full JSONB replace on persist-summary step (no jsonb_set partial patches) — overrideOnly merge happens in-memory before the write, avoiding concurrent-run races
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Publish mutation awaits sendVersionPublished (Phase 17 precedent) so publish fails visibly if Inngest is down
 
 ### Pending Todos
 
@@ -296,6 +301,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T10:05:07.651Z
-Stopped at: Completed 21-02-PLAN.md — 2/2 tasks, 2 commits, PUB-09 RED test GREEN, parallel wave 1 agent
+Last session: 2026-04-15T10:15:13.908Z
+Stopped at: Completed 21-01-PLAN.md
 Resume file: None
