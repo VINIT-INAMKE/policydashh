@@ -273,7 +273,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 20. Cal.com Workshop Register | 6/6 | Complete    | 2026-04-14 |
 | 20.5. Public /research + /framework Pages | 4/4 | Complete    | 2026-04-14 |
 | 21. Public Shell + Consultation Summary + Theme | 5/5 | Complete    | 2026-04-15 |
-| 22. Milestone Entity + SHA256 Hashing | 0/0 | v0.2 Planning | - |
+| 22. Milestone Entity + SHA256 Hashing | 1/5 | In Progress|  |
 | 23. Cardano Preview-Net Anchoring | 0/0 | v0.2 Planning | - |
 | 24. Stakeholder Engagement Tracking | 0/0 | v0.2 Planning | - |
 | 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
@@ -504,10 +504,10 @@ Plans:
   4. `src/lib/hashing.ts` produces deterministic SHA256 hashes for `policyVersion`, `workshop`, `evidenceBundle`, `milestone` inputs
   5. Canonical JSON pass (RFC 8785 JCS or explicit sort+stringify) normalizes input before hashing
   6. Golden-fixture tests verify hash stability across permuted inputs, nested objects, and array orderings — failure means hash is non-deterministic and anchoring cannot proceed
-**Plans:** 5 plans in 4 waves
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] 22-00-PLAN.md — Wave 0 (TDD): canonicalize@3.0.0 install + RED hashing/router/schema tests + 6 golden-fixture scaffolds + Nyquist gate flip
+- [x] 22-00-PLAN.md — Wave 0 (TDD): canonicalize@3.0.0 install + RED hashing/router/schema tests + 6 golden-fixture scaffolds + Nyquist gate flip
 - [ ] 22-01-PLAN.md — Wave 1: milestones schema + 0014 migration + milestoneId FK on 4 child tables + ACTIONS/PERMISSIONS constants
 - [ ] 22-02-PLAN.md — Wave 1: src/lib/hashing.ts (canonicalize wrapper + sha256Hex + 6 hash functions) + fill fixture expectedHash values
 - [ ] 22-03-PLAN.md — Wave 2: milestoneRouter (create, list, getById, attachEntity, detachEntity, markReady) + appRouter.milestone registration

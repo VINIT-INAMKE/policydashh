@@ -213,11 +213,11 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 ### Verification Layer (Cardano Anchoring)
 
-- [ ] **VERIFY-01**: First-class `milestones` table with required-slot definitions and readiness state (immutable once anchored)
-- [ ] **VERIFY-02**: Milestone entity links to `documentVersions`, `workshops`, `feedbackItems`, `evidenceArtifacts` via nullable `milestoneId` FK
-- [ ] **VERIFY-03**: Admin can mark milestone ready, triggering hash computation and Cardano anchoring
-- [ ] **VERIFY-04**: SHA256 hashing service (`src/lib/hashing.ts`) produces deterministic hashes for `policyVersion`, `workshop`, `evidenceBundle`, and `milestone`
-- [ ] **VERIFY-05**: JSON canonicalization (RFC 8785 JCS or explicit sort+stringify) with golden-fixture tests ensures hash determinism
+- [x] **VERIFY-01**: First-class `milestones` table with required-slot definitions and readiness state (immutable once anchored)
+- [x] **VERIFY-02**: Milestone entity links to `documentVersions`, `workshops`, `feedbackItems`, `evidenceArtifacts` via nullable `milestoneId` FK
+- [x] **VERIFY-03**: Admin can mark milestone ready, triggering hash computation and Cardano anchoring
+- [x] **VERIFY-04**: SHA256 hashing service (`src/lib/hashing.ts`) produces deterministic hashes for `policyVersion`, `workshop`, `evidenceBundle`, and `milestone`
+- [x] **VERIFY-05**: JSON canonicalization (RFC 8785 JCS or explicit sort+stringify) with golden-fixture tests ensures hash determinism
 - [ ] **VERIFY-06**: `milestoneReady` Inngest fn anchors milestone state to Cardano preview-net via Mesh SDK + Blockfrost in 5 steps (compute-hash → persist-hash → check-existing-tx → submit-tx → confirm-loop)
 - [ ] **VERIFY-07**: Every `version.published` event triggers a per-version Cardano anchor tx
 - [ ] **VERIFY-08**: Cardano anchor fn is idempotent (DB unique constraint on hash + Blockfrost metadata-label pre-check + `concurrency: { key: 'cardano-wallet', limit: 1 }`)
@@ -402,11 +402,11 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | LLM-08 | Phase 21 | Complete |
 | PUB-09 | Phase 21 | Complete |
 | PUB-10 | Phase 21 | Complete |
-| VERIFY-01 | Phase 22 | Pending |
-| VERIFY-02 | Phase 22 | Pending |
-| VERIFY-03 | Phase 22 | Pending |
-| VERIFY-04 | Phase 22 | Pending |
-| VERIFY-05 | Phase 22 | Pending |
+| VERIFY-01 | Phase 22 | Complete |
+| VERIFY-02 | Phase 22 | Complete |
+| VERIFY-03 | Phase 22 | Complete |
+| VERIFY-04 | Phase 22 | Complete |
+| VERIFY-05 | Phase 22 | Complete |
 | VERIFY-06 | Phase 23 | Pending |
 | VERIFY-07 | Phase 23 | Pending |
 | VERIFY-08 | Phase 23 | Pending |

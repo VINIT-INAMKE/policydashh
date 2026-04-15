@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Phase 22 UI-SPEC approved
-last_updated: "2026-04-15T13:25:32.300Z"
+status: Ready to execute
+stopped_at: Completed 22-00-PLAN.md (Wave 0 Nyquist TDD gate — unblocked 22-01..04)
+last_updated: "2026-04-15T14:11:22.245Z"
 progress:
   total_phases: 26
   completed_phases: 22
-  total_plans: 78
-  completed_plans: 78
+  total_plans: 83
+  completed_plans: 79
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 21 — public-shell-consultation-summary-llm-theme
+**Current focus:** Phase 22 — milestone-entity-sha256-hashing-service
 
 ## Current Position
 
-Phase: 22
-Plan: Not started
+Phase: 22 (milestone-entity-sha256-hashing-service) — EXECUTING
+Plan: 2 of 5
 
 ## Performance Metrics
 
@@ -114,6 +114,7 @@ Plan: Not started
 | Phase 21-public-shell-consultation-summary-llm-theme P01 | 18min | 4 tasks | 7 files |
 | Phase 21-public-shell-consultation-summary-llm-theme P03 | 9min | 2 tasks | 5 files |
 | Phase 21-public-shell-consultation-summary-llm-theme P04 | 13min | 3 tasks | 6 files |
+| Phase 22-milestone-entity-sha256-hashing-service P00 | 8min | 5 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -292,6 +293,9 @@ Recent decisions affecting current work:
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Privacy projection at the public-component seam: Map<sectionId, ApprovedSummarySection> + Set<sectionId> dual-signal prop pair on PublicPolicyContent; components never receive ConsultationSummarySection or sourceFeedbackIds (LLM-08)
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Stale /portal/[policyId]/consultation-summary subroute link removed from portal header (Pitfall 7 — route was deferred, button would have 404'd after Phase 21 ships)
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Parallel-wave git-commit race: commit 2cb6b7e is labeled feat(21-03) but contains Plan 21-04 Task 1 files only (public-policy-content.tsx, section-summary-block.tsx, summary-placeholder-card.tsx) — content attribution via SUMMARY.md, no history rewrite
+- [Phase 22-milestone-entity-sha256-hashing-service]: Wave 0 TDD gate: ship ALL tests RED + fixture scaffolds + gate flags in one plan before implementation waves (Plans 22-01..04 can run parallel against frozen Nyquist contract)
+- [Phase 22-milestone-entity-sha256-hashing-service]: Stable cross-file fixture UUIDs — policy-version.json id reused in milestone.json manifest for D-01a position-independence invariant test
+- [Phase 22-milestone-entity-sha256-hashing-service]: canonicalize@3.0.0 chosen as RFC 8785 JCS reference (zero runtime deps); empty expectedHash placeholder filled by Plan 22-02 implementation wave
 
 ### Pending Todos
 
@@ -310,6 +314,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T13:25:32.285Z
-Stopped at: Phase 22 UI-SPEC approved
-Resume file: .planning/phases/22-milestone-entity-sha256-hashing-service/22-UI-SPEC.md
+Last session: 2026-04-15T14:11:22.230Z
+Stopped at: Completed 22-00-PLAN.md (Wave 0 Nyquist TDD gate — unblocked 22-01..04)
+Resume file: None
