@@ -3,6 +3,7 @@ import { users } from './users'
 import { policyDocuments, policySections } from './documents'
 import { feedbackItems } from './feedback'
 import type { SectionSnapshot, ChangelogEntry } from '@/src/server/services/version.service'
+import type { ConsultationSummaryJson } from '@/src/server/services/consultation-summary.service'
 
 export const crStatusEnum = pgEnum('cr_status', [
   'drafting', 'in_review', 'approved', 'merged', 'closed',
@@ -21,6 +22,7 @@ export const documentVersions = pgTable('document_versions', {
   changelog:         jsonb('changelog').$type<ChangelogEntry[] | null>(),
   publishedAt:       timestamp('published_at', { withTimezone: true }),
   isPublished:       boolean('is_published').notNull().default(false),
+  consultationSummary: jsonb('consultation_summary').$type<ConsultationSummaryJson | null>(),
 }, (t) => [
   unique('uq_document_version').on(t.documentId, t.versionLabel),
 ])
