@@ -14,6 +14,7 @@
  */
 
 import Groq, { toFile } from 'groq-sdk'
+import type { AnonymizedFeedback } from '@/src/server/services/consultation-summary.service'
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -176,4 +177,66 @@ export async function summarizeTranscript(transcript: string): Promise<{
       actionItems: [],
     }
   }
+}
+
+/**
+ * Generate a per-section consultation summary via llama-3.3-70b-versatile (LLM-04).
+ *
+ * Called once per policy section during consultationSummaryGenerateFn.
+ * Returns the plain-prose summary string (~500–700 words) grouped by
+ * theme. Empty feedback input returns ''.
+ *
+ * Anonymization is enforced by the caller — this helper trusts its input
+ * to already be `AnonymizedFeedback` (no submitter identity). The
+ * stakeholder role (`orgType`) is the only attribution passed to the
+ * LLM.
+ *
+ * Output contract: plain prose, no markdown, no bullet lists, no names.
+ * The guardrail regex runs downstream of this function
+ * (`buildGuardrailPatternSource` in consultation-summary.service.ts) to
+ * catch any leak.
+ */
+export async function generateConsultationSummary(
+  sectionTitle: string,
+  anonymizedFeedback: AnonymizedFeedback[],
+): Promise<string> {
+  if (anonymizedFeedback.length === 0) {
+    return ''
+  }
+
+  const feedbackBlock = anonymizedFeedback
+    .map((f, i) => {
+      const role = f.orgType ?? 'unspecified'
+      return `[${i + 1}] Role: ${role} | Type: ${f.feedbackType}\n${f.body}`
+    })
+    .join('\n\n')
+
+  return await chatComplete({
+    model: 'llama-3.3-70b-versatile',
+    maxTokens: 1024,
+    temperature: 0.3,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a policy analyst writing public consultation summaries for a government framework review process. ' +
+          'Your task is to synthesize stakeholder feedback into a clear, balanced, 500-700 word narrative summary.\n\n' +
+          'Rules:\n' +
+          '- Group feedback by theme (not by stakeholder). Identify 3-5 themes per section.\n' +
+          '- Use stakeholder roles (government stakeholder, industry stakeholder, civil society, etc.) for attribution — never use names.\n' +
+          '- Maintain a neutral, policy-document tone. No opinionated language.\n' +
+          '- Every claim in the summary must be traceable to at least one feedback item.\n' +
+          '- Do NOT include: personal names, email addresses, organization names, or any identifying information.\n' +
+          '- Output plain prose paragraphs only — no bullet lists, no headers, no markdown formatting.',
+      },
+      {
+        role: 'user',
+        content:
+          `Section: ${sectionTitle}\n\n` +
+          `Feedback items (${anonymizedFeedback.length} accepted responses):\n` +
+          `${feedbackBlock}\n\n` +
+          `Write a consultation summary for this section.`,
+      },
+    ],
+  })
 }
