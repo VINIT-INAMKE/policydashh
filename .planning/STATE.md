@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: "Completed 22-01-PLAN.md (Wave 1 parallel with 22-02) — milestones schema + 0014 migration + milestoneId FK + MILESTONE_* ACTIONS + milestone:manage/read PERMISSIONS"
-last_updated: "2026-04-15T14:31:40.216Z"
+stopped_at: Completed 22-02-PLAN.md (hashing service + 6 filled fixtures — Wave 1 parallel with 22-01)
+last_updated: "2026-04-15T14:32:07.087Z"
 progress:
   total_phases: 26
   completed_phases: 22
@@ -116,6 +116,7 @@ Plan: 4 of 5
 | Phase 21-public-shell-consultation-summary-llm-theme P04 | 13min | 3 tasks | 6 files |
 | Phase 22-milestone-entity-sha256-hashing-service P00 | 8min | 5 tasks | 12 files |
 | Phase 22-milestone-entity-sha256-hashing-service P01 | 15min | 4 tasks | 11 files |
+| Phase 22-milestone-entity-sha256-hashing-service P02 | 13min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -301,6 +302,9 @@ Recent decisions affecting current work:
 - [Phase 22-milestone-entity-sha256-hashing-service]: Plan 22-01: ON DELETE SET NULL (not CASCADE) on all 4 milestoneId FKs — milestones are additive metadata; deleting unlinks child entities rather than cascade-deleting
 - [Phase 22-milestone-entity-sha256-hashing-service]: Plan 22-01: milestone:manage → [ADMIN, POLICY_LEAD] (not workshop_moderator) — milestones are per-policy; CONTEXT.md 'admin and moderator' maps to version:manage precedent since no policy_moderator role exists
 - [Phase 22-milestone-entity-sha256-hashing-service]: Plan 22-01: Created scripts/apply-migration-0014.mjs (per-migration Neon HTTP runner following 0011/0012/0013 convention) — Pattern 2 hand-written DDL pattern; applied + idempotency re-verified on dev DB
+- [Phase 22-milestone-entity-sha256-hashing-service]: src/lib/hashing.ts shipped as pure-function module (303 lines, 8 exports) with canonicalize wrapper throwing on undefined-return guard, Merkle-lite evidence bundle composition, and internal sort for set-containers; all SHA256 content hashing centralized here per D-02a
+- [Phase 22-milestone-entity-sha256-hashing-service]: D-01a position-independence verified: each per-entity standalone hash (policy-version 167614a6, workshop 46196950, feedback b66fb87f, evidence d8f76f77) equals the corresponding contentHash inside milestone.json manifest, flipping 27/27 Wave 0 RED hashing tests GREEN
+- [Phase 22-milestone-entity-sha256-hashing-service]: Pattern 4 established: one-shot Vitest filler for TS-module fixture bootstrapping — sidesteps tsx's CJS loader inability to resolve ESM-only packages' exports field when imported from .ts files in CJS-default projects
 
 ### Pending Todos
 
@@ -319,6 +323,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T14:31:16.451Z
-Stopped at: Completed 22-01-PLAN.md (Wave 1 parallel with 22-02) — milestones schema + 0014 migration + milestoneId FK + MILESTONE_* ACTIONS + milestone:manage/read PERMISSIONS
+Last session: 2026-04-15T14:32:07.072Z
+Stopped at: Completed 22-02-PLAN.md (hashing service + 6 filled fixtures — Wave 1 parallel with 22-01)
 Resume file: None
