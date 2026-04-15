@@ -66,6 +66,12 @@ export const PERMISSIONS = {
   // Workshops (Phase 10)
   'workshop:manage':           [ROLES.ADMIN, ROLES.WORKSHOP_MODERATOR] as readonly Role[],
   'workshop:read':             [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
+
+  // Milestones (Phase 22) — CONTEXT.md Claude's Discretion
+  // "admin and moderator" maps to [ADMIN, POLICY_LEAD] following the
+  // consultation-summary review pattern; no workshop_moderator role.
+  'milestone:manage':          [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+  'milestone:read':            [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR] as readonly Role[],
 } as const
 
 export type Permission = keyof typeof PERMISSIONS

@@ -81,6 +81,10 @@ export const ACTIONS = {
   WORKSHOP_FEEDBACK_UNLINK: 'workshop.feedback_unlink',
   WORKSHOP_TRANSITION:        'workshop.transition',
   WORKSHOP_ARTIFACT_APPROVE:  'workshop.artifact_approve',
+  MILESTONE_CREATE:         'milestone.create',
+  MILESTONE_ATTACH_ENTITY:  'milestone.attach_entity',
+  MILESTONE_DETACH_ENTITY:  'milestone.detach_entity',
+  MILESTONE_MARK_READY:     'milestone.mark_ready',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]
