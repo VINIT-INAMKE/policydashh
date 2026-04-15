@@ -43,6 +43,7 @@ export const feedbackItems = pgTable('feedback', {
   resolvedInVersionId: uuid('resolved_in_version_id'),  // FK to documentVersions — constraint in SQL migration only (avoids circular import)
   xstateSnapshot:    jsonb('xstate_snapshot').$type<Record<string, unknown> | null>(),
   source:            feedbackSourceEnum('source'),
+  milestoneId:       uuid('milestone_id'),  // FK to milestones — constraint in SQL migration only (avoids circular import)
   createdAt:         timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:         timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

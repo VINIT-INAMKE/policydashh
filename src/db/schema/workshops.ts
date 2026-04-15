@@ -42,6 +42,7 @@ export const workshops = pgTable('workshops', {
   createdBy:           uuid('created_by').notNull().references(() => users.id),
   createdAt:           timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:           timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  milestoneId:         uuid('milestone_id'),  // FK to milestones — constraint in SQL migration only (avoids circular import)
 })
 
 export const workshopArtifacts = pgTable('workshop_artifacts', {

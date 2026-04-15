@@ -23,6 +23,7 @@ export const documentVersions = pgTable('document_versions', {
   publishedAt:       timestamp('published_at', { withTimezone: true }),
   isPublished:       boolean('is_published').notNull().default(false),
   consultationSummary: jsonb('consultation_summary').$type<ConsultationSummaryJson | null>(),
+  milestoneId:       uuid('milestone_id'),  // FK to milestones — constraint in SQL migration only (avoids circular import)
 }, (t) => [
   unique('uq_document_version').on(t.documentId, t.versionLabel),
 ])

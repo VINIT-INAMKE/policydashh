@@ -15,6 +15,7 @@ export const evidenceArtifacts = pgTable('evidence_artifacts', {
   uploaderId: uuid('uploader_id').notNull().references(() => users.id),
   createdAt:  timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   content:    text('content'),
+  milestoneId: uuid('milestone_id'),  // FK to milestones — constraint in SQL migration only (avoids circular import)
 })
 
 export const feedbackEvidence = pgTable('feedback_evidence', {
