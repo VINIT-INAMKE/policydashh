@@ -190,8 +190,8 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [x] **PUB-06**: Public `/research` content page with executive summary, current Indian landscape, key gap clusters, research report download
 - [x] **PUB-07**: Public `/framework` draft consultation surface with per-section status badges (Draft / Under Review / Validated) for documents tagged `isPublicDraft: true`
 - [x] **PUB-08**: `/framework` page shows a "what changed" log aggregating recent CR merges per section
-- [ ] **PUB-09**: Minimal public shell (header, footer) with routing between `/`, `/participate`, `/workshops`, `/research`, `/framework`, `/portal`
-- [ ] **PUB-10**: Public surfaces use a policy-grade theme (white / off-white base, dark blue / slate typography, muted saffron or teal accent, document cards)
+- [x] **PUB-09**: Minimal public shell (header, footer) with routing between `/`, `/participate`, `/workshops`, `/research`, `/framework`, `/portal`
+- [x] **PUB-10**: Public surfaces use a policy-grade theme (white / off-white base, dark blue / slate typography, muted saffron or teal accent, document cards)
 
 ### LLM-Assisted Content (Groq)
 
@@ -400,8 +400,8 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | LLM-06 | Phase 21 | Pending |
 | LLM-07 | Phase 21 | Pending |
 | LLM-08 | Phase 21 | Pending |
-| PUB-09 | Phase 21 | Pending |
-| PUB-10 | Phase 21 | Pending |
+| PUB-09 | Phase 21 | Complete |
+| PUB-10 | Phase 21 | Complete |
 | VERIFY-01 | Phase 22 | Pending |
 | VERIFY-02 | Phase 22 | Pending |
 | VERIFY-03 | Phase 22 | Pending |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 21-00-PLAN.md — 5/5 tasks, 5 commits, Wave 0 contract lock
-last_updated: "2026-04-15T09:49:44.821Z"
+stopped_at: Completed 21-02-PLAN.md — 2/2 tasks, 2 commits, PUB-09 RED test GREEN, parallel wave 1 agent
+last_updated: "2026-04-15T10:05:10.992Z"
 progress:
   total_phases: 26
   completed_phases: 21
   total_plans: 78
-  completed_plans: 74
+  completed_plans: 75
 ---
 
 # Project State
@@ -110,6 +110,7 @@ Plan: 2 of 5
 | Phase 20.5-public-research-framework-content-pages P02 | 2min | 2 tasks | 3 files |
 | Phase 20.5 P03 | 7min | 3 tasks | 10 files |
 | Phase 21-public-shell-consultation-summary-llm-theme P00 | 8min | 5 tasks | 11 files |
+| Phase 21-public-shell-consultation-summary-llm-theme P02 | 8min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -275,6 +276,8 @@ Recent decisions affecting current work:
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Plan 21-00: ApprovedSummarySection projection type enforces LLM-08 privacy at (public) component prop boundary — sourceFeedbackIds / feedbackCount / edited / generatedAt cannot type-check into a public route component
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Plan 21-00: consultation-summary.service.ts shipped as pure-type module (zero runtime imports) — Plan 21-01 extends it with anonymize / guardrail / generate functions without touching the locked Wave 0 type exports
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Plan 21-00: vitest.config.mts include glob extended to app/**/*.test.ts(x) — required for (public) route group __tests__ discoverability; plan Task 4 pre-authorized this edit
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Nested layout owns cl-landing className and font variables; pages render plain min-h-screen divs and inherit palette automatically (Plan 21-02)
+- [Phase 21-public-shell-consultation-summary-llm-theme]: PublicHeader is a client component (usePathname + mobile menu state); PublicFooter is a server component — client/server split isolated at the chrome boundary (Plan 21-02)
 
 ### Pending Todos
 
@@ -293,6 +296,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T09:49:44.801Z
-Stopped at: Completed 21-00-PLAN.md — 5/5 tasks, 5 commits, Wave 0 contract lock
+Last session: 2026-04-15T10:05:07.651Z
+Stopped at: Completed 21-02-PLAN.md — 2/2 tasks, 2 commits, PUB-09 RED test GREEN, parallel wave 1 agent
 Resume file: None
