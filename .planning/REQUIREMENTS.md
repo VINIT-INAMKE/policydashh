@@ -201,7 +201,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [x] **LLM-04**: Per-section consultation summary prose is generated via `llama-3.3-70b-versatile` from aggregated accepted feedback
 - [x] **LLM-05**: Consultation summary cached in `documentVersions.consultationSummary` (JSONB) and auto-regenerated on every `version.published` event
 - [x] **LLM-06**: Consultation summary generation sees only anonymized feedback content (bodies without submitter identity)
-- [ ] **LLM-07**: All LLM outputs enter a human review gate (`pending → draft → approved`) before any public rendering
+- [x] **LLM-07**: All LLM outputs enter a human review gate (`pending → draft → approved`) before any public rendering
 - [x] **LLM-08**: LLM output guardrail regex detects stakeholder names leaking through summaries and blocks publish
 
 ### Engagement Tracking & UX Extensions
@@ -398,7 +398,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | LLM-04 | Phase 21 | Complete |
 | LLM-05 | Phase 21 | Complete |
 | LLM-06 | Phase 21 | Complete |
-| LLM-07 | Phase 21 | Pending |
+| LLM-07 | Phase 21 | Complete |
 | LLM-08 | Phase 21 | Complete |
 | PUB-09 | Phase 21 | Complete |
 | PUB-10 | Phase 21 | Complete |

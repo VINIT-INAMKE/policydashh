@@ -272,7 +272,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 19. Public /participate Intake | 6/6 | Complete    | 2026-04-14 |
 | 20. Cal.com Workshop Register | 6/6 | Complete    | 2026-04-14 |
 | 20.5. Public /research + /framework Pages | 4/4 | Complete    | 2026-04-14 |
-| 21. Public Shell + Consultation Summary + Theme | 3/5 | In Progress|  |
+| 21. Public Shell + Consultation Summary + Theme | 4/5 | In Progress|  |
 | 22. Milestone Entity + SHA256 Hashing | 0/0 | v0.2 Planning | - |
 | 23. Cardano Preview-Net Anchoring | 0/0 | v0.2 Planning | - |
 | 24. Stakeholder Engagement Tracking | 0/0 | v0.2 Planning | - |
@@ -483,13 +483,13 @@ Plans:
   5. Guardrail regex scans generated text for stakeholder name patterns and blocks publish if any match (belt-and-suspenders alongside anonymization at input)
   6. Consultation summary only visible publicly when status is `approved`; draft versions show "Summary under review" placeholder
   7. Moderator review modal shows pending/draft summaries with side-by-side raw feedback counts for verification
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [x] 21-00-PLAN.md — Wave 0: Migration 0013 (consultationSummary JSONB) + contract type module + 5 RED test stubs (service, Inngest fn, tRPC router, public-header, section-summary-block) + VALIDATION flip
 - [x] 21-01-PLAN.md — Wave 1: LLM backend (anonymization, guardrail pattern, generateConsultationSummary helper, versionPublishedEvent registration + emission, consultationSummaryGenerateFn Inngest function)
 - [x] 21-02-PLAN.md — Wave 1: Public shell refactor ((public)/layout.tsx owns .cl-landing + fonts, PublicHeader client component with sticky glass nav + mobile hamburger, PublicFooter, remove manual .cl-landing from participate/workshops pages)
-- [ ] 21-03-PLAN.md — Wave 2: Moderator review gate (consultationSummary tRPC router with 5 procedures + audit invariant, SummaryReviewCard mounted inline inside VersionDetail for published versions)
+- [x] 21-03-PLAN.md — Wave 2: Moderator review gate (consultationSummary tRPC router with 5 procedures + audit invariant, SummaryReviewCard mounted inline inside VersionDetail for published versions)
 - [ ] 21-04-PLAN.md — Wave 2: Public render integration (SectionSummaryBlock + SummaryPlaceholderCard + FrameworkSummaryBlock + PublicPolicyContent prop extension + portal page summary projection + remove stale consultation-summary subroute link)
 
 ### Phase 22: Milestone Entity + SHA256 Hashing Service
