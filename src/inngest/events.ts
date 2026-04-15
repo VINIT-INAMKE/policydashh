@@ -335,3 +335,33 @@ export async function sendWorkshopFeedbackInvite(
   await event.validate()
   await inngest.send(event)
 }
+
+// -- version.published ----------------------------------------------
+// Phase 21 LLM-05 — emitted by version.publish tRPC mutation after the
+// notification fan-out. Triggers consultationSummaryGenerateFn which
+// caches per-section summaries into documentVersions.consultationSummary.
+//
+// `overrideOnly` is an optional array of sectionIds used by manual
+// "Regenerate Section" actions (D-13) — when present, the Inngest fn
+// leaves all other sections untouched in the JSONB so already-approved
+// sections are not clobbered by a single-section regen.
+
+const versionPublishedSchema = z.object({
+  versionId:    z.guid(),
+  documentId:   z.guid(),
+  overrideOnly: z.array(z.guid()).optional(),
+})
+
+export const versionPublishedEvent = eventType('version.published', {
+  schema: versionPublishedSchema,
+})
+
+export type VersionPublishedData = z.infer<typeof versionPublishedSchema>
+
+export async function sendVersionPublished(
+  data: VersionPublishedData,
+): Promise<void> {
+  const event = versionPublishedEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
