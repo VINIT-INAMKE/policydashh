@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to plan
-stopped_at: Phase 21 context gathered
-last_updated: "2026-04-15T08:04:52.398Z"
+stopped_at: Phase 21 UI-SPEC approved
+last_updated: "2026-04-15T08:24:00.458Z"
 progress:
   total_phases: 26
   completed_phases: 21
@@ -288,6 +288,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T08:04:52.385Z
-Stopped at: Phase 21 context gathered
-Resume file: .planning/phases/21-public-shell-consultation-summary-llm-theme/21-CONTEXT.md
+Last session: 2026-04-15T08:24:00.442Z
+Stopped at: Phase 21 UI-SPEC approved
+Resume file: .planning/phases/21-public-shell-consultation-summary-llm-theme/21-UI-SPEC.md
