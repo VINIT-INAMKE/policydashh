@@ -14,6 +14,8 @@ import type { SectionSnapshot } from '@/src/server/services/version.service'
 import { PublicPolicyContent } from '@/app/(public)/portal/[policyId]/_components/public-policy-content'
 import { PublicSectionNav } from '@/app/(public)/portal/[policyId]/_components/public-section-nav'
 import { WhatChangedLog } from './_components/what-changed-log'
+import { FrameworkSummaryBlock } from './_components/framework-summary-block'
+import type { ConsultationSummaryJson } from '@/src/server/services/consultation-summary.service'
 
 async function renderFrameworkDetail(doc: typeof policyDocuments.$inferSelect) {
   // 1. Load most recent non-published draft version
@@ -72,6 +74,17 @@ async function renderFrameworkDetail(doc: typeof policyDocuments.$inferSelect) {
   // 5. Build the what-changed log (pure TS)
   const logEntries = buildFrameworkLog(publishedVersions)
 
+  // Phase 21 D-18: find the latest published version's approved
+  // consultation summary (if any). NULL/no-approved-sections silently
+  // omits the FrameworkSummaryBlock — no placeholder on /framework.
+  const latestPublished = [...publishedVersions].sort((a, b) => {
+    const aTime = a.publishedAt?.getTime() ?? 0
+    const bTime = b.publishedAt?.getTime() ?? 0
+    return bTime - aTime
+  })[0]
+  const latestSummary =
+    (latestPublished?.consultationSummary as ConsultationSummaryJson | null) ?? null
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
       <header className="mb-8">
@@ -102,6 +115,8 @@ async function renderFrameworkDetail(doc: typeof policyDocuments.$inferSelect) {
         </p>
         <WhatChangedLog entries={logEntries} />
       </section>
+
+      <FrameworkSummaryBlock summary={latestSummary} />
     </div>
   )
 }
