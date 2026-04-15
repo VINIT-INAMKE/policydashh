@@ -4,22 +4,22 @@
       {
         "entityType": "evidence",
         "entityId": "11111111-aaaa-aaaa-aaaa-111111111111",
-        "contentHash": "PLACEHOLDER_FILL_IN_22_02"
+        "contentHash": "d8f76f77e178fef1c83668ec01ed4e092021c94b84a761439495510a97bc7add"
       },
       {
         "entityType": "feedback",
         "entityId": "e5555555-5555-5555-5555-555555555555",
-        "contentHash": "PLACEHOLDER_FILL_IN_22_02"
+        "contentHash": "b66fb87f2345df38626f78083afd4291f514d572093f4991ea6fcb0a5448ae37"
       },
       {
         "entityType": "version",
         "entityId": "b2222222-2222-2222-2222-222222222222",
-        "contentHash": "PLACEHOLDER_FILL_IN_22_02"
+        "contentHash": "167614a695227cd6645de57402b548b8b3e6430bd463efa49eed7c79c9226dbe"
       },
       {
         "entityType": "workshop",
         "entityId": "d4444444-4444-4444-4444-444444444444",
-        "contentHash": "PLACEHOLDER_FILL_IN_22_02"
+        "contentHash": "4619695019598ae1351c145529057c84f9274ca73146cf93107ffc1d1371e8ea"
       }
     ],
     "metadata": {
@@ -27,8 +27,13 @@
       "documentId": "a1111111-1111-1111-1111-111111111111",
       "title": "v1.0 Consultation Milestone",
       "createdAt": "2026-04-15T10:00:00.000Z",
-      "requiredSlots": { "versions": 1, "workshops": 1, "feedback": 1, "evidence": 1 }
+      "requiredSlots": {
+        "versions": 1,
+        "workshops": 1,
+        "feedback": 1,
+        "evidence": 1
+      }
     }
   },
-  "expectedHash": ""
+  "expectedHash": "44f81ba8780e43c8f7ecae9bde795a1b916b387f882e26a826ef6cb9d79b7e94"
 }

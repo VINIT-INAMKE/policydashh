@@ -4,13 +4,24 @@
     "documentId": "a1111111-1111-1111-1111-111111111111",
     "versionLabel": "v1.0",
     "sectionsSnapshot": [
-      { "id": "f6666666-6666-6666-6666-666666666666", "title": "Scope", "orderIndex": 0, "content": { "type": "doc", "content": [] } }
+      {
+        "id": "f6666666-6666-6666-6666-666666666666",
+        "title": "Scope",
+        "orderIndex": 0,
+        "content": {
+          "type": "doc",
+          "content": []
+        }
+      }
     ],
     "changelog": [
-      { "sectionId": "f6666666-6666-6666-6666-666666666666", "summary": "Initial section" }
+      {
+        "sectionId": "f6666666-6666-6666-6666-666666666666",
+        "summary": "Initial section"
+      }
     ],
     "publishedAt": "2026-04-15T10:00:00.000Z",
     "createdBy": "c3333333-3333-3333-3333-333333333333"
   },
-  "expectedHash": ""
+  "expectedHash": "167614a695227cd6645de57402b548b8b3e6430bd463efa49eed7c79c9226dbe"
 }
