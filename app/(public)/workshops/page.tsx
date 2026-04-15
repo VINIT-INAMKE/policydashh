@@ -9,7 +9,7 @@
  *   - Past:     status='completed' AND scheduledAt < now()
  *
  * Layout + copy come from UI-SPEC Surface A verbatim (max-w-3xl wrapper,
- * .cl-landing scope, 28px page headline with Newsreader headline font).
+ * 28px page headline with Newsreader headline font; .cl-landing inherited from (public)/layout.tsx per Phase 21 D-02).
  *
  * Caching: the listPublicWorkshops helper caches the per-workshop registered
  * count via unstable_cache (60s revalidate). `export const dynamic` below
@@ -47,7 +47,7 @@ export default async function WorkshopsPage() {
   const isEmpty = upcoming.length === 0 && live.length === 0 && past.length === 0
 
   return (
-    <div className="cl-landing min-h-screen bg-[var(--cl-surface)]">
+    <div className="min-h-screen">
       <main className="mx-auto max-w-3xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16">
         <header className="mb-8 text-center sm:mb-12">
           <h1

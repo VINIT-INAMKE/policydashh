@@ -12,7 +12,7 @@
  * `/api/intake/workshop-feedback` on submit so the route handler can
  * re-verify independently (never trust the client).
  *
- * Visual contract: `.cl-landing` scope matches Phase 19 intake mode exactly.
+ * Visual contract: `.cl-landing` scope now inherited from (public)/layout.tsx (Phase 21 D-02).
  * Metadata is static across modes per D-18 (no info leak on expired links).
  */
 
@@ -38,7 +38,7 @@ interface ParticipatePageProps {
 
 function IntakeShell() {
   return (
-    <div className="cl-landing min-h-screen bg-[var(--cl-surface)]">
+    <div className="min-h-screen">
       <main className="mx-auto max-w-2xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16">
         <header className="mb-8 text-center sm:mb-12">
           <h1
@@ -60,7 +60,7 @@ function IntakeShell() {
 
 function FeedbackShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="cl-landing min-h-screen bg-[var(--cl-surface)]">
+    <div className="min-h-screen">
       <main className="mx-auto max-w-2xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16">
         <header className="mb-8 text-center sm:mb-12">
           <h1
