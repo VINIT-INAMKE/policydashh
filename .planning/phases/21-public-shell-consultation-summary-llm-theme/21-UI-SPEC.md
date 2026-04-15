@@ -61,6 +61,8 @@ Standard 8-point scale — all values multiples of 4. Applies to both theme cont
 
 Two font families, four semantic roles. All sizes declared in px, applied via Tailwind arbitrary values matching existing codebase pattern (`text-[NNpx]`).
 
+**Weight constraint: exactly 2 weights per surface — 400 (regular) and 600 (semibold). Weight 500 (medium) is not used anywhere in this phase.**
+
 ### Public shell + portal surfaces (`.cl-landing` context)
 
 | Role | Size | Weight | Line Height | Font | CSS var |
@@ -68,11 +70,11 @@ Two font families, four semantic roles. All sizes declared in px, applied via Ta
 | Display | 28px | 600 (semibold) | 1.2 | Newsreader | `--font-cl-headline` |
 | Heading | 20px | 600 (semibold) | 1.2 | Newsreader | `--font-cl-headline` |
 | Body | 16px | 400 (regular) | 1.8 | Inter | `--font-cl-body` |
-| Label / nav | 12px | 500 (medium) | 1.0 | Inter | `--font-cl-body` |
+| Label / nav | 12px | 600 (semibold) | 1.0 | Inter | `--font-cl-body` |
 
-**Evidence:** `app/(public)/participate/page.tsx` line 45 uses `text-[28px] font-semibold leading-[1.2]` for h1. `public-policy-content.tsx` line 30 uses `text-[20px] font-semibold leading-[1.2]` for section h2. `text-[16px] font-normal leading-[1.8]` for body prose. Nav links in `app/page.tsx` use `text-xs uppercase tracking-widest font-medium` (12px/500). These are canonical — replicate exactly.
+**Evidence:** `app/(public)/participate/page.tsx` line 45 uses `text-[28px] font-semibold leading-[1.2]` for h1. `public-policy-content.tsx` line 30 uses `text-[20px] font-semibold leading-[1.2]` for section h2. `text-[16px] font-normal leading-[1.8]` for body prose. Nav links in `app/page.tsx` use `text-xs uppercase tracking-widest font-semibold` (12px/600). The `tracking-widest uppercase` treatment provides sufficient visual differentiation at this size without a third weight.
 
-Nav links: `text-xs font-medium uppercase tracking-widest` — do NOT change to a different size for the new shell header.
+Nav links: `text-xs font-semibold uppercase tracking-widest` — do NOT change to a different size for the new shell header.
 
 ### Workspace moderator review card (shadcn workspace context)
 
@@ -80,7 +82,7 @@ Nav links: `text-xs font-medium uppercase tracking-widest` — do NOT change to 
 |------|------|--------|-------------|
 | Card heading | 16px | 600 (semibold) | 1.4 |
 | Body / prose | 14px | 400 (regular) | 1.6 |
-| Badge / label | 12px | 500 (medium) | 1.0 |
+| Badge / label | 12px | 600 (semibold) | 1.0 |
 | Textarea | 14px | 400 (regular) | 1.6 |
 
 Use Tailwind defaults (`text-sm`, `text-base`, `font-semibold`) — no arbitrary values needed inside the workspace.
@@ -149,19 +151,19 @@ Per-section status badge colors (using shadcn `variant` or inline):
 | Right panel label | `Source Feedback` |
 | Right panel subline | `{N} accepted feedback items contributed to this section` |
 | Approve button | `Approve Section` |
-| Regenerate button | `Regenerate` |
+| Regenerate button | `Regenerate Section` |
 | Per-section pending badge | `Pending` |
 | Per-section approved badge | `Approved` |
 | Per-section blocked badge | `Blocked — guardrail violation` |
 | Per-section error badge | `Generation error` |
-| Blocked section explanation | `This section was blocked because generated text matched a stakeholder name pattern. Regenerate after reviewing source feedback.` |
-| Error section explanation | `Summary generation failed for this section. Click Regenerate to retry.` |
+| Blocked section explanation | `This section was blocked because generated text matched a stakeholder name pattern. Regenerate Section after reviewing source feedback.` |
+| Error section explanation | `Summary generation failed for this section. Click Regenerate Section to retry.` |
 | Publish gate locked state | `All sections must be approved before the summary is published publicly.` |
 | Publish gate ready state | `All sections approved. The summary will appear publicly on the portal.` |
 | Textarea placeholder | `Edit the generated summary before approving...` |
 | Empty state (no feedback for section) | `No accepted feedback` / `This section had no accepted feedback items. It will be automatically skipped.` |
 | Loading skeleton label | `Generating summary...` (shown while Inngest job is in-flight, section status = pending with no prose yet) |
-| Regenerate confirm (inline, not modal) | none — single click, no confirmation; Regenerate only resets the one section |
+| Regenerate confirm (inline, not modal) | none — single click, no confirmation; Regenerate Section only resets the one section |
 | Destructive actions | none in this phase |
 
 ---
@@ -213,7 +215,7 @@ No new shadcn installs required. All components used in the moderator review car
 
 - **Layout:** Two-column grid at `md` breakpoint: `grid grid-cols-1 md:grid-cols-[1fr_320px] gap-6`. Left = prose editor. Right = source feedback panel.
 - **Right panel (source feedback):** Fixed width 320px on desktop. Scrollable list of truncated feedback bodies (`line-clamp-3`). Shows: role badge (government / industry / etc.) + truncated body. Stakeholder names NOT shown (privacy enforcement per D-07 and Phase 9 PUB-05 precedent). Shows count: "4 accepted feedback items."
-- **Left panel textarea:** Visible only when moderator clicks the edit icon on a section. Default shows rendered prose (non-editable). Click-to-edit reveals `<Textarea>` with the prose pre-filled. Save button replaces Approve for one interaction cycle.
+- **Left panel textarea:** Visible only when moderator clicks the edit icon on a section. Default shows rendered prose (non-editable). Click-to-edit reveals `<Textarea>` with the prose pre-filled. Save button replaces Approve for one interaction cycle. The edit icon button MUST carry `aria-label="Edit section summary"` — it is an icon-only control with no visible text label.
 - **Per-section status badge:** Pill badge positioned in the section header row, right-aligned. Uses colors from Color section above.
 - **Regenerate button:** `variant="outline"` Button, icon `lucide RefreshCw` 16px left of text. Sits in the section header row, left of the status badge.
 - **Approve button:** `variant="default"` Button (workspace primary). Disabled when section is `approved`. After approval, button label becomes "Approved" with `lucide Check` icon and disabled state.
@@ -233,7 +235,7 @@ No new shadcn installs required. All components used in the moderator review car
 - **Position:** Below `<WhatChangedLog>`, before the page closes.
 - **Container:** Same as portal summary block above.
 - **Heading:** `Consultation Summary` (20px semibold, Newsreader).
-- **Content:** Approved summary prose sections, each labelled with the section title (14px medium Inter). If a section has no approved summary, skip that section silently.
+- **Content:** Approved summary prose sections, each labelled with the section title (14px semibold Inter). If a section has no approved summary, skip that section silently.
 - **No published version:** Component not rendered at all per D-18.
 
 ---
