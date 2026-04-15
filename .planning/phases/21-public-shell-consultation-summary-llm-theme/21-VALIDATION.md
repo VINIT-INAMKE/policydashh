@@ -2,8 +2,9 @@
 phase: 21
 slug: public-shell-consultation-summary-llm-theme
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
+wave_0_completed_at: 2026-04-15
 created: 2026-04-15
 ---
 
@@ -38,11 +39,11 @@ created: 2026-04-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 21-00-T1 | 21-00 | 0 | LLM-05 | migration probe | `node scripts/apply-migration-0013.mjs` | ✅ | ⬜ pending |
-| 21-00-T2 | 21-00 | 0 | LLM-05, LLM-07, LLM-08 | typecheck | `npx tsc --noEmit` | ✅ | ⬜ pending |
-| 21-00-T3 | 21-00 | 0 | LLM-06, LLM-07, LLM-08 | unit (RED) | `npm test -- --run tests/phase-21/consultation-summary-service.test.ts src/inngest/__tests__/consultation-summary-generate.test.ts src/server/routers/__tests__/consultation-summary.test.ts` | ✅ | ⬜ pending |
-| 21-00-T4 | 21-00 | 0 | PUB-09, LLM-08 | unit (RED) | `npm test -- --run "app/(public)/_components/__tests__/public-header.test.tsx" "app/(public)/portal/[policyId]/_components/__tests__/section-summary-block.test.tsx"` | ✅ | ⬜ pending |
-| 21-00-T5 | 21-00 | 0 | — | frontmatter probe | `grep -q "nyquist_compliant: true" .planning/phases/21-public-shell-consultation-summary-llm-theme/21-VALIDATION.md` | ✅ | ⬜ pending |
+| 21-00-T1 | 21-00 | 0 | LLM-05 | migration probe | `node scripts/apply-migration-0013.mjs` | ✅ | ✅ green |
+| 21-00-T2 | 21-00 | 0 | LLM-05, LLM-07, LLM-08 | typecheck | `npx tsc --noEmit` | ✅ | ✅ green |
+| 21-00-T3 | 21-00 | 0 | LLM-06, LLM-07, LLM-08 | unit (RED) | `npm test -- --run tests/phase-21/consultation-summary-service.test.ts src/inngest/__tests__/consultation-summary-generate.test.ts src/server/routers/__tests__/consultation-summary.test.ts` | ✅ | ✅ green (RED-locked) |
+| 21-00-T4 | 21-00 | 0 | PUB-09, LLM-08 | unit (RED) | `npm test -- --run "app/(public)/_components/__tests__/public-header.test.tsx" "app/(public)/portal/[policyId]/_components/__tests__/section-summary-block.test.tsx"` | ✅ | ✅ green (RED-locked) |
+| 21-00-T5 | 21-00 | 0 | — | frontmatter probe | `grep -q "nyquist_compliant: true" .planning/phases/21-public-shell-consultation-summary-llm-theme/21-VALIDATION.md` | ✅ | ✅ green |
 | 21-01-T1 | 21-01 | 1 | LLM-06, LLM-08 | unit | `npm test -- --run tests/phase-21/consultation-summary-service.test.ts` | ✅ | ⬜ pending |
 | 21-01-T2 | 21-01 | 1 | LLM-04 | grep + tsc | `grep -q "llama-3.3-70b-versatile" src/lib/llm.ts && npx tsc --noEmit` | ✅ | ⬜ pending |
 | 21-01-T3 | 21-01 | 1 | LLM-05, LLM-07, LLM-08 | unit | `npm test -- --run src/inngest/__tests__/consultation-summary-generate.test.ts` | ✅ | ⬜ pending |
@@ -63,16 +64,18 @@ created: 2026-04-15
 
 ## Wave 0 Requirements
 
-- [ ] `src/db/migrations/0013_consultation_summary.sql` — schema migration adds `consultationSummary jsonb` to `documentVersions`
-- [ ] `scripts/apply-migration-0013.mjs` — Neon HTTP migration runner (mirrors `scripts/apply-migration-0012.mjs`)
-- [ ] `src/server/services/consultation-summary.service.ts` — typed contract module (`ConsultationSummaryJson`, `ApprovedSummarySection`, status enums) — implementation hollow, types only
-- [ ] `tests/phase-21/consultation-summary-service.test.ts` — RED unit stubs covering `anonymizeFeedbackForSection` (LLM-04), `buildGuardrailPatternSource` (LLM-06), `generateConsultationSummary` (LLM-04/05/06)
-- [ ] `src/inngest/__tests__/consultation-summary-generate.test.ts` — RED integration stub for `consultationSummaryGenerateFn` (LLM-05/06/07)
-- [ ] `src/server/routers/__tests__/consultation-summary.test.ts` — RED tRPC moderator route stubs for `approveSection` / `regenerateSection` / `saveSection` / `getByVersionId` / `getSectionFeedback` (LLM-07/08)
-- [ ] `app/(public)/_components/__tests__/public-header.test.tsx` — RED render stub for `PublicHeader` (PUB-09/10 nav links + active state)
-- [ ] `app/(public)/portal/[policyId]/_components/__tests__/section-summary-block.test.tsx` — RED render stub for `SectionSummaryBlock` (PUB-09 + LLM-08 placeholder vs approved branches)
+- [x] `src/db/migrations/0013_consultation_summary.sql` — schema migration adds `consultationSummary jsonb` to `documentVersions`
+- [x] `scripts/apply-migration-0013.mjs` — Neon HTTP migration runner (mirrors `scripts/apply-migration-0012.mjs`)
+- [x] `src/server/services/consultation-summary.service.ts` — typed contract module (`ConsultationSummaryJson`, `ApprovedSummarySection`, status enums) — implementation hollow, types only
+- [x] `tests/phase-21/consultation-summary-service.test.ts` — RED unit stubs covering `anonymizeFeedbackForSection` (LLM-04), `buildGuardrailPatternSource` (LLM-06), `generateConsultationSummary` (LLM-04/05/06)
+- [x] `src/inngest/__tests__/consultation-summary-generate.test.ts` — RED integration stub for `consultationSummaryGenerateFn` (LLM-05/06/07)
+- [x] `src/server/routers/__tests__/consultation-summary.test.ts` — RED tRPC moderator route stubs for `approveSection` / `regenerateSection` / `saveSection` / `getByVersionId` / `getSectionFeedback` (LLM-07/08)
+- [x] `app/(public)/_components/__tests__/public-header.test.tsx` — RED render stub for `PublicHeader` (PUB-09/10 nav links + active state)
+- [x] `app/(public)/portal/[policyId]/_components/__tests__/section-summary-block.test.tsx` — RED render stub for `SectionSummaryBlock` (PUB-09 + LLM-08 placeholder vs approved branches)
 
 *Wave 0 must produce failing-but-importable test files for every requirement before any implementation task runs. Test paths above match Plan 21-00 Tasks 3–4.*
+
+**Wave 0 closed:** 2026-04-15 — all stub files discovered and failing as expected (RED contracts locked).
 
 ---
 
@@ -91,11 +94,11 @@ created: 2026-04-15
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved (Wave 0 closed 2026-04-15 by Plan 21-00 executor)
