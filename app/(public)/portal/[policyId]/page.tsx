@@ -7,13 +7,17 @@ import { policyDocuments } from '@/src/db/schema/documents'
 import { documentVersions } from '@/src/db/schema/changeRequests'
 import { eq, and, desc } from 'drizzle-orm'
 import { format } from 'date-fns'
-import { ArrowLeft, Download, History, Users } from 'lucide-react'
+import { ArrowLeft, Download, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { VersionStatusBadge } from '@/app/(workspace)/policies/[id]/versions/_components/version-status-badge'
 import { PublicVersionSelector } from './_components/public-version-selector'
 import { PublicSectionNav } from './_components/public-section-nav'
 import { PublicPolicyContent } from './_components/public-policy-content'
 import type { SectionSnapshot } from '@/src/server/services/version.service'
+import type {
+  ConsultationSummaryJson,
+  ApprovedSummarySection,
+} from '@/src/server/services/consultation-summary.service'
 
 // SECURITY: Validate UUID format to prevent Postgres errors
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -67,6 +71,30 @@ export default async function PublicPolicyDetailPage({
   const sections = (selectedVersion.sectionsSnapshot as SectionSnapshot[] | null) ?? []
   const sortedSections = [...sections].sort((a, b) => a.orderIndex - b.orderIndex)
 
+  // Phase 21 D-15: build the public-safe projection from the selected
+  // version's consultationSummary JSONB. Strip every internal-only field
+  // (the raw JSONB carries per-section generation metadata + provenance IDs)
+  // so only `ApprovedSummarySection` crosses into the public component
+  // tree (Phase 21 Pitfall 1 — privacy enforcement).
+  const consultationSummary =
+    (selectedVersion.consultationSummary as ConsultationSummaryJson | null) ?? null
+
+  let sectionSummaries: Map<string, ApprovedSummarySection> | undefined
+  let sectionsWithEntry: Set<string> | undefined
+  if (consultationSummary) {
+    sectionsWithEntry = new Set(consultationSummary.sections.map((s) => s.sectionId))
+    sectionSummaries = new Map()
+    for (const s of consultationSummary.sections) {
+      if (s.status === 'approved') {
+        sectionSummaries.set(s.sectionId, {
+          sectionId:    s.sectionId,
+          sectionTitle: s.sectionTitle,
+          summary:      s.summary,
+        })
+      }
+    }
+  }
+
   const versionOptions = published.map((v) => ({
     id: v.id,
     versionLabel: v.versionLabel,
@@ -116,12 +144,6 @@ export default async function PublicPolicyDetailPage({
               View Changelog
             </Button>
           </Link>
-          <Link href={`/portal/${policyId}/consultation-summary`}>
-            <Button variant="ghost" size="sm">
-              <Users className="size-3.5" data-icon="inline-start" />
-              Consultation Summary
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -137,7 +159,11 @@ export default async function PublicPolicyDetailPage({
           <PublicSectionNav sections={sectionNavItems} mobile />
 
           {/* Content area */}
-          <PublicPolicyContent sections={sortedSections} />
+          <PublicPolicyContent
+            sections={sortedSections}
+            sectionSummaries={sectionSummaries}
+            sectionsWithEntry={sectionsWithEntry}
+          />
         </div>
       </div>
     </div>
