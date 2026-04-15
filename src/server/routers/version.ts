@@ -14,7 +14,7 @@ import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import { eq, desc } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
-import { sendNotificationCreate } from '@/src/inngest/events'
+import { sendNotificationCreate, sendVersionPublished } from '@/src/inngest/events'
 
 export const versionRouter = router({
   // List versions for a document (omit large fields)
@@ -161,6 +161,14 @@ export const versionRouter = router({
           action:     'publish',
         })
       }
+
+      // LLM-05: fire version.published so consultationSummaryGenerateFn
+      // fans out per-section summary generation. Awaited so publish
+      // fails visibly if Inngest is down (Phase 17 precedent).
+      await sendVersionPublished({
+        versionId:  version.id,
+        documentId: version.documentId,
+      })
 
       return version
     }),
