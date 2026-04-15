@@ -24,7 +24,7 @@
 - **D-11:** Approval granularity: per-section approve. Version-level publish gate requires ALL sections `approved` or `skipped` (zero accepted feedback). Parent JSONB `status`: `pending → partial → approved`.
 - **D-12:** Moderator can edit prose before approving. `edited: true` flag tracks this.
 - **D-13:** Regen triggers: AUTO on `version.published` event AND manual "Regenerate Section" button. Manual uses `overrideOnly: [sectionId]` parameter.
-- **D-14:** Guardrail regex: runs POST-generation. On match, section stored as `status: 'blocked', error: 'guardrail-violation'`. Pattern source: live `users.firstName/lastName` lookup + static PII patterns. Function does NOT throw — other sections proceed.
+- **D-14:** Guardrail regex: runs POST-generation. On match, section stored as `status: 'blocked', error: 'guardrail-violation'`. Pattern source: live `users.name` lookup (single column per actual schema — split on whitespace, drop tokens shorter than 4 chars to avoid false positives on common words) + static PII patterns (email, phone, capital-letter `FirstName LastName` pairs). The guardrail step returns `regex.source` as a STRING (NOT a RegExp object — RegExp instances do not survive JSON serialization across `step.run` boundaries; per-section steps reconstruct via `new RegExp(source, 'i')`). Function does NOT throw — other sections proceed.
 - **D-15:** Approved summary renders inline under each section on `/portal/[policyId]` via optional `sectionSummaries?: Map<sectionId, ApprovedSummarySection>` prop on `PublicPolicyContent`. Backward-compatible.
 - **D-16:** Pending/blocked/error sections render "Summary under review" placeholder card.
 - **D-17:** All published versions browseable. Summary follows selected version's JSONB column.
