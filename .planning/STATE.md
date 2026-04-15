@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-04-15T10:32:42.176Z"
+stopped_at: Completed 21-04-PLAN.md
+last_updated: "2026-04-15T10:37:46.840Z"
 progress:
   total_phases: 26
-  completed_phases: 21
+  completed_phases: 22
   total_plans: 78
-  completed_plans: 77
+  completed_plans: 78
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 21 (public-shell-consultation-summary-llm-theme) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 ## Performance Metrics
 
@@ -113,6 +113,7 @@ Plan: 4 of 5
 | Phase 21-public-shell-consultation-summary-llm-theme P02 | 8min | 2 tasks | 5 files |
 | Phase 21-public-shell-consultation-summary-llm-theme P01 | 18min | 4 tasks | 7 files |
 | Phase 21-public-shell-consultation-summary-llm-theme P03 | 9min | 2 tasks | 5 files |
+| Phase 21-public-shell-consultation-summary-llm-theme P04 | 13min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -287,6 +288,10 @@ Recent decisions affecting current work:
 - [Phase 21-public-shell-consultation-summary-llm-theme]: consultationSummaryRouter 5 procedures all on version:manage permission, all mutations fire-and-forget writeAuditLog
 - [Phase 21-public-shell-consultation-summary-llm-theme]: Pitfall 5 regenerateSection sync reset in JSONB before sendVersionPublished overrideOnly to prevent stale-read race clobbering approved siblings
 - [Phase 21-public-shell-consultation-summary-llm-theme]: SummaryReviewCard mounts inline inside VersionDetail gated on isPublished no new sub-route RESEARCH Finding 3
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Server-component-only for all 3 new public components (SectionSummaryBlock, SummaryPlaceholderCard, FrameworkSummaryBlock) — zero 'use client' directives, keeps portal/framework bundles lean
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Privacy projection at the public-component seam: Map<sectionId, ApprovedSummarySection> + Set<sectionId> dual-signal prop pair on PublicPolicyContent; components never receive ConsultationSummarySection or sourceFeedbackIds (LLM-08)
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Stale /portal/[policyId]/consultation-summary subroute link removed from portal header (Pitfall 7 — route was deferred, button would have 404'd after Phase 21 ships)
+- [Phase 21-public-shell-consultation-summary-llm-theme]: Parallel-wave git-commit race: commit 2cb6b7e is labeled feat(21-03) but contains Plan 21-04 Task 1 files only (public-policy-content.tsx, section-summary-block.tsx, summary-placeholder-card.tsx) — content attribution via SUMMARY.md, no history rewrite
 
 ### Pending Todos
 
@@ -305,6 +310,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T10:32:42.139Z
-Stopped at: Completed 21-03-PLAN.md
+Last session: 2026-04-15T10:37:46.824Z
+Stopped at: Completed 21-04-PLAN.md
 Resume file: None
