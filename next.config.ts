@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    '@meshsdk/core',
+    '@meshsdk/wallet',
+    'tiny-secp256k1',
+    '@blockfrost/blockfrost-js',
+  ],
 };
 
 export default nextConfig;
