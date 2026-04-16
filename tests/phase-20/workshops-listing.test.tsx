@@ -37,7 +37,7 @@ vi.mock('@/src/server/queries/workshops-public', () => ({
 // Replace the cal.com embed modal with a plain button so the test tree does
 // not try to load `@calcom/embed-react` (which requires the package actually
 // be installed in node_modules).
-vi.mock('@/app/(public)/workshops/_components/cal-embed-modal', () => ({
+vi.mock('@/app/workshops/_components/cal-embed-modal', () => ({
   CalEmbedModal: ({ workshopTitle }: { workshopTitle: string }) => (
     <button type="button" aria-label={`Register for ${workshopTitle}`}>
       Register
@@ -46,7 +46,7 @@ vi.mock('@/app/(public)/workshops/_components/cal-embed-modal', () => ({
 }))
 
 // Import the page AFTER mocks are declared.
-import WorkshopsPage from '@/app/(public)/workshops/page'
+import WorkshopsPage from '@/app/workshops/page'
 
 function upcomingFixture() {
   return {

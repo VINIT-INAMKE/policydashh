@@ -22,7 +22,7 @@ import {
   CardDescription,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CalEmbedModal } from './cal-embed-modal'
+import { RegisterForm } from './register-form'
 import { SpotsLeftBadge } from './spots-left-badge'
 
 export interface WorkshopCardData {
@@ -140,13 +140,9 @@ export function WorkshopCard({
       </CardContent>
 
       <CardFooter>
-        <CalEmbedModal
+        <RegisterForm
           workshopId={workshop.id}
           workshopTitle={workshop.title}
-          calLink={workshop.calcomEventTypeId ?? ''}
-          scheduledAt={workshop.scheduledAt}
-          scheduledAtFormatted={formattedDate}
-          durationMinutes={workshop.durationMinutes}
           disabled={disabled}
         />
       </CardFooter>

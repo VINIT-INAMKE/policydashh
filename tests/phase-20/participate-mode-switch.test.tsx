@@ -65,11 +65,11 @@ vi.mock('@/src/db', () => {
 
 // Mock heavy client components so jsdom doesn't have to run the real Turnstile
 // widget or base-ui Select portals.
-vi.mock('@/app/(public)/participate/_components/participate-form', () => ({
+vi.mock('@/app/participate/_components/participate-form', () => ({
   ParticipateForm: () => <div data-testid="intake-form">intake form</div>,
 }))
 
-vi.mock('@/app/(public)/participate/_components/workshop-feedback-form', () => ({
+vi.mock('@/app/participate/_components/workshop-feedback-form', () => ({
   WorkshopFeedbackForm: (props: {
     workshopId: string
     token: string
@@ -92,7 +92,7 @@ beforeEach(async () => {
   mocks.verifyFeedbackToken.mockReset()
   mocks.workshopSelect.mockReset()
   mocks.sectionSelect.mockReset()
-  const mod = await import('@/app/(public)/participate/page')
+  const mod = await import('@/app/participate/page')
   ParticipatePage = mod.default as typeof ParticipatePage
 })
 

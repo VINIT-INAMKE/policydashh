@@ -3,7 +3,7 @@ import type { SectionSnapshot } from '@/src/server/services/version.service'
 import {
   SectionStatusBadge,
   type SectionStatus,
-} from '@/app/(public)/framework/_components/section-status-badge'
+} from '@/app/framework/_components/section-status-badge'
 import { SectionSummaryBlock } from './section-summary-block'
 import type { ApprovedSummarySection } from '@/src/server/services/consultation-summary.service'
 

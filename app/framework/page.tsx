@@ -11,8 +11,8 @@ import {
   buildFrameworkLog,
 } from '@/src/server/services/framework-log.service'
 import type { SectionSnapshot } from '@/src/server/services/version.service'
-import { PublicPolicyContent } from '@/app/(public)/portal/[policyId]/_components/public-policy-content'
-import { PublicSectionNav } from '@/app/(public)/portal/[policyId]/_components/public-section-nav'
+import { PublicPolicyContent } from '@/app/portal/[policyId]/_components/public-policy-content'
+import { PublicSectionNav } from '@/app/portal/[policyId]/_components/public-section-nav'
 import { WhatChangedLog } from './_components/what-changed-log'
 import { FrameworkSummaryBlock } from './_components/framework-summary-block'
 import type { ConsultationSummaryJson } from '@/src/server/services/consultation-summary.service'

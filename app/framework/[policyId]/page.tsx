@@ -10,8 +10,8 @@ import {
   buildFrameworkLog,
 } from '@/src/server/services/framework-log.service'
 import type { SectionSnapshot } from '@/src/server/services/version.service'
-import { PublicPolicyContent } from '@/app/(public)/portal/[policyId]/_components/public-policy-content'
-import { PublicSectionNav } from '@/app/(public)/portal/[policyId]/_components/public-section-nav'
+import { PublicPolicyContent } from '@/app/portal/[policyId]/_components/public-policy-content'
+import { PublicSectionNav } from '@/app/portal/[policyId]/_components/public-section-nav'
 import { WhatChangedLog } from '../_components/what-changed-log'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
