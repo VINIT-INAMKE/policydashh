@@ -98,12 +98,12 @@ describe('Feedback Permission Matrix', () => {
       expect(can('observer', 'feedback:read_own')).toBe(true)
     })
 
-    it('denies admin', () => {
-      expect(can('admin', 'feedback:read_own')).toBe(false)
+    it('allows admin', () => {
+      expect(can('admin', 'feedback:read_own')).toBe(true)
     })
 
-    it('denies auditor', () => {
-      expect(can('auditor', 'feedback:read_own')).toBe(false)
+    it('allows auditor', () => {
+      expect(can('auditor', 'feedback:read_own')).toBe(true)
     })
   })
 

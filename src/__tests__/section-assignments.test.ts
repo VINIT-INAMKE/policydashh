@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { vi, describe, it, expect } from 'vitest'
+
+vi.mock('@/src/db', () => ({ db: {} }))
+vi.mock('@/src/trpc/init', () => ({ t: { middleware: vi.fn(() => vi.fn()) } }))
+
 import { BYPASS_SECTION_SCOPE } from '@/src/server/rbac/section-access'
 import type { Role } from '@/src/lib/constants'
 
