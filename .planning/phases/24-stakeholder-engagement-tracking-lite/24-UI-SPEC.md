@@ -133,6 +133,8 @@ No new shadcn components need to be added. All components are already present in
 
 **StatCard placement:** Add a 5th stat to the existing `grid-cols-2 lg:grid-cols-4` row; on large screens this wraps to a second row OR use a separate `grid-cols-1` row with a single `StatCard` above the inactive users card. Choose single-card row to avoid disrupting the existing 4-card layout — one `StatCard` in a `grid-cols-1` row immediately above the new inactive users `Card`.
 
+**Visual anchor:** Primary visual anchor: the inactive-count StatCard tile; secondary anchor: the widget table ranked by longest dormancy.
+
 ### 2. Stakeholder Profile Page (new admin-only route)
 
 **Location:** `app/(workspace)/users/[id]/page.tsx` (new file)
@@ -189,7 +191,7 @@ Page layout: max-w-3xl mx-auto space-y-6
 ### Empty States
 
 - Icon: `UserX` from lucide-react, `size-10 text-muted-foreground`, centered.
-- Heading: 16px/600, `text-foreground`.
+- Heading: 14px/600, `text-foreground`.
 - Body: 14px/400, `text-muted-foreground`.
 - Vertical padding: `py-12` within CardContent.
 
