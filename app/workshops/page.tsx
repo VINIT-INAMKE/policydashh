@@ -26,7 +26,7 @@ import { listPublicWorkshops } from '@/src/server/queries/workshops-public'
 import { WorkshopCard } from './_components/workshop-card'
 
 export const metadata: Metadata = {
-  title: 'Register for a Workshop | PolicyDash',
+  title: 'Register for a Workshop | Civilization Lab',
   description:
     'Join a live consultation session and share your expertise directly with the policy team.',
 }

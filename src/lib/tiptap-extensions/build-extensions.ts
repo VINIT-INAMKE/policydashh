@@ -24,7 +24,7 @@ export interface BuildExtensionsOptions {
 }
 
 /**
- * Builds the complete Tiptap extension array for the PolicyDash editor.
+ * Builds the complete Tiptap extension array for the Civilization Lab editor.
  *
  * Includes:
  * - StarterKit (paragraph, heading, bold, italic, underline, strike, link,

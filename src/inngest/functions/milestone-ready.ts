@@ -29,7 +29,7 @@ import {
  *
  * VERIFY-06: Admin marks milestone ready -> this function anchors to Cardano.
  * D-05:  Triggered by milestone.ready Inngest event (emitted by markReady mutation).
- * D-07:  CIP-10 label 674 metadata with project='policydash', type='milestone'.
+ * D-07:  CIP-10 label 674 metadata with project='civilization-lab', type='milestone'.
  * D-08:  Concurrency key 'cardano-wallet' limit 1 prevents UTxO contention.
  * D-13:  retries: 4 for transient Blockfrost failures.
  * D-14:  Permanent failure sends admin notification via dispatch pipeline.
@@ -229,7 +229,7 @@ export const milestoneReadyFn = inngest.createFunction(
         return existing
       }
       return await buildAndSubmitAnchorTx(hashData.contentHash, {
-        project: 'policydash',
+        project: 'civilization-lab',
         type: 'milestone',
         hash: hashData.contentHash,
         milestoneId: hashData.milestoneId,

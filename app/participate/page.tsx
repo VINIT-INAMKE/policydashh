@@ -29,7 +29,7 @@ import { WorkshopFeedbackForm } from './_components/workshop-feedback-form'
 import { ExpiredLinkCard } from './_components/expired-link-card'
 
 export const metadata: Metadata = {
-  title: 'Join the Consultation | PolicyDash',
+  title: 'Join the Consultation | Civilization Lab',
   description:
     'Share your expertise and help shape evidence-based policy for India\u2019s digital future.',
 }

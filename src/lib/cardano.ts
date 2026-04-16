@@ -131,7 +131,7 @@ export async function buildAndSubmitAnchorTx(
  * content hash. This is VERIFY-08 idempotency layer 2 (Blockfrost pre-check).
  *
  * Paginates through CIP-10 label 674 metadata entries in descending order,
- * looking for a matching { hash, project: 'policydash' } payload.
+ * looking for a matching { hash, project: 'civilization-lab' } payload.
  *
  * @returns The txHash if found, null otherwise.
  */
@@ -155,7 +155,7 @@ export async function checkExistingAnchorTx(
         meta &&
         typeof meta === 'object' &&
         meta.hash === contentHash &&
-        meta.project === 'policydash'
+        (meta.project === 'policydash' || meta.project === 'civilization-lab')
       ) {
         return item.tx_hash
       }

@@ -5,7 +5,7 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null
 
-const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || 'PolicyDash <onboarding@resend.dev>'
+const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS || 'Civilization Lab <noreply@civilization-lab.com>'
 
 /**
  * Send email notification when feedback is reviewed.

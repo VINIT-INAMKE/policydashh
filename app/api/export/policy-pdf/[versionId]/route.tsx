@@ -108,7 +108,7 @@ export async function GET(
         ))}
 
         <Text style={styles.footer}>
-          Generated {new Date().toISOString().split('T')[0]} -- PolicyDash Published Policy Export
+          Generated {new Date().toISOString().split('T')[0]} -- Civilization Lab Published Policy Export
         </Text>
       </Page>
     </Document>

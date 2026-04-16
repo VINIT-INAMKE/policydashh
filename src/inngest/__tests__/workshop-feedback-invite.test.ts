@@ -69,7 +69,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://policydash.test')
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://civilization-lab.test')
 })
 
 afterEach(() => {
@@ -157,7 +157,7 @@ describe('workshopFeedbackInviteFn - JWT-signed deep-link email (WS-15)', () => 
     expect(emailOpts.feedbackUrl).toContain('&token=')
     expect(emailOpts.feedbackUrl).toContain('header.body.sig')
     // Base URL from env
-    expect(emailOpts.feedbackUrl).toContain('https://policydash.test')
+    expect(emailOpts.feedbackUrl).toContain('https://civilization-lab.test')
   })
 
   it('T4: sendWorkshopFeedbackInviteEmail called with to, name, workshopTitle, feedbackUrl', async () => {

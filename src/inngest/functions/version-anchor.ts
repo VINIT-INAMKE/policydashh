@@ -16,7 +16,7 @@ import {
  *
  * VERIFY-07: Every published version gets anchored on Cardano preview-net.
  * D-06:  Fans out from version.published alongside consultationSummaryGenerateFn.
- * D-07:  CIP-10 label 674 metadata with project='policydash', type='version'.
+ * D-07:  CIP-10 label 674 metadata with project='civilization-lab', type='version'.
  * D-08:  Concurrency key 'cardano-wallet' limit 1 prevents UTxO contention.
  * D-13:  retries: 4 for transient Blockfrost failures.
  * VERIFY-08: Blockfrost pre-check + DB UNIQUE on txHash for idempotency.
@@ -78,7 +78,7 @@ export const versionAnchorFn = inngest.createFunction(
         return existingTx
       }
       return await buildAndSubmitAnchorTx(hashData.contentHash, {
-        project: 'policydash',
+        project: 'civilization-lab',
         type: 'version',
         hash: hashData.contentHash,
         versionId: hashData.versionId,

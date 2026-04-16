@@ -67,7 +67,7 @@ const BUCKET_COPY: Record<OrgBucket, BucketContent> = {
   },
   internal: {
     body:
-      'You have been added to the PolicyDash workspace as an internal team member. Sign in to access the full dashboard, manage feedback, and run workshops.',
+      'You have been added to the Civilization Lab workspace as an internal team member. Sign in to access the full dashboard, manage feedback, and run workshops.',
     cta: 'Sign In to Dashboard',
   },
 }
@@ -80,7 +80,7 @@ export interface WelcomeEmailProps {
 
 export function WelcomeEmail({ name, email, orgType }: WelcomeEmailProps) {
   const bucket = BUCKET_COPY[orgType as OrgBucket] ?? BUCKET_COPY.civil_society
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://policydash.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://civilization-lab.com'
   const firstName = name.split(' ')[0] ?? name
 
   return (

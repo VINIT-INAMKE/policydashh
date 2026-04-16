@@ -5,7 +5,7 @@ import { inngest } from './client'
 /**
  * Domain event registry.
  *
- * Every Inngest event PolicyDash emits follows the same three-step shape:
+ * Every Inngest event Civilization Lab emits follows the same three-step shape:
  *
  *   1. A private Zod schema literal - the single source of truth for the
  *      event's payload shape and runtime validation rules.
@@ -291,7 +291,7 @@ const workshopRegistrationReceivedSchema = z.object({
   emailHash: z.string().regex(/^[0-9a-f]{64}$/, 'emailHash must be SHA-256 hex (64 lowercase chars)'),
   name: z.string(),
   bookingUid: z.string().min(1),
-  source: z.enum(['cal_booking', 'walk_in']),
+  source: z.enum(['cal_booking', 'walk_in', 'direct_register']),
 })
 
 export const workshopRegistrationReceivedEvent = eventType(

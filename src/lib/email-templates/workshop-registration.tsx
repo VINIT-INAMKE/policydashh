@@ -64,7 +64,7 @@ export function WorkshopRegistrationEmail({
               marginBottom: '24px',
             }}
           >
-            POLICYDASH
+            CIVILIZATION LAB
           </Text>
           <Text
             style={{
@@ -88,7 +88,7 @@ export function WorkshopRegistrationEmail({
           </Text>
           <Hr style={{ borderColor: '#ebeef0', margin: '32px 0' }} />
           <Text style={{ fontSize: '12px', color: '#44474e', lineHeight: 1.5 }}>
-            {'This is a consultation workshop run under PolicyDash. If you did not register for this session, you can safely ignore this email.'}
+            {'This is a consultation workshop run under Civilization Lab. If you did not register for this session, you can safely ignore this email.'}
           </Text>
         </Container>
       </Body>

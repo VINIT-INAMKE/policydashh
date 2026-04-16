@@ -114,7 +114,7 @@ export default function TraceabilityPDF({ rows, documentTitle }: TraceabilityPDF
         ))}
 
         <Text style={styles.footer}>
-          Generated {new Date().toISOString().split('T')[0]} -- PolicyDash Traceability Export
+          Generated {new Date().toISOString().split('T')[0]} -- Civilization Lab Traceability Export
         </Text>
       </Page>
     </Document>

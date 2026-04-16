@@ -4,11 +4,11 @@ import { buildGreeting } from '../lib/greeting'
 describe('buildGreeting', () => {
   it('includes the recipient name in the greeting', () => {
     const result = buildGreeting({
-      recipientName: 'PolicyDash',
+      recipientName: 'Civilization Lab',
       deliveredAt: new Date('2026-04-12T12:00:00.000Z'),
     })
 
-    expect(result).toContain('PolicyDash')
+    expect(result).toContain('Civilization Lab')
   })
 
   it('includes the ISO timestamp of delivery', () => {

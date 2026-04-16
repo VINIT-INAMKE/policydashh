@@ -64,7 +64,7 @@ export function WorkshopFeedbackInviteEmail({
               marginBottom: '24px',
             }}
           >
-            POLICYDASH
+            CIVILIZATION LAB
           </Text>
           <Text
             style={{

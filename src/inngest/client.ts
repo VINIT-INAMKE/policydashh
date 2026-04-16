@@ -1,7 +1,7 @@
 import { Inngest } from 'inngest'
 
 /**
- * The singleton Inngest client for PolicyDash.
+ * The singleton Inngest client for Civilization Lab.
  *
  * This file intentionally does NOT declare events. In Inngest v4 each event
  * is an exported EventType instance (see `./events.ts`) that carries its own
@@ -9,5 +9,5 @@ import { Inngest } from 'inngest'
  * sending. One source of truth per event, no centralized union type.
  */
 export const inngest = new Inngest({
-  id: 'policydash',
+  id: 'civilization-lab',
 })
