@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { trpc } from '@/src/trpc/client'
 import { Users, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -114,7 +115,12 @@ export function UsersClient() {
             {usersQuery.data.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">
-                  {user.name || <span className="text-muted-foreground">--</span>}
+                  <Link
+                    href={`/users/${user.id}`}
+                    className="underline-offset-2 hover:underline"
+                  >
+                    {user.name || '--'}
+                  </Link>
                 </TableCell>
                 <TableCell>
                   {user.email || <span className="text-muted-foreground">--</span>}

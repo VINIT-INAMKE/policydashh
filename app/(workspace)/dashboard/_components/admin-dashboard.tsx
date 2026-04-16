@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from './stat-card'
+import { InactiveUsersWidget } from './inactive-users-widget'
 import { format } from 'date-fns'
 
 interface AdminDashboardProps {
@@ -29,12 +30,20 @@ const ROLE_DISPLAY: Record<string, string> = {
 }
 
 export async function AdminDashboard({ userId }: AdminDashboardProps) {
+  // Named subquery for engagement score computation (D-02)
+  const feedbackCounts = db
+    .select({ submitterId: feedbackItems.submitterId, cnt: count().as('cnt') })
+    .from(feedbackItems)
+    .groupBy(feedbackItems.submitterId)
+    .as('feedback_counts')
+
   const [
     [totalUsersResult],
     [activePoliciesResult],
     [openFeedbackResult],
     versionsReadyToPublish,
     usersByRole,
+    usersWithEngagement,
   ] = await Promise.all([
     db.select({ count: count() }).from(users),
 
@@ -62,6 +71,24 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
       })
       .from(users)
       .groupBy(users.role),
+
+    // Users with engagement score for inactive widget (UX-09, D-03)
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        orgType: users.orgType,
+        createdAt: users.createdAt,
+        lastActivityAt: users.lastActivityAt,
+        engagementScore: sql<number>`
+          COALESCE(${feedbackCounts.cnt}, 0)
+        `.mapWith(Number),
+      })
+      .from(users)
+      .leftJoin(feedbackCounts, eq(users.id, feedbackCounts.submitterId))
+      .orderBy(users.createdAt),
   ])
 
   const totalUsers = totalUsersResult?.count ?? 0
@@ -78,6 +105,9 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
         <StatCard icon={<BookOpen className="size-5" />} value={versionsCount} label="Versions Ready to Publish" />
         <StatCard icon={<MessageSquare className="size-5" />} value={openFeedback} label="Open Feedback" />
       </div>
+
+      {/* Inactive Users Widget (UX-09, D-03) */}
+      <InactiveUsersWidget users={usersWithEngagement} />
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
