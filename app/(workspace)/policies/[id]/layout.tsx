@@ -25,10 +25,17 @@ export default async function PolicyLayout({
     role === 'policy_lead' ||
     role === 'auditor' ||
     role === 'stakeholder'
+  const canViewMilestones =
+    role === 'admin' || role === 'policy_lead' || role === 'auditor'
 
   return (
     <div className="flex h-full flex-col">
-      <PolicyTabBar documentId={id} canViewCR={canViewCR} canViewTrace={canViewTrace} />
+      <PolicyTabBar
+        documentId={id}
+        canViewCR={canViewCR}
+        canViewTrace={canViewTrace}
+        canViewMilestones={canViewMilestones}
+      />
       <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>
   )

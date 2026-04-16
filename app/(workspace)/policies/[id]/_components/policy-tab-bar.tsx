@@ -15,9 +15,10 @@ interface PolicyTabBarProps {
   documentId: string
   canViewCR: boolean
   canViewTrace: boolean
+  canViewMilestones: boolean
 }
 
-export function PolicyTabBar({ documentId, canViewCR, canViewTrace }: PolicyTabBarProps) {
+export function PolicyTabBar({ documentId, canViewCR, canViewTrace, canViewMilestones }: PolicyTabBarProps) {
   const pathname = usePathname()
 
   const tabs: Tab[] = [
@@ -30,6 +31,12 @@ export function PolicyTabBar({ documentId, canViewCR, canViewTrace }: PolicyTabB
       visible: canViewCR,
     },
     { label: 'Versions', href: `/policies/${documentId}/versions`, match: 'startsWith', visible: true },
+    {
+      label: 'Milestones',
+      href: `/policies/${documentId}/milestones`,
+      match: 'startsWith',
+      visible: canViewMilestones,
+    },
     {
       label: 'Traceability',
       href: `/policies/${documentId}/traceability`,
@@ -57,7 +64,7 @@ export function PolicyTabBar({ documentId, canViewCR, canViewTrace }: PolicyTabB
               href={tab.href}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'relative inline-flex h-9 items-center px-3 text-sm font-medium transition-colors',
+                'relative inline-flex h-9 items-center px-3 text-sm font-semibold transition-colors',
                 'after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity',
                 isActive
                   ? 'text-foreground after:opacity-100'
