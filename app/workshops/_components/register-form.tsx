@@ -9,15 +9,18 @@ interface RegisterFormProps {
   workshopId: string
   workshopTitle: string
   disabled?: boolean
+  prefillName?: string | null
+  prefillEmail?: string | null
 }
 
-export function RegisterForm({ workshopId, workshopTitle, disabled }: RegisterFormProps) {
+export function RegisterForm({ workshopId, workshopTitle, disabled, prefillName, prefillEmail }: RegisterFormProps) {
   const [expanded, setExpanded] = useState(false)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState(prefillName || '')
+  const [email, setEmail] = useState(prefillEmail || '')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isPrefilled = Boolean(prefillName && prefillEmail)
 
   if (disabled) {
     return (
@@ -38,7 +41,48 @@ export function RegisterForm({ workshopId, workshopTitle, disabled }: RegisterFo
     )
   }
 
-  if (!expanded) {
+  async function handlePrefillSubmit() {
+    setSubmitting(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/intake/workshop-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workshopId, name: (prefillName ?? '').trim(), email: (prefillEmail ?? '').trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Registration failed')
+      }
+      setSuccess(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Prefilled confirmation view for logged-in users
+  if (isPrefilled && !expanded) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-[var(--cl-on-surface-variant)]">
+          Register as <span className="font-medium text-[var(--cl-on-surface)]">{prefillName}</span> ({prefillEmail})
+        </p>
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <Button
+          onClick={handlePrefillSubmit}
+          className="w-full h-11 font-semibold"
+          style={{ backgroundColor: 'var(--cl-on-tertiary-container, #179d53)', color: '#ffffff' }}
+          disabled={submitting}
+        >
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirm Registration'}
+        </Button>
+      </div>
+    )
+  }
+
+  if (!expanded && !isPrefilled) {
     return (
       <Button
         className="h-11 w-full text-base font-semibold"

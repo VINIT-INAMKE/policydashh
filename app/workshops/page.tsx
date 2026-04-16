@@ -17,7 +17,11 @@
  * sectioning filter against `now()` - the cache sits at the query level.
  */
 import type { Metadata } from 'next'
+import { eq } from 'drizzle-orm'
+import { auth } from '@clerk/nextjs/server'
 import { CalendarX } from 'lucide-react'
+import { db } from '@/src/db'
+import { users } from '@/src/db/schema/users'
 import { listPublicWorkshops } from '@/src/server/queries/workshops-public'
 import { WorkshopCard } from './_components/workshop-card'
 
@@ -35,6 +39,17 @@ export const dynamic = 'force-dynamic'
 export default async function WorkshopsPage() {
   const all = await listPublicWorkshops()
   const now = Date.now()
+
+  // Pre-fill registration for logged-in users
+  const { userId } = await auth()
+  let currentUser: { name: string | null; email: string | null } | null = null
+  if (userId) {
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, userId),
+      columns: { name: true, email: true },
+    })
+    currentUser = user ?? null
+  }
 
   const upcoming = all.filter(
     (w) => w.status === 'upcoming' && w.scheduledAt.getTime() > now,
@@ -80,7 +95,7 @@ export default async function WorkshopsPage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {upcoming.map((w) => (
-                    <WorkshopCard key={w.id} workshop={w} variant="upcoming" />
+                    <WorkshopCard key={w.id} workshop={w} variant="upcoming" currentUser={currentUser} />
                   ))}
                 </div>
               </section>
@@ -93,7 +108,7 @@ export default async function WorkshopsPage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {live.map((w) => (
-                    <WorkshopCard key={w.id} workshop={w} variant="live" />
+                    <WorkshopCard key={w.id} workshop={w} variant="live" currentUser={currentUser} />
                   ))}
                 </div>
               </section>
@@ -106,7 +121,7 @@ export default async function WorkshopsPage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {past.map((w) => (
-                    <WorkshopCard key={w.id} workshop={w} variant="past" />
+                    <WorkshopCard key={w.id} workshop={w} variant="past" currentUser={currentUser} />
                   ))}
                 </div>
               </section>

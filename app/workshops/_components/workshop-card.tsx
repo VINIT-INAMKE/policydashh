@@ -56,9 +56,11 @@ function formatWorkshopDate(d: Date): string {
 export function WorkshopCard({
   workshop,
   variant,
+  currentUser,
 }: {
   workshop: WorkshopCardData
   variant: WorkshopCardVariant
+  currentUser?: { name: string | null; email: string | null } | null
 }) {
   const formattedDate = formatWorkshopDate(workshop.scheduledAt)
 
@@ -144,6 +146,8 @@ export function WorkshopCard({
           workshopId={workshop.id}
           workshopTitle={workshop.title}
           disabled={disabled}
+          prefillName={currentUser?.name}
+          prefillEmail={currentUser?.email}
         />
       </CardFooter>
     </Card>

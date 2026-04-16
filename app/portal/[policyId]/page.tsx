@@ -2,13 +2,15 @@ export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { auth } from '@clerk/nextjs/server'
 import { db } from '@/src/db'
 import { policyDocuments } from '@/src/db/schema/documents'
 import { documentVersions } from '@/src/db/schema/changeRequests'
 import { milestones } from '@/src/db/schema/milestones'
+import { users } from '@/src/db/schema/users'
 import { eq, and, desc } from 'drizzle-orm'
 import { format } from 'date-fns'
-import { ArrowLeft, Download, History } from 'lucide-react'
+import { ArrowLeft, Download, History, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { VersionStatusBadge } from '@/app/policies/[id]/versions/_components/version-status-badge'
 import { PublicVersionSelector } from './_components/public-version-selector'
@@ -63,6 +65,17 @@ export default async function PublicPolicyDetailPage({
   })
   if (!policy) {
     notFound()
+  }
+
+  // Auth-aware: check if current user can edit this policy
+  const { userId } = await auth()
+  let canEdit = false
+  if (userId) {
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, userId),
+      columns: { role: true },
+    })
+    canEdit = user?.role === 'admin' || user?.role === 'policy_lead'
   }
 
   // Select version: either from query param or latest
@@ -133,7 +146,18 @@ export default async function PublicPolicyDetailPage({
       </Link>
 
       <div className="space-y-2">
-        <h1 className="text-[28px] font-semibold leading-[1.2]">{policy.title}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-[28px] font-semibold leading-[1.2]">{policy.title}</h1>
+          {canEdit && (
+            <Link
+              href={`/policies/${policyId}`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--cl-on-tertiary-container)] hover:underline shrink-0 mt-1"
+            >
+              <Pencil className="size-3.5" />
+              Edit in workspace
+            </Link>
+          )}
+        </div>
         {policy.description && (
           <p className="text-sm text-muted-foreground">{policy.description}</p>
         )}

@@ -18,6 +18,8 @@
 
 import type { Metadata } from 'next'
 import { eq } from 'drizzle-orm'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import { db } from '@/src/db'
 import { workshops, workshopSectionLinks } from '@/src/db/schema/workshops'
 import { policySections } from '@/src/db/schema/documents'
@@ -84,6 +86,16 @@ export default async function ParticipatePage({ searchParams }: ParticipatePageP
   const params = await searchParams
   const workshopId = params.workshopId
   const token = params.token
+
+  // Auth-aware redirect: logged-in users go to dashboard unless they're
+  // following a workshop feedback deep-link (workshopId + token).
+  const { userId } = await auth()
+  if (workshopId && token) {
+    // Workshop feedback deep-link - always show regardless of auth
+  } else if (userId) {
+    // Already a member, send to dashboard
+    redirect('/dashboard')
+  }
 
   // Mode 1: intake - no workshopId → Phase 19 form unchanged
   if (!workshopId) {
