@@ -150,7 +150,7 @@ export const userRouter = router({
       const feedbackCounts = db
         .select({
           submitterId: feedbackItems.submitterId,
-          cnt: count().as('cnt'),
+          cnt: count().as('fb_cnt'),
         })
         .from(feedbackItems)
         .groupBy(feedbackItems.submitterId)
@@ -159,7 +159,7 @@ export const userRouter = router({
       const attendanceCounts = db
         .select({
           userId: workshopRegistrations.userId,
-          cnt: count().as('cnt'),
+          cnt: count().as('att_cnt'),
         })
         .from(workshopRegistrations)
         .where(and(

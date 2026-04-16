@@ -32,13 +32,13 @@ const ROLE_DISPLAY: Record<string, string> = {
 
 export async function AdminDashboard({ userId }: AdminDashboardProps) {
   const feedbackCounts = db
-    .select({ submitterId: feedbackItems.submitterId, cnt: count().as('cnt') })
+    .select({ submitterId: feedbackItems.submitterId, cnt: count().as('fb_cnt') })
     .from(feedbackItems)
     .groupBy(feedbackItems.submitterId)
     .as('feedback_counts')
 
   const attendanceCounts = db
-    .select({ userId: workshopRegistrations.userId, cnt: count().as('cnt') })
+    .select({ userId: workshopRegistrations.userId, cnt: count().as('att_cnt') })
     .from(workshopRegistrations)
     .where(and(isNotNull(workshopRegistrations.userId), isNotNull(workshopRegistrations.attendedAt)))
     .groupBy(workshopRegistrations.userId)
