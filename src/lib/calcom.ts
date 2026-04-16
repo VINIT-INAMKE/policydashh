@@ -132,3 +132,71 @@ export async function createCalEventType(
 
   return { id }
 }
+
+export interface CalBookingInput {
+  eventTypeId: number
+  name: string
+  email: string
+  startTime: string
+}
+
+export interface CalBookingResult {
+  uid: string
+}
+
+export async function createCalBooking(
+  input: CalBookingInput,
+): Promise<CalBookingResult> {
+  const apiKey = process.env.CAL_API_KEY
+  if (!apiKey) {
+    throw new CalApiError(400, 'CAL_API_KEY not set')
+  }
+
+  let res: Response
+  try {
+    res = await fetch('https://api.cal.com/v2/bookings', {
+      method: 'POST',
+      headers: {
+        'Authorization':    `Bearer ${apiKey}`,
+        'Content-Type':     'application/json',
+        'cal-api-version':  '2024-06-14',
+      },
+      body: JSON.stringify({
+        eventTypeId: input.eventTypeId,
+        start: input.startTime,
+        attendee: {
+          name: input.name || 'Guest',
+          email: input.email,
+          timeZone: 'UTC',
+        },
+      }),
+    })
+  } catch (err) {
+    throw new CalApiError(
+      500,
+      `cal.com booking network failure: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '<no body>')
+    throw new CalApiError(res.status, `cal.com booking API ${res.status}: ${text}`)
+  }
+
+  let body: { data?: { uid?: string } }
+  try {
+    body = (await res.json()) as { data?: { uid?: string } }
+  } catch (err) {
+    throw new CalApiError(
+      500,
+      `cal.com booking response parse failed: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+
+  const uid = body.data?.uid
+  if (!uid) {
+    throw new CalApiError(500, `cal.com booking response missing uid: ${JSON.stringify(body)}`)
+  }
+
+  return { uid }
+}
