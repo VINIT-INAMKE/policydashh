@@ -218,10 +218,10 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [x] **VERIFY-03**: Admin can mark milestone ready, triggering hash computation and Cardano anchoring
 - [x] **VERIFY-04**: SHA256 hashing service (`src/lib/hashing.ts`) produces deterministic hashes for `policyVersion`, `workshop`, `evidenceBundle`, and `milestone`
 - [x] **VERIFY-05**: JSON canonicalization (RFC 8785 JCS or explicit sort+stringify) with golden-fixture tests ensures hash determinism
-- [ ] **VERIFY-06**: `milestoneReady` Inngest fn anchors milestone state to Cardano preview-net via Mesh SDK + Blockfrost in 5 steps (compute-hash → persist-hash → check-existing-tx → submit-tx → confirm-loop)
-- [ ] **VERIFY-07**: Every `version.published` event triggers a per-version Cardano anchor tx
-- [ ] **VERIFY-08**: Cardano anchor fn is idempotent (DB unique constraint on hash + Blockfrost metadata-label pre-check + `concurrency: { key: 'cardano-wallet', limit: 1 }`)
-- [ ] **VERIFY-09**: Public `/portal` displays Verified State badges with Cardanoscan preview-net explorer links on anchored versions and milestones
+- [x] **VERIFY-06**: `milestoneReady` Inngest fn anchors milestone state to Cardano preview-net via Mesh SDK + Blockfrost in 5 steps (compute-hash → persist-hash → check-existing-tx → submit-tx → confirm-loop)
+- [x] **VERIFY-07**: Every `version.published` event triggers a per-version Cardano anchor tx
+- [x] **VERIFY-08**: Cardano anchor fn is idempotent (DB unique constraint on hash + Blockfrost metadata-label pre-check + `concurrency: { key: 'cardano-wallet', limit: 1 }`)
+- [x] **VERIFY-09**: Public `/portal` displays Verified State badges with Cardanoscan preview-net explorer links on anchored versions and milestones
 
 ### Cross-Phase Integration
 
@@ -407,10 +407,10 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | VERIFY-03 | Phase 22 | Complete |
 | VERIFY-04 | Phase 22 | Complete |
 | VERIFY-05 | Phase 22 | Complete |
-| VERIFY-06 | Phase 23 | Pending |
-| VERIFY-07 | Phase 23 | Pending |
-| VERIFY-08 | Phase 23 | Pending |
-| VERIFY-09 | Phase 23 | Pending |
+| VERIFY-06 | Phase 23 | Complete |
+| VERIFY-07 | Phase 23 | Complete |
+| VERIFY-08 | Phase 23 | Complete |
+| VERIFY-09 | Phase 23 | Complete |
 | UX-08 | Phase 24 | Pending |
 | UX-09 | Phase 24 | Pending |
 | UX-10 | Phase 24 | Pending |

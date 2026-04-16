@@ -46,7 +46,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 20.5: Public /research + /framework Content** - Static /research content page; /framework draft consultation surface with per-section status badges and what-changed log (completed 2026-04-14)
 - [x] **Phase 21: Public Shell + LLM Consultation Summary + Theme** - Minimal public shell routing; llama-3.3-70b consultation summary per section with human review gate; policy-grade theme (completed 2026-04-15)
 - [x] **Phase 22: Milestone Entity + SHA256 Hashing Service** - First-class milestones table, RFC 8785 JCS canonicalization, deterministic hashing for version/workshop/evidence/milestone (completed 2026-04-16)
-- [ ] **Phase 23: Cardano Preview-Net Anchoring** - Mesh SDK + Blockfrost per-milestone and per-version anchoring with Verified State badges on public portal
+- [x] **Phase 23: Cardano Preview-Net Anchoring** - Mesh SDK + Blockfrost per-milestone and per-version anchoring with Verified State badges on public portal (completed 2026-04-16)
 - [ ] **Phase 24: Stakeholder Engagement Tracking Lite** - users.lastActivityAt via tRPC middleware, admin inactive-user widget, basic engagement score
 - [ ] **Phase 25: Cross-Phase Integration Smoke** - Full E2E walk: /participate → workshop register → reminders → MEETING_ENDED → feedback → CR → merge → version → milestone → SHA256 → Cardano tx → Verified State badge
 
@@ -274,7 +274,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 20.5. Public /research + /framework Pages | 4/4 | Complete    | 2026-04-14 |
 | 21. Public Shell + Consultation Summary + Theme | 5/5 | Complete    | 2026-04-15 |
 | 22. Milestone Entity + SHA256 Hashing | 5/5 | Complete    | 2026-04-16 |
-| 23. Cardano Preview-Net Anchoring | 3/4 | In Progress|  |
+| 23. Cardano Preview-Net Anchoring | 4/4 | Complete   | 2026-04-16 |
 | 24. Stakeholder Engagement Tracking | 0/0 | v0.2 Planning | - |
 | 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
 
@@ -527,13 +527,13 @@ Plans:
   6. Every `version.published` event triggers a per-version anchor via the same pipeline (different metadata type)
   7. DB-level `UNIQUE(milestoneId)` / `UNIQUE(versionId)` constraint + `concurrency: { key: 'cardano-wallet', limit: 1 }` enforce idempotency at three layers
   8. Public `/portal` renders Verified State badge on anchored versions and milestones, linking to `https://preview.cardanoscan.io/transaction/{txHash}` explorer page
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 23-00-PLAN.md -- Wave 0 RED test stubs (cardano.test.ts, milestone-ready.test.ts, version-anchor.test.ts, verified-badge.test.tsx)
 - [x] 23-01-PLAN.md -- Install Cardano SDK, create src/lib/cardano.ts server-only wrapper, DB migration (txHash + anchoredAt), Drizzle schema extensions, milestone.ready event, audit constants
 - [x] 23-02-PLAN.md -- milestoneReadyFn 5-step Inngest pipeline, versionAnchorFn fan-out, markReady Inngest event emission, retryAnchor mutation
-- [ ] 23-03-PLAN.md -- VerifiedBadge component, public portal badge integration (3 locations), admin milestone detail Cardanoscan link + RetryAnchorButton
+- [x] 23-03-PLAN.md -- VerifiedBadge component, public portal badge integration (3 locations), admin milestone detail Cardanoscan link + RetryAnchorButton
 
 ### Phase 24: Stakeholder Engagement Tracking (lite)
 
