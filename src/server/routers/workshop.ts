@@ -69,7 +69,7 @@ export const workshopRouter = router({
       }).catch(console.error)
 
       // Phase 20 WS-07 (D-01, D-03): async cal.com event-type provisioning.
-      // Fire-and-forget — the workshop row persists even if the Inngest send
+      // Fire-and-forget - the workshop row persists even if the Inngest send
       // itself fails (e.g. Inngest down), and the downstream
       // `workshopCreatedFn` handles cal.com 5xx/4xx via its own retry policy.
       // Public listing (Plan 20-05) gates the embed on
@@ -301,7 +301,7 @@ export const workshopRouter = router({
         })
         .returning()
 
-      // Then link to workshop — sequential, no transaction (Neon HTTP driver).
+      // Then link to workshop - sequential, no transaction (Neon HTTP driver).
       // Capture the inserted workshopArtifact row id so we can pass it to the
       // recording pipeline event below (it identifies the link-row, not the
       // underlying evidence artifact).
@@ -325,7 +325,7 @@ export const workshopRouter = router({
 
       // Fire the Inngest pipeline for recording uploads (WS-14). We only
       // emit when the caller supplied both artifactType='recording' and a
-      // usable r2Key — uploads via the public URL form (e.g. external link
+      // usable r2Key - uploads via the public URL form (e.g. external link
       // artifacts) never enter the Groq pipeline.
       if (input.artifactType === 'recording' && input.r2Key) {
         await sendWorkshopRecordingUploaded({
@@ -542,7 +542,7 @@ export const workshopRouter = router({
       if (!allowedNext.includes(input.toStatus)) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `Invalid transition: ${existing.status} → ${input.toStatus}. Allowed next states: ${allowedNext.join(', ') || '(none — terminal)'}`,
+          message: `Invalid transition: ${existing.status} → ${input.toStatus}. Allowed next states: ${allowedNext.join(', ') || '(none - terminal)'}`,
         })
       }
 
@@ -579,7 +579,7 @@ export const workshopRouter = router({
       return { success: true, fromStatus: existing.status, toStatus: input.toStatus }
     }),
 
-  // Approve a draft artifact (flip reviewStatus from 'draft' to 'approved') — WS-14
+  // Approve a draft artifact (flip reviewStatus from 'draft' to 'approved') - WS-14
   approveArtifact: requirePermission('workshop:manage')
     .input(z.object({
       workshopId: z.string().uuid(),

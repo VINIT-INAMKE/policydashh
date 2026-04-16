@@ -47,7 +47,7 @@ vi.mock('@/src/lib/constants', async (orig) => {
 })
 
 // db is touched by the existing evidenceRouter procedures at import time
-// only via schema references, but other procedures reach into db.* — so we
+// only via schema references, but other procedures reach into db.* - so we
 // stub the surface to avoid triggering real Neon connections.
 vi.mock('@/src/db', () => ({
   db: {
@@ -166,7 +166,7 @@ describe('evidence.requestExport mutation', () => {
   it('rejects { } missing documentId with a Zod input validation error (BAD_REQUEST), not a procedure-missing error', async () => {
     expect(evidenceRouterModule?.evidenceRouter).toBeDefined()
     // Procedure must exist on the router definition for this to be RED at
-    // Wave 0 — we probe the internal _def to avoid passing on a Proxy hit.
+    // Wave 0 - we probe the internal _def to avoid passing on a Proxy hit.
     const def = (evidenceRouterModule.evidenceRouter as any)._def
     expect(def?.procedures?.requestExport).toBeDefined()
     const caller = evidenceRouterModule.evidenceRouter.createCaller(makeCtx('auditor'))

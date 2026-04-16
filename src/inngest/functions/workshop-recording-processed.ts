@@ -12,7 +12,7 @@ import { getDownloadUrl } from '@/src/lib/r2'
 import { transcribeAudio, summarizeTranscript } from '@/src/lib/llm'
 
 /**
- * workshop-recording-processed — Groq-backed transcription + summarization.
+ * workshop-recording-processed - Groq-backed transcription + summarization.
  *
  * Triggered by `workshop.recording_uploaded` events fired from the
  * `workshop.attachArtifact` mutation (Plan 17-04) when a moderator uploads
@@ -40,7 +40,7 @@ import { transcribeAudio, summarizeTranscript } from '@/src/lib/llm'
 export const workshopRecordingProcessedFn = inngest.createFunction(
   {
     id: 'workshop-recording-processed',
-    name: 'Workshop recording — transcribe + summarize via Groq',
+    name: 'Workshop recording - transcribe + summarize via Groq',
     retries: 2, // fewer retries than default: Groq calls are expensive
     concurrency: { key: 'groq-transcription', limit: 2 },
     // Inlined per src/inngest/README.md §90-94 (type widening footgun).
@@ -90,7 +90,7 @@ export const workshopRecordingProcessedFn = inngest.createFunction(
         })
         .returning({ id: evidenceArtifacts.id })
 
-      // Insert summary as an evidence artifact — structured JSON in content.
+      // Insert summary as an evidence artifact - structured JSON in content.
       const [summaryEv] = await db
         .insert(evidenceArtifacts)
         .values({
@@ -120,7 +120,7 @@ export const workshopRecordingProcessedFn = inngest.createFunction(
 
       // Flip the 'recording' checklist slot to 'filled' (Pitfall 7).
       // If the checklist row does not exist yet (workshop wasn't marked
-      // completed before recording upload), this update is a no-op — that
+      // completed before recording upload), this update is a no-op - that
       // is acceptable; the checklist row will be created when completion
       // fires and a future fill-recording-slot scan can reconcile.
       await db

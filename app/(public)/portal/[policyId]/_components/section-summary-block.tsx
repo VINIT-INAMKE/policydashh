@@ -10,7 +10,7 @@ interface SectionSummaryBlockProps {
   /**
    * Whether the section has SOMETHING in the JSONB (even if not approved).
    * Used to decide between placeholder (hasEntry && !summary) and omit
-   * entirely (no entry — e.g. version predates feature).
+   * entirely (no entry - e.g. version predates feature).
    */
   hasEntry: boolean
 }
@@ -21,7 +21,7 @@ interface SectionSummaryBlockProps {
  * summary is pending/blocked/error/skipped, or nothing at all for
  * versions predating the feature.
  *
- * LLM-08: Accepts only `ApprovedSummarySection` — the stripped projection.
+ * LLM-08: Accepts only `ApprovedSummarySection` - the stripped projection.
  *          Never receives the internal-only fields per Phase 21 Pitfall 1.
  */
 export function SectionSummaryBlock({ summary, hasEntry }: SectionSummaryBlockProps) {

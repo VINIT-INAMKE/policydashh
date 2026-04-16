@@ -13,7 +13,7 @@ import { notifications } from '@/src/db/schema/notifications'
 import { sendFeedbackReviewedEmail } from '@/src/lib/email'
 
 /**
- * Flow 5 — revision engine.
+ * Flow 5 - revision engine.
  *
  * Triggered when a reviewer decides a feedback item (accept / partially
  * accept / reject). Runs three side effects as idempotent steps:
@@ -23,14 +23,14 @@ import { sendFeedbackReviewedEmail } from '@/src/lib/email'
  *   3. Auto-draft a change request (only for accept and partially_accept).
  *
  * Context is looked up inside the function rather than carried in the
- * event payload — this keeps the emit path in the router minimal, and
+ * event payload - this keeps the emit path in the router minimal, and
  * since each DB read is wrapped in `step.run` the result is memoized on
  * retry so the reads don't repeat.
  */
 export const feedbackReviewedFn = inngest.createFunction(
   {
     id: 'feedback-reviewed',
-    name: 'Feedback reviewed — notify, email, auto-draft CR',
+    name: 'Feedback reviewed - notify, email, auto-draft CR',
     retries: 3,
     triggers: [{ event: feedbackReviewedEvent }],
   },

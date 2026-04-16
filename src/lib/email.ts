@@ -67,7 +67,7 @@ export async function sendSectionAssignedEmail(
  * remain empty after a delay period (72h or 7d post-completion).
  *
  * Silent no-op when RESEND_API_KEY is unset or `to` is null/undefined.
- * Fire-and-forget from Inngest step — errors bubble as plain Error so
+ * Fire-and-forget from Inngest step - errors bubble as plain Error so
  * Inngest retries. Used by workshopCompletedFn (Plan 17-03).
  */
 export async function sendWorkshopEvidenceNudgeEmail(
@@ -145,7 +145,7 @@ export async function sendEvidencePackReadyEmail(
 /**
  * Send the Phase 19 welcome email to a /participate submitter.
  * Fire-and-forget-safe: silently no-ops if Resend unconfigured or recipient null.
- * Rendered HTML from renderWelcomeEmail — one of 6 org-bucket variants.
+ * Rendered HTML from renderWelcomeEmail - one of 6 org-bucket variants.
  *
  * Called from src/inngest/functions/participate-intake.ts in a step.run block.
  */
@@ -177,7 +177,7 @@ export async function sendWelcomeEmail(
  * block after Clerk invite. Same silent-no-op semantics as the rest of the
  * helpers in this file. JSX template is dynamically imported so
  * `vi.mock('@/src/lib/email')` in Inngest fn tests does not need to
- * transform the .tsx file (Pitfall 8 — Phase 16/17/18/19 parity).
+ * transform the .tsx file (Pitfall 8 - Phase 16/17/18/19 parity).
  */
 export async function sendWorkshopRegistrationEmail(
   to: string | null | undefined,

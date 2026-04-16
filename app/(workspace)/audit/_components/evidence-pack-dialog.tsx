@@ -34,7 +34,7 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
   const [policyId, setPolicyId] = useState('')
   const [toastFired, setToastFired] = useState(false)
 
-  // Checklist state (all checked by default — display-only for now; the
+  // Checklist state (all checked by default - display-only for now; the
   // Inngest function exports the full pack. Per-section opt-in is a
   // future enhancement.)
   const [checklist, setChecklist] = useState({

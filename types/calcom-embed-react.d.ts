@@ -8,7 +8,7 @@
  *
  * When the real package is installed, its own `.d.ts` takes precedence
  * (TypeScript prefers package-local types over ambient declarations).
- * This file is safe to leave in place — it carries no runtime code.
+ * This file is safe to leave in place - it carries no runtime code.
  *
  * Minimal API surface needed by `app/(public)/workshops/_components/cal-embed.tsx`:
  *   - default export: <Cal calLink namespace config? style? />

@@ -4,11 +4,11 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
  * Plan 20-02 test contract for workshopCreatedFn (WS-07).
  *
  * Covers five behaviors (T1-T5 from the plan):
- *   T1 — successful cal.com response backfills calcomEventTypeId.
- *   T2 — missing workshop row → NonRetriableError.
- *   T3 — cal.com 500 → plain Error bubbles (retry path).
- *   T4 — cal.com 400 → NonRetriableError (no retry).
- *   T5 — missing CAL_API_KEY → NonRetriableError (caught and rewrapped by fn).
+ *   T1 - successful cal.com response backfills calcomEventTypeId.
+ *   T2 - missing workshop row → NonRetriableError.
+ *   T3 - cal.com 500 → plain Error bubbles (retry path).
+ *   T4 - cal.com 400 → NonRetriableError (no retry).
+ *   T5 - missing CAL_API_KEY → NonRetriableError (caught and rewrapped by fn).
  *
  * Mock strategy: `vi.hoisted` for shared handles; `vi.mock('@/src/db')` with a
  * chain-mock and `vi.mock('@/src/lib/calcom')` so the tests never fire a real
@@ -54,7 +54,7 @@ vi.mock('@/src/db', () => ({
 // We redefine CalApiError inside the mock factory (rather than importActual
 // the real module) because `src/lib/calcom.ts` imports `server-only`, which
 // blocks test-context module loads. The mocked CalApiError ctor must match
-// the real shape — status getter + Error subclass — so the fn under test's
+// the real shape - status getter + Error subclass - so the fn under test's
 // `err instanceof CalApiError` check resolves against this same constructor.
 vi.mock('@/src/lib/calcom', () => {
   class CalApiError extends Error {
@@ -75,7 +75,7 @@ let fnModule: { workshopCreatedFn?: unknown } | null = null
 let CalApiErrorCtor: (new (status: number, message: string) => Error) | null = null
 
 beforeAll(async () => {
-  // Variable path bypasses Vite static analysis — lets the test file load
+  // Variable path bypasses Vite static analysis - lets the test file load
   // even if the target is temporarily broken mid-refactor.
   const targetPath = ['..', 'functions', 'workshop-created'].join('/')
   try {
@@ -137,7 +137,7 @@ async function invoke(event: ReturnType<typeof makeEvent>, step: ReturnType<type
   return await handler({ event, step, runId: 'test', attempt: 0, logger: console })
 }
 
-describe('workshopCreatedFn — cal.com event-type provisioning (WS-07)', () => {
+describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
   it('T1: backfills calcomEventTypeId on successful cal.com response', async () => {
     mocks.limitMock.mockResolvedValueOnce([
       {
@@ -175,11 +175,11 @@ describe('workshopCreatedFn — cal.com event-type provisioning (WS-07)', () => 
     expect(mocks.updateMock).not.toHaveBeenCalled()
   })
 
-  it('T3: 5xx bubbles a plain Error (retry path — NOT NonRetriableError)', async () => {
+  it('T3: 5xx bubbles a plain Error (retry path - NOT NonRetriableError)', async () => {
     mocks.limitMock.mockResolvedValueOnce([
       { id: 'w', title: 'x', durationMinutes: 60, calcomEventTypeId: null },
     ])
-    if (!CalApiErrorCtor) throw new Error('CalApiError ctor not resolved — calcom module missing')
+    if (!CalApiErrorCtor) throw new Error('CalApiError ctor not resolved - calcom module missing')
     mocks.createCalEventTypeMock.mockRejectedValueOnce(new CalApiErrorCtor(500, 'cal.com API 500: boom'))
 
     const { step } = makeStep()
@@ -190,7 +190,7 @@ describe('workshopCreatedFn — cal.com event-type provisioning (WS-07)', () => 
       thrown = e
     }
     expect(thrown).toBeInstanceOf(Error)
-    // Must NOT be NonRetriableError — Inngest needs the retry path.
+    // Must NOT be NonRetriableError - Inngest needs the retry path.
     const { NonRetriableError } = await import('inngest')
     expect(thrown).not.toBeInstanceOf(NonRetriableError)
     // Backfill must not have run.

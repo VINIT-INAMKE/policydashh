@@ -8,7 +8,7 @@ import { workshops } from '@/src/db/schema/workshops'
 import { sendWorkshopRegistrationEmail } from '@/src/lib/email'
 
 /**
- * workshopRegistrationReceivedFn — async worker for cal.com workshop bookings.
+ * workshopRegistrationReceivedFn - async worker for cal.com workshop bookings.
  *
  * Triggered by `workshop.registration.received` events emitted by:
  *   - app/api/webhooks/cal/route.ts (Plan 20-03) on BOOKING_CREATED and
@@ -16,16 +16,16 @@ import { sendWorkshopRegistrationEmail } from '@/src/lib/email'
  *
  * Steps:
  *   1. Rate limit at run-start: 1 run per emailHash per 15 minutes (mirrors
- *      participateIntakeFn — absorbs cal.com webhook retry bursts without
+ *      participateIntakeFn - absorbs cal.com webhook retry bursts without
  *      double-inviting the same email).
- *   2. `load-workshop` — resolve workshop.title + workshop.scheduledAt by
+ *   2. `load-workshop` - resolve workshop.title + workshop.scheduledAt by
  *      event.data.workshopId. Missing row → NonRetriableError (the cal.com
- *      booking pointed at a workshop that no longer exists — unrecoverable).
- *   3. `create-clerk-invitation` — `clerkClient().invitations.createInvitation`
+ *      booking pointed at a workshop that no longer exists - unrecoverable).
+ *   3. `create-clerk-invitation` - `clerkClient().invitations.createInvitation`
  *      with `ignoreExisting: true` and `publicMetadata: {role:'stakeholder',
  *      orgType: null}`. Workshop invitees have no declared orgType; Phase 24
  *      engagement scoring can backfill later.
- *   4. `send-registration-email` — sendWorkshopRegistrationEmail with the
+ *   4. `send-registration-email` - sendWorkshopRegistrationEmail with the
  *      resolved workshop title + scheduledAt ISO.
  *
  * Error policy (mirrors participateIntakeFn):
@@ -44,7 +44,7 @@ import { sendWorkshopRegistrationEmail } from '@/src/lib/email'
 export const workshopRegistrationReceivedFn = inngest.createFunction(
   {
     id: 'workshop-registration-received',
-    name: 'Workshop registration received — Clerk invite + confirmation email',
+    name: 'Workshop registration received - Clerk invite + confirmation email',
     retries: 3,
     // D-11: absorb cal.com webhook retry bursts for the same registration.
     rateLimit: {
@@ -52,7 +52,7 @@ export const workshopRegistrationReceivedFn = inngest.createFunction(
       limit: 1,
       period: '15m',
     },
-    // INLINE triggers — Pitfall 4.
+    // INLINE triggers - Pitfall 4.
     triggers: [{ event: 'workshop.registration.received' }],
   },
   async ({ event, step }) => {
@@ -66,7 +66,7 @@ export const workshopRegistrationReceivedFn = inngest.createFunction(
     }
 
     // Step 1: load workshop row for the email's title + scheduledAt.
-    // Note: step.run serializes the return value through JSON — Date round-trips
+    // Note: step.run serializes the return value through JSON - Date round-trips
     // as ISO string on the far side, so we pre-serialize here to keep the
     // handler-level type honest.
     const workshop = await step.run('load-workshop', async () => {
@@ -108,7 +108,7 @@ export const workshopRegistrationReceivedFn = inngest.createFunction(
             ? (err as { status: number }).status
             : undefined
         if (status !== undefined && status >= 500) {
-          // Transient — bubble so Inngest consumes retry budget.
+          // Transient - bubble so Inngest consumes retry budget.
           throw err instanceof Error ? err : new Error(String(err))
         }
         throw new NonRetriableError(
@@ -117,7 +117,7 @@ export const workshopRegistrationReceivedFn = inngest.createFunction(
       }
     })
 
-    // Step 3: confirmation email. No try/catch — failures retry via Inngest.
+    // Step 3: confirmation email. No try/catch - failures retry via Inngest.
     await step.run('send-registration-email', async () => {
       await sendWorkshopRegistrationEmail(email, {
         name,

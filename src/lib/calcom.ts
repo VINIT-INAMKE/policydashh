@@ -1,7 +1,7 @@
 import 'server-only'
 
 /**
- * cal.com API v2 client — minimal surface for Phase 20 WS-07.
+ * cal.com API v2 client - minimal surface for Phase 20 WS-07.
  *
  * Decisions:
  *   - D-01: workshop create is async via Inngest; this module is called from
@@ -20,7 +20,7 @@ import 'server-only'
  *                                 wraps in NonRetriableError.
  *   - Missing CAL_API_KEY       → CalApiError(400, …) → NonRetriableError.
  *   - Malformed response body   → CalApiError(500, …) → retried. This is
- *                                 intentionally conservative — a transient
+ *                                 intentionally conservative - a transient
  *                                 parse glitch is worth one retry before we
  *                                 give up.
  *
@@ -30,7 +30,7 @@ import 'server-only'
  *   - Auth header: Authorization: Bearer ${CAL_API_KEY}
  *   - Version hdr: cal-api-version: 2024-06-14  (required)
  *   - Body:        { title, slug, lengthInMinutes, locations: [...] }
- *   - Research OQ2: docs disagree on `lengthInMinutes` vs `length` — we pass
+ *   - Research OQ2: docs disagree on `lengthInMinutes` vs `length` - we pass
  *     BOTH field names in the same request body. One will be accepted and the
  *     other ignored; neither causes a 400 when both are valid.
  *   - Response:    { data: { id: number } }
@@ -67,7 +67,7 @@ export class CalApiError extends Error {
 /**
  * Create a cal.com event type under the shared org account.
  *
- * Throws CalApiError on any failure — the Inngest function layer inspects
+ * Throws CalApiError on any failure - the Inngest function layer inspects
  * `err.status` to decide between retry (>= 500) and NonRetriableError (< 500).
  */
 export async function createCalEventType(
@@ -90,7 +90,7 @@ export async function createCalEventType(
       body: JSON.stringify({
         title: input.title,
         slug:  input.slug,
-        // Research OQ2 — pass both field names to cover the doc discrepancy.
+        // Research OQ2 - pass both field names to cover the doc discrepancy.
         lengthInMinutes: input.durationMinutes,
         length:          input.durationMinutes,
         // D-02: Cal Video as the default meeting location.
@@ -99,7 +99,7 @@ export async function createCalEventType(
     })
   } catch (err) {
     // Network-level failure (DNS, TLS, connection reset). Treat as 5xx so the
-    // Inngest function retries — transient infra blips shouldn't kill the
+    // Inngest function retries - transient infra blips shouldn't kill the
     // workshop row forever.
     throw new CalApiError(
       500,

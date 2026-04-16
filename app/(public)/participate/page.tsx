@@ -1,12 +1,12 @@
 /**
- * Public /participate page — dual-mode (Phase 19 intake + Phase 20 workshop feedback).
+ * Public /participate page - dual-mode (Phase 19 intake + Phase 20 workshop feedback).
  *
  * Mode switch (D-18 in 20-CONTEXT.md):
  *   - No `workshopId` query param → render Phase 19 intake form (unchanged)
  *   - `workshopId` + `token` + valid JWT → render WorkshopFeedbackForm
  *   - `workshopId` present but token missing/invalid/expired → render ExpiredLinkCard
  *
- * JWT validation is performed SERVER-SIDE here via `verifyFeedbackToken` —
+ * JWT validation is performed SERVER-SIDE here via `verifyFeedbackToken` -
  * the client component receives a pre-validated prop and must NEVER decide
  * whether to render the form on its own. The token is passed back to
  * `/api/intake/workshop-feedback` on submit so the route handler can
@@ -85,12 +85,12 @@ export default async function ParticipatePage({ searchParams }: ParticipatePageP
   const workshopId = params.workshopId
   const token = params.token
 
-  // Mode 1: intake — no workshopId → Phase 19 form unchanged
+  // Mode 1: intake - no workshopId → Phase 19 form unchanged
   if (!workshopId) {
     return <IntakeShell />
   }
 
-  // Mode 2/3: feedback mode — workshopId present, JWT required
+  // Mode 2/3: feedback mode - workshopId present, JWT required
   if (!token) {
     return (
       <FeedbackShell>

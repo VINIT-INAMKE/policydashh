@@ -9,7 +9,7 @@
  *
  * Separate .tsx file so Inngest function tests can `vi.mock` the
  * `@/src/lib/email` boundary without pulling JSX through the transform
- * (Pitfall 8 — Phase 16/17/18/19 parity).
+ * (Pitfall 8 - Phase 16/17/18/19 parity).
  *
  * Copy uses unicode curly apostrophes (\u2019) verbatim for test contract
  * parity with Phase 19's welcome email.
@@ -108,7 +108,7 @@ export function WorkshopFeedbackInviteEmail({
   )
 }
 
-/** Render to HTML. Async per @react-email/render v1.x (Pitfall 6 — always await). */
+/** Render to HTML. Async per @react-email/render v1.x (Pitfall 6 - always await). */
 export async function renderWorkshopFeedbackInviteEmail(
   props: WorkshopFeedbackInviteEmailProps,
 ): Promise<string> {

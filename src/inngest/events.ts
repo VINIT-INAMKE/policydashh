@@ -7,15 +7,15 @@ import { inngest } from './client'
  *
  * Every Inngest event PolicyDash emits follows the same three-step shape:
  *
- *   1. A private Zod schema literal — the single source of truth for the
+ *   1. A private Zod schema literal - the single source of truth for the
  *      event's payload shape and runtime validation rules.
- *   2. An exported `EventType` instance via `eventType(name, { schema })` —
+ *   2. An exported `EventType` instance via `eventType(name, { schema })` -
  *      used as the trigger in `createFunction` and as the `.create()` factory
  *      for send payloads. Zod v4 implements StandardSchemaV1 natively, so a
  *      `z.object(...)` schema can be passed directly.
  *   3. An exported `sendX()` helper whose parameter type is derived from
  *      `z.infer<typeof schema>`. This is the ONLY sanctioned way to emit
- *      events — the client's raw `inngest.send()` is not narrowed by the
+ *      events - the client's raw `inngest.send()` is not narrowed by the
  *      event registry (v4 removed `EventSchemas.fromZod()`), so calling it
  *      directly is a type-safety hole.
  *
@@ -24,7 +24,7 @@ import { inngest } from './client'
  *      a hand-written duplicate. This closes the drift between schema and
  *      helper signature the first time someone adds a field.
  *   B. The helper calls `.validate()` on the created event BEFORE sending.
- *      `EventType.create()` returns an `UnvalidatedCreatedEvent` — the Zod
+ *      `EventType.create()` returns an `UnvalidatedCreatedEvent` - the Zod
  *      schema is decorative at send time unless `.validate()` is explicitly
  *      called. See `node_modules/inngest/components/triggers/triggers.d.ts`
  *      lines 79-89.
@@ -98,8 +98,8 @@ export async function sendFeedbackReviewed(
 // -- notification.create --------------------------------------------------
 
 // Zod 4's z.uuid() only accepts UUID versions 1-8 (it specifically rejects
-// version-0 all-zeros-ish test fixtures). We use z.guid() here — which
-// accepts any 8-4-4-4-12 hex UUID regardless of the version nibble — so the
+// version-0 all-zeros-ish test fixtures). We use z.guid() here - which
+// accepts any 8-4-4-4-12 hex UUID regardless of the version nibble - so the
 // Wave 0 test fixtures (e.g. '00000000-0000-0000-0000-000000000001') validate
 // correctly. Production callsites pass real v4 UUIDs from gen_random_uuid(),
 // which z.guid() accepts identically; there is no runtime risk difference.
@@ -116,7 +116,7 @@ const notificationCreateSchema = z.object({
   entityType: z.string().optional(),
   entityId: z.guid().optional(),
   linkHref: z.string().optional(),
-  // NOTIF-06 idempotency key fields — caller supplies these so the
+  // NOTIF-06 idempotency key fields - caller supplies these so the
   // Inngest function can compute a deterministic per-action key and insert
   // with onConflictDoNothing() against the notifications_idempotency_key_unique
   // partial index added in migration 0009_notification_idempotency.sql.
@@ -226,7 +226,7 @@ export async function sendEvidenceExportRequested(
 // -- participate.intake ------------------------------------------------
 
 const participateIntakeSchema = z.object({
-  // SHA-256 hex of lowercased trimmed email — used as rate-limit key
+  // SHA-256 hex of lowercased trimmed email - used as rate-limit key
   emailHash: z.string().regex(/^[0-9a-f]{64}$/, 'emailHash must be SHA-256 hex (64 lowercase chars)'),
   email: z.string().email(),
   name: z.string().min(2).max(120),
@@ -248,7 +248,7 @@ export type ParticipateIntakeData = z.infer<typeof participateIntakeSchema>
  *
  * Rate limiting: `participateIntakeFn` in src/inngest/functions/participate-intake.ts
  * configures `rateLimit: { key: 'event.data.emailHash', limit: 1, period: '15m' }`.
- * This helper does NOT rate-limit — it simply accepts, validates, and hands
+ * This helper does NOT rate-limit - it simply accepts, validates, and hands
  * off to Inngest, which enforces the limit at run-start time.
  */
 export async function sendParticipateIntake(data: ParticipateIntakeData): Promise<void> {
@@ -258,7 +258,7 @@ export async function sendParticipateIntake(data: ParticipateIntakeData): Promis
 }
 
 // -- workshop.created ----------------------------------------------------
-// Phase 20 D-01 — admin creates a workshop; async cal.com event-type
+// Phase 20 D-01 - admin creates a workshop; async cal.com event-type
 // provisioning runs in Inngest so the tRPC mutation stays fast.
 
 const workshopCreatedSchema = z.object({
@@ -279,14 +279,14 @@ export async function sendWorkshopCreated(data: WorkshopCreatedData): Promise<vo
 }
 
 // -- workshop.registration.received --------------------------------------
-// Phase 20 D-11 — cal.com webhook INSERTs a workshop_registrations row,
+// Phase 20 D-11 - cal.com webhook INSERTs a workshop_registrations row,
 // then emits this event so Clerk invite + confirmation email run async.
 // Reused by D-12 walk-in synthetic rows.
 
 const workshopRegistrationReceivedSchema = z.object({
   workshopId: z.guid(),
   email: z.string().email(),
-  // SHA-256 hex (64 lowercase chars) — same rate-limit key shape as
+  // SHA-256 hex (64 lowercase chars) - same rate-limit key shape as
   // participate.intake; used by workshopRegistrationReceivedFn rateLimit.
   emailHash: z.string().regex(/^[0-9a-f]{64}$/, 'emailHash must be SHA-256 hex (64 lowercase chars)'),
   name: z.string(),
@@ -310,7 +310,7 @@ export async function sendWorkshopRegistrationReceived(
 }
 
 // -- workshop.feedback.invite --------------------------------------------
-// Phase 20 D-16 — MEETING_ENDED handler emits one event per attendee;
+// Phase 20 D-16 - MEETING_ENDED handler emits one event per attendee;
 // workshopFeedbackInviteFn sends the Resend email with the signed JWT
 // deep-link (D-17) to the /participate?workshopId=...&token=... route.
 
@@ -337,12 +337,12 @@ export async function sendWorkshopFeedbackInvite(
 }
 
 // -- version.published ----------------------------------------------
-// Phase 21 LLM-05 — emitted by version.publish tRPC mutation after the
+// Phase 21 LLM-05 - emitted by version.publish tRPC mutation after the
 // notification fan-out. Triggers consultationSummaryGenerateFn which
 // caches per-section summaries into documentVersions.consultationSummary.
 //
 // `overrideOnly` is an optional array of sectionIds used by manual
-// "Regenerate Section" actions (D-13) — when present, the Inngest fn
+// "Regenerate Section" actions (D-13) - when present, the Inngest fn
 // leaves all other sections untouched in the JSONB so already-approved
 // sections are not clobbered by a single-section regen.
 

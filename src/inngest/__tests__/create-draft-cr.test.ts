@@ -22,7 +22,7 @@ vi.mock('@/src/db', () => {
 
 import { createDraftCRFromFeedback } from '../lib/create-draft-cr'
 // Imported purely so the mocked module surface is visible to the type
-// checker — every assertion in the test body goes through `mocks.*`.
+// checker - every assertion in the test body goes through `mocks.*`.
 import { db } from '@/src/db'
 
 const VALID_INPUT = {
@@ -141,7 +141,7 @@ describe('createDraftCRFromFeedback', () => {
   })
 
   it('propagates sequence allocation failure before opening a transaction', async () => {
-    // Simulate cr_id_seq being missing (or any other db.execute failure) —
+    // Simulate cr_id_seq being missing (or any other db.execute failure) -
     // createDraftCRFromFeedback should reject BEFORE db.transaction is ever
     // called, so no partial writes can land.
     mocks.executeMock.mockRejectedValueOnce(
@@ -159,7 +159,7 @@ describe('createDraftCRFromFeedback', () => {
 
   it('propagates errors thrown inside the transaction (rollback path)', async () => {
     // Sequence allocates fine, but the first insert inside the transaction
-    // blows up — db.transaction semantics must propagate the error out of
+    // blows up - db.transaction semantics must propagate the error out of
     // createDraftCRFromFeedback so the Inngest step.run fails and retries,
     // and the caller never sees a half-written CR.
     mocks.executeMock.mockResolvedValueOnce({ rows: [{ seq: 99 }] })
@@ -172,7 +172,7 @@ describe('createDraftCRFromFeedback', () => {
       async (cb: (tx: unknown) => Promise<unknown>) => {
         // Real drizzle.transaction re-throws whatever the callback throws
         // (and rolls back the underlying SQL tx). The fake mirrors that
-        // contract — we don't need a real rollback, just error propagation.
+        // contract - we don't need a real rollback, just error propagation.
         return await cb(tx)
       },
     )

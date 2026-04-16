@@ -7,19 +7,19 @@ import { signFeedbackToken } from '@/src/lib/feedback-token'
 import { sendWorkshopFeedbackInviteEmail } from '@/src/lib/email'
 
 /**
- * workshopFeedbackInviteFn — post-workshop feedback deep-link email.
+ * workshopFeedbackInviteFn - post-workshop feedback deep-link email.
  *
  * Triggered by `workshop.feedback.invite` events emitted by the cal.com
- * webhook handler (Plan 20-03) on MEETING_ENDED — one event per attendee.
+ * webhook handler (Plan 20-03) on MEETING_ENDED - one event per attendee.
  *
  * Steps:
- *   1. `load-workshop` — resolve workshop.title + scheduledAt. Missing row
+ *   1. `load-workshop` - resolve workshop.title + scheduledAt. Missing row
  *      → NonRetriableError (the cal.com meeting pointed at a workshop that
- *      no longer exists — unrecoverable).
- *   2. `sign-feedback-token` — signFeedbackToken(workshopId, email) → HS256
+ *      no longer exists - unrecoverable).
+ *   2. `sign-feedback-token` - signFeedbackToken(workshopId, email) → HS256
  *      JWT with 14d expiry (D-17). Build the /participate deep-link URL
  *      from NEXT_PUBLIC_APP_URL (fallback APP_BASE_URL, then localhost).
- *   3. `send-feedback-invite-email` — sendWorkshopFeedbackInviteEmail with
+ *   3. `send-feedback-invite-email` - sendWorkshopFeedbackInviteEmail with
  *      the resolved title + fully-qualified feedbackUrl.
  *
  * No rateLimit: one event per attendee per MEETING_ENDED is desired (the
@@ -36,9 +36,9 @@ import { sendWorkshopFeedbackInviteEmail } from '@/src/lib/email'
 export const workshopFeedbackInviteFn = inngest.createFunction(
   {
     id: 'workshop-feedback-invite',
-    name: 'Workshop feedback invite — signed JWT deep-link email',
+    name: 'Workshop feedback invite - signed JWT deep-link email',
     retries: 3,
-    // INLINE triggers — Pitfall 4.
+    // INLINE triggers - Pitfall 4.
     triggers: [{ event: 'workshop.feedback.invite' }],
   },
   async ({ event, step }) => {

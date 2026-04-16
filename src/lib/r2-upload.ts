@@ -48,7 +48,7 @@ export async function uploadFile(file: File, options: UploadOptions = {}): Promi
   // The presigned URL is signed with ContentDisposition: 'attachment' (see
   // src/lib/r2.ts getUploadUrl), and its X-Amz-SignedHeaders includes
   // content-disposition. We MUST send the same Content-Disposition header
-  // on the PUT or R2 computes a different signature and returns 403 —
+  // on the PUT or R2 computes a different signature and returns 403 -
   // which Chrome surfaces as a misleading CORS error because 403
   // responses carry no Access-Control-Allow-Origin header.
   const putHeaders = {

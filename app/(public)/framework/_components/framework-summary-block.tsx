@@ -14,10 +14,10 @@ interface FrameworkSummaryBlockProps {
 }
 
 /**
- * FrameworkSummaryBlock — Phase 21 D-18. Renders the latest published
+ * FrameworkSummaryBlock - Phase 21 D-18. Renders the latest published
  * version's approved consultation summary below the /framework page's
  * WhatChangedLog. NEVER shows a placeholder (unlike the portal section
- * block) — if no approved sections, the block renders nothing.
+ * block) - if no approved sections, the block renders nothing.
  *
  * LLM-08: Strips internal-only fields before rendering by projecting
  * into ApprovedSummarySection inside the render loop. None of the

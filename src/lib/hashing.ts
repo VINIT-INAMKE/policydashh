@@ -1,14 +1,14 @@
 /**
- * src/lib/hashing.ts — Deterministic SHA256 hashing service.
+ * src/lib/hashing.ts - Deterministic SHA256 hashing service.
  *
  * RFC 8785 JCS canonicalization (via `canonicalize` npm package) + node:crypto
  * SHA256 primitive. All Phase 22 + Phase 23 hash computations route through
- * this module — per D-02a there must be NO direct `node:crypto.createHash` or
+ * this module - per D-02a there must be NO direct `node:crypto.createHash` or
  * `JSON.stringify(sortKeys(...))` calls anywhere else in the codebase.
  *
  * Design invariants:
  *
- *   1. PURE FUNCTIONS ONLY — no DB access, no side effects, no stateful
+ *   1. PURE FUNCTIONS ONLY - no DB access, no side effects, no stateful
  *      closures. Safe to import from Inngest `step.run()` bodies and tRPC
  *      handlers alike (Phase 21 Pitfall 3 confirmed the Inngest step
  *      boundary strips RegExp objects and closures; we expose neither).
@@ -19,7 +19,7 @@
  *      lets Phase 23's per-version anchor path share logic with the
  *      milestone anchor path.
  *
- *   3. GOLDEN-FIXTURE LOCK — `src/lib/__tests__/hashing.test.ts` asserts
+ *   3. GOLDEN-FIXTURE LOCK - `src/lib/__tests__/hashing.test.ts` asserts
  *      exact hex output against committed fixtures. Any wrapper edit that
  *      shifts a fixture hash is a determinism regression and the test
  *      fails immediately.
@@ -31,7 +31,7 @@
  *      documented on each interface and tested via Pitfall 3.
  *
  *   5. `hashEvidenceBundle` and `hashMilestone` perform their own internal
- *      sorting — callers can pass shuffled arrays. This is the stability
+ *      sorting - callers can pass shuffled arrays. This is the stability
  *      guarantee that VERIFY-05 depends on.
  *
  * References:
@@ -56,7 +56,7 @@ import _canonicalize from 'canonicalize'
  * implementation) is safe as long as this wrapper's output bit-pattern
  * stays stable against the committed fixtures.
  *
- * The package signature is `(input: unknown) => string | undefined` —
+ * The package signature is `(input: unknown) => string | undefined` -
  * `undefined` is returned only for circular references or Symbol values,
  * neither of which can appear in DB rows deserialized from JSONB. We
  * throw on undefined as a belt-and-suspenders guard; `sha256Hex(undefined)`
@@ -72,7 +72,7 @@ export function canonicalize(input: unknown): string {
   const result = _canonicalize(input)
   if (result === undefined) {
     throw new Error(
-      'canonicalize returned undefined — input contains a circular reference or unrepresentable value',
+      'canonicalize returned undefined - input contains a circular reference or unrepresentable value',
     )
   }
   return result
@@ -81,7 +81,7 @@ export function canonicalize(input: unknown): string {
 /**
  * Core SHA256 primitive. Input MUST be a pre-canonicalized string (or any
  * deterministic string). Uses utf8 encoding explicitly per the
- * cal-signature.ts precedent — `'utf8'` is the default for string input
+ * cal-signature.ts precedent - `'utf8'` is the default for string input
  * but explicit is better for clarity and future-proofing.
  *
  * Returns lowercase hex, always exactly 64 characters.
@@ -95,16 +95,16 @@ export function sha256Hex(canonicalString: string): string {
 // ============================================================
 
 /**
- * PolicyVersion hash input — content-defining fields only.
+ * PolicyVersion hash input - content-defining fields only.
  *
  * EXCLUDED (bookkeeping / post-publish mutables):
- *   - consultationSummary    (generated AFTER publish — would break hash)
+ *   - consultationSummary    (generated AFTER publish - would break hash)
  *   - isPublished            (boolean flag, changes post-hash)
  *   - updatedAt              (bookkeeping timestamp)
  *   - crId                   (audit trail reference, not content)
  *   - mergeSummary           (audit trail, not content)
  *
- * publishedAt is included but nullable — drafts have null.
+ * publishedAt is included but nullable - drafts have null.
  */
 export interface PolicyVersionHashInput {
   id: string
@@ -125,7 +125,7 @@ export function hashPolicyVersion(input: PolicyVersionHashInput): string {
 // ============================================================
 
 /**
- * Workshop hash input — row fields + explicit sorted FK arrays.
+ * Workshop hash input - row fields + explicit sorted FK arrays.
  *
  * `linkedArtifactIds` and `linkedFeedbackIds` are UUID arrays that the
  * CALLER is responsible for sorting. RFC 8785 JCS preserves array order;
@@ -138,7 +138,7 @@ export function hashPolicyVersion(input: PolicyVersionHashInput): string {
 export interface WorkshopHashInput {
   id: string
   title: string
-  scheduledAt: string // ISO 8601 string — caller converts Date
+  scheduledAt: string // ISO 8601 string - caller converts Date
   durationMinutes: number | null
   status: string
   createdBy: string
@@ -155,14 +155,14 @@ export function hashWorkshop(input: WorkshopHashInput): string {
 // ============================================================
 
 /**
- * FeedbackItem hash input — content + decision state.
+ * FeedbackItem hash input - content + decision state.
  *
  * EXCLUDED:
  *   - xstateSnapshot   (internal state machine state, not content)
  *   - updatedAt        (bookkeeping)
  *   - createdAt        (bookkeeping; readableId + submitterId provide identity)
  *   - source           (Phase 20 intake vs workshop marker, not content)
- *   - submitterId      (PII — anonymized at source per LLM-04 / Phase 21)
+ *   - submitterId      (PII - anonymized at source per LLM-04 / Phase 21)
  */
 export interface FeedbackItemHashInput {
   id: string
@@ -192,7 +192,7 @@ export function hashFeedbackItem(input: FeedbackItemHashInput): string {
 // ============================================================
 
 /**
- * EvidenceArtifact hash input — row fields only.
+ * EvidenceArtifact hash input - row fields only.
  * `content` is the inline text/URL content column; `url` is always present
  * (points to R2 for files, external URL for links).
  */
@@ -212,13 +212,13 @@ export function hashEvidenceArtifact(input: EvidenceArtifactHashInput): string {
 }
 
 /**
- * hashEvidenceBundle — hashes a SET of artifacts via Merkle-lite composition.
+ * hashEvidenceBundle - hashes a SET of artifacts via Merkle-lite composition.
  *
  * We do NOT hash ZIP bytes (Phase 18's fflate.zipSync output is
  * non-deterministic across Node versions, OS, and compression levels).
  * Instead we:
  *
- *   1. Sort the artifact array by id ascending (internal sort — callers
+ *   1. Sort the artifact array by id ascending (internal sort - callers
  *      may pass shuffled input)
  *   2. Compute per-artifact hashes via `hashEvidenceArtifact`
  *   3. Canonicalize the ordered list of `{ id, contentHash }` tuples
@@ -242,7 +242,7 @@ export function hashEvidenceBundle(artifacts: EvidenceArtifactHashInput[]): stri
 // ============================================================
 
 /**
- * ManifestEntry — one row in a milestone manifest.
+ * ManifestEntry - one row in a milestone manifest.
  *
  * `contentHash` is the hex output of the per-child hash function
  * (e.g. `hashPolicyVersion`). This is the composability requirement
@@ -255,7 +255,7 @@ export interface ManifestEntry {
 }
 
 /**
- * MilestoneMetadata — non-manifest fields included in the milestone hash.
+ * MilestoneMetadata - non-manifest fields included in the milestone hash.
  * These are the context that binds the manifest to a specific milestone
  * identity. Included in the hash so that two milestones with identical
  * manifests but different identities still produce distinct hashes.
@@ -279,7 +279,7 @@ export interface MilestoneHashInput {
 }
 
 /**
- * hashMilestone — hashes a milestone for Cardano anchoring.
+ * hashMilestone - hashes a milestone for Cardano anchoring.
  *
  * Sorts the manifest internally by `(entityType, entityId)` ascending
  * so callers can pass unsorted arrays. This is the stability guarantee

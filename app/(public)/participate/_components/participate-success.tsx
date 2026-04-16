@@ -41,7 +41,7 @@ export function ParticipateSuccess({ email, orgType }: Props) {
       </h2>
       <p className="max-w-md text-base leading-relaxed text-muted-foreground">
         We&apos;ve received your request to join the {bucketLabel} consultation. Check your inbox at{' '}
-        <span className="font-medium text-[var(--cl-on-surface)]">{email}</span> for next steps — your invitation will arrive within a few minutes.
+        <span className="font-medium text-[var(--cl-on-surface)]">{email}</span> for next steps - your invitation will arrive within a few minutes.
       </p>
       <Badge variant="secondary">{bucketLabel}</Badge>
 

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 /**
- * Phase 20.5 Wave 0 — RED contract for D-17 proxy.ts public-route matcher.
+ * Phase 20.5 Wave 0 - RED contract for D-17 proxy.ts public-route matcher.
  *
  * Locks that Plan 20.5-03 adds '/research(.*)' and '/framework(.*)' to the
  * createRouteMatcher call in proxy.ts, gated behind a Phase 20.5 comment
@@ -12,7 +12,7 @@ import path from 'node:path'
  * This is a static string-match test; it does NOT execute proxy.ts.
  */
 
-describe('proxy.ts public-route matcher — D-17', () => {
+describe('proxy.ts public-route matcher - D-17', () => {
   const src = readFileSync(path.join(process.cwd(), 'proxy.ts'), 'utf8')
 
   it("includes '/research(.*)' in createRouteMatcher", () => {

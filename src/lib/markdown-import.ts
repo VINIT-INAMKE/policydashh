@@ -158,7 +158,7 @@ export function linesToTiptap(lines: string[]): Record<string, unknown> {
       continue
     }
 
-    // Regular paragraph — collect consecutive non-empty, non-special lines
+    // Regular paragraph - collect consecutive non-empty, non-special lines
     const paraLines: string[] = []
     while (
       i < lines.length &&

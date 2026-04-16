@@ -7,12 +7,12 @@ import { users } from '@/src/db/schema'
 import { GlobalFeedbackTabs } from './_components/global-feedback-tabs'
 
 /**
- * /feedback — cross-policy feedback overview page (Phase 13 D-09, D-10).
+ * /feedback - cross-policy feedback overview page (Phase 13 D-09, D-10).
  *
  * Renders 3 role-gated tabs:
- * - All Feedback (admin, policy_lead, auditor) — cross-policy list via listCrossPolicy
- * - My Outcomes (all roles with any feedback perm) — caller's own submissions + decisions
- * - Evidence Gaps (admin, research_lead) — claims without attached evidence
+ * - All Feedback (admin, policy_lead, auditor) - cross-policy list via listCrossPolicy
+ * - My Outcomes (all roles with any feedback perm) - caller's own submissions + decisions
+ * - Evidence Gaps (admin, research_lead) - claims without attached evidence
  *
  * Active tab is synced to ?tab= URL param.
  */

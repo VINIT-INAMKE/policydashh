@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// vi.hoisted — shared mock handles that survive Vitest hoist (Phase 16 Pattern)
+// vi.hoisted - shared mock handles that survive Vitest hoist (Phase 16 Pattern)
 const mocks = vi.hoisted(() => ({
   chatComplete: vi.fn(),
   updateMock: vi.fn(),

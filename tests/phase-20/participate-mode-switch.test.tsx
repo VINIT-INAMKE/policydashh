@@ -2,18 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 
 /**
- * Plan 20-06 Task 1 — Server-side mode switch on /participate.
+ * Plan 20-06 Task 1 - Server-side mode switch on /participate.
  *
  * The page is a Next.js Server Component (async). We import the module with
  * all external deps mocked, then await its render output and feed it to
  * @testing-library/react for DOM assertions.
  *
  * Modes under test (D-18):
- *   T1 — no workshopId           → intake form (Phase 19 ParticipateForm)
- *   T2 — workshopId, no token    → ExpiredLinkCard
- *   T3 — valid token + workshop  → WorkshopFeedbackForm with loaded sections
- *   T4 — expired token           → ExpiredLinkCard
- *   T5 — valid token, missing ws → ExpiredLinkCard (no info leak)
+ *   T1 - no workshopId           → intake form (Phase 19 ParticipateForm)
+ *   T2 - workshopId, no token    → ExpiredLinkCard
+ *   T3 - valid token + workshop  → WorkshopFeedbackForm with loaded sections
+ *   T4 - expired token           → ExpiredLinkCard
+ *   T5 - valid token, missing ws → ExpiredLinkCard (no info leak)
  */
 
 const mocks = vi.hoisted(() => ({

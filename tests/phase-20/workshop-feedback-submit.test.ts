@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 
 /**
- * Plan 20-06 Task 2 — POST /api/intake/workshop-feedback contract.
+ * Plan 20-06 Task 2 - POST /api/intake/workshop-feedback contract.
  *
  * Route handler shape (D-18, WS-15):
  *   - validates body via zod, rejects 400 on bad payload
@@ -152,7 +152,7 @@ const validBody = {
   workshopId: '11111111-1111-1111-1111-111111111111',
   token: 'good.jwt.sig',
   rating: 5,
-  comment: 'Extremely valuable session — the section on data retention was sharp.',
+  comment: 'Extremely valuable session - the section on data retention was sharp.',
   sectionId: '22222222-2222-2222-2222-222222222222',
 }
 
@@ -258,7 +258,7 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
     mocks.selectQueue = [
       [{ id: validBody.workshopId, createdBy: 'moderator-uuid' }],
       [{ id: validBody.sectionId, documentId: 'doc-1' }],
-      [], // users lookup returns empty — triggers fallback
+      [], // users lookup returns empty - triggers fallback
     ]
 
     const res = await POST!(makeRequest(validBody))
@@ -292,7 +292,7 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
   })
 
   it('T9: no Turnstile reference in route handler source', async () => {
-    // Static source check — JWT is the legitimacy proof, Turnstile MUST NOT
+    // Static source check - JWT is the legitimacy proof, Turnstile MUST NOT
     // appear anywhere in the workshop-feedback route.
     const { readFileSync } = await import('node:fs')
     const { join } = await import('node:path')

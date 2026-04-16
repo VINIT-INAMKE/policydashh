@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 
 const HASH_DISPLAY = '0x882…F9A2'
 const SCRAMBLE_CHARS = '0123456789abcdef'
-// Deterministic seed bytes — render geometry is reproducible from these
+// Deterministic seed bytes - render geometry is reproducible from these
 const SEED_BYTES = [
   0x88, 0x2a, 0x4f, 0x9e, 0x2b, 0x1c, 0x83, 0xd5, 0xe8, 0xf0, 0xa2, 0xb6,
 ]
@@ -71,7 +71,7 @@ export function CryptoSeal() {
     return () => window.clearInterval(id)
   }, [revealed])
 
-  // Canvas seal — concentric notched rings + animated dashed verification arc
+  // Canvas seal - concentric notched rings + animated dashed verification arc
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -113,7 +113,7 @@ export function CryptoSeal() {
       const cy = h / 2
       const baseR = Math.min(w, h) * 0.28
 
-      // Concentric notched rings — geometry derived from SEED_BYTES
+      // Concentric notched rings - geometry derived from SEED_BYTES
       for (let ring = 0; ring < SEED_BYTES.length; ring++) {
         const r = baseR + ring * 5.5
         const byte = SEED_BYTES[ring]
@@ -145,7 +145,7 @@ export function CryptoSeal() {
       ctx.lineWidth = 0.5
       ctx.stroke()
 
-      // Center accent dot — green tertiary-fixed-dim
+      // Center accent dot - green tertiary-fixed-dim
       const pulse = 0.65 + Math.sin(t * 0.0025) * 0.2
       ctx.beginPath()
       ctx.arc(cx, cy, 2.5, 0, Math.PI * 2)

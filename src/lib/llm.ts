@@ -1,5 +1,5 @@
 /**
- * Groq SDK wrapper — the ONLY sanctioned entry point for Groq API calls.
+ * Groq SDK wrapper - the ONLY sanctioned entry point for Groq API calls.
  *
  * LLM-01: `requireEnv('GROQ_API_KEY')` fail-fast at first use (lazy init).
  * LLM-02: `transcribeAudio` wraps `audio.transcriptions.create` with
@@ -34,7 +34,7 @@ let _client: Groq | null = null
  *
  * In production, `Groq` is an ES6 class and must be called with `new`.
  * Under Vitest 4.1.1, however, `vi.mock('groq-sdk', () => ({ default: vi.fn().mockImplementation(() => ({...})) }))` cannot be `new`-called because the
- * arrow-function `mockImplementation` is not a [[Construct]] target — attempting
+ * arrow-function `mockImplementation` is not a [[Construct]] target - attempting
  * `new` throws `TypeError: (...) is not a constructor`. Calling the vi.fn as a
  * plain function, on the other hand, correctly returns the mockImplementation
  * result. We therefore try `new` first (production path) and fall back to a
@@ -67,7 +67,7 @@ function getClient(): Groq {
 }
 
 // Testing helper: reset the client between tests that manipulate env vars.
-// Not exported for production use — the `_` prefix marks it as internal.
+// Not exported for production use - the `_` prefix marks it as internal.
 export function _resetClientForTests(): void {
   _client = null
 }
@@ -75,7 +75,7 @@ export function _resetClientForTests(): void {
 /**
  * Chat completion with enforced maxTokens (LLM-03).
  *
- * `maxTokens` is REQUIRED. TypeScript compile error without it — this is
+ * `maxTokens` is REQUIRED. TypeScript compile error without it - this is
  * the enforcement mechanism for "max_tokens enforced on every Groq chat
  * call" from the roadmap requirement.
  *
@@ -102,13 +102,13 @@ export async function chatComplete(opts: {
 /**
  * Transcribe an audio buffer via Groq Whisper (LLM-02).
  *
- * Uses `whisper-large-v3-turbo` — the fast model, ~216x real-time, good
+ * Uses `whisper-large-v3-turbo` - the fast model, ~216x real-time, good
  * enough for policy workshop recordings. With `response_format: 'text'`
  * the SDK returns a plain string even though the static type says
- * `Transcription`. Cast via `as unknown as string` — RESEARCH Pitfall 3.
+ * `Transcription`. Cast via `as unknown as string` - RESEARCH Pitfall 3.
  *
  * File size enforcement is upstream at the R2 presign route (25MB cap).
- * This function does not re-check size — callers must not invoke it with
+ * This function does not re-check size - callers must not invoke it with
  * larger buffers.
  */
 export async function transcribeAudio(
@@ -186,7 +186,7 @@ export async function summarizeTranscript(transcript: string): Promise<{
  * Returns the plain-prose summary string (~500–700 words) grouped by
  * theme. Empty feedback input returns ''.
  *
- * Anonymization is enforced by the caller — this helper trusts its input
+ * Anonymization is enforced by the caller - this helper trusts its input
  * to already be `AnonymizedFeedback` (no submitter identity). The
  * stakeholder role (`orgType`) is the only attribution passed to the
  * LLM.
@@ -223,11 +223,11 @@ export async function generateConsultationSummary(
           'Your task is to synthesize stakeholder feedback into a clear, balanced, 500-700 word narrative summary.\n\n' +
           'Rules:\n' +
           '- Group feedback by theme (not by stakeholder). Identify 3-5 themes per section.\n' +
-          '- Use stakeholder roles (government stakeholder, industry stakeholder, civil society, etc.) for attribution — never use names.\n' +
+          '- Use stakeholder roles (government stakeholder, industry stakeholder, civil society, etc.) for attribution - never use names.\n' +
           '- Maintain a neutral, policy-document tone. No opinionated language.\n' +
           '- Every claim in the summary must be traceable to at least one feedback item.\n' +
           '- Do NOT include: personal names, email addresses, organization names, or any identifying information.\n' +
-          '- Output plain prose paragraphs only — no bullet lists, no headers, no markdown formatting.',
+          '- Output plain prose paragraphs only - no bullet lists, no headers, no markdown formatting.',
       },
       {
         role: 'user',

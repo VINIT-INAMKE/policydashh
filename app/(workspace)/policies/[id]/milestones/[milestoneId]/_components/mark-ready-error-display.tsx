@@ -27,7 +27,7 @@ export function MarkReadyErrorDisplay({ unmet }: MarkReadyErrorDisplayProps) {
       className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3"
     >
       <h4 className="text-sm font-semibold text-destructive">
-        Cannot mark ready — requirements not met
+        Cannot mark ready - requirements not met
       </h4>
       <ul className="mt-2 space-y-1">
         {unmet.map((slot) => (

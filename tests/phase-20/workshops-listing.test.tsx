@@ -1,16 +1,16 @@
 /**
- * Phase 20 Plan 20-05 — tests for `/workshops` public listing page.
+ * Phase 20 Plan 20-05 - tests for `/workshops` public listing page.
  *
  * Covered (6 tests, per plan Task 2 Step 3):
- *   T1 — "Upcoming Workshops" heading renders when upcoming.length > 0
- *   T2 — "Live Now" heading renders when live.length > 0
- *   T3 — "Past Workshops" heading renders when past.length > 0
- *   T4 — Empty state heading "No workshops scheduled yet" when all empty
- *   T5 — Empty sections are omitted (no heading when list empty)
- *   T6 — Page <h1> contains "Register for a Workshop"
+ *   T1 - "Upcoming Workshops" heading renders when upcoming.length > 0
+ *   T2 - "Live Now" heading renders when live.length > 0
+ *   T3 - "Past Workshops" heading renders when past.length > 0
+ *   T4 - Empty state heading "No workshops scheduled yet" when all empty
+ *   T5 - Empty sections are omitted (no heading when list empty)
+ *   T6 - Page <h1> contains "Register for a Workshop"
  *
  * The page is an async server component. testing-library cannot render async
- * components directly — we await the component function itself to resolve
+ * components directly - we await the component function itself to resolve
  * the promise, then render the resulting React element synchronously.
  *
  * `@/src/server/queries/workshops-public` is mocked so the test never touches
@@ -106,7 +106,7 @@ async function renderPage() {
 }
 
 describe('public /workshops listing page', () => {
-  it('T1 — renders "Upcoming Workshops" heading when upcoming list is non-empty', async () => {
+  it('T1 - renders "Upcoming Workshops" heading when upcoming list is non-empty', async () => {
     mockListPublicWorkshops.mockResolvedValueOnce([upcomingFixture()])
     await renderPage()
     expect(
@@ -114,7 +114,7 @@ describe('public /workshops listing page', () => {
     ).toBeTruthy()
   })
 
-  it('T2 — renders "Live Now" heading when live list is non-empty', async () => {
+  it('T2 - renders "Live Now" heading when live list is non-empty', async () => {
     mockListPublicWorkshops.mockResolvedValueOnce([liveFixture()])
     await renderPage()
     expect(
@@ -122,7 +122,7 @@ describe('public /workshops listing page', () => {
     ).toBeTruthy()
   })
 
-  it('T3 — renders "Past Workshops" heading when past list is non-empty', async () => {
+  it('T3 - renders "Past Workshops" heading when past list is non-empty', async () => {
     mockListPublicWorkshops.mockResolvedValueOnce([pastFixture()])
     await renderPage()
     expect(
@@ -130,7 +130,7 @@ describe('public /workshops listing page', () => {
     ).toBeTruthy()
   })
 
-  it('T4 — renders the empty state when all sections are empty', async () => {
+  it('T4 - renders the empty state when all sections are empty', async () => {
     mockListPublicWorkshops.mockResolvedValueOnce([])
     await renderPage()
     expect(screen.getByText(/no workshops scheduled yet/i)).toBeTruthy()
@@ -139,7 +139,7 @@ describe('public /workshops listing page', () => {
     ).toBeTruthy()
   })
 
-  it('T5 — omits empty sections (live + past headings absent when only upcoming present)', async () => {
+  it('T5 - omits empty sections (live + past headings absent when only upcoming present)', async () => {
     mockListPublicWorkshops.mockResolvedValueOnce([upcomingFixture()])
     await renderPage()
     expect(
@@ -154,7 +154,7 @@ describe('public /workshops listing page', () => {
     ).toBeTruthy()
   })
 
-  it('T6 — page <h1> contains "Register for a Workshop"', async () => {
+  it('T6 - page <h1> contains "Register for a Workshop"', async () => {
     mockListPublicWorkshops.mockResolvedValueOnce([
       upcomingFixture(),
       liveFixture(),

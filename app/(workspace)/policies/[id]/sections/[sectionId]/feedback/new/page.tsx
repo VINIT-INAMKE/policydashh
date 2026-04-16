@@ -21,7 +21,7 @@ export default async function SubmitFeedbackPage({
     caller.user.getMe(),
   ])
 
-  // feedback:submit — stakeholder, research_lead, workshop_moderator only
+  // feedback:submit - stakeholder, research_lead, workshop_moderator only
   const canSubmitFeedback =
     user.role === 'stakeholder' ||
     user.role === 'research_lead' ||

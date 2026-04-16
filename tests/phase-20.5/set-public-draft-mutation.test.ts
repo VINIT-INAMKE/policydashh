@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 
 /**
- * Phase 20.5 Wave 0 — RED contract for PUB-07 document.setPublicDraft mutation.
+ * Phase 20.5 Wave 0 - RED contract for PUB-07 document.setPublicDraft mutation.
  *
  * Locks two rules Plan 20.5-01 must satisfy:
  *   1. `setPublicDraft` is registered on documentRouter._def.procedures.
@@ -39,7 +39,7 @@ beforeAll(async () => {
   documentRouter = mod.documentRouter
 })
 
-describe('document.setPublicDraft — PUB-07 mutation contract', () => {
+describe('document.setPublicDraft - PUB-07 mutation contract', () => {
   it('is registered as a procedure on documentRouter', () => {
     expect(documentRouter._def.procedures.setPublicDraft).toBeDefined()
   })

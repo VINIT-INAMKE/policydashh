@@ -19,7 +19,7 @@
  *      hoists above the import block) can reach the same vi.fn instances the
  *      describe-blocks assert on.
  *
- *   2. Pattern 2 — variable-path dynamic import inside beforeAll. Vite's
+ *   2. Pattern 2 - variable-path dynamic import inside beforeAll. Vite's
  *      static import-analysis pass walks literal string arguments to import()
  *      and would fail on a missing module at parse time, preventing Vitest
  *      from registering the test file at all. Building the path at runtime
@@ -117,7 +117,7 @@ function makeStep() {
 function getHandler(fn: unknown): (ctx: { event: unknown; step: unknown }) => Promise<any> {
   if (fn == null) {
     throw new Error(
-      'evidencePackExportFn is not yet implemented — Wave 0 RED. ' +
+      'evidencePackExportFn is not yet implemented - Wave 0 RED. ' +
         'Plan 18-01 must create src/inngest/functions/evidence-pack-export.ts',
     )
   }
@@ -238,7 +238,7 @@ describe('evidenceExportRequestedEvent (schema + sender)', () => {
     })
     // Inngest v4 `.validate()` returns Promise<void>; "accepts" means it
     // resolves without throwing. (Wave 0 draft wrote .toBeDefined which
-    // misread the Inngest API — Plan 18-01 Rule 3 blocker fix.)
+    // misread the Inngest API - Plan 18-01 Rule 3 blocker fix.)
     await expect(ok.validate()).resolves.toBeUndefined()
   })
 
@@ -253,7 +253,7 @@ describe('evidenceExportRequestedEvent (schema + sender)', () => {
   })
 })
 
-describe('evidencePackExportFn — pipeline contract (EV-05 + EV-06)', () => {
+describe('evidencePackExportFn - pipeline contract (EV-05 + EV-06)', () => {
   it('runs the 6 steps in order: build-metadata → list-binary-artifacts → assemble-and-upload → generate-presigned-url → send-email → write-audit-log', async () => {
     const handler = getHandler(fnModule?.evidencePackExportFn)
     const { step, callLog } = makeStep()

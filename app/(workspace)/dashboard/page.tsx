@@ -38,7 +38,7 @@ export default async function DashboardPage() {
     where: eq(users.clerkId, clerkId),
   })
 
-  // Webhook hasn't synced yet — show setup page instead of redirect loop
+  // Webhook hasn't synced yet - show setup page instead of redirect loop
   if (!user) redirect('/setup')
 
   const roleName = ROLE_DISPLAY_NAMES[user.role] ?? 'Observer'

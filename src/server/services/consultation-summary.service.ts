@@ -1,14 +1,14 @@
 /**
- * Consultation Summary — shared contract types + runtime helpers.
+ * Consultation Summary - shared contract types + runtime helpers.
  *
- * LLM-04: anonymization at input — submitter identity never reaches the LLM.
+ * LLM-04: anonymization at input - submitter identity never reaches the LLM.
  * LLM-05: `consultationSummary` is cached on `documentVersions` as a single
  *          JSONB column. This module owns the wire shape.
- * LLM-06: `anonymizeFeedbackForSection` + `buildGuardrailPatternSource` — the
+ * LLM-06: `anonymizeFeedbackForSection` + `buildGuardrailPatternSource` - the
  *          two-layer privacy defense. Anonymization strips identity at the
  *          mapping boundary; the guardrail regex catches any LLM hallucinated
  *          leaks post-generation.
- * LLM-07: moderator review gate — per-section statuses flow
+ * LLM-07: moderator review gate - per-section statuses flow
  *          pending → approved | blocked | error | skipped.
  * LLM-08: Public portal must NEVER receive `sourceFeedbackIds`,
  *          `feedbackCount`, `edited`, or `generatedAt`. Use the
@@ -59,7 +59,7 @@ export interface ConsultationSummaryJson {
 }
 
 /**
- * Public-facing projection — strips sourceFeedbackIds, feedbackCount,
+ * Public-facing projection - strips sourceFeedbackIds, feedbackCount,
  * edited, generatedAt. Passed to `PublicPolicyContent` and
  * `FrameworkSummaryBlock`. NEVER pass a `ConsultationSummarySection`
  * directly into a `(public)` route component.
@@ -72,7 +72,7 @@ export interface ApprovedSummarySection {
 
 /**
  * Shape the LLM receives. `submitterId`, `name`, `email`, and `phone`
- * are NEVER included — D-07 LLM-06 anonymization at input time.
+ * are NEVER included - D-07 LLM-06 anonymization at input time.
  */
 export interface AnonymizedFeedback {
   feedbackId: string
@@ -97,7 +97,7 @@ export function anonymizeFeedbackForSection(
     feedbackType: string
     impactCategory: string
     orgType: AnonymizedFeedback['orgType']
-    // The following may be present on fixtures — they MUST be dropped:
+    // The following may be present on fixtures - they MUST be dropped:
     submitterId?: string
     name?: string | null
     email?: string | null
@@ -145,7 +145,7 @@ export async function fetchAnonymizedFeedback(
  * Build a case-insensitive regex pattern source that matches leaked
  * stakeholder identifying information. Returns the raw pattern string
  * (NOT a RegExp object) because the caller is an Inngest step.run
- * result — RegExp objects JSON-serialize to '{}' across step boundaries
+ * result - RegExp objects JSON-serialize to '{}' across step boundaries
  * (Phase 21 Pitfall 3).
  *
  * Pattern sources:

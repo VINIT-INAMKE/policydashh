@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 
 /**
- * Phase 20.5 Wave 0 — RED contract for PUB-08 framework log aggregation.
+ * Phase 20.5 Wave 0 - RED contract for PUB-08 framework log aggregation.
  *
  * Locks the four rules Plan 20.5-01 must satisfy:
  *   1. Cap total entries at 20.
  *   2. Descending merge date order.
- *   3. PUB-05 privacy — only { sectionTitle, mergeDate, summary } keys exposed;
+ *   3. PUB-05 privacy - only { sectionTitle, mergeDate, summary } keys exposed;
  *      no cr/crReadableId/feedbackIds ever leak through JSON.stringify.
  *   4. Entries for sectionIds not present in sectionsSnapshot are skipped.
  *
- * `buildFrameworkLog` is pure — we pass fixture arrays directly, no DB mocks.
+ * `buildFrameworkLog` is pure - we pass fixture arrays directly, no DB mocks.
  */
 
 let buildFrameworkLog: any
@@ -52,7 +52,7 @@ function makeVersion(opts: {
   } as any
 }
 
-describe('buildFrameworkLog — PUB-08 aggregation rules', () => {
+describe('buildFrameworkLog - PUB-08 aggregation rules', () => {
   it('caps total entries at 20', () => {
     const v = makeVersion({
       publishedAt: new Date('2026-03-01'),

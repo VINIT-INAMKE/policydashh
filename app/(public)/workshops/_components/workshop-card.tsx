@@ -1,5 +1,5 @@
 /**
- * Phase 20 Plan 20-05 — public workshop listing card.
+ * Phase 20 Plan 20-05 - public workshop listing card.
  *
  * Three visual variants per UI-SPEC Surface A §Card Anatomy:
  *   - "upcoming": full card + CalEmbedModal + spots-left badge
@@ -7,7 +7,7 @@
  *   - "past":     compact card (title + date), optional "View summary" link
  *
  * Register CTA is only wired when the workshop has a non-null
- * `calcomEventTypeId` (D-03 — failed cal.com provisioning hides the embed).
+ * `calcomEventTypeId` (D-03 - failed cal.com provisioning hides the embed).
  * The server query `listPublicWorkshops` already filters out null cases, so
  * every card that reaches this component is expected to have a cal link,
  * but we defensively guard on the prop anyway.
@@ -41,7 +41,7 @@ export type WorkshopCardVariant = 'upcoming' | 'live' | 'past'
 
 function formatWorkshopDate(d: Date): string {
   // Deterministic server-side formatting. Mirrors Phase 19 /participate date
-  // handling — ISO parse on the server, locale-aware display on the client
+  // handling - ISO parse on the server, locale-aware display on the client
   // would need useEffect; keeping it simple and SSR-stable.
   return d.toLocaleDateString('en-US', {
     weekday: 'short',

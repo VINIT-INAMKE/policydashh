@@ -1,12 +1,12 @@
-# PolicyDash — Combined Feature List (Gap Analysis)
+# PolicyDash - Combined Feature List (Gap Analysis)
 
 **Date:** 2026-04-12
-**Sources merged:** `newDoc1.md` (Verifiable Policy OS — architecture, internal automation, Cardano anchoring) + `newDoc2.md` (Instance Structure — 5-page public site, 7 n8n/Make flows, CMS collections, policy-grade visual direction)
+**Sources merged:** `newDoc1.md` (Verifiable Policy OS - architecture, internal automation, Cardano anchoring) + `newDoc2.md` (Instance Structure - 5-page public site, 7 n8n/Make flows, CMS collections, policy-grade visual direction)
 **Purpose:** Give a domain-organized feature list of what the merged product vision looks like, tagged against the current PolicyDash codebase so every feature has a clear "what to do next" signal.
 
-**Deployment target:** PolicyDash runs on **Vercel** (Next.js serverless functions) with Postgres on **Neon**. Every runtime decision in this spec respects the constraint that there are no long-running worker processes — all background work runs on **Inngest**'s managed step-function platform, not on a self-hosted queue. No piece of this spec requires standing up a server.
+**Deployment target:** PolicyDash runs on **Vercel** (Next.js serverless functions) with Postgres on **Neon**. Every runtime decision in this spec respects the constraint that there are no long-running worker processes - all background work runs on **Inngest**'s managed step-function platform, not on a self-hosted queue. No piece of this spec requires standing up a server.
 
-All workflow glue tools (n8n, Make, Zapier) are replaced with **coded handlers** — typed events and step functions written directly in TypeScript. Managed platform services (Inngest, Resend, Clerk, R2, Cal.com, Groq) are still used; what is eliminated is the no-code workflow-builder layer where logic lives outside version control.
+All workflow glue tools (n8n, Make, Zapier) are replaced with **coded handlers** - typed events and step functions written directly in TypeScript. Managed platform services (Inngest, Resend, Clerk, R2, Cal.com, Groq) are still used; what is eliminated is the no-code workflow-builder layer where logic lives outside version control.
 
 ---
 
@@ -35,7 +35,7 @@ Each feature row uses this format:
 
 ## What PolicyDash already does better than the docs
 
-Before the gap list, a short punch list of things the current codebase does *more rigorously* than either doc describes. These are not gaps — they are strengths the merged spec should preserve, not downgrade.
+Before the gap list, a short punch list of things the current codebase does *more rigorously* than either doc describes. These are not gaps - they are strengths the merged spec should preserve, not downgrade.
 
 - **Formal state machines for feedback + CR lifecycles.** `src/server/machines/feedback.machine.ts` and `changeRequest.machine.ts` (XState) enforce legal transitions and persist a snapshot per entity. The docs describe status fields; PolicyDash enforces state legality in code.
 - **Seven roles with section-level RBAC middleware.** `src/db/schema/users.ts` (admin, policy_lead, research_lead, workshop_moderator, stakeholder, observer, auditor) + `src/server/rbac/section-access.ts` (`requireSectionAccess` chains with `requirePermission`). newDoc1 only mentions four flat roles with no scoping primitive.
@@ -44,19 +44,19 @@ Before the gap list, a short punch list of things the current codebase does *mor
 - **Immutable partitioned audit log with typed actions.** `src/db/schema/audit.ts` is range-partitioned by timestamp and captures `action`, `actorRole`, `entityType`, `payload`, `ipAddress`. Caller sites exist for `FEEDBACK_SUBMIT`, `FEEDBACK_START_REVIEW`, `WORKSHOP_CREATE`, `EVIDENCE_PACK_EXPORT`, and more. newDoc1 says "every action = structured" without specifying how; PolicyDash does.
 - **Word-level section diff + public changelog + consultation summary.** `src/server/services/version.service.ts` has `computeSectionDiff` (diffWords), and the public portal already renders `/portal/[policyId]/changelog` and `/portal/[policyId]/consultation-summary` from real data.
 - **Policy PDF export + evidence pack ZIP export, both shipped.** `app/api/export/policy-pdf/[versionId]/route.tsx` uses `@react-pdf/renderer`; `app/api/export/evidence-pack/route.ts` uses `fflate` for ZIP. These are the backbone of newDoc2's "milestone export" flow and they already exist.
-- **Anonymity enforcement at the server.** `feedback.ts` server-side nulls out `submitterId/Name/OrgType` when `isAnonymous=true` and the caller is not admin/policy_lead. Not just a schema field — an enforced invariant.
-- **Cloudflare R2 upload route already wired.** `app/api/upload/route.ts` uses helpers in `src/lib/r2.ts` with presigned PUT URLs, RBAC gating (`evidence:upload`), size and content-type validation, and SVG blocked for XSS safety. R2 is S3-compatible, so the standard `@aws-sdk/client-s3` + `s3-request-presigner` SDK is used — but the backend is R2 on the existing Cloudflare account, not AWS. Evidence storage already has an object backend; newDoc2 assumed this must be stood up.
-- **tRPC + Drizzle end-to-end, not Airtable/Tally/Sheets.** newDoc2's "pulled from Tally / Sheets / Airtable" for feedback and stakeholders is explicitly replaced — everything lives in Postgres with typed routers.
+- **Anonymity enforcement at the server.** `feedback.ts` server-side nulls out `submitterId/Name/OrgType` when `isAnonymous=true` and the caller is not admin/policy_lead. Not just a schema field - an enforced invariant.
+- **Cloudflare R2 upload route already wired.** `app/api/upload/route.ts` uses helpers in `src/lib/r2.ts` with presigned PUT URLs, RBAC gating (`evidence:upload`), size and content-type validation, and SVG blocked for XSS safety. R2 is S3-compatible, so the standard `@aws-sdk/client-s3` + `s3-request-presigner` SDK is used - but the backend is R2 on the existing Cloudflare account, not AWS. Evidence storage already has an object backend; newDoc2 assumed this must be stood up.
+- **tRPC + Drizzle end-to-end, not Airtable/Tally/Sheets.** newDoc2's "pulled from Tally / Sheets / Airtable" for feedback and stakeholders is explicitly replaced - everything lives in Postgres with typed routers.
 
 The merged spec below assumes these strengths stay.
 
 ---
 
-## Domain 1 — Public Site
+## Domain 1 - Public Site
 
 The merged spec expands the current `/portal` (read-only policy viewer) into a **policy-grade 5-page public site** that handles discovery, research publication, framework presentation, workshop discovery, and structured participation intake.
 
-### Homepage — "choose your path" splitter
+### Homepage - "choose your path" splitter
 - Tag: `NEW`
 - Source: newDoc2
 - What: Public landing with project purpose, "why India" framing, milestone strip, four-way path splitter ("understand the policy" / "contribute expert feedback" / "institution or regulator" / "track progress transparently"), active consultation CTA, and latest outputs strip.
@@ -73,7 +73,7 @@ The merged spec expands the current `/portal` (read-only policy viewer) into a *
 ### Framework overview page (public)
 - Tag: `EXTEND`
 - Source: newDoc2
-- What: Public view of the current draft framework — scope, section cards, consultation status, "what changed" log, CTA to validate the draft.
+- What: Public view of the current draft framework - scope, section cards, consultation status, "what changed" log, CTA to validate the draft.
 - Gap: `/portal/[policyId]` already renders sections + version selector + changelog + consultation summary. Framework page is essentially a **themed, named landing** for one published policy (the "active" one) with the section cards laid out as first-class UI rather than nested inside the portal grid.
 - Notes: Can be implemented as a marketing skin over the existing public policy detail page.
 
@@ -82,20 +82,20 @@ The merged spec expands the current `/portal` (read-only policy viewer) into a *
 - Source: newDoc2
 - What: Public page listing upcoming workshops, themes, who should attend, what participants receive, register CTA.
 - Gap: `src/server/routers/workshop.ts` already has `list({filter: 'upcoming'})`, and workshop schema has title/description/scheduledAt/durationMinutes/registrationLink. The workspace page at `app/(workspace)/workshops/page.tsx` is auth-gated. Need a public mirror (`app/(public)/workshops/page.tsx`) and a public-safe tRPC procedure (no draft or internal metadata).
-- Notes: Registration itself moves from external `registrationLink` URL to a first-class internal flow — see Workshop Registration (Domain 3).
+- Notes: Registration itself moves from external `registrationLink` URL to a first-class internal flow - see Workshop Registration (Domain 3).
 
-### Participate page — role-routed intake
+### Participate page - role-routed intake
 - Tag: `NEW`
 - Source: newDoc2
-- What: Single intake form on `/participate` that classifies visitors by role (regulator/government, industry/startup, legal/compliance, academia/research, civil society/public interest) and routes them to the right next step — workshop registration, briefing request, feedback submission, or tracking subscription.
+- What: Single intake form on `/participate` that classifies visitors by role (regulator/government, industry/startup, legal/compliance, academia/research, civil society/public interest) and routes them to the right next step - workshop registration, briefing request, feedback submission, or tracking subscription.
 - Gap: No public intake form anywhere. Clerk signup auto-assigns role from `public_metadata.role` (`app/api/webhooks/clerk/route.ts`), but there is no UI for the user to self-classify with org-type, affiliation, or interest area. `users.orgType` is nullable.
-- Notes: Triggers `stakeholder.intake.submitted` event (see Automation Runtime, Flow 1). This is the most important new surface area for the public site — it is the front door to every other flow.
+- Notes: Triggers `stakeholder.intake.submitted` event (see Automation Runtime, Flow 1). This is the most important new surface area for the public site - it is the front door to every other flow.
 
 ### Policy-grade visual system
 - Tag: `EXTEND`
 - Source: newDoc2
-- What: Policy-grade aesthetic — white/off-white base, dark blue / slate typography, muted saffron or teal accent, document cards (not product cards), simple milestone bars, research-portal feel.
-- Gap: `app/globals.css` has a modern oklch token system with neutral grays and *semantic* status colors (feedback/CR states, diff colors). There is no **brand** accent — no saffron, no teal, no policy-portal identity. Typography is well-developed for the editor (Tiptap/ProseMirror) but not for the marketing surface.
+- What: Policy-grade aesthetic - white/off-white base, dark blue / slate typography, muted saffron or teal accent, document cards (not product cards), simple milestone bars, research-portal feel.
+- Gap: `app/globals.css` has a modern oklch token system with neutral grays and *semantic* status colors (feedback/CR states, diff colors). There is no **brand** accent - no saffron, no teal, no policy-portal identity. Typography is well-developed for the editor (Tiptap/ProseMirror) but not for the marketing surface.
 - Notes: Add brand tokens + a top-level brand layout for public pages. Keep semantic tokens untouched for workspace.
 
 ### Public site navigation + footer
@@ -106,7 +106,7 @@ The merged spec expands the current `/portal` (read-only policy viewer) into a *
 
 ---
 
-## Domain 2 — Stakeholder Intake & Onboarding
+## Domain 2 - Stakeholder Intake & Onboarding
 
 ### Role classification from intake form
 - Tag: `NEW`
@@ -127,7 +127,7 @@ The merged spec expands the current `/portal` (read-only policy viewer) into a *
 - Source: newDoc2 (Flow 1)
 - What: Role-specific welcome email with next steps (workshop list for workshop_moderator, assigned sections for stakeholder, etc.).
 - Gap: `src/lib/email.ts` has fire-and-forget Resend wrappers (`sendFeedbackReviewedEmail`, `sendVersionPublishedEmail`, `sendSectionAssignedEmail`). No welcome email, no HTML templates, no retry.
-- Notes: Handled by the intake event handler — see Automation Runtime, Flow 1.
+- Notes: Handled by the intake event handler - see Automation Runtime, Flow 1.
 
 ### Section-level scoping (role + assignment)
 - Tag: `BUILT+`
@@ -137,7 +137,7 @@ The merged spec expands the current `/portal` (read-only policy viewer) into a *
 
 ---
 
-## Domain 3 — Workshops
+## Domain 3 - Workshops
 
 Workshop data model and CRUD are in place. The missing pieces are the **registration + notification lifecycle** and **artifact intake**.
 
@@ -151,7 +151,7 @@ Workshop data model and CRUD are in place. The missing pieces are the **registra
 - Tag: `NEW`
 - Source: newDoc2 (Flow 2)
 - What: Public registration form on `/workshops/[id]` that captures attendee info (name, email, org, role), writes a `workshopRegistrations` row, emits `workshop.registration.created`.
-- Gap: `workshops.registrationLink` is currently a free-text external URL — no internal intake, no attendee roster. Needs a new `workshopRegistrations` table (workshopId, email, name, orgType, role, status, createdAt).
+- Gap: `workshops.registrationLink` is currently a free-text external URL - no internal intake, no attendee roster. Needs a new `workshopRegistrations` table (workshopId, email, name, orgType, role, status, createdAt).
 - Notes: Triggers Flow 2 (confirmation email, calendar invite, reminders).
 
 ### Calendar invite (ICS) generation
@@ -172,7 +172,7 @@ Workshop data model and CRUD are in place. The missing pieces are the **registra
 - Tag: `EXTEND`
 - Source: newDoc1
 - What: Upload workshop recordings and attach them to a workshop as a typed artifact.
-- Gap: R2 upload route exists (`app/api/upload/route.ts` → `src/lib/r2.ts`), evidence schema exists (`evidenceArtifacts` + `workshopArtifacts` join), but there is no UI flow for "upload a recording to this workshop" and no automatic artifact-type classification. **Also note**: the current route caps uploads at 32 MB per `MAX_FILE_SIZE.evidence`, which is too small for workshop recordings — multipart upload or a raised limit is needed before Flow 3 can accept real recordings.
+- Gap: R2 upload route exists (`app/api/upload/route.ts` → `src/lib/r2.ts`), evidence schema exists (`evidenceArtifacts` + `workshopArtifacts` join), but there is no UI flow for "upload a recording to this workshop" and no automatic artifact-type classification. **Also note**: the current route caps uploads at 32 MB per `MAX_FILE_SIZE.evidence`, which is too small for workshop recordings - multipart upload or a raised limit is needed before Flow 3 can accept real recordings.
 - Notes: Add a workshop-detail upload panel. On success, emit `workshop.artifact.uploaded`.
 
 ### Attendance tracking
@@ -187,7 +187,7 @@ Workshop data model and CRUD are in place. The missing pieces are the **registra
 - Source: newDoc1
 - What: Auto-generate a workshop summary from the recording.
 - Gap: No transcription or LLM pipeline.
-- Notes: Low priority. Flag as optional — can be stubbed as a "paste your summary" text field until an LLM pipeline is justified.
+- Notes: Low priority. Flag as optional - can be stubbed as a "paste your summary" text field until an LLM pipeline is justified.
 
 ### Per-workshop evidence checklist
 - Tag: `EXTEND`
@@ -204,7 +204,7 @@ Workshop data model and CRUD are in place. The missing pieces are the **registra
 
 ---
 
-## Domain 4 — Feedback Loop
+## Domain 4 - Feedback Loop
 
 This domain is the most complete in the current codebase. Most gaps here are **polish**, not missing structure.
 
@@ -243,12 +243,12 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 - Source: newDoc2 (Flow 4)
 - What: Auto-map incoming responses to section codes and tag by issue type (classification, taxation, data security, governance) without requiring a human to pick from enums.
 - Gap: PolicyDash currently requires the submitter to pick `sectionId`, `feedbackType`, and `impactCategory` at submission time. newDoc2's Flow 4 expects a **normalizer** that ingests loosely-structured responses (e.g., from a workshop form) and maps them to the right fields.
-- Notes: Implement as an event handler on `feedback.external.ingested` — a heuristic or LLM-assisted mapper that writes a draft `feedbackItems` row for a policy_lead to accept. Keeps the strict schema and adds a soft intake path.
+- Notes: Implement as an event handler on `feedback.external.ingested` - a heuristic or LLM-assisted mapper that writes a draft `feedbackItems` row for a policy_lead to accept. Keeps the strict schema and adds a soft intake path.
 
 ### Quote approval workflow
 - Tag: `NEW`
 - Source: newDoc2
-- What: Per newDoc2 ops layer — "quote approval status" on raw responses, so an attributed quote only goes public after curator approval.
+- What: Per newDoc2 ops layer - "quote approval status" on raw responses, so an attributed quote only goes public after curator approval.
 - Gap: No quote entity, no approval state.
 - Notes: Can be a boolean + approver field on feedback items (`isQuotable`, `quoteApprovedBy`, `quoteApprovedAt`), or a separate `feedbackQuotes` table if quotes need their own content.
 
@@ -261,7 +261,7 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 
 ---
 
-## Domain 5 — Change Requests & Versioning
+## Domain 5 - Change Requests & Versioning
 
 ### CR-XXX creation from feedback
 - Tag: `BUILT+`
@@ -315,7 +315,7 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 
 ---
 
-## Domain 6 — Evidence & Exports
+## Domain 6 - Evidence & Exports
 
 ### Evidence artifacts + feedback/section attachment
 - Tag: `BUILT`
@@ -327,7 +327,7 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 - Tag: `BUILT`
 - Source: newDoc1
 - What: Authenticated file upload to **Cloudflare R2** (S3-compatible) with presigned PUT URLs, RBAC gating, and size/content-type validation.
-- Gap: Cap is 32 MB per file (`MAX_FILE_SIZE` in `app/api/upload/route.ts`). Workshop recordings will exceed this — raise the cap or add multipart upload support before Flow 3 goes live. Upstash Redis rate limiting is flagged as a TODO in the route but not yet wired.
+- Gap: Cap is 32 MB per file (`MAX_FILE_SIZE` in `app/api/upload/route.ts`). Workshop recordings will exceed this - raise the cap or add multipart upload support before Flow 3 goes live. Upstash Redis rate limiting is flagged as a TODO in the route but not yet wired.
 - Notes: Implementation lives in `src/lib/r2.ts`; the `@aws-sdk/client-s3` SDK is the standard way to talk to R2.
 
 ### Evidence pack ZIP export
@@ -343,7 +343,7 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 - What: Published version as styled PDF.
 - Gap: None. `app/api/export/policy-pdf/[versionId]/route.tsx` + `@react-pdf/renderer`.
 
-### Milestone pack (composite export) — Flow 7
+### Milestone pack (composite export) - Flow 7
 - Tag: `EXTEND`
 - Source: newDoc2 (Flow 7) + newDoc1
 - What: Single "Build milestone pack" action that produces a zip containing: stakeholder list, workshop summaries, screenshots, recordings, feedback matrix, revision matrix, latest draft PDFs.
@@ -353,7 +353,7 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 ### Per-workshop evidence checklist
 - Tag: `EXTEND`
 - Source: newDoc2 (Flow 3)
-- What: See Workshop domain — each workshop has a derived checklist of expected artifacts with completion state.
+- What: See Workshop domain - each workshop has a derived checklist of expected artifacts with completion state.
 - Gap: Checklist concept is missing.
 
 ### "Claims without evidence" view
@@ -366,17 +366,17 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 - Tag: `NEW` *(deferred to footnote)*
 - Source: newDoc1
 - What: SHA256 of policy version, workshop summary, feedback dataset, evidence bundle.
-- Gap: Absent. Deferred — see Verification Layer footnote.
+- Gap: Absent. Deferred - see Verification Layer footnote.
 
 ---
 
-## Domain 7 — Traceability & Reporting
+## Domain 7 - Traceability & Reporting
 
 ### FB→CR→Section→Version matrix
 - Tag: `BUILT+`
 - Source: both
 - What: Filterable matrix with readable IDs, org-type, decision outcome, version range filters.
-- Gap: None. `src/server/routers/traceability.ts` — neither doc describes a traceability **query surface**, only the concept.
+- Gap: None. `src/server/routers/traceability.ts` - neither doc describes a traceability **query surface**, only the concept.
 
 ### Per-stakeholder outcome view
 - Tag: `BUILT`
@@ -404,7 +404,7 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 
 ---
 
-## Domain 8 — Governance & RBAC
+## Domain 8 - Governance & RBAC
 
 ### Seven-role model
 - Tag: `BUILT+`
@@ -422,7 +422,7 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 - Tag: `BUILT`
 - Source: implied
 - What: Actions like `feedback:submit`, `feedback:review`, `workshop:manage`, `evidence:export`, `trace:read` are gated at the router.
-- Gap: Full matrix not documented in one place — make the permission matrix canonical in a doc.
+- Gap: Full matrix not documented in one place - make the permission matrix canonical in a doc.
 
 ### Observer role (read-only view across policies)
 - Tag: `BUILT`
@@ -444,26 +444,26 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 
 ---
 
-## Domain 9 — Automation Runtime (replaces n8n / Make)
+## Domain 9 - Automation Runtime (replaces n8n / Make)
 
 **This is the biggest net-new domain.** Today there is no background job runtime: emails are fire-and-forget, notifications are synchronous, and there is no scheduler. newDoc2's 7 flows and newDoc1's internal event system both require a real queue.
 
-### Runtime substrate — Inngest (decided)
+### Runtime substrate - Inngest (decided)
 - Tag: `NEW`
 - Source: newDoc1 + newDoc2 (replacement)
 - What: Inngest handles typed events, background handlers, delayed/scheduled jobs, retries with backoff, fan-out, wait-for-event, and observability.
 - Gap: Absent today.
 - Deployment fit: PolicyDash is on Vercel (serverless) + Neon. A long-running worker model (pg-boss, BullMQ) requires a persistent process that serverless cannot host. Inngest is a **managed service** that calls your `/api/inngest` route when events fire or schedules trigger, so all execution happens inside the existing Next.js serverless functions. Zero new infra.
-- Free tier: 50k steps / month, unlimited events, 6 concurrent functions — enough for the initial consultation workload. Paid plans start only when that's exceeded.
+- Free tier: 50k steps / month, unlimited events, 6 concurrent functions - enough for the initial consultation workload. Paid plans start only when that's exceeded.
 - Step-function model: each `step.run()` is a separate serverless invocation with its own timeout budget, so long workflows (like Flow 7's 11-step milestone pack build) sidestep Vercel function timeouts automatically. No "the request took too long" failures.
-- Delayed jobs: `step.sleepUntil(targetTime)` holds the wait on Inngest's side and wakes the function at the exact moment. This is what makes Flow 2's T-48h and T-2h workshop reminders trivial — no polling, no cron hacks.
+- Delayed jobs: `step.sleepUntil(targetTime)` holds the wait on Inngest's side and wakes the function at the exact moment. This is what makes Flow 2's T-48h and T-2h workshop reminders trivial - no polling, no cron hacks.
 - Setup:
   1. `npm install inngest`.
   2. Create `src/inngest/client.ts` with an `Inngest` instance and typed `EventSchemas`.
-  3. Create `src/inngest/functions/*.ts` — one file per flow (Flow 1–7).
+  3. Create `src/inngest/functions/*.ts` - one file per flow (Flow 1–7).
   4. Mount at `app/api/inngest/route.ts` via `serve({ client, functions })`.
   5. Add `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` env vars.
-- Alternative considered and rejected: Trigger.dev v3 — similar guarantees, slightly different runtime model. Inngest picked for tighter Next.js DX, cleaner step-function primitives, and the direct `sleepUntil` API.
+- Alternative considered and rejected: Trigger.dev v3 - similar guarantees, slightly different runtime model. Inngest picked for tighter Next.js DX, cleaner step-function primitives, and the direct `sleepUntil` API.
 
 ### Typed event registry
 - Tag: `NEW`
@@ -496,47 +496,47 @@ This domain is the most complete in the current codebase. Most gaps here are **p
 
 Each flow below is a concrete event + handler chain. Handlers are ordered and marked `sync` (runs inside the tRPC request that emits the event, before returning to the user) or `job` (runs as an Inngest `step.run()` after the event is dispatched, with full retry / observability / delayed-execution support). Sync steps are for writes that must succeed before the user sees a success response; job steps are for everything else.
 
-#### Flow 1 — Stakeholder intake
+#### Flow 1 - Stakeholder intake
 ```
 Event:    stakeholder.intake.submitted
 Trigger:  POST /participate (form submission)
 Handlers:
-  1. sync  classifyRoleAndOrgType(payload) — rule-based router from form fields
-  2. sync  upsertStakeholderLead(classified) — write to users (or stakeholderLeads) row
-  3. job   sendTailoredWelcomeEmail(leadId) — React Email template per role
+  1. sync  classifyRoleAndOrgType(payload) - rule-based router from form fields
+  2. sync  upsertStakeholderLead(classified) - write to users (or stakeholderLeads) row
+  3. job   sendTailoredWelcomeEmail(leadId) - React Email template per role
   4. job   addToDefaultWorkshopInviteList(leadId, orgType)
   5. job   writeAuditLog({action: 'STAKEHOLDER_INTAKE_SUBMITTED', ...})
 Integrations: Resend (email), R2 (if the intake uploads a profile/affiliation doc)
 Replaces: Flow 1 (Form submit → classify → Airtable → email → invite list)
 ```
 
-#### Flow 2 — Workshop registration
+#### Flow 2 - Workshop registration
 ```
 Event:    workshop.registration.created
 Trigger:  POST /workshops/[id]/register
 Handlers:
-  1. sync  validateAndWriteRegistration(input) — writes workshopRegistrations row
-  2. job   sendConfirmationEmail(registrationId) — with ICS attachment
+  1. sync  validateAndWriteRegistration(input) - writes workshopRegistrations row
+  2. job   sendConfirmationEmail(registrationId) - with ICS attachment
   3. job   scheduleReminderAt(registrationId, scheduledAt - 48h, 'reminder-48h')
   4. job   scheduleReminderAt(registrationId, scheduledAt -  2h, 'reminder-2h')
   5. job   writeAuditLog({action: 'WORKSHOP_REGISTERED', ...})
 
 Event:    workshop.reminder.due (fired by the scheduler at the target time)
 Handlers:
-  1. job   sendReminderEmail(registrationId, reminderKey) — includes meeting link + feedback form URL
+  1. job   sendReminderEmail(registrationId, reminderKey) - includes meeting link + feedback form URL
   2. job   writeAuditLog({action: 'WORKSHOP_REMINDER_SENT', ...})
 Integrations: Resend, ics, pg-boss/Inngest scheduler
 Replaces: Flow 2 (Registration → confirmation → calendar → 48h reminder → 2h reminder → Zoom link)
 ```
 
-#### Flow 3 — Post-workshop evidence
+#### Flow 3 - Post-workshop evidence
 ```
 Event:    workshop.completed
 Trigger:  policy_lead marks workshop complete (UI action)
 Handlers:
   1. sync  transitionWorkshopToCompleted(workshopId)
-  2. job   materializeEvidenceChecklist(workshopId) — seeds workshopArtifactRequirements rows
-  3. job   emailArtifactUploadRequest(workshopId) — links to upload UI
+  2. job   materializeEvidenceChecklist(workshopId) - seeds workshopArtifactRequirements rows
+  3. job   emailArtifactUploadRequest(workshopId) - links to upload UI
   4. job   writeAuditLog({action: 'WORKSHOP_COMPLETED', ...})
 
 Event:    workshop.artifact.uploaded
@@ -544,55 +544,55 @@ Trigger:  POST /api/upload success with workshopId + artifactType
 Handlers:
   1. sync  attachArtifactToWorkshop(workshopId, artifactId)
   2. job   markChecklistItemComplete(workshopId, artifactType)
-  3. job   maybeEmitMilestoneReady(workshopId) — if checklist is fully green
+  3. job   maybeEmitMilestoneReady(workshopId) - if checklist is fully green
 Integrations: R2, Resend
 Replaces: Flow 3 (Workshop complete → checklist → upload request → attach artifacts)
 ```
 
-#### Flow 4 — Feedback normalization
+#### Flow 4 - Feedback normalization
 ```
 Event:    feedback.external.ingested
-Trigger:  Any external intake — e.g., a workshop form, an email import, a CSV upload
+Trigger:  Any external intake - e.g., a workshop form, an email import, a CSV upload
 Handlers:
-  1. job   normalizeToSchema(rawResponse) — heuristic or LLM-assisted mapper that produces a draft feedbackItems row (sectionId, feedbackType, impactCategory)
-  2. job   writeDraftFeedbackItem(draft) — status=pending_review, flagged=auto_normalized
-  3. job   notifyPolicyLead(documentId) — in-app + email
+  1. job   normalizeToSchema(rawResponse) - heuristic or LLM-assisted mapper that produces a draft feedbackItems row (sectionId, feedbackType, impactCategory)
+  2. job   writeDraftFeedbackItem(draft) - status=pending_review, flagged=auto_normalized
+  3. job   notifyPolicyLead(documentId) - in-app + email
   4. job   writeAuditLog({action: 'FEEDBACK_AUTO_NORMALIZED', ...})
 Integrations: Resend, (optional) LLM provider
 Replaces: Flow 4 (Tally → map to section → tag → push into feedback table)
 Note: Strict first-party submissions via /trpc feedback.submit are unchanged. This flow is only for loose/external intake.
 ```
 
-#### Flow 5 — Revision engine
+#### Flow 5 - Revision engine
 ```
 Event:    feedback.decided
 Trigger:  Feedback transitions to accepted | partially_accepted | rejected
 Handlers:
   1. sync  (already exists) write decisionRationale + reviewedBy + reviewedAt
   2. sync  (already exists) persist XState snapshot
-  3. job   upsertDraftCRForDecision(feedbackId, decision) — if no open draft CR covers this section, create one; else append the feedback to the existing CR via crFeedbackLinks
+  3. job   upsertDraftCRForDecision(feedbackId, decision) - if no open draft CR covers this section, create one; else append the feedback to the existing CR via crFeedbackLinks
   4. job   appendChangelogEntry(crId, feedbackReadableId)
-  5. job   sendFeedbackReviewedEmail(submitterId) — templated, retryable
+  5. job   sendFeedbackReviewedEmail(submitterId) - templated, retryable
   6. job   createNotification(submitterId, 'feedback_status_changed')
 Integrations: Resend
 Replaces: Flow 5 (Feedback accepted/rejected → generate revision row → update change log → link driver feedback codes → surface "what changed")
-Note: Handlers 1, 2, 5, 6 already exist in the feedback router — move them into the event handler chain for retry + observability.
+Note: Handlers 1, 2, 5, 6 already exist in the feedback router - move them into the event handler chain for retry + observability.
 ```
 
-#### Flow 6 — Expert review
+#### Flow 6 - Expert review
 ```
 Event:    framework.expert_review.requested
 Trigger:  policy_lead clicks "Send for expert review" on a document version
 Handlers:
   1. sync  markVersionReadyForReview(versionId)
-  2. job   buildReviewerPacket(versionId) — assembles policy PDF + changelog + traceability CSV into a zip via existing exports
-  3. job   emailReviewerPacket(versionId, reviewerUserIds) — with packet URL
+  2. job   buildReviewerPacket(versionId) - assembles policy PDF + changelog + traceability CSV into a zip via existing exports
+  3. job   emailReviewerPacket(versionId, reviewerUserIds) - with packet URL
   4. job   writeAuditLog({action: 'EXPERT_REVIEW_REQUESTED', ...})
 
 Event:    framework.expert_review.responded
 Trigger:  reviewer posts their written response (via a review form OR an email intake)
 Handlers:
-  1. sync  writeExpertReviewArtifact(versionId, reviewerId, responseBody) — stored as an evidenceArtifacts row + feedbackEvidence or sectionEvidence link
+  1. sync  writeExpertReviewArtifact(versionId, reviewerId, responseBody) - stored as an evidenceArtifacts row + feedbackEvidence or sectionEvidence link
   2. job   notifyPolicyLead(versionId)
   3. job   writeAuditLog({action: 'EXPERT_REVIEW_RECEIVED', ...})
 Integrations: Resend, R2 (for PDF packets)
@@ -600,20 +600,20 @@ Replaces: Flow 6 (Mark framework ready → send packet → collect response → 
 Note: No new entity needed. Reuse evidence artifacts + audit log.
 ```
 
-#### Flow 7 — Milestone export (composite pack)
+#### Flow 7 - Milestone export (composite pack)
 ```
 Event:    milestone.pack.requested
 Trigger:  policy_lead clicks "Build milestone pack" on a document or version
 Handlers:
-  1. sync  writeMilestoneExportRecord(requestedBy, documentId, versionId) — tracks the pending export
-  2. job   buildEvidencePackZip(documentId) — reuse evidence-pack.service.ts
-  3. job   buildPolicyPdf(versionId) — reuse policy-pdf route as a library call
-  4. job   buildTraceabilityCsv(documentId) — reuse traceability csv route as a library call
-  5. job   buildStakeholderList(documentId) — new, derives from users + sectionAssignments + feedbackItems
-  6. job   buildFeedbackMatrixCsv(documentId) — new, derives from traceability
-  7. job   buildRevisionMatrixCsv(documentId) — new, derives from changeRequests + documentVersions
-  8. job   composeMasterZip(parts) — fflate zip of all parts
-  9. job   uploadMasterZipToR2(zipBuffer) — presigned URL
+  1. sync  writeMilestoneExportRecord(requestedBy, documentId, versionId) - tracks the pending export
+  2. job   buildEvidencePackZip(documentId) - reuse evidence-pack.service.ts
+  3. job   buildPolicyPdf(versionId) - reuse policy-pdf route as a library call
+  4. job   buildTraceabilityCsv(documentId) - reuse traceability csv route as a library call
+  5. job   buildStakeholderList(documentId) - new, derives from users + sectionAssignments + feedbackItems
+  6. job   buildFeedbackMatrixCsv(documentId) - new, derives from traceability
+  7. job   buildRevisionMatrixCsv(documentId) - new, derives from changeRequests + documentVersions
+  8. job   composeMasterZip(parts) - fflate zip of all parts
+  9. job   uploadMasterZipToR2(zipBuffer) - presigned URL
  10. job   emailDownloadLink(requestedBy, r2Url)
  11. job   writeAuditLog({action: 'MILESTONE_PACK_EXPORTED', ...})
 Integrations: R2, Resend, fflate, @react-pdf/renderer
@@ -626,46 +626,46 @@ Note: Steps 2–4 already exist as HTTP routes. Extract their logic into library
 - Source: implied
 - What: Each function run has structured logs; failures, delayed-job status, and step-by-step execution timelines are visible in the Inngest dashboard.
 - Gap: No job observability today.
-- Notes: Inngest ships its own UI out-of-the-box — function runs, event stream, failure replay, retry history, step-by-step timeline. No custom dashboard to build.
+- Notes: Inngest ships its own UI out-of-the-box - function runs, event stream, failure replay, retry history, step-by-step timeline. No custom dashboard to build.
 
 ---
 
-## Domain 9a — Third-party integrations
+## Domain 9a - Third-party integrations
 
-The automation runtime (Domain 9) is the substrate; this section enumerates the external services it talks to, grouped by concern. Every choice below is **decided** — not a menu of options. Deferred items are marked explicitly. These integrations overlap with existing feature rows (email in Domain 12, captcha in Domain 1, etc.); they are grouped here as an integration inventory, not counted as additional feature rows.
+The automation runtime (Domain 9) is the substrate; this section enumerates the external services it talks to, grouped by concern. Every choice below is **decided** - not a menu of options. Deferred items are marked explicitly. These integrations overlap with existing feature rows (email in Domain 12, captcha in Domain 1, etc.); they are grouped here as an integration inventory, not counted as additional feature rows.
 
-### Email — Resend
+### Email - Resend
 - Status: `BUILT` (wrapper) / `EXTEND` (templates + webhook)
-- Role: Transactional email for all seven flows — welcome, confirmations, reminders, feedback-reviewed notifications, reviewer packets, milestone download links.
+- Role: Transactional email for all seven flows - welcome, confirmations, reminders, feedback-reviewed notifications, reviewer packets, milestone download links.
 - Setup:
   1. Add React Email templates under `src/emails/`.
   2. Wire Resend webhook at `/api/webhooks/resend` to capture delivery / bounce / complaint events into a new `emailDeliveries` table.
   3. Configure DKIM / SPF / DMARC for the sending domain.
 - Consumed by: Flows 1–7.
 
-### Inbound email — Resend Inbound
+### Inbound email - Resend Inbound
 - Status: `NEW` (optional)
 - Role: Receive replies as structured intake for expert review responses (Flow 6), so reviewers can reply to an email rather than log in and fill a form.
 - Setup: Configure a dedicated inbound address in Resend; add `/api/webhooks/resend-inbound` to parse and persist responses as `evidenceArtifacts` rows linked via `feedbackEvidence` / `sectionEvidence`.
-- Consumed by: Flow 6 (optional — form submission remains the default path).
+- Consumed by: Flow 6 (optional - form submission remains the default path).
 - Decision: Implement only if reviewers push back on using a form. Not on the critical path.
 
-### 1:1 scheduling — Cal.com
+### 1:1 scheduling - Cal.com
 - Status: `NEW`
-- Role: Handle 1:1 scheduling for the **"institution / regulator → request a briefing"** path on the participate splitter. Group workshops do **not** go through Cal.com — they use internal workshop registration (Flow 2).
+- Role: Handle 1:1 scheduling for the **"institution / regulator → request a briefing"** path on the participate splitter. Group workshops do **not** go through Cal.com - they use internal workshop registration (Flow 2).
 - Setup:
-  1. Create a **Cal.com Cloud** account on the free personal plan — managed, no self-hosting, no server to run. Upgrade to a team plan later only if multi-organizer round-robin availability becomes a requirement.
+  1. Create a **Cal.com Cloud** account on the free personal plan - managed, no self-hosting, no server to run. Upgrade to a team plan later only if multi-organizer round-robin availability becomes a requirement.
   2. Create an event type for "policy briefing" (30 / 45 / 60 min variants).
   3. Embed Cal.com widget on `/participate/briefing` via `@calcom/embed-react`.
   4. Configure a Cal.com webhook at `/api/webhooks/calcom` that emits `briefing.booked` into Inngest. The Inngest function sends a tailored confirmation email and adds the booking to the organizer's Google Calendar via our existing Google integration.
 - Consumed by: Flow 1 (briefing path branch).
 - Why Cal.com over Calendly: OSS project with a generous free managed tier, honest pricing if we outgrow it, cleaner webhook model. Fits the "no server hosting" constraint.
 
-### Calendar + meetings — Google Calendar + Google Meet
+### Calendar + meetings - Google Calendar + Google Meet
 - Status: `NEW`
 - Role:
   1. Create calendar events for workshops on workshop publish.
-  2. Auto-generate a Google Meet link via `conferenceData.createRequest` in the Calendar API — zero extra API calls, Meet link comes for free with the event.
+  2. Auto-generate a Google Meet link via `conferenceData.createRequest` in the Calendar API - zero extra API calls, Meet link comes for free with the event.
   3. Invite registered attendees to the event so Google sends its native reminders alongside our own.
   4. Create calendar events for Cal.com-booked 1:1 briefings (see above).
 - Setup:
@@ -675,28 +675,28 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
   4. Add `src/lib/google-calendar.ts` wrapper exposing `createWorkshopEvent()`, `inviteAttendee()`, `cancelEvent()`.
 - Consumed by: Flow 1 (briefing calendar events), Flow 2 (workshop calendar events + Meet link).
 - Why Google Meet over Zoom: simpler setup (one OAuth / one service account), no separate paid Zoom account, Meet link is free with the calendar event.
-- **Recording pull is DEFERRED**: Meet recordings live in the organizer's Drive, not directly addressable via Calendar API, and extracting them requires the Drive API + extra scopes. Flow 3's post-workshop evidence upload stays **manual for v1** — organizer uploads the recording themselves via the existing R2 upload route.
+- **Recording pull is DEFERRED**: Meet recordings live in the organizer's Drive, not directly addressable via Calendar API, and extracting them requires the Drive API + extra scopes. Flow 3's post-workshop evidence upload stays **manual for v1** - organizer uploads the recording themselves via the existing R2 upload route.
 
-### ICS generation — `ics` npm package
+### ICS generation - `ics` npm package
 - Status: `NEW`
 - Role: Generate `.ics` attachments for workshop confirmation emails as a belt-and-suspenders complement to Google Calendar invites (covers attendees not on Google Workspace).
 - Setup: `npm install ics`; add `src/lib/ics.ts` wrapper with `buildWorkshopIcs(workshop, attendee)`.
 - Consumed by: Flow 2.
 
-### File storage — Cloudflare R2
+### File storage - Cloudflare R2
 - Status: `BUILT` (EXTEND for recording support)
-- Role: Evidence artifacts (Flow 3), reviewer packets (Flow 6), milestone pack zips (Flow 7). Uses the existing Cloudflare account — no additional vendor.
-- Setup: Already wired. `src/lib/r2.ts` exposes `getUploadUrl`, `generateStorageKey`, `getPublicUrl`. The `@aws-sdk/client-s3` SDK talks to R2 via its S3-compatible API — this is the standard R2 pattern, not an AWS dependency.
+- Role: Evidence artifacts (Flow 3), reviewer packets (Flow 6), milestone pack zips (Flow 7). Uses the existing Cloudflare account - no additional vendor.
+- Setup: Already wired. `src/lib/r2.ts` exposes `getUploadUrl`, `generateStorageKey`, `getPublicUrl`. The `@aws-sdk/client-s3` SDK talks to R2 via its S3-compatible API - this is the standard R2 pattern, not an AWS dependency.
 - Known gaps to close before Flow 3: (1) raise or split the 32 MB per-file cap in `app/api/upload/route.ts` to support workshop recordings (multipart upload is the standard R2 approach), (2) wire the pending `@upstash/ratelimit` TODO so the presigned-URL endpoint cannot be abused.
 
-### Authentication — Clerk
+### Authentication - Clerk
 - Status: `BUILT`
 - Role: Workspace auth + role provisioning via webhook.
 - Setup: Already wired. No changes.
 
-### Captcha — Cloudflare Turnstile
+### Captcha - Cloudflare Turnstile
 - Status: `NEW`
-- Role: Protect public forms (participate intake, workshop registration, briefing request) from automated spam. Uses the existing Cloudflare account — no new vendor.
+- Role: Protect public forms (participate intake, workshop registration, briefing request) from automated spam. Uses the existing Cloudflare account - no new vendor.
 - Setup:
   1. In the existing Cloudflare dashboard, enable Turnstile and create a site key for the PolicyDash domain.
   2. Install `@marsidev/react-turnstile` for the React widget.
@@ -704,41 +704,41 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
   4. Gate every public form submission behind the verifier at the tRPC procedure layer.
 - Consumed by: Flow 1 (all public forms), Flow 2 (public workshop registration), Flow 1 briefing path (Cal.com embed page).
 
-### LLM inference — Groq Cloud API
+### LLM inference - Groq Cloud API
 - Status: `NEW` (Flow 4 only)
 - Role: Auto-categorize loosely-structured feedback intake into `sectionId` + `feedbackType` + `impactCategory` as a draft for policy_lead review. Runs inside Flow 4's `normalizeToSchema` handler.
 - Setup:
   1. Create a Groq Cloud account, generate an API key.
   2. Use Groq's OpenAI-compatible endpoint: point the standard `openai` SDK at `https://api.groq.com/openai/v1` with the Groq API key. No separate SDK needed.
   3. Default model: `llama-3.3-70b-versatile` for quality; fall back to `llama-3.1-8b-instant` for cost if rate limits bite.
-  4. Add `src/lib/groq.ts` with `categorizeFeedback(rawResponse, documentSections)` — a structured-output prompt that returns `{sectionId, feedbackType, impactCategory, confidence}`.
+  4. Add `src/lib/groq.ts` with `categorizeFeedback(rawResponse, documentSections)` - a structured-output prompt that returns `{sectionId, feedbackType, impactCategory, confidence}`.
   5. Add a `heuristicCategorizer()` fallback that runs if Groq is unavailable or returns low confidence, so the intake path never blocks.
 - Consumed by: Flow 4.
 - Why Groq: generous free tier, very fast inference (sub-second), OpenAI-compatible API so the provider can be swapped later without rewriting handlers.
 
-### Analytics — Umami Cloud
+### Analytics - Umami Cloud
 - Status: `NEW`
 - Role: Privacy-friendly page analytics for the public site only (not the workspace). Cookie-free, GDPR-friendly, appropriate for a policy-grade site.
 - Why Umami Cloud over Plausible: generous free tier on the managed cloud, same privacy posture as Plausible (cookie-free, no personal data), same custom-event model. Plausible Cloud starts at ~$9/mo; Umami Cloud free tier handles the initial public-site traffic at zero cost and zero ops.
 - Setup:
   1. Create an Umami Cloud account and add the PolicyDash public domain as a website.
-  2. Add the Umami tracking snippet to `app/(public)/layout.tsx` only — explicitly exclude workspace routes so authed user behavior is not tracked.
+  2. Add the Umami tracking snippet to `app/(public)/layout.tsx` only - explicitly exclude workspace routes so authed user behavior is not tracked.
   3. Register custom events: `participate_form_submitted`, `workshop_registered`, `briefing_requested`, `research_report_downloaded`.
 - Consumed by: public site pages (Domain 1).
 
-### SMS reminders — Twilio
+### SMS reminders - Twilio
 - Status: `NEW` (optional, gated by user opt-in)
 - Role: Optional SMS reminders for workshops (T-24h and T-2h) alongside email, for high-signal reminder delivery.
 - Setup:
-  1. Create a Twilio account (starts with ~$15 trial credit, ~1500 SMS for development — the easiest free starting point).
+  1. Create a Twilio account (starts with ~$15 trial credit, ~1500 SMS for development - the easiest free starting point).
   2. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` in env.
   3. Install `twilio` SDK, add `src/lib/sms.ts` with `sendSms(to, body)`.
-  4. Add `users.smsOptIn` boolean column (defaults false) — SMS is only sent to users who have explicitly opted in. Unsolicited SMS is regulated and must not be the default.
+  4. Add `users.smsOptIn` boolean column (defaults false) - SMS is only sent to users who have explicitly opted in. Unsolicited SMS is regulated and must not be the default.
   5. Flow 2's reminder handler checks `smsOptIn` and fans out email + (optionally) SMS.
 - Consumed by: Flow 2 (workshop reminders).
-- Why Twilio for now: easiest setup, best SDK, free trial covers all development. For India-production cost optimization, swap to MSG91 or Fast2SMS later — both offer India-specific pricing but need more setup friction. That swap is a flagged future optimization, not a decision for v1.
+- Why Twilio for now: easiest setup, best SDK, free trial covers all development. For India-production cost optimization, swap to MSG91 or Fast2SMS later - both offer India-specific pricing but need more setup friction. That swap is a flagged future optimization, not a decision for v1.
 
-### Error monitoring — Sentry
+### Error monitoring - Sentry
 - Status: `DEFERRED`
 - Decision: Skip for now. Revisit before production launch. Structured logs to stdout and the job runtime's own failure surface are sufficient during build.
 
@@ -746,32 +746,32 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 
 | Service | New env vars | Already set |
 |---|---|---|
-| Inngest | `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` | — |
+| Inngest | `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` | - |
 | Resend | `RESEND_WEBHOOK_SECRET` | `RESEND_API_KEY` |
-| Cal.com Cloud | `CALCOM_API_KEY`, `CALCOM_WEBHOOK_SECRET`, `NEXT_PUBLIC_CALCOM_EMBED_URL` | — |
-| Google Calendar | `GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON` *(or OAuth pair)*, `GOOGLE_CALENDAR_ORGANIZER_EMAIL` | — |
-| Cloudflare R2 | — | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` *(exact names per `src/lib/r2.ts`)* |
-| Clerk | — | `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_WEBHOOK_SECRET` |
-| Cloudflare Turnstile | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — |
-| Groq Cloud | `GROQ_API_KEY` | — |
-| Umami Cloud | `NEXT_PUBLIC_UMAMI_WEBSITE_ID`, `NEXT_PUBLIC_UMAMI_SCRIPT_SRC` | — |
-| Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` | — |
+| Cal.com Cloud | `CALCOM_API_KEY`, `CALCOM_WEBHOOK_SECRET`, `NEXT_PUBLIC_CALCOM_EMBED_URL` | - |
+| Google Calendar | `GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON` *(or OAuth pair)*, `GOOGLE_CALENDAR_ORGANIZER_EMAIL` | - |
+| Cloudflare R2 | - | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` *(exact names per `src/lib/r2.ts`)* |
+| Clerk | - | `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_WEBHOOK_SECRET` |
+| Cloudflare Turnstile | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | - |
+| Groq Cloud | `GROQ_API_KEY` | - |
+| Umami Cloud | `NEXT_PUBLIC_UMAMI_WEBSITE_ID`, `NEXT_PUBLIC_UMAMI_SCRIPT_SRC` | - |
+| Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` | - |
 
 ### Per-flow integration map
 
 | Flow | Integrations consumed |
 |---|---|
-| Flow 1 — Stakeholder intake | Turnstile, Resend, *(briefing path)* Cal.com + Google Calendar |
-| Flow 2 — Workshop registration | Turnstile, Resend, `ics`, Google Calendar + Meet, *(optional)* Twilio |
-| Flow 3 — Post-workshop evidence | R2, Resend (recording import via Meet **deferred**) |
-| Flow 4 — Feedback normalization | Groq (+ heuristic fallback), Resend |
-| Flow 5 — Revision engine | Resend |
-| Flow 6 — Expert review | R2, `@react-pdf/renderer`, Resend, *(optional)* Resend Inbound |
-| Flow 7 — Milestone export | R2, `@react-pdf/renderer`, `fflate`, Resend |
+| Flow 1 - Stakeholder intake | Turnstile, Resend, *(briefing path)* Cal.com + Google Calendar |
+| Flow 2 - Workshop registration | Turnstile, Resend, `ics`, Google Calendar + Meet, *(optional)* Twilio |
+| Flow 3 - Post-workshop evidence | R2, Resend (recording import via Meet **deferred**) |
+| Flow 4 - Feedback normalization | Groq (+ heuristic fallback), Resend |
+| Flow 5 - Revision engine | Resend |
+| Flow 6 - Expert review | R2, `@react-pdf/renderer`, Resend, *(optional)* Resend Inbound |
+| Flow 7 - Milestone export | R2, `@react-pdf/renderer`, `fflate`, Resend |
 
 ---
 
-## Domain 10 — Design System & Visual Direction
+## Domain 10 - Design System & Visual Direction
 
 ### Semantic token system (existing)
 - Tag: `BUILT+`
@@ -801,7 +801,7 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 
 ---
 
-## Domain 11 — Project Layer
+## Domain 11 - Project Layer
 
 ### Top-level "Project" entity
 - Tag: `NEW`
@@ -818,7 +818,7 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 
 ---
 
-## Domain 12 — Notifications
+## Domain 12 - Notifications
 
 ### In-app notifications
 - Tag: `BUILT`
@@ -841,13 +841,13 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 
 ### Digest emails
 - Tag: `NEW`
-- Source: newDoc2 (Flow 2 — reminders are scheduled; digests extend this)
+- Source: newDoc2 (Flow 2 - reminders are scheduled; digests extend this)
 - What: Weekly or daily summary of new feedback, pending decisions, upcoming workshops.
 - Gap: Absent. Depends on scheduler.
 
 ---
 
-## Domain 13 — Audit & Compliance
+## Domain 13 - Audit & Compliance
 
 ### Immutable audit log
 - Tag: `BUILT+`
@@ -875,7 +875,7 @@ The automation runtime (Domain 9) is the substrate; this section enumerates the 
 
 ---
 
-## Deferred — Real-time Collaboration
+## Deferred - Real-time Collaboration
 
 Real-time multi-user editing is **deferred**. The substrate (Yjs, Tiptap `Collaboration` extensions, `ydocSnapshots` table, `usePresence` hook, inline comment threads) is already in the codebase, but the hocuspocus websocket server was removed in commit `f9c8e71` and there is no live websocket endpoint. Do not rely on real-time multi-editor flows in the merged spec. The data model and client integration stay in place for when this is un-deferred.
 
@@ -883,14 +883,14 @@ Practical implication for the feature list: treat all editor flows as **single-w
 
 ---
 
-## Deferred — Verification Layer (Cardano anchoring)
+## Deferred - Verification Layer (Cardano anchoring)
 
 newDoc1 positions PolicyDash as a **Verifiable Policy Operating System** anchored on Cardano. This is deferred but listed here as a footnote so the design surface is not lost.
 
 ### Hashing layer
 - Tag: `NEW` (deferred)
 - Source: newDoc1
-- What: SHA256 of every important artifact — policy version snapshot, workshop summary, feedback dataset, evidence bundle.
+- What: SHA256 of every important artifact - policy version snapshot, workshop summary, feedback dataset, evidence bundle.
 - Gap: No hashing anywhere. Evidence artifacts store URLs, not content hashes.
 - Notes: When built, run as a final step of the milestone pack handler (Domain 9 Flow 7) and the version publish handler (Domain 5).
 
@@ -909,25 +909,25 @@ newDoc1 positions PolicyDash as a **Verifiable Policy Operating System** anchore
 
 ---
 
-## Appendix — Decision surface
+## Appendix - Decision surface
 
 Things that are **not** decided in this feature list and need their own decisions before implementation starts:
 
-1. **Project-layer refactor** — land before the public site refactor so public pages are project-scoped from day one.
-2. **Google Calendar auth model** — service account with domain-wide delegation vs. OAuth2 for a shared organizer account. Depends on whether PolicyDash is deployed inside a Google Workspace org.
-3. **Cardano anchoring timing** — deferred, but at what milestone does it become real?
-4. **Real-time collab** — deferred; revisit at a later milestone.
-5. **Post-v1 SMS provider swap** — Twilio is used for v1; flag MSG91 or Fast2SMS for India-specific production cost optimization later.
+1. **Project-layer refactor** - land before the public site refactor so public pages are project-scoped from day one.
+2. **Google Calendar auth model** - service account with domain-wide delegation vs. OAuth2 for a shared organizer account. Depends on whether PolicyDash is deployed inside a Google Workspace org.
+3. **Cardano anchoring timing** - deferred, but at what milestone does it become real?
+4. **Real-time collab** - deferred; revisit at a later milestone.
+5. **Post-v1 SMS provider swap** - Twilio is used for v1; flag MSG91 or Fast2SMS for India-specific production cost optimization later.
 
-**Decisions resolved** — pinned for reference so they don't re-open later:
+**Decisions resolved** - pinned for reference so they don't re-open later:
 
 | Decision | Resolution |
 |---|---|
 | Hosting target | **Vercel** (serverless functions) + **Neon** (Postgres). No long-running workers. |
-| Automation runtime | **Inngest** — managed step functions, fits Vercel serverless, `sleepUntil` primitive for Flow 2 reminders, 50k steps/mo free tier |
+| Automation runtime | **Inngest** - managed step functions, fits Vercel serverless, `sleepUntil` primitive for Flow 2 reminders, 50k steps/mo free tier |
 | 1:1 scheduling | **Cal.com Cloud** (free personal plan, managed, no self-host) |
 | Meeting platform | **Google Meet** via Google Calendar API (Meet link free with event creation) |
-| Video / native meeting room | **Skipped entirely** — not building a consultation room, not using GetStream |
+| Video / native meeting room | **Skipped entirely** - not building a consultation room, not using GetStream |
 | LLM for Flow 4 | **Groq Cloud** (OpenAI-compatible endpoint, Llama 3.3) + heuristic fallback |
 | Captcha | **Cloudflare Turnstile** (reuses existing Cloudflare account) |
 | Analytics | **Umami Cloud** free tier (privacy-friendly, replaces Plausible for zero-cost start) |
@@ -940,7 +940,7 @@ Things that are **not** decided in this feature list and need their own decision
 
 ---
 
-## Appendix — Headline counts
+## Appendix - Headline counts
 
 | Bucket | Count |
 |---|---|
@@ -949,6 +949,6 @@ Things that are **not** decided in this feature list and need their own decision
 | `EXTEND` | 15 |
 | `NEW` | 22 |
 
-Real-time collaboration features (4 rows) are excluded from the active counts — moved to the deferred section.
+Real-time collaboration features (4 rows) are excluded from the active counts - moved to the deferred section.
 
 Rough read: the data model, state machines, tRPC surface, and export primitives are in place. The **two big lift areas** are (a) the automation runtime + the seven flows that sit on it, and (b) the public marketing site with the participate intake form. Everything else is polish, extension, or refactor.

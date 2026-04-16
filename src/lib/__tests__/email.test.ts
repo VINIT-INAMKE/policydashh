@@ -1,5 +1,5 @@
 /**
- * Wave 0 RED contract for EV-07 — sendEvidencePackReadyEmail.
+ * Wave 0 RED contract for EV-07 - sendEvidencePackReadyEmail.
  *
  * Targets the helper added to src/lib/email.ts in Plan 18-01. Mirrors the
  * existing email helper shape (sendWorkshopEvidenceNudgeEmail in src/lib/email.ts):
@@ -21,7 +21,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 const sendMock = vi.fn().mockResolvedValue({ id: 'mock' })
 
-// Vitest v4 requires a `function` (or class) — not an arrow — inside
+// Vitest v4 requires a `function` (or class) - not an arrow - inside
 // mockImplementation when the mock is used with `new`. See
 // https://vitest.dev/api/vi#vi-spyon. Wave 0 test factory predated v4 and
 // used an arrow; Plan 18-01 (Rule 3 blocker fix) converts to a function.

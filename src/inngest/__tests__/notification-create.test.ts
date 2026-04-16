@@ -54,7 +54,7 @@ describe('sendNotificationCreate', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { createdBy: _omitted, ...payloadWithoutCreatedBy } = VALID_PAYLOAD
     await expect(
-      // Cast is intentional — we want the runtime schema to reject this.
+      // Cast is intentional - we want the runtime schema to reject this.
       sendNotificationCreate(payloadWithoutCreatedBy as unknown as typeof VALID_PAYLOAD),
     ).rejects.toThrow()
     expect(mocks.sendMock).not.toHaveBeenCalled()

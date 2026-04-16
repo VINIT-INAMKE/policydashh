@@ -144,7 +144,7 @@ export function VersionDetail({ versionId, documentId, versions, canPublish = fa
         </Button>
       ) : null}
 
-      {/* Consultation summary moderator review — only for published versions */}
+      {/* Consultation summary moderator review - only for published versions */}
       {version.isPublished && (
         <>
           <Separator />

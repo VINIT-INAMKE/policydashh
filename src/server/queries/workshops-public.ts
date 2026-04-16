@@ -1,5 +1,5 @@
 /**
- * Phase 20 Plan 20-05 — public `/workshops` listing query.
+ * Phase 20 Plan 20-05 - public `/workshops` listing query.
  *
  * NOT a tRPC procedure: the public listing is server-rendered and does not
  * need a caller-side tRPC client hop. This is a plain async helper consumed
@@ -8,14 +8,14 @@
  * Caching strategy (D-07, 20-RESEARCH.md §Pattern 4 Option B):
  *   - `unstable_cache` is deprecated but still functional in Next.js 16.
  *   - `'use cache'` requires `cacheComponents: true` in next.config.ts, which
- *     this project does NOT enable — so `unstable_cache` is the correct
+ *     this project does NOT enable - so `unstable_cache` is the correct
  *     choice for this phase.
  *   - Per-workshop `getRegisteredCount` is cached with a 60s revalidate and
  *     tag keyed on the workshopId, so future Plan 20-04 / Plan 20-06 writes
  *     can invalidate granularly via `revalidateTag(`workshop-spots-${id}`)`.
  *
  * Gating (D-03): only workshops with a non-null `calcomEventTypeId` are
- * returned — the admin-side Inngest cal.com provisioning flow (Plan 20-02)
+ * returned - the admin-side Inngest cal.com provisioning flow (Plan 20-02)
  * backfills this column asynchronously, so a workshop only surfaces to the
  * public listing AFTER its cal.com event type exists.
  *
@@ -76,7 +76,7 @@ export const getRegisteredCount = unstable_cache(
 
 /**
  * Load all public-visible workshops with spot counts and summary flags.
- * Sectioning (upcoming / live / past) happens in the page component — this
+ * Sectioning (upcoming / live / past) happens in the page component - this
  * helper is status-agnostic and returns everything with a cal.com link.
  */
 export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {

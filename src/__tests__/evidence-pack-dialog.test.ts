@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  *
- * Wave 0 RED contract for EV-07 — EvidencePackDialog async flow.
+ * Wave 0 RED contract for EV-07 - EvidencePackDialog async flow.
  *
  * Targets the dialog rewrite shipped in Plan 18-02. The current dialog uses
  * a synchronous fetch() + blob download path; Plan 18-02 will:
@@ -15,7 +15,7 @@
  * miss (`screen.getByText`) or boolean checks via `document.querySelectorAll`.
  *
  * The dialog component path is loaded via Pattern 2 variable-path dynamic
- * import — at Wave 0 the rewrite has not landed, but the original module
+ * import - at Wave 0 the rewrite has not landed, but the original module
  * does export `EvidencePackDialog`, so `beforeAll` resolves; the assertions
  * fail because the original component still uses fetch() and renders the
  * `<a download>` complete state.
@@ -91,7 +91,7 @@ beforeEach(() => {
   }))
 })
 
-describe('EvidencePackDialog — async flow (EV-07)', () => {
+describe('EvidencePackDialog - async flow (EV-07)', () => {
   it('fires trpc.evidence.requestExport.mutate with { documentId } on Export click', async () => {
     expect(EvidencePackDialog).toBeDefined()
     render(React.createElement(EvidencePackDialog))
@@ -123,7 +123,7 @@ describe('EvidencePackDialog — async flow (EV-07)', () => {
     } as any)
     render(React.createElement(EvidencePackDialog))
     fireEvent.click(screen.getByRole('button', { name: /export evidence pack/i }))
-    // Queued confirmation copy — accept several phrasings the implementation
+    // Queued confirmation copy - accept several phrasings the implementation
     // may pick.
     const queuedNode = screen.getByText(
       /being generated|you'?ll get an email|queued|on its way/i,

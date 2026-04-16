@@ -1,9 +1,9 @@
 /**
- * Summary placeholder — muted "under review" card rendered for sections
+ * Summary placeholder - muted "under review" card rendered for sections
  * whose consultation summary is pending, blocked, or errored.
  *
  * Used by SectionSummaryBlock (portal) when a section has an entry in
- * the JSONB but its status !== 'approved'. Takes ZERO props — the only
+ * the JSONB but its status !== 'approved'. Takes ZERO props - the only
  * information it displays is static copy, so no internal-only metadata
  * can cross into this component (Phase 21 Pitfall 1).
  */

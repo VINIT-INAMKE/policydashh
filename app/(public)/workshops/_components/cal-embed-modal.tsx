@@ -1,9 +1,9 @@
 /**
- * Phase 20 Plan 20-05 — Cal.com registration modal.
+ * Phase 20 Plan 20-05 - Cal.com registration modal.
  *
  * Client component. Wraps the shadcn <Dialog> primitive with a lazy-loaded
  * <CalEmbed> island. The cal.com React package (`@calcom/embed-react`) is
- * only fetched AFTER the user clicks Register — it is not shipped in the
+ * only fetched AFTER the user clicks Register - it is not shipped in the
  * public /workshops initial chunk (D-05, UI-SPEC Surface A §Cal.com Modal).
  *
  * Sizing (UI-SPEC Surface A §Cal.com Modal):
@@ -30,7 +30,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
-// Lazy-load the cal.com embed — browser-only, avoids SSR crash and keeps
+// Lazy-load the cal.com embed - browser-only, avoids SSR crash and keeps
 // the initial /workshops chunk free of the cal.com vendor bundle.
 const LazyCalEmbed = dynamic(() => import('./cal-embed'), {
   ssr: false,

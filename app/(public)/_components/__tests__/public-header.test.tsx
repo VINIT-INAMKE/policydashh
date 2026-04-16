@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 async function loadHeader() {
-  // Variable-path dynamic import — module does not exist until Plan 21-02.
+  // Variable-path dynamic import - module does not exist until Plan 21-02.
   const segs = ['@', 'app', '(public)', '_components', 'public-header']
   const path = segs.join('/')
   return await import(/* @vite-ignore */ path)

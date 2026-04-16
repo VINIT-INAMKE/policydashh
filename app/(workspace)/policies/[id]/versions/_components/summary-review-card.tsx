@@ -29,7 +29,7 @@ function SectionStatusBadge({ status }: { status: ConsultationSummarySectionStat
     case 'blocked':
       return (
         <Badge className="bg-red-50 text-red-700 border-red-200">
-          Blocked — guardrail violation
+          Blocked - guardrail violation
         </Badge>
       )
     case 'error':
@@ -163,7 +163,7 @@ function SectionRow({
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_320px]">
-        {/* LEFT — prose editor */}
+        {/* LEFT - prose editor */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -243,7 +243,7 @@ function SectionRow({
           </div>
         </div>
 
-        {/* RIGHT — source feedback panel */}
+        {/* RIGHT - source feedback panel */}
         <div className="flex flex-col gap-3">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Source Feedback

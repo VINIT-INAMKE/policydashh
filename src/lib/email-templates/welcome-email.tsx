@@ -1,10 +1,10 @@
 /**
- * Welcome email template — 6 org bucket variants.
+ * Welcome email template - 6 org bucket variants.
  *
- * Rendered via `@react-email/components` render() (async — Pitfall 6).
+ * Rendered via `@react-email/components` render() (async - Pitfall 6).
  * Kept in a separate .tsx file so Inngest function tests can mock the
  * sendWelcomeEmail helper at the src/lib/email.ts boundary without
- * importing JSX (Pitfall 8 — Phase 16/17/18 pattern).
+ * importing JSX (Pitfall 8 - Phase 16/17/18 pattern).
  *
  * Copy lifted verbatim from 19-UI-SPEC.md "Welcome Email Design Contract".
  * Any copy edits MUST update the UI-SPEC first and re-sync here.
@@ -155,7 +155,7 @@ export function WelcomeEmail({ name, email, orgType }: WelcomeEmailProps) {
 
 /**
  * Render the welcome email to an HTML string.
- * Async per @react-email/render v1.x (Pitfall 6 — always await).
+ * Async per @react-email/render v1.x (Pitfall 6 - always await).
  */
 export async function renderWelcomeEmail(props: WelcomeEmailProps): Promise<string> {
   return await render(<WelcomeEmail {...props} />)

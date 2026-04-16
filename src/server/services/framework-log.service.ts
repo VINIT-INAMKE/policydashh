@@ -3,7 +3,7 @@ import { eq, and, inArray } from 'drizzle-orm'
 import type { ChangelogEntry, SectionSnapshot } from './version.service'
 
 /**
- * Phase 20.5 — public framework log + section status derivation.
+ * Phase 20.5 - public framework log + section status derivation.
  *
  * PUB-07: three-state precedence (validated > under_review > draft).
  * PUB-08: 20-entry cap, newest first, PUB-05 privacy (no CR/feedback identifiers).
@@ -14,7 +14,7 @@ export type SectionStatus = 'draft' | 'under_review' | 'validated'
 export interface PublicLogEntry {
   sectionTitle: string // MUST be resolved title, never raw sectionId
   mergeDate: string // ISO date string
-  summary: string // entry.summary ONLY — PUB-05 privacy
+  summary: string // entry.summary ONLY - PUB-05 privacy
 }
 
 /**
@@ -86,7 +86,7 @@ export async function getSectionPublicStatuses(
  * - Skips entries whose sectionId has no matching title in the version's
  *   sectionsSnapshot (safe default per PUB-05: never leak orphan ids).
  * - Caps total entries at `limit` (default 20).
- * - PUB-05: output contains ONLY sectionTitle, mergeDate, summary — no
+ * - PUB-05: output contains ONLY sectionTitle, mergeDate, summary - no
  *   crId / crReadableId / feedbackIds ever appear in the returned shape.
  */
 export function buildFrameworkLog(

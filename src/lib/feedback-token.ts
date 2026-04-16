@@ -39,7 +39,7 @@ function getSecret(): string {
 /**
  * Sign a feedback-access token. `exp` is fixed at 14 days from now per D-17.
  *
- * Throws if `WORKSHOP_FEEDBACK_JWT_SECRET` is missing — callers MUST run
+ * Throws if `WORKSHOP_FEEDBACK_JWT_SECRET` is missing - callers MUST run
  * inside a server context (route handler, Inngest step) where the env is set.
  */
 export function signFeedbackToken(workshopId: string, email: string): string {
@@ -62,7 +62,7 @@ export function signFeedbackToken(workshopId: string, email: string): string {
 /**
  * Verify a feedback-access token. Returns the decoded payload on success,
  * or `null` on ANY failure (bad structure, bad signature, expired, wrong
- * workshopId, missing secret, or empty token). Never throws — public-route
+ * workshopId, missing secret, or empty token). Never throws - public-route
  * callers must always get a boolean-ish result.
  *
  * Defence-in-depth:

@@ -51,7 +51,7 @@ export function PublicHeader() {
           PolicyDash
         </Link>
 
-        {/* Desktop nav — visible at md+ */}
+        {/* Desktop nav - visible at md+ */}
         <nav className="hidden items-center gap-8 md:flex">
           {NAV_ITEMS.map((item) => {
             const active = isActive(pathname, item.href)
@@ -72,7 +72,7 @@ export function PublicHeader() {
           })}
         </nav>
 
-        {/* Mobile hamburger — visible below md */}
+        {/* Mobile hamburger - visible below md */}
         <button
           type="button"
           className="p-3 md:hidden"
@@ -87,7 +87,7 @@ export function PublicHeader() {
         </button>
       </div>
 
-      {/* Mobile menu panel — expands via max-height transition */}
+      {/* Mobile menu panel - expands via max-height transition */}
       <div
         className={
           open

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Civilization Lab - Blockchain Policy India</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#eef1f3",
+                        "surface": "#f7fafc",
+                        "on-tertiary-fixed-variant": "#005227",
+                        "on-surface": "#181c1e",
+                        "primary-fixed": "#d6e3ff",
+                        "on-primary-container": "#708ab5",
+                        "on-tertiary": "#ffffff",
+                        "outline-variant": "#c4c6cf",
+                        "surface-container-highest": "#e0e3e5",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#66dd8b",
+                        "on-secondary-fixed": "#131c2b",
+                        "on-tertiary-container": "#179d53",
+                        "surface-tint": "#465f88",
+                        "primary-fixed-dim": "#aec7f6",
+                        "tertiary-fixed": "#83fba5",
+                        "surface-container": "#ebeef0",
+                        "surface-bright": "#f7fafc",
+                        "on-secondary-container": "#5a6375",
+                        "on-tertiary-fixed": "#00210c",
+                        "surface-container-high": "#e5e9eb",
+                        "outline": "#74777f",
+                        "secondary-container": "#d7e0f5",
+                        "background": "#f7fafc",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed": "#dae3f8",
+                        "on-primary-fixed": "#001b3d",
+                        "inverse-primary": "#aec7f6",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#181c1e",
+                        "surface-container-low": "#f1f4f6",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary-container": "#002810",
+                        "secondary": "#565f70",
+                        "primary-container": "#002147",
+                        "on-primary-fixed-variant": "#2d476f",
+                        "surface-dim": "#d7dadc",
+                        "inverse-surface": "#2d3133",
+                        "secondary-fixed-dim": "#bec7db",
+                        "primary": "#000a1e",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#44474e",
+                        "on-secondary-fixed-variant": "#3e4758",
+                        "tertiary": "#000e03",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Newsreader"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .glass-nav {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+
+<body class="bg-surface text-on-surface font-body selection:bg-tertiary-fixed selection:text-on-tertiary-fixed">
+    <!-- Top Navigation -->
+    <nav class="docked full-width top-0 z-50 sticky bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md">
+        <div class="flex justify-between items-center w-full px-8 py-4 max-w-screen-2xl mx-auto">
+            <div class="text-xl font-bold tracking-tight text-blue-950 dark:text-white font-serif">
+                Civilization Lab
+            </div>
+            <div class="hidden md:flex items-center space-x-10">
+                <a class="text-blue-900 dark:text-blue-100 border-b-2 border-blue-900 dark:border-blue-100 pb-1 font-medium text-xs uppercase tracking-widest Inter"
+                    href="#">Research</a>
+                <a class="text-slate-500 dark:text-slate-400 hover:text-blue-900 dark:hover:text-blue-100 transition-colors duration-300 font-medium text-xs uppercase tracking-widest Inter"
+                    href="#">Framework</a>
+                <a class="text-slate-500 dark:text-slate-400 hover:text-blue-900 dark:hover:text-blue-100 transition-colors duration-300 font-medium text-xs uppercase tracking-widest Inter"
+                    href="#">Workshops</a>
+                <a class="text-slate-500 dark:text-slate-400 hover:text-blue-900 dark:hover:text-blue-100 transition-colors duration-300 font-medium text-xs uppercase tracking-widest Inter"
+                    href="#">Participate</a>
+                <a class="text-slate-500 dark:text-slate-400 hover:text-blue-900 dark:hover:text-blue-100 transition-colors duration-300 font-medium text-xs uppercase tracking-widest Inter"
+                    href="#">About</a>
+            </div>
+            <div class="flex items-center space-x-6">
+                <button class="text-primary hover:text-primary-container transition-colors">
+                    <span class="material-symbols-outlined">search</span>
+                </button>
+                <button
+                    class="bg-primary text-on-primary px-5 py-2 rounded-sm text-xs font-medium uppercase tracking-widest transition-transform active:scale-95 duration-200">
+                    Policy OS
+                </button>
+            </div>
+        </div>
+    </nav>
+    <!-- Hero Section -->
+    <header class="relative overflow-hidden pt-20 pb-32">
+        <div class="max-w-screen-2xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div class="lg:col-span-7 space-y-8">
+                <div
+                    class="inline-flex items-center space-x-3 px-3 py-1 bg-secondary-container text-on-secondary-fixed-variant rounded-sm">
+                    <span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse"></span>
+                    <span class="text-[0.7rem] font-bold uppercase tracking-[0.2em]">Institutional Update 2024</span>
+                </div>
+                <h1 class="text-6xl md:text-7xl font-headline text-primary leading-[1.1] tracking-tight">
+                    Designing and Coordinating <span class="italic">Blockchain Policy</span> for India
+                </h1>
+                <p class="text-lg md:text-xl text-on-surface-variant max-w-2xl leading-relaxed">
+                    A verifiable, stakeholder-driven policy system engineered to bridge the gap between academic rigor
+                    and cryptographic transparency for the digital economy.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                    <button
+                        class="bg-primary text-on-primary px-8 py-4 rounded-sm font-medium flex items-center justify-center space-x-2 transition-all hover:bg-primary-container">
+                        <span>Explore Policy Framework</span>
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
+                    <button
+                        class="border border-outline-variant/20 px-8 py-4 rounded-sm font-medium hover:bg-surface-container-low transition-colors">
+                        Participate
+                    </button>
+                </div>
+            </div>
+            <div class="lg:col-span-5 relative">
+                <div class="aspect-square bg-surface-container-low relative overflow-hidden rounded-sm shadow-2xl">
+                    <img alt="hero background"
+                        class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-40"
+                        data-alt="conceptual visualization of a digital ledger with interconnected architectural lines and subtle geometric patterns in deep navy and silver"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuADYJBmCuFnygnIqSwr5mKK3hyFhJ7x64LKrw2gtxkVIkxl5v7ALp_nbb32kapWxkooYXEsti272d3bR2xDzXWYY-DhlGTR7UR2SPZ3mqQB7aWmHurNnpUpWv-vqegVKGCDbYJn48QdhpAOd3kUREdx8bcvOkcjJ0Wbh9rgawKyrLIXvmNIodO_1xN39v9GmIR2GuzLm7bb09rCeLu_tcaTiV4An4MsQ1yGgfZ6-x24Jy5Vy-pjXjkae7Efvw7nSR4_0FvjXPWNHOc" />
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"></div>
+                    <!-- Abstract Data Viz -->
+                    <div class="absolute inset-0 p-12 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <div class="space-y-1">
+                                <div class="text-[0.6rem] uppercase tracking-widest text-primary opacity-60">Block Hash
+                                </div>
+                                <div class="font-mono text-xs text-primary font-bold">0x882...F9A2</div>
+                            </div>
+                            <span class="material-symbols-outlined text-primary" data-weight="fill">verified</span>
+                        </div>
+                        <div class="h-1/2 w-full flex items-end">
+                            <div class="w-full h-px bg-outline-variant/30 relative">
+                                <div
+                                    class="absolute -top-1 left-1/4 w-2 h-2 rounded-full bg-tertiary-fixed-dim shadow-[0_0_12px_rgba(102,221,139,0.5)]">
+                                </div>
+                                <div class="absolute -top-1 left-2/3 w-2 h-2 rounded-full bg-primary-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Decorative text -->
+                <div class="absolute -bottom-8 -right-8 opacity-10 pointer-events-none">
+                    <span class="text-9xl font-headline font-bold text-primary">CIVIL</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- Policy Operating System (Asymmetric Layout) -->
+    <section class="py-24 bg-surface-container">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-16">
+                <div class="lg:col-span-4">
+                    <div class="sticky top-32">
+                        <span
+                            class="text-xs font-bold uppercase tracking-[0.2em] text-on-primary-container mb-4 block">The
+                            Infrastructure</span>
+                        <h2 class="text-4xl font-headline text-primary mb-6">A Policy Operating System</h2>
+                        <p class="text-on-surface-variant leading-relaxed">
+                            We treat policy not as a static document, but as a dynamic codebase that requires version
+                            control, peer review, and stakeholder validation.
+                        </p>
+                    </div>
+                </div>
+                <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- OS Module 1 -->
+                    <div class="bg-surface-container-lowest p-10 rounded-sm space-y-6">
+                        <div class="w-12 h-12 bg-surface-container flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary">menu_book</span>
+                        </div>
+                        <h3 class="text-xl font-headline font-semibold text-primary">Academic Research</h3>
+                        <p class="text-sm text-on-surface-variant leading-relaxed">
+                            Deep-dive analysis into cryptographic primitives and their interaction with Indian
+                            constitutional law.
+                        </p>
+                        <ul class="space-y-3 pt-4 border-t border-outline-variant/10">
+                            <li class="flex items-center text-xs font-medium text-primary"><span
+                                    class="w-1.5 h-1.5 rounded-full bg-tertiary mr-3"></span>Peer-reviewed Journals</li>
+                            <li class="flex items-center text-xs font-medium text-primary"><span
+                                    class="w-1.5 h-1.5 rounded-full bg-tertiary mr-3"></span>Economic Impact Models</li>
+                        </ul>
+                    </div>
+                    <!-- OS Module 2 -->
+                    <div class="bg-surface-container-lowest p-10 rounded-sm space-y-6">
+                        <div class="w-12 h-12 bg-surface-container flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary">groups</span>
+                        </div>
+                        <h3 class="text-xl font-headline font-semibold text-primary">Stakeholder Alignment</h3>
+                        <p class="text-sm text-on-surface-variant leading-relaxed">
+                            A consensus engine for industry leaders, regulators, and technologists to reach unified
+                            policy standards.
+                        </p>
+                        <ul class="space-y-3 pt-4 border-t border-outline-variant/10">
+                            <li class="flex items-center text-xs font-medium text-primary"><span
+                                    class="w-1.5 h-1.5 rounded-full bg-tertiary mr-3"></span>Multi-sig Governance</li>
+                            <li class="flex items-center text-xs font-medium text-primary"><span
+                                    class="w-1.5 h-1.5 rounded-full bg-tertiary mr-3"></span>Open Working Groups</li>
+                        </ul>
+                    </div>
+                    <!-- OS Module 3 -->
+                    <div class="bg-surface-container-lowest p-10 rounded-sm space-y-6">
+                        <div class="w-12 h-12 bg-surface-container flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary">school</span>
+                        </div>
+                        <h3 class="text-xl font-headline font-semibold text-primary">Strategic Workshops</h3>
+                        <p class="text-sm text-on-surface-variant leading-relaxed">
+                            Co-creation sessions designed to stress-test policy frameworks against real-world technical
+                            constraints.
+                        </p>
+                        <ul class="space-y-3 pt-4 border-t border-outline-variant/10">
+                            <li class="flex items-center text-xs font-medium text-primary"><span
+                                    class="w-1.5 h-1.5 rounded-full bg-tertiary mr-3"></span>Technical Sandboxes</li>
+                            <li class="flex items-center text-xs font-medium text-primary"><span
+                                    class="w-1.5 h-1.5 rounded-full bg-tertiary mr-3"></span>Legislative Drafting</li>
+                        </ul>
+                    </div>
+                    <!-- OS Module 4 -->
+                    <div class="bg-surface-container-lowest p-10 rounded-sm space-y-6">
+                        <div class="w-12 h-12 bg-surface-container flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary">terminal</span>
+                        </div>
+                        <h3 class="text-xl font-headline font-semibold text-primary">Deployable Code</h3>
+                        <p class="text-sm text-on-surface-variant leading-relaxed">
+                            Translating policy intent into smart contract specifications and standardized reporting
+                            interfaces.
+                        </p>
+                        <ul class="space-y-3 pt-4 border-t border-outline-variant/10">
+                            <li class="flex items-center text-xs font-medium text-primary"><span
+                                    class="w-1.5 h-1.5 rounded-full bg-tertiary mr-3"></span>Audit Protocols</li>
+                            <li class="flex items-center text-xs font-medium text-primary"><span
+                                    class="w-1.5 h-1.5 rounded-full bg-tertiary mr-3"></span>Compliance SDKs</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- How it Works (Visual Flow) -->
+    <section class="py-24">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <div class="text-center mb-16">
+                <span class="text-xs font-bold uppercase tracking-[0.2em] text-on-primary-container">Methodology</span>
+                <h2 class="text-4xl font-headline text-primary mt-2">The Traceability Chain</h2>
+            </div>
+            <div class="relative">
+                <!-- Connecting Line -->
+                <div
+                    class="absolute top-12 left-0 w-full h-px border-t border-dashed border-outline-variant/40 hidden lg:block">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-12 relative">
+                    <!-- Step 1 -->
+                    <div class="text-center space-y-4">
+                        <div
+                            class="w-16 h-16 bg-surface-container-lowest border border-outline-variant/20 rounded-full flex items-center justify-center mx-auto relative z-10">
+                            <span class="font-headline text-xl text-primary">01</span>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-bold text-primary text-sm uppercase tracking-widest">Research</h4>
+                            <p class="text-xs text-on-surface-variant px-4">Identification of legal &amp; technical
+                                friction points.</p>
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="text-center space-y-4">
+                        <div
+                            class="w-16 h-16 bg-surface-container-lowest border border-outline-variant/20 rounded-full flex items-center justify-center mx-auto relative z-10">
+                            <span class="font-headline text-xl text-primary">02</span>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-bold text-primary text-sm uppercase tracking-widest">Build</h4>
+                            <p class="text-xs text-on-surface-variant px-4">Drafting framework using modular policy
+                                primitives.</p>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="text-center space-y-4">
+                        <div
+                            class="w-16 h-16 bg-tertiary flex items-center justify-center mx-auto rounded-full relative z-10 shadow-[0_8px_24px_-4px_rgba(0,14,3,0.2)]">
+                            <span class="font-headline text-xl text-on-tertiary">03</span>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-bold text-tertiary text-sm uppercase tracking-widest">Validate</h4>
+                            <p class="text-xs text-on-surface-variant px-4">Cryptographic proof of stakeholder
+                                consensus.</p>
+                        </div>
+                    </div>
+                    <!-- Step 4 -->
+                    <div class="text-center space-y-4">
+                        <div
+                            class="w-16 h-16 bg-surface-container-lowest border border-outline-variant/20 rounded-full flex items-center justify-center mx-auto relative z-10">
+                            <span class="font-headline text-xl text-primary">04</span>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-bold text-primary text-sm uppercase tracking-widest">Align</h4>
+                            <p class="text-xs text-on-surface-variant px-4">Regulatory review and cross-border
+                                harmonization.</p>
+                        </div>
+                    </div>
+                    <!-- Step 5 -->
+                    <div class="text-center space-y-4">
+                        <div
+                            class="w-16 h-16 bg-surface-container-lowest border border-outline-variant/20 rounded-full flex items-center justify-center mx-auto relative z-10">
+                            <span class="font-headline text-xl text-primary">05</span>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-bold text-primary text-sm uppercase tracking-widest">Deploy</h4>
+                            <p class="text-xs text-on-surface-variant px-4">Integration into the national digital
+                                infrastructure.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Who it's For (Bento Grid) -->
+    <section class="py-24 bg-primary text-on-primary">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
+                <div class="max-w-xl">
+                    <span
+                        class="text-xs font-bold uppercase tracking-[0.2em] text-on-primary-container">Ecosystem</span>
+                    <h2 class="text-4xl font-headline mt-2 text-white">Who it's For</h2>
+                    <p class="mt-4 text-on-primary-container/80 text-lg leading-relaxed">Providing the tools and
+                        transparency needed for every pillar of the digital economy.</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button
+                        class="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors">
+                        <span class="material-symbols-outlined">chevron_left</span>
+                    </button>
+                    <button
+                        class="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors">
+                        <span class="material-symbols-outlined">chevron_right</span>
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Card 1 -->
+                <div
+                    class="group relative bg-primary-container/40 p-8 border border-white/5 hover:border-tertiary-fixed/30 transition-all duration-500 overflow-hidden">
+                    <span class="material-symbols-outlined text-tertiary-fixed text-4xl mb-6 block"
+                        data-weight="fill">account_balance</span>
+                    <h4 class="text-xl font-headline font-bold mb-4">Policy Makers</h4>
+                    <p class="text-sm text-on-primary-container leading-relaxed mb-6">Access verifiable data streams and
+                        impact assessments to create resilient regulation.</p>
+                    <a class="text-xs font-bold uppercase tracking-widest flex items-center group-hover:text-tertiary-fixed transition-colors"
+                        href="#">
+                        Access Dashboard <span class="material-symbols-outlined text-xs ml-2">trending_flat</span>
+                    </a>
+                </div>
+                <!-- Card 2 -->
+                <div
+                    class="group relative bg-primary-container/40 p-8 border border-white/5 hover:border-tertiary-fixed/30 transition-all duration-500 overflow-hidden">
+                    <span class="material-symbols-outlined text-tertiary-fixed text-4xl mb-6 block"
+                        data-weight="fill">precision_manufacturing</span>
+                    <h4 class="text-xl font-headline font-bold mb-4">Industry</h4>
+                    <p class="text-sm text-on-primary-container leading-relaxed mb-6">Reduce compliance uncertainty and
+                        participate in the development of technical standards.</p>
+                    <a class="text-xs font-bold uppercase tracking-widest flex items-center group-hover:text-tertiary-fixed transition-colors"
+                        href="#">
+                        View Roadmap <span class="material-symbols-outlined text-xs ml-2">trending_flat</span>
+                    </a>
+                </div>
+                <!-- Card 3 -->
+                <div
+                    class="group relative bg-primary-container/40 p-8 border border-white/5 hover:border-tertiary-fixed/30 transition-all duration-500 overflow-hidden">
+                    <span class="material-symbols-outlined text-tertiary-fixed text-4xl mb-6 block"
+                        data-weight="fill">gavel</span>
+                    <h4 class="text-xl font-headline font-bold mb-4">Legal Experts</h4>
+                    <p class="text-sm text-on-primary-container leading-relaxed mb-6">Interpret blockchain interactions
+                        through the lens of institutional frameworks.</p>
+                    <a class="text-xs font-bold uppercase tracking-widest flex items-center group-hover:text-tertiary-fixed transition-colors"
+                        href="#">
+                        Legal Library <span class="material-symbols-outlined text-xs ml-2">trending_flat</span>
+                    </a>
+                </div>
+                <!-- Card 4 -->
+                <div
+                    class="group relative bg-primary-container/40 p-8 border border-white/5 hover:border-tertiary-fixed/30 transition-all duration-500 overflow-hidden">
+                    <span class="material-symbols-outlined text-tertiary-fixed text-4xl mb-6 block"
+                        data-weight="fill">query_stats</span>
+                    <h4 class="text-xl font-headline font-bold mb-4">Researchers</h4>
+                    <p class="text-sm text-on-primary-container leading-relaxed mb-6">Contribute to the growing body of
+                        knowledge at the intersection of crypto and policy.</p>
+                    <a class="text-xs font-bold uppercase tracking-widest flex items-center group-hover:text-tertiary-fixed transition-colors"
+                        href="#">
+                        Submit Research <span class="material-symbols-outlined text-xs ml-2">trending_flat</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Current Status: Timeline -->
+    <section class="py-24">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <div class="flex flex-col lg:flex-row gap-16 items-start">
+                <div class="lg:w-1/3">
+                    <h2 class="text-4xl font-headline text-primary mb-6">Current Progress</h2>
+                    <p class="text-on-surface-variant mb-8">Tracking our journey from concept to a nation-wide policy
+                        standard.</p>
+                    <div class="p-6 bg-tertiary/5 rounded-sm border-l-4 border-tertiary">
+                        <div class="text-xs font-bold uppercase tracking-widest text-tertiary mb-2">Next Milestone</div>
+                        <div class="text-primary font-bold">Public Verification Workshop</div>
+                        <div class="text-sm text-on-surface-variant mt-1">December 14th, New Delhi</div>
+                    </div>
+                </div>
+                <div class="lg:w-2/3 w-full">
+                    <div class="space-y-12">
+                        <!-- Phase 1 -->
+                        <div class="flex gap-8 relative group">
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0 z-10">
+                                    <span class="material-symbols-outlined text-sm">check</span>
+                                </div>
+                                <div class="w-px h-full bg-outline-variant/30 absolute top-10"></div>
+                            </div>
+                            <div class="pb-4">
+                                <span
+                                    class="text-xs font-bold uppercase tracking-widest text-primary/40 block mb-1">Phase
+                                    01 - Completed</span>
+                                <h4 class="text-xl font-headline font-bold text-primary">Landscape Mapping</h4>
+                                <p class="text-sm text-on-surface-variant mt-2 max-w-lg">Comprehensive audit of existing
+                                    IT laws and their applicability to decentralized networks.</p>
+                            </div>
+                        </div>
+                        <!-- Phase 2 -->
+                        <div class="flex gap-8 relative">
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0 z-10">
+                                    <span class="material-symbols-outlined text-sm">check</span>
+                                </div>
+                                <div class="w-px h-full bg-outline-variant/30 absolute top-10"></div>
+                            </div>
+                            <div class="pb-4">
+                                <span
+                                    class="text-xs font-bold uppercase tracking-widest text-primary/40 block mb-1">Phase
+                                    02 - Completed</span>
+                                <h4 class="text-xl font-headline font-bold text-primary">Framework Drafting</h4>
+                                <p class="text-sm text-on-surface-variant mt-2 max-w-lg">The "Policy-as-Code" initial
+                                    prototype release and multi-stakeholder feedback loop.</p>
+                            </div>
+                        </div>
+                        <!-- Phase 3 -->
+                        <div class="flex gap-8 relative">
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="w-10 h-10 rounded-full border-2 border-primary bg-white text-primary flex items-center justify-center shrink-0 z-10">
+                                    <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                                </div>
+                                <div class="w-px h-full bg-outline-variant/30 absolute top-10"></div>
+                            </div>
+                            <div class="pb-4">
+                                <span class="text-xs font-bold uppercase tracking-widest text-tertiary block mb-1">Phase
+                                    03 - In Progress</span>
+                                <h4 class="text-xl font-headline font-bold text-primary">Stakeholder Validation</h4>
+                                <p class="text-sm text-on-surface-variant mt-2 max-w-lg">Active alignment workshops and
+                                    consensus gathering across 15+ industry clusters.</p>
+                            </div>
+                        </div>
+                        <!-- Phase 4 -->
+                        <div class="flex gap-8 relative">
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="w-10 h-10 rounded-full border border-outline-variant bg-surface text-outline flex items-center justify-center shrink-0 z-10">
+                                    <span class="material-symbols-outlined text-sm">lock</span>
+                                </div>
+                            </div>
+                            <div class="pb-4">
+                                <span
+                                    class="text-xs font-bold uppercase tracking-widest text-primary/20 block mb-1">Phase
+                                    04 - Upcoming</span>
+                                <h4 class="text-xl font-headline font-bold text-primary opacity-40">National Deployment
+                                </h4>
+                                <p class="text-sm text-on-surface-variant mt-2 max-w-lg opacity-40">Full implementation
+                                    of the verified policy framework at a regulatory level.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- CTA Section -->
+    <section class="py-32 relative overflow-hidden">
+        <div class="absolute inset-0 bg-primary-container">
+            <img alt="cta background" class="w-full h-full object-cover opacity-20 mix-blend-overlay"
+                data-alt="high contrast macro photograph of architectural glass and steel structures at night with deep blue highlights"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2kpV5LBsQRYJOiue5pmvYpAlVonS_WvfBSzk_n4rkHQRMTGd6_FFB5aQx3Y_Kao58RSYFhG0GggEwmaTif-cuPOPVsuRkNDVSTWcfYirayx6hNWYrPzhrP-AlIFbA_gJlPVSdv8qaSL8WHz5fEPZHAscVGITn0p4APxE7crIHGB6UC5Y_6vevWPTCJHho2p5oTVBAVou7JJ6dQTO3ps_SvechRadP07-6HgwhJObdXgumQEGfn852w85Pc5NImhC3sT7AE86R2fE" />
+        </div>
+        <div class="max-w-screen-2xl mx-auto px-8 relative z-10 text-center">
+            <h2 class="text-5xl md:text-6xl font-headline text-white mb-8">Ready to define the future of <span
+                    class="italic">Policy?</span></h2>
+            <p class="text-on-primary-container text-xl max-w-2xl mx-auto mb-12 leading-relaxed">
+                Join the network of experts and institutions building the verifiable infrastructure for India's digital
+                century.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-6">
+                <button
+                    class="bg-tertiary-fixed text-on-tertiary-fixed px-10 py-5 rounded-sm font-bold uppercase tracking-widest transition-transform hover:scale-105 active:scale-95">
+                    Enter the System
+                </button>
+                <button
+                    class="text-white border border-white/20 px-10 py-5 rounded-sm font-bold uppercase tracking-widest hover:bg-white/5 transition-colors">
+                    Institutional Inquiries
+                </button>
+            </div>
+        </div>
+    </section>
+    <!-- Footer -->
+    <footer class="w-full border-t border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-12 px-12 py-16 max-w-screen-2xl mx-auto">
+            <div class="space-y-6">
+                <div class="font-serif text-lg font-semibold text-blue-950 dark:text-slate-200">Civilization Lab</div>
+                <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-xs font-sans Inter">
+                    An independent research institution dedicated to the development of robust policy frameworks for
+                    emerging technologies.
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-8">
+                <div class="space-y-4">
+                    <div class="text-[0.6rem] font-bold uppercase tracking-widest text-primary opacity-60">Resources
+                    </div>
+                    <ul class="space-y-2">
+                        <li><a class="text-slate-500 dark:text-slate-400 hover:text-blue-900 dark:hover:text-white transition-colors text-sm font-sans Inter"
+                                href="#">Privacy Policy</a></li>
+                        <li><a class="text-slate-500 dark:text-slate-400 hover:text-blue-900 dark:hover:text-white transition-colors text-sm font-sans Inter"
+                                href="#">Institutional Terms</a></li>
+                    </ul>
+                </div>
+                <div class="space-y-4">
+                    <div class="text-[0.6rem] font-bold uppercase tracking-widest text-primary opacity-60">Connect</div>
+                    <ul class="space-y-2">
+                        <li><a class="text-slate-500 dark:text-slate-400 hover:text-blue-900 dark:hover:text-white transition-colors text-sm font-sans Inter"
+                                href="#">Newsletter</a></li>
+                        <li><a class="text-slate-500 dark:text-slate-400 hover:text-blue-900 dark:hover:text-white transition-colors text-sm font-sans Inter"
+                                href="#">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="space-y-6">
+                <div class="text-[0.6rem] font-bold uppercase tracking-widest text-primary opacity-60">Institutional
+                    Partners</div>
+                <div class="flex items-center space-x-6 grayscale opacity-60">
+                    <span class="font-headline font-bold text-primary">Cardano</span>
+                    <span class="font-headline font-bold text-primary">TechTide</span>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 text-[0.7rem] font-sans Inter">
+                    © 2024 Civilization Lab. In partnership with Cardano &amp; TechTide.
+                </p>
+            </div>
+        </div>
+    </footer>
+</body>
+
+</html>

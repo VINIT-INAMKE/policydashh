@@ -135,7 +135,7 @@ export function ParticipateForm() {
         if (res.status === 200) {
           successEmail.current = state.email
           successOrg.current = state.orgType as string
-          toast.success('Request received — check your inbox.', { duration: 4000 })
+          toast.success('Request received - check your inbox.', { duration: 4000 })
           setSubmitted(true)
           return
         }

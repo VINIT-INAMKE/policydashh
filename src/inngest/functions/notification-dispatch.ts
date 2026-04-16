@@ -11,7 +11,7 @@ import { users } from '@/src/db/schema/users'
 import { sendFeedbackReviewedEmail } from '@/src/lib/email'
 
 /**
- * notification-dispatch — off-critical-path notification + email dispatcher.
+ * notification-dispatch - off-critical-path notification + email dispatcher.
  *
  * Triggered by `notification.create` events emitted from tRPC mutations in
  * feedback.ts, changeRequest.ts, version.ts, sectionAssignment.ts. Handles
@@ -23,19 +23,19 @@ import { sendFeedbackReviewedEmail } from '@/src/lib/email'
  *     fire-and-forget paths with durable, retryable Inngest steps.
  *   - NOTIF-06: `onConflictDoNothing()` on the partial unique index makes the
  *     dual-write transition window (Plan 03 migrates callsites one file at a
- *     time) safe — a duplicate dispatch silently no-ops at the DB level.
+ *     time) safe - a duplicate dispatch silently no-ops at the DB level.
  *
  * Phase 16 email scope (per RESEARCH §3.2 Open Question 2):
  *
  *   - `feedback_status_changed`, `version_published`, `section_assigned`
  *     route through `sendFeedbackReviewedEmail` with the notification's
  *     title and body mapped into its structured fields. This is a deliberate
- *     Phase 16 shortcut — the helper wraps Resend, respects the existing
+ *     Phase 16 shortcut - the helper wraps Resend, respects the existing
  *     silent no-op when RESEND_API_KEY or `to` is null, and covers the test
  *     contract (notification-dispatch.test.ts) without forcing new per-type
  *     email templates into this phase. Per-type templates are deferred.
  *   - `cr_status_changed` is in-app only; the send-email step is skipped
- *     unconditionally — no CR-status email template exists and none is in
+ *     unconditionally - no CR-status email template exists and none is in
  *     scope for Phase 16.
  *
  * Flow 5's own `feedback.reviewed` path continues to use `feedbackReviewedFn`
@@ -50,7 +50,7 @@ const SKIP_EMAIL_TYPES = new Set<string>(['cr_status_changed'])
 export const notificationDispatchFn = inngest.createFunction(
   {
     id: 'notification-dispatch',
-    name: 'Notification dispatch — DB insert + email',
+    name: 'Notification dispatch - DB insert + email',
     retries: 3,
     // Inlined trigger array per src/inngest/README.md §90-94: extracting to a
     // `const triggers = [...]` widens the type and collapses `event.data` to
@@ -66,7 +66,7 @@ export const notificationDispatchFn = inngest.createFunction(
     // (createdBy, entityType, entityId, action). `.onConflictDoNothing()`
     // against the partial unique index `notifications_idempotency_key_unique`
     // (migration 0009_notification_idempotency.sql) silently no-ops on a
-    // duplicate dispatch — Inngest retry after a partial step-failure, or
+    // duplicate dispatch - Inngest retry after a partial step-failure, or
     // the dual-write transition window from Plan 03, both land here safely.
     //
     // Transient DB errors bubble as plain `Error` so Inngest retries; only
@@ -96,9 +96,9 @@ export const notificationDispatchFn = inngest.createFunction(
     })
 
     // Step 2: resolve the target user's email address. May return null for
-    // phone-only users — in which case the email step is skipped entirely.
+    // phone-only users - in which case the email step is skipped entirely.
     // If the user row does not exist at all (e.g. deleted between mutation
-    // and dispatch), throw NonRetriableError — no retry can resurrect a
+    // and dispatch), throw NonRetriableError - no retry can resurrect a
     // deleted row, so burning retry budget on it is wasteful.
     const recipientEmail = await step.run('fetch-user-email', async () => {
       const [row] = await db
@@ -123,7 +123,7 @@ export const notificationDispatchFn = inngest.createFunction(
     // silently no-ops if RESEND_API_KEY is unset. The helper's required
     // shape (`{ feedbackReadableId, decision, rationale }`) is synthesized
     // from the notification's own `title` and `body`. This is a Phase 16
-    // shortcut — see the file-level JSDoc for the full rationale.
+    // shortcut - see the file-level JSDoc for the full rationale.
     if (recipientEmail && !SKIP_EMAIL_TYPES.has(data.type)) {
       await step.run('send-email', async () => {
         await sendFeedbackReviewedEmail(recipientEmail, {

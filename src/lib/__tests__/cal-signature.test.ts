@@ -1,5 +1,5 @@
 /**
- * Phase 20-01 — cal.com webhook HMAC-SHA256 signature verification.
+ * Phase 20-01 - cal.com webhook HMAC-SHA256 signature verification.
  *
  * Covers D-13 (RESEARCH §"Verified: HMAC Webhook Signature Verification"):
  *   T1: valid hex signature over body returns true
@@ -37,7 +37,7 @@ describe('verifyCalSignature', () => {
   })
 
   it('T4: returns false when the signature is the wrong length (prevents timingSafeEqual crash)', () => {
-    // Valid hex but wrong byte-length — must short-circuit before timingSafeEqual.
+    // Valid hex but wrong byte-length - must short-circuit before timingSafeEqual.
     const shortSig = 'deadbeef'
     expect(() => verifyCalSignature(BODY, shortSig, SECRET)).not.toThrow()
     expect(verifyCalSignature(BODY, shortSig, SECRET)).toBe(false)

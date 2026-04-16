@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-// These tests are RED stubs — they will fail until version-anchor.ts is implemented in Plan 23-02.
+// These tests are RED stubs - they will fail until version-anchor.ts is implemented in Plan 23-02.
 
 describe('versionAnchorFn (VERIFY-07)', () => {
   describe('trigger', () => {

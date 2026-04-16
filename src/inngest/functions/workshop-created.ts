@@ -6,7 +6,7 @@ import { workshops } from '@/src/db/schema/workshops'
 import { createCalEventType, CalApiError } from '@/src/lib/calcom'
 
 /**
- * workshopCreatedFn — async cal.com event-type provisioning for WS-07.
+ * workshopCreatedFn - async cal.com event-type provisioning for WS-07.
  *
  * Triggered by the `workshop.created` event emitted from the admin create
  * mutation in `src/server/routers/workshop.ts`. Calls cal.com v2 API to
@@ -36,9 +36,9 @@ import { createCalEventType, CalApiError } from '@/src/lib/calcom'
 export const workshopCreatedFn = inngest.createFunction(
   {
     id:      'workshop-created',
-    name:    'Workshop created — provision cal.com event type',
+    name:    'Workshop created - provision cal.com event type',
     retries: 3,
-    // INLINE triggers — Pitfall 4. String-literal event name keeps this
+    // INLINE triggers - Pitfall 4. String-literal event name keeps this
     // function independent of other Wave 1 plans that may also touch
     // `src/inngest/events.ts`.
     triggers: [{ event: 'workshop.created' }],
@@ -77,7 +77,7 @@ export const workshopCreatedFn = inngest.createFunction(
     // consumes a retry; NonRetriableError skips straight to failure.
     const eventTypeId = await step.run('create-cal-event-type', async () => {
       try {
-        // Deterministic slug per workshop id — guarantees uniqueness inside
+        // Deterministic slug per workshop id - guarantees uniqueness inside
         // the shared cal.com org (D-04) and lets us reason about idempotency:
         // a retry of this step produces the same slug and cal.com 4xx's us
         // (duplicate slug), which the outer fn correctly maps to NonRetriable.
@@ -92,13 +92,13 @@ export const workshopCreatedFn = inngest.createFunction(
       } catch (err) {
         if (err instanceof CalApiError) {
           if (err.status >= 500) {
-            // Transient — bubble so Inngest consumes retry budget.
+            // Transient - bubble so Inngest consumes retry budget.
             throw err
           }
-          // 4xx — permanent (bad API key, duplicate slug, bad field).
+          // 4xx - permanent (bad API key, duplicate slug, bad field).
           throw new NonRetriableError(err.message)
         }
-        // Unknown error surface — safest default is permanent failure until
+        // Unknown error surface - safest default is permanent failure until
         // observed in production, mirroring Phase 19 participateIntakeFn.
         throw new NonRetriableError(
           err instanceof Error ? err.message : String(err),

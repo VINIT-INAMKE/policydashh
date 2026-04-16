@@ -9,7 +9,7 @@ import { resolve } from 'node:path'
  *   - `/api/intake(.*)` or `/api/intake/participate(.*)`  (POST endpoint)
  *
  * Strategy: read proxy.ts from disk as text and regex-match; no dynamic
- * import needed because the target file already exists — we only assert the
+ * import needed because the target file already exists - we only assert the
  * NEW entries that Plan 19-05 must add.
  */
 

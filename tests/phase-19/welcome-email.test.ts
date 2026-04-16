@@ -30,7 +30,7 @@ beforeAll(async () => {
 
 const base = { name: 'Alice Example', email: 'alice@test.org' }
 
-describe('renderWelcomeEmail — 6 org-bucket variants', () => {
+describe('renderWelcomeEmail - 6 org-bucket variants', () => {
   it('RED: renderWelcomeEmail is importable', () => {
     expect(renderWelcomeEmail).not.toBeNull()
   })

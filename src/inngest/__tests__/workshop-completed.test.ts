@@ -32,7 +32,7 @@ vi.mock('@/src/db', () => ({
   },
 }))
 
-// Mock email helper — Plan 03 will extend src/lib/email.ts with this export
+// Mock email helper - Plan 03 will extend src/lib/email.ts with this export
 vi.mock('@/src/lib/email', () => ({
   sendWorkshopEvidenceNudgeEmail: mocks.sendNudgeEmailMock,
 }))
@@ -85,19 +85,19 @@ function makeEvent() {
 async function invoke(event: ReturnType<typeof makeEvent>, step: ReturnType<typeof makeStep>['step']) {
   const fn = (fnModule as { workshopCompletedFn?: Record<string, unknown> } | null)?.workshopCompletedFn
   if (!fn) {
-    throw new Error('workshopCompletedFn not yet implemented — Wave 0 RED')
+    throw new Error('workshopCompletedFn not yet implemented - Wave 0 RED')
   }
-  // Inngest v4 function options shape — handler is on .fn or ['handler']
+  // Inngest v4 function options shape - handler is on .fn or ['handler']
   const handler = (fn['fn'] ?? (fn as { handler?: unknown }).handler) as
     | ((args: unknown) => Promise<unknown>)
     | undefined
   if (typeof handler !== 'function') {
-    throw new Error('workshopCompletedFn handler not exposed — Wave 0 RED')
+    throw new Error('workshopCompletedFn handler not exposed - Wave 0 RED')
   }
   return await handler({ event, step, runId: 'test', attempt: 0, logger: console })
 }
 
-describe('workshopCompletedFn — Wave 0 RED contract', () => {
+describe('workshopCompletedFn - Wave 0 RED contract', () => {
   it('creates 5 checklist rows via onConflictDoNothing (WS-13)', async () => {
     // Mock select to return "no empty slots" so nudge steps are short-circuited
     mocks.whereMock.mockResolvedValue([])
@@ -136,17 +136,17 @@ describe('workshopCompletedFn — Wave 0 RED contract', () => {
     mocks.whereMock.mockReturnValueOnce({ limit: vi.fn().mockResolvedValue([]) })
     mocks.whereMock.mockResolvedValueOnce([{ slot: 'recording' }, { slot: 'attendance' }])  // 72h check
     mocks.whereMock.mockResolvedValueOnce([{ email: 'moderator@test.com', name: 'Test Mod' }])  // user
-    mocks.whereMock.mockResolvedValueOnce([])  // 7d check — no empties
+    mocks.whereMock.mockResolvedValueOnce([])  // 7d check - no empties
 
     // NOTE: the actual call ordering depends on Plan 03's implementation.
-    // This assertion is best-effort — Plan 03 may need to restructure mocks
+    // This assertion is best-effort - Plan 03 may need to restructure mocks
     // to match. The locked contract is: if empty slots exist AND user has email,
     // sendWorkshopEvidenceNudgeEmail is called at least once.
     const { step } = makeStep()
     try {
       await invoke(makeEvent(), step)
     } catch {
-      // Allow best-effort — if mock shape mismatches Plan 03 can adjust
+      // Allow best-effort - if mock shape mismatches Plan 03 can adjust
     }
     // Relaxed assertion: the mock was wired up and called zero-or-more times.
     // The canonical assertion lives in Plan 03's own test pass.

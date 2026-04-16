@@ -43,7 +43,7 @@ export const documentRouter = router({
           updatedAt: policyDocuments.updatedAt,
           // NOTE: sectionCount reflects total sections, not just those
           // assigned to the caller. Intentionally unscoped per RBAC plan
-          // 2026-04-12 — metadata leak is acceptable, content is gated.
+          // 2026-04-12 - metadata leak is acceptable, content is gated.
           sectionCount: sql<number>`cast(count(${policySections.id}) as integer)`,
         })
         .from(policyDocuments)
@@ -220,7 +220,7 @@ export const documentRouter = router({
       return updated
     }),
 
-  // Toggle public draft flag — Phase 20.5 D-02 / PUB-07.
+  // Toggle public draft flag - Phase 20.5 D-02 / PUB-07.
   // Uses 'document:update' permission (admin + policy_lead).
   // Note: CONTEXT.md references 'policy:manage' but that permission does NOT
   // exist in src/lib/permissions.ts. 'document:update' is the correct key.

@@ -14,7 +14,7 @@ import {
 import type { SectionSnapshot } from '@/src/server/services/version.service'
 
 /**
- * consultation-summary-generate — Groq llama-3.3-70b-versatile backed
+ * consultation-summary-generate - Groq llama-3.3-70b-versatile backed
  * Inngest function that fans out one LLM call per policy section.
  *
  * LLM-04: llama-3.3-70b-versatile per-section prose via generateConsultationSummary.
@@ -26,12 +26,12 @@ import type { SectionSnapshot } from '@/src/server/services/version.service'
  *   1. RegExp cannot cross step.run boundaries (JSON-serializes to '{}').
  *      buildGuardrailPatternSource returns a STRING; each section step
  *      reconstructs `new RegExp(source)` inside its own closure.
- *   2. Per-section errors are caught locally — other sections continue.
+ *   2. Per-section errors are caught locally - other sections continue.
  *      Function never throws NonRetriableError from section loop.
  *   3. overrideOnly (D-13) skips non-matching sections, preserving
  *      already-approved prose on manual single-section regen.
  *   4. concurrency.key='groq-summary' is SEPARATE from
- *      'groq-transcription' — summary bursts don't block workshop
+ *      'groq-transcription' - summary bursts don't block workshop
  *      transcriptions (Phase 21 Pitfall 4).
  *   5. The guardrail regex compiles WITHOUT /i flag: the static
  *      FirstName LastName pattern requires case sensitivity, and /i
@@ -42,7 +42,7 @@ import type { SectionSnapshot } from '@/src/server/services/version.service'
 export const consultationSummaryGenerateFn = inngest.createFunction(
   {
     id: 'consultation-summary-generate',
-    name: 'Consultation summary — generate via Groq llama',
+    name: 'Consultation summary - generate via Groq llama',
     retries: 2,
     concurrency: { key: 'groq-summary', limit: 2 },
     triggers: [{ event: versionPublishedEvent }],
@@ -76,7 +76,7 @@ export const consultationSummaryGenerateFn = inngest.createFunction(
       return { versionId, sectionCount: 0, skipped: true }
     }
 
-    // Step 2: build the guardrail pattern source (a STRING — Pitfall 1).
+    // Step 2: build the guardrail pattern source (a STRING - Pitfall 1).
     const guardrailSource = await step.run('build-guardrail', async () => {
       return await buildGuardrailPatternSource(documentId)
     })
@@ -126,7 +126,7 @@ export const consultationSummaryGenerateFn = inngest.createFunction(
               feedback,
             )
 
-            // Reconstruct the RegExp INSIDE this step — string source
+            // Reconstruct the RegExp INSIDE this step - string source
             // crossed the step boundary safely (Pitfall 1). No /i flag
             // because the name-pair branch requires capital-letter
             // sensitivity (Pitfall 5).
@@ -156,7 +156,7 @@ export const consultationSummaryGenerateFn = inngest.createFunction(
               sourceFeedbackIds: feedback.map((f) => f.feedbackId),
             }
           } catch (err) {
-            // Per-section error does NOT fail the function — D-09.
+            // Per-section error does NOT fail the function - D-09.
             const message = err instanceof Error ? err.message : String(err)
             return {
               sectionId:         section.sectionId,
@@ -175,7 +175,7 @@ export const consultationSummaryGenerateFn = inngest.createFunction(
       newSectionResults.push(result)
     }
 
-    // Step 4: persist the full JSONB (full document replace — no jsonb_set
+    // Step 4: persist the full JSONB (full document replace - no jsonb_set
     // partial patches; avoids Pitfall 5 race via full read-modify-write).
     await step.run('persist-summary', async () => {
       const payload: ConsultationSummaryJson = {

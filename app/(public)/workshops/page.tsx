@@ -1,8 +1,8 @@
 /**
- * Phase 20 Plan 20-05 — public `/workshops` listing page.
+ * Phase 20 Plan 20-05 - public `/workshops` listing page.
  *
  * Server component, unauthenticated (see proxy.ts PUBLIC_ROUTES whitelist
- * added in Plan 20-03 — `/workshops(.*)`). Renders three sections per D-06:
+ * added in Plan 20-03 - `/workshops(.*)`). Renders three sections per D-06:
  *
  *   - Upcoming: status='upcoming' AND scheduledAt > now()
  *   - Live Now: status='in_progress'
@@ -14,7 +14,7 @@
  * Caching: the listPublicWorkshops helper caches the per-workshop registered
  * count via unstable_cache (60s revalidate). `export const dynamic` below
  * still uses force-dynamic because we want every request to re-run the
- * sectioning filter against `now()` — the cache sits at the query level.
+ * sectioning filter against `now()` - the cache sits at the query level.
  */
 import type { Metadata } from 'next'
 import { CalendarX } from 'lucide-react'
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 }
 
 // SSR every request. Spot-count cache lives at the unstable_cache layer inside
-// `listPublicWorkshops`, so this export does not negate the 60s TTL — it only
+// `listPublicWorkshops`, so this export does not negate the 60s TTL - it only
 // ensures the section filter (which depends on Date.now()) re-evaluates.
 export const dynamic = 'force-dynamic'
 

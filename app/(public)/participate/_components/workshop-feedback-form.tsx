@@ -1,11 +1,11 @@
 'use client'
 
 /**
- * WorkshopFeedbackForm — client island for the `/participate` feedback mode
+ * WorkshopFeedbackForm - client island for the `/participate` feedback mode
  * (Phase 20, WS-15). Rendered by the server component in page.tsx only after
  * `verifyFeedbackToken` has already validated the JWT server-side. We still
  * pass the raw `token` back to `/api/intake/workshop-feedback` so the route
- * handler re-verifies independently — never trust the client.
+ * handler re-verifies independently - never trust the client.
  *
  * Visual contract: 20-UI-SPEC.md Surface B §"Feedback Form Card Anatomy".
  * Base-ui Select adapter pattern (Phase 19 canonical): `value={v || null}`
@@ -91,7 +91,7 @@ export function WorkshopFeedbackForm({ workshopId, token, sections }: WorkshopFe
         })
 
         if (res.status === 200) {
-          toast.success('Feedback submitted — thank you.', { duration: 4000 })
+          toast.success('Feedback submitted - thank you.', { duration: 4000 })
           setSubmitted(true)
           return
         }

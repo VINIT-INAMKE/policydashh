@@ -103,18 +103,18 @@ async function invoke(event: ReturnType<typeof makeEvent>, step: ReturnType<type
   const fn = (fnModule as { workshopRecordingProcessedFn?: Record<string, unknown> } | null)
     ?.workshopRecordingProcessedFn
   if (!fn) {
-    throw new Error('workshopRecordingProcessedFn not yet implemented — Wave 0 RED')
+    throw new Error('workshopRecordingProcessedFn not yet implemented - Wave 0 RED')
   }
   const handler = (fn['fn'] ?? (fn as { handler?: unknown }).handler) as
     | ((args: unknown) => Promise<unknown>)
     | undefined
   if (typeof handler !== 'function') {
-    throw new Error('handler not exposed — Wave 0 RED')
+    throw new Error('handler not exposed - Wave 0 RED')
   }
   return await handler({ event, step, runId: 'test', attempt: 0, logger: console })
 }
 
-describe('workshopRecordingProcessedFn — Wave 0 RED contract', () => {
+describe('workshopRecordingProcessedFn - Wave 0 RED contract', () => {
   it('runs 4 steps in order: fetch-recording → transcribe → summarize → store-artifacts (WS-14)', async () => {
     const { step, calls } = makeStep()
     await invoke(makeEvent(), step)

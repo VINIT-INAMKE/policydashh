@@ -133,9 +133,9 @@ export function FeedbackDetailSheet({
       : null,
   }))
 
-  // feedback:review — admin, policy_lead only
+  // feedback:review - admin, policy_lead only
   const canTriage = role === 'admin' || role === 'policy_lead'
-  // evidence:upload — admin, policy_lead, research_lead, workshop_moderator, stakeholder (NOT observer, auditor)
+  // evidence:upload - admin, policy_lead, research_lead, workshop_moderator, stakeholder (NOT observer, auditor)
   const canAddEvidence = role === 'admin' || role === 'policy_lead' || role === 'research_lead' || role === 'workshop_moderator' || role === 'stakeholder'
 
   return (

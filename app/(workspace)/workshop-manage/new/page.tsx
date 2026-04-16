@@ -131,7 +131,7 @@ export default function CreateWorkshopPage() {
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="workshop-maxseats">
-                Maximum seats <span className="text-muted-foreground text-xs">(optional — leave blank for open registration)</span>
+                Maximum seats <span className="text-muted-foreground text-xs">(optional - leave blank for open registration)</span>
               </Label>
               <Input
                 id="workshop-maxseats"

@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * StarRating — 1-5 star radiogroup input for the workshop feedback form (Phase 20).
+ * StarRating - 1-5 star radiogroup input for the workshop feedback form (Phase 20).
  *
  * Built in-phase from lucide `Star` icons to avoid a third-party dependency.
  * Visual contract per 20-UI-SPEC.md Surface B "Star Rating Input Component":
  *   - `role="radiogroup"` container
  *   - Each star: `<button>` with `role="radio"` + `aria-checked` + `aria-label="N stars"`
- *   - 44x44px touch target (`h-11 w-11`) — WCAG 2.5.5 minimum
+ *   - 44x44px touch target (`h-11 w-11`) - WCAG 2.5.5 minimum
  *   - Active fill: `var(--cl-primary, #000a1e)`
  *   - Empty stroke: `var(--cl-outline, #74777f)`
  */

@@ -96,7 +96,7 @@ describe('buildGuardrailPatternSource (LLM-08)', () => {
     expect(typeof mod.buildGuardrailPatternSource).toBe('function')
   })
 
-  it('returns a string (regex source, not RegExp object) — Pitfall 3', async () => {
+  it('returns a string (regex source, not RegExp object) - Pitfall 3', async () => {
     const mod = await loadService()
     const src = await mod.buildGuardrailPatternSource('00000000-0000-0000-0000-000000000003')
     expect(typeof src).toBe('string')

@@ -77,7 +77,7 @@ export default async function PublicPolicyDetailPage({
   // version's consultationSummary JSONB. Strip every internal-only field
   // (the raw JSONB carries per-section generation metadata + provenance IDs)
   // so only `ApprovedSummarySection` crosses into the public component
-  // tree (Phase 21 Pitfall 1 — privacy enforcement).
+  // tree (Phase 21 Pitfall 1 - privacy enforcement).
   const consultationSummary =
     (selectedVersion.consultationSummary as ConsultationSummaryJson | null) ?? null
 

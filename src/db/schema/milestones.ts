@@ -9,7 +9,7 @@ import { users } from './users'
 // - D-04a state machine: defining → ready → anchoring → anchored
 // - D-05 create-then-curate UX (admin assigns entities via nullable FK)
 // - Phase 23 will read contentHash + manifest from this row to build the
-//   Cardano tx metadata (CIP-10 label 674) — keep the table Inngest-safe.
+//   Cardano tx metadata (CIP-10 label 674) - keep the table Inngest-safe.
 
 export type MilestoneStatus = 'defining' | 'ready' | 'anchoring' | 'anchored'
 

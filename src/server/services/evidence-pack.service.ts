@@ -209,17 +209,17 @@ export async function buildEvidencePack(
   )
 
   // 6. INDEX.md
-  const indexMd = `# Evidence Pack — ${documentTitle}
+  const indexMd = `# Evidence Pack - ${documentTitle}
 
 Generated: ${new Date().toISOString()}
 
 ## Contents
 
-- stakeholders.csv — List of stakeholders who submitted feedback
-- feedback-matrix.csv — Full feedback traceability matrix
-- version-history.json — Complete version history with changelogs
-- decision-log.json — All workflow transitions and decision rationale
-- workshop-evidence.json — Workshop evidence (pending Phase 10)
+- stakeholders.csv - List of stakeholders who submitted feedback
+- feedback-matrix.csv - Full feedback traceability matrix
+- version-history.json - Complete version history with changelogs
+- decision-log.json - All workflow transitions and decision rationale
+- workshop-evidence.json - Workshop evidence (pending Phase 10)
 `
 
   return {

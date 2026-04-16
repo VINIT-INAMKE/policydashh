@@ -113,7 +113,7 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
 function getHandler(fn: unknown): (ctx: { event: unknown; step: unknown }) => Promise<unknown> {
   if (fn == null) {
     throw new Error(
-      'notificationDispatchFn is not yet implemented — Wave 0 RED. ' +
+      'notificationDispatchFn is not yet implemented - Wave 0 RED. ' +
         'Plan 02 Task 02-01 must create src/inngest/functions/notification-dispatch.ts',
     )
   }
@@ -134,7 +134,7 @@ function getHandler(fn: unknown): (ctx: { event: unknown; step: unknown }) => Pr
 
 describe('notificationDispatchFn', () => {
   beforeAll(async () => {
-    // Dynamic import with variable indirection — see the
+    // Dynamic import with variable indirection - see the
     // `let notificationDispatchFn` comment above. The indirection is
     // required because Vite's static import-analysis pass walks literal
     // string arguments to `import()` and would fail the whole transform
@@ -168,7 +168,7 @@ describe('notificationDispatchFn', () => {
   })
 
   // Inngest v4 does not expose options on the function instance in a stable
-  // shape — the dev UI and `inngest.createFunction` config object are the
+  // shape - the dev UI and `inngest.createFunction` config object are the
   // canonical source. Plan 02 verification covers id/retries via the Inngest
   // Dev UI smoke walk; here we leave the metadata assertion as todo.
   it.todo('has options.id === "notification-dispatch" and options.retries === 3')

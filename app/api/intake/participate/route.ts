@@ -1,18 +1,18 @@
 /**
- * POST /api/intake/participate — Public intake endpoint (Phase 19).
+ * POST /api/intake/participate - Public intake endpoint (Phase 19).
  *
  * Flow (INTAKE-01, INTAKE-02, INTAKE-03, INTAKE-07):
  *   1. Parse + validate body with Zod (INTAKE-01 schema).
  *   2. Verify Cloudflare Turnstile token server-side BEFORE any further work
- *      (INTAKE-02 — Pitfall 2 in 19-RESEARCH.md: never touch Clerk/DB before
+ *      (INTAKE-02 - Pitfall 2 in 19-RESEARCH.md: never touch Clerk/DB before
  *      verify, or bots can enumerate / exhaust quota).
- *   3. Hash email with SHA-256 to produce `emailHash` — the stable rate-limit
+ *   3. Hash email with SHA-256 to produce `emailHash` - the stable rate-limit
  *      key for the Inngest function (raw email MUST NOT be the rate limit key).
  *   4. Fire `participate.intake` Inngest event and return 200 immediately.
  *      Clerk invite + welcome email happen in `participateIntakeFn`.
  *
  * Public by proxy.ts `isPublicRoute` whitelist (added in Plan 19-05).
- * No audit log write — public unauthenticated actions have no actorId.
+ * No audit log write - public unauthenticated actions have no actorId.
  */
 
 import { createHash } from 'node:crypto'
@@ -43,7 +43,7 @@ async function parseBody(req: Request): Promise<ParseFail | ParseOk> {
 
 async function verifyTurnstile(token: string, req: Request): Promise<{ success: boolean }> {
   // Pitfall 2: pass whatever secret is configured to Cloudflare /siteverify and
-  // trust ITS reply. Do NOT short-circuit on missing secret — in production the
+  // trust ITS reply. Do NOT short-circuit on missing secret - in production the
   // real Cloudflare endpoint will reply success:false; in tests the global
   // fetch is stubbed and answers from the test's mock. Either way the gate is
   // closed unless siteverify itself returns success:true.
@@ -99,11 +99,11 @@ export async function POST(request: Request): Promise<Response> {
       howHeard: data.howHeard,
     })
   } catch (err) {
-    // Inngest send failure is a real server error — surface generically.
+    // Inngest send failure is a real server error - surface generically.
     console.error('[participate] sendParticipateIntake failed', err)
     return Response.json({ error: 'Something went wrong' }, { status: 500 })
   }
 
-  // Same success shape for new + existing users — no info leak (INTAKE-06).
+  // Same success shape for new + existing users - no info leak (INTAKE-06).
   return Response.json({ success: true }, { status: 200 })
 }

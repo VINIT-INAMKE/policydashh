@@ -20,7 +20,7 @@ export const notifications = pgTable('notifications', {
   isRead:     boolean('is_read').notNull().default(false),
   createdAt:  timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   // NOTIF-06: idempotency key for dual-write guard during notification dispatch
-  // migration. Mirrors the partial unique index in migration 0009 — only
+  // migration. Mirrors the partial unique index in migration 0009 - only
   // non-null values participate in uniqueness, so legacy createNotification
   // callsites (which leave this NULL) are unaffected during the transition.
   idempotencyKey: text('idempotency_key').unique(),

@@ -4,7 +4,7 @@ import React from 'react'
 
 // --- Mocks -----------------------------------------------------------------
 
-// Mock next/navigation.usePathname — configurable per test
+// Mock next/navigation.usePathname - configurable per test
 let __mockPathname = '/'
 vi.mock('next/navigation', () => ({
   usePathname: () => __mockPathname,

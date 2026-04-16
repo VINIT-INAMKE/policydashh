@@ -19,7 +19,7 @@ import {
  *      signature → 401. Missing CAL_WEBHOOK_SECRET → 500.
  *   3. Parse body, defensive extract bookingData = body.payload ?? body (cal.com
  *      historically shipped MEETING_ENDED flat-at-root; we accept either shape).
- *   4. Dispatch by triggerEvent — BOOKING_CREATED, BOOKING_CANCELLED,
+ *   4. Dispatch by triggerEvent - BOOKING_CREATED, BOOKING_CANCELLED,
  *      BOOKING_RESCHEDULED, MEETING_ENDED. Unknown trigger → 200 { ignored }.
  *
  * Idempotency: UNIQUE INDEX on workshop_registrations.booking_uid +

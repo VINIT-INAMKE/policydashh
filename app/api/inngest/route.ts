@@ -10,7 +10,7 @@ import { functions } from '@/src/inngest/functions'
  * runtime. Locally, the Inngest Dev Server polls GET /api/inngest to
  * discover functions and POSTs here to trigger runs.
  *
- * This file should stay a four-line glue file — the client lives in
+ * This file should stay a four-line glue file - the client lives in
  * src/inngest/client.ts and functions are added to the barrel at
  * src/inngest/functions/index.ts.
  */

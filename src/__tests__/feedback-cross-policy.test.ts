@@ -121,7 +121,7 @@ describe('feedback.listCrossPolicy', () => {
   })
 
   it('returns only own submissions for caller with feedback:read_own (stakeholder)', async () => {
-    __rows = [ROW_A] // Simulates db filter — caller is user-1 and ROW_A.submitterId = user-1
+    __rows = [ROW_A] // Simulates db filter - caller is user-1 and ROW_A.submitterId = user-1
     const caller = createCaller(mkCtx('stakeholder', 'user-1'))
     const result = await caller.listCrossPolicy({})
     // Ensured by assertion on lastWhereConditionCount: submitter filter applied

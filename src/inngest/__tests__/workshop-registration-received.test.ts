@@ -4,13 +4,13 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
  * Plan 20-04 test contract for workshopRegistrationReceivedFn (WS-10).
  *
  * Covers six behaviors (T1-T6 from 20-04-PLAN.md):
- *   T1 — successful Clerk invite + sendWorkshopRegistrationEmail(email, {...}).
- *   T2 — Clerk 500 → plain Error thrown (Inngest retry path).
- *   T3 — Clerk 400 → NonRetriableError thrown (no retry).
- *   T4 — rateLimit config: key='event.data.emailHash', limit=1, period='15m'.
- *   T5 — triggers inlined as [{ event: 'workshop.registration.received' }]
- *        (Pitfall 4 — string literal inside createFunction options).
- *   T6 — publicMetadata passed to Clerk is { role: 'stakeholder', orgType: null }.
+ *   T1 - successful Clerk invite + sendWorkshopRegistrationEmail(email, {...}).
+ *   T2 - Clerk 500 → plain Error thrown (Inngest retry path).
+ *   T3 - Clerk 400 → NonRetriableError thrown (no retry).
+ *   T4 - rateLimit config: key='event.data.emailHash', limit=1, period='15m'.
+ *   T5 - triggers inlined as [{ event: 'workshop.registration.received' }]
+ *        (Pitfall 4 - string literal inside createFunction options).
+ *   T6 - publicMetadata passed to Clerk is { role: 'stakeholder', orgType: null }.
  *
  * Mock strategy mirrors workshop-created.test.ts:
  *   - vi.hoisted for shared mock handles
@@ -32,7 +32,7 @@ const mocks = vi.hoisted(() => {
   const createInvitationMock = vi.fn()
   const sendWorkshopRegistrationEmailMock = vi.fn().mockResolvedValue(undefined)
 
-  // Clerk API error class — matches the shape isClerkAPIResponseError expects.
+  // Clerk API error class - matches the shape isClerkAPIResponseError expects.
   class ClerkAPIError extends Error {
     public readonly status: number
     public readonly clerkError: boolean
@@ -142,7 +142,7 @@ async function invoke(
   return await handler({ event, step, runId: 'test', attempt: 0, logger: console })
 }
 
-describe('workshopRegistrationReceivedFn — Clerk invite + confirmation email (WS-10)', () => {
+describe('workshopRegistrationReceivedFn - Clerk invite + confirmation email (WS-10)', () => {
   const workshopRow = {
     title: 'Policy Roundtable',
     scheduledAt: new Date('2026-05-01T15:00:00Z'),
@@ -179,7 +179,7 @@ describe('workshopRegistrationReceivedFn — Clerk invite + confirmation email (
     expect(result).toMatchObject({ ok: true, email: 'alice@example.com' })
   })
 
-  it('T2: Clerk 500 bubbles a plain Error (retry path — NOT NonRetriableError)', async () => {
+  it('T2: Clerk 500 bubbles a plain Error (retry path - NOT NonRetriableError)', async () => {
     mocks.limitMock.mockResolvedValueOnce([workshopRow])
     mocks.createInvitationMock.mockRejectedValueOnce(
       new mocks.ClerkAPIError(500, 'clerk: internal error'),

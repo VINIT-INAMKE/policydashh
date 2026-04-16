@@ -89,7 +89,7 @@ export function CreateMilestoneDialog({ documentId, trigger }: CreateMilestoneDi
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optional — what does this milestone represent?"
+                placeholder="Optional - what does this milestone represent?"
               />
             </div>
 

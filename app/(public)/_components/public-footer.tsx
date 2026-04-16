@@ -3,7 +3,7 @@ import Link from 'next/link'
 /**
  * Public footer (PUB-09 / PUB-10).
  *
- * Server component — no hooks, no state. Mounted by `app/(public)/layout.tsx`
+ * Server component - no hooks, no state. Mounted by `app/(public)/layout.tsx`
  * so every `(public)` route inherits the same attribution chrome. Single-row,
  * low-chrome: "Published by PolicyDash" on the left, "Internal Login" link
  * on the right. Zero Clerk imports per Phase 9 (public) route group rule.

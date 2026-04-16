@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Phase 20.5 — apply migration 0012_public_draft_flag via Neon HTTP driver.
+ * Phase 20.5 - apply migration 0012_public_draft_flag via Neon HTTP driver.
  *
- * Phase 14/16 Pattern 2 — hand-written DDL applied via sql.query(stmt), not
+ * Phase 14/16 Pattern 2 - hand-written DDL applied via sql.query(stmt), not
  * drizzle-kit push, so journal drift on meta/_journal.json never stops us.
  *
  * Splits the file on ";\n" at statement boundaries, strips block comments, and

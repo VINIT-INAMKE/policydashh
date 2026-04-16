@@ -19,7 +19,7 @@ import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 
 /**
- * evidence-pack-export — async ZIP assembly + R2 upload + email delivery.
+ * evidence-pack-export - async ZIP assembly + R2 upload + email delivery.
  *
  * Triggered by `evidence.export_requested` fired from the
  * `evidence.requestExport` tRPC mutation (Plan 18-02). Runs six steps:
@@ -33,7 +33,7 @@ import { ACTIONS } from '@/src/lib/constants'
  *                             PutObjectCommand. Failed fetches get
  *                             UNAVAILABLE.txt placeholders; link-type ditto.
  *                             Sets degraded: true if any binary fetch failed.
- *   4. generate-presigned-url: getDownloadUrl(r2Key, 86400) — 24h expiry
+ *   4. generate-presigned-url: getDownloadUrl(r2Key, 86400) - 24h expiry
  *   5. send-email:            sendEvidencePackReadyEmail with full metadata
  *   6. write-audit-log:       ACTIONS.EVIDENCE_PACK_EXPORT with async: true
  *
@@ -59,7 +59,7 @@ import { ACTIONS } from '@/src/lib/constants'
  *
  * Pitfall 2 (Phase 17): step.run return values must be JSON-safe. All binary
  * fetch + ZIP assembly + upload happens INSIDE one step.run call. We return
- * only { r2Key, fileCount, totalBytes, degraded, missingCount } — no Buffer
+ * only { r2Key, fileCount, totalBytes, degraded, missingCount } - no Buffer
  * and no Uint8Array cross a step boundary. Metadata bytes are Array.from()'d
  * at the build-metadata boundary and rehydrated into Uint8Array inside
  * assemble-and-upload.
@@ -71,7 +71,7 @@ import { ACTIONS } from '@/src/lib/constants'
  * R2 key format (Warning 4 / amended ROADMAP SC-3): the key is constructed
  * manually as `evidence-packs/${documentId}-${Date.now()}.zip`. Do NOT route
  * through the generic r2 helper that produces `{folder}/{timestamp}-{random}-{name}`
- * — that format breaks the readable documentId-timestamp ordering required
+ * - that format breaks the readable documentId-timestamp ordering required
  * by the amended Phase 18 Success Criterion 3.
  */
 
@@ -132,7 +132,7 @@ function unavailablePlaceholder(artifact: ArtifactRow, reason: string): Uint8Arr
 export const evidencePackExportFn = inngest.createFunction(
   {
     id: 'evidence-pack-export',
-    name: 'Evidence pack — async ZIP assembly + R2 upload + email',
+    name: 'Evidence pack - async ZIP assembly + R2 upload + email',
     retries: 2,
     // Inlined per src/inngest/README.md §90-94 (type widening footgun).
     triggers: [{ event: evidenceExportRequestedEvent }],
@@ -140,7 +140,7 @@ export const evidencePackExportFn = inngest.createFunction(
   async ({ event, step }) => {
     const { documentId, requestedBy, userEmail } = event.data
 
-    // Step 1: build all metadata files (CSV/JSON) — reuses existing service.
+    // Step 1: build all metadata files (CSV/JSON) - reuses existing service.
     // Record<string, Uint8Array> is not JSON-safe, so we serialize to
     // Record<string, number[]> at the step boundary and rehydrate later.
     const metadataFiles = await step.run('build-metadata', async () => {
@@ -236,7 +236,7 @@ export const evidencePackExportFn = inngest.createFunction(
         if (art.type === 'link') {
           files[`binaries/${art.id}-UNAVAILABLE.txt`] = unavailablePlaceholder(
             art,
-            'External link — not fetchable from R2',
+            'External link - not fetchable from R2',
           )
           missing.push({
             artifactId: art.id,
@@ -282,12 +282,12 @@ export const evidencePackExportFn = inngest.createFunction(
         files[`binaries/${art.id}/${safeName}`] = result.bytes
       }
 
-      // Assemble the ZIP (fflate zipSync — buffered, single PUT).
+      // Assemble the ZIP (fflate zipSync - buffered, single PUT).
       // RFC: see file-level JSDoc for multipart upgrade path.
       const zipped = zipSync(files, { level: 6 })
 
       // Manual key construction per Warning 4 / amended ROADMAP SC-3.
-      // Format: evidence-packs/{documentId}-{timestamp}.zip — readable and
+      // Format: evidence-packs/{documentId}-{timestamp}.zip - readable and
       // sortable. We bypass the generic r2 key helper deliberately (see
       // file-level JSDoc for rationale).
       const r2Key = `evidence-packs/${documentId}-${Date.now()}.zip`

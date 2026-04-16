@@ -11,7 +11,7 @@ const MAX_FILE_SIZE: Record<string, number> = {
   image: 16 * 1024 * 1024,    // 16MB
   document: 32 * 1024 * 1024, // 32MB
   evidence: 32 * 1024 * 1024, // 32MB
-  recording: 25 * 1024 * 1024, // 25MB — Groq Whisper free-tier file-size cap (LLM-02)
+  recording: 25 * 1024 * 1024, // 25MB - Groq Whisper free-tier file-size cap (LLM-02)
 }
 
 const ALLOWED_TYPES: Record<string, string[]> = {

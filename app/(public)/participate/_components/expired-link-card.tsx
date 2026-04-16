@@ -1,5 +1,5 @@
 /**
- * ExpiredLinkCard — rendered when a /participate?workshopId=X&token=Y request
+ * ExpiredLinkCard - rendered when a /participate?workshopId=X&token=Y request
  * arrives with a missing/invalid/expired JWT. Server-side only; no form is
  * mounted (no info-leak vector).
  *

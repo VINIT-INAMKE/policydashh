@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-// These tests are RED stubs — they will fail until verified-badge.tsx is implemented in Plan 23-03.
+// These tests are RED stubs - they will fail until verified-badge.tsx is implemented in Plan 23-03.
 
 describe('VerifiedBadge (VERIFY-09)', () => {
   describe('rendering', () => {

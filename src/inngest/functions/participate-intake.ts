@@ -9,7 +9,7 @@ import { inngest } from '../client'
 import { sendWelcomeEmail } from '@/src/lib/email'
 
 /**
- * participateIntakeFn — async worker for the public /participate intake form.
+ * participateIntakeFn - async worker for the public /participate intake form.
  *
  * Triggered by `participate.intake` events sent from
  * app/api/intake/participate/route.ts (Plan 19-01) AFTER the Route Handler
@@ -25,7 +25,7 @@ import { sendWelcomeEmail } from '@/src/lib/email'
  *      invitation, existing user → silent no-op with the same response
  *      shape. Either way we do not leak existence of an account.
  *   3. `sendWelcomeEmail` (INTAKE-05). Always runs, even when Clerk ignored a
- *      duplicate — same success response for new and existing users, no
+ *      duplicate - same success response for new and existing users, no
  *      info leak. Role-tailored copy is selected from `orgType` inside the
  *      helper (shipped in Plan 19-03).
  *
@@ -43,7 +43,7 @@ import { sendWelcomeEmail } from '@/src/lib/email'
 export const participateIntakeFn = inngest.createFunction(
   {
     id: 'participate-intake',
-    name: 'Participate intake — Clerk invite + welcome email',
+    name: 'Participate intake - Clerk invite + welcome email',
     retries: 3,
     // INTAKE-03: hard drop after 1 run per emailHash per 15m window.
     rateLimit: {
@@ -51,7 +51,7 @@ export const participateIntakeFn = inngest.createFunction(
       limit: 1,
       period: '15m',
     },
-    // INLINE triggers — Pitfall 4. Using a string-literal event name keeps
+    // INLINE triggers - Pitfall 4. Using a string-literal event name keeps
     // this function independent of Plan 19-01's `participateIntakeEvent`
     // registration (Wave 2 parallel plans must not import each other).
     triggers: [{ event: 'participate.intake' }],
@@ -85,7 +85,7 @@ export const participateIntakeFn = inngest.createFunction(
             ? (err as { status: number }).status
             : undefined
         if (status !== undefined && status >= 500) {
-          // Transient — bubble so Inngest consumes retry budget.
+          // Transient - bubble so Inngest consumes retry budget.
           throw err instanceof Error ? err : new Error(String(err))
         }
         throw new NonRetriableError(
@@ -95,7 +95,7 @@ export const participateIntakeFn = inngest.createFunction(
     })
 
     // Step 2: Welcome email (INTAKE-05). Fires for both new and existing
-    // users — same success shape, no info leak. No try/catch: failures
+    // users - same success shape, no info leak. No try/catch: failures
     // should retry via Inngest.
     await step.run('send-welcome-email', async () => {
       await sendWelcomeEmail(email, { name, orgType, email })

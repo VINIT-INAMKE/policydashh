@@ -4,7 +4,7 @@ import React from 'react'
 
 // --- Mocks -----------------------------------------------------------------
 
-// Mock next/navigation.usePathname — configurable per test via __setPathname
+// Mock next/navigation.usePathname - configurable per test via __setPathname
 let __mockPathname = '/'
 vi.mock('next/navigation', () => ({
   usePathname: () => __mockPathname,
@@ -16,7 +16,7 @@ vi.mock('next/link', () => ({
     React.createElement('a', { href, ...rest }, children),
 }))
 
-// Mock the tRPC client — configurable per test via __setDocumentQuery / __setWorkshopQuery
+// Mock the tRPC client - configurable per test via __setDocumentQuery / __setWorkshopQuery
 type QueryResult = { data: any; isLoading: boolean }
 let __documentQuery: QueryResult = { data: undefined, isLoading: true }
 let __workshopQuery: QueryResult = { data: undefined, isLoading: true }

@@ -1,5 +1,5 @@
 /**
- * Phase 20 Plan 20-05 — Spots-left badge for public workshop cards.
+ * Phase 20 Plan 20-05 - Spots-left badge for public workshop cards.
  *
  * Tint rules (UI-SPEC Surface A §Upcoming/Live Workshop Card Anatomy):
  *   maxSeats is null       -> render nothing (open registration)
@@ -8,7 +8,7 @@
  *   available > 3          -> "{n} spots left" (secondary Badge)
  *
  * Source of `registeredCount`: the server-side per-workshop unstable_cache
- * query in `src/server/queries/workshops-public.ts` — see Plan 20-05 Task 2.
+ * query in `src/server/queries/workshops-public.ts` - see Plan 20-05 Task 2.
  * Low-stock tint uses `--status-rejected-bg` + `text-destructive` to stay
  * within the existing design-token surface area (no new color tokens).
  */

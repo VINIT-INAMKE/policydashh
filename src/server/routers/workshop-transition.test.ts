@@ -93,26 +93,26 @@ async function invoke(procName: string, input: unknown) {
   const router = (workshopRouterModule as { workshopRouter?: Record<string, unknown> } | null)
     ?.workshopRouter
   if (!router) {
-    throw new Error('workshopRouter not yet exporting transition/approveArtifact — Wave 0 RED')
+    throw new Error('workshopRouter not yet exporting transition/approveArtifact - Wave 0 RED')
   }
   const def = (router as { _def?: { procedures?: Record<string, unknown> } })._def
   const proc = def?.procedures?.[procName] as
     | { _def?: { resolver?: unknown }; resolver?: unknown }
     | undefined
   if (!proc) {
-    throw new Error(`procedure ${procName} does not exist on workshopRouter — Wave 0 RED`)
+    throw new Error(`procedure ${procName} does not exist on workshopRouter - Wave 0 RED`)
   }
   // tRPC v11 procedure resolver path
   const resolver = (proc._def?.resolver ?? proc.resolver) as
     | ((args: unknown) => Promise<unknown>)
     | undefined
   if (typeof resolver !== 'function') {
-    throw new Error(`procedure ${procName} has no resolver — Wave 0 RED`)
+    throw new Error(`procedure ${procName} has no resolver - Wave 0 RED`)
   }
   return await resolver({ ctx: makeCtx(), input, type: 'mutation', path: `workshop.${procName}`, rawInput: input })
 }
 
-describe('workshop.transition — Wave 0 RED contract (WS-06)', () => {
+describe('workshop.transition - Wave 0 RED contract (WS-06)', () => {
   it('accepts upcoming → in_progress', async () => {
     mocks.limitMock.mockResolvedValue([{ id: 'w1', status: 'upcoming', createdBy: 'mod1' }])
     const result = await invoke('transition', {
@@ -164,7 +164,7 @@ describe('workshop.transition — Wave 0 RED contract (WS-06)', () => {
   })
 })
 
-describe('workshop.approveArtifact — Wave 0 RED contract (WS-14)', () => {
+describe('workshop.approveArtifact - Wave 0 RED contract (WS-14)', () => {
   it('flips reviewStatus to approved', async () => {
     await invoke('approveArtifact', {
       workshopId: '00000000-0000-0000-0000-000000000001',

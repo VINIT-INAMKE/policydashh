@@ -4,14 +4,14 @@
  * Sent asynchronously by workshopRegistrationReceivedFn (Plan 20-04) after
  * a cal.com BOOKING_CREATED webhook has been persisted AND the Clerk invite
  * has been (idempotently) issued. The same template is used for cal.com
- * bookings AND D-12 walk-in synthesised registrations — the body copy is
+ * bookings AND D-12 walk-in synthesised registrations - the body copy is
  * neutral about how the registration happened.
  *
  * Lives in a separate .tsx file so Inngest function tests can `vi.mock` the
  * `@/src/lib/email` boundary without pulling JSX through the transform
- * (Pitfall 8 — Phase 16/17/18/19 parity).
+ * (Pitfall 8 - Phase 16/17/18/19 parity).
  *
- * Copy uses unicode curly apostrophes (\u2019) verbatim — `@react-email/render`
+ * Copy uses unicode curly apostrophes (\u2019) verbatim - `@react-email/render`
  * converts HTML `&apos;` entities to `&#x27;`, which breaks test contracts that
  * assert on plain-string substrings.
  */
@@ -96,7 +96,7 @@ export function WorkshopRegistrationEmail({
   )
 }
 
-/** Render to HTML. Async per @react-email/render v1.x (Pitfall 6 — always await). */
+/** Render to HTML. Async per @react-email/render v1.x (Pitfall 6 - always await). */
 export async function renderWorkshopRegistrationEmail(
   props: WorkshopRegistrationEmailProps,
 ): Promise<string> {

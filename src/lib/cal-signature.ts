@@ -14,7 +14,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
  *   - Node's `crypto.createHmac('sha256', secret)` produces the expected digest.
  *   - `crypto.timingSafeEqual` is used for constant-time comparison to defuse
  *     timing attacks. It throws on mismatched buffer lengths, so we guard with
- *     an explicit length check AND wrap hex parsing in try/catch — a malformed
+ *     an explicit length check AND wrap hex parsing in try/catch - a malformed
  *     (non-hex or wrong-length) header must return `false`, never throw.
  *   - Empty / missing signature, empty secret, or zero-length hex buffer all
  *     short-circuit to `false`.

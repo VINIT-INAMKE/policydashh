@@ -648,7 +648,7 @@ export default function Home() {
                       className="text-xs font-bold uppercase tracking-widest block mb-1"
                       style={{ color: 'rgba(0,10,30,0.4)' }}
                     >
-                      Phase 01 — Completed
+                      Phase 01 - Completed
                     </span>
                     <h4 className="text-xl font-headline font-bold text-[var(--cl-primary)]">
                       Landscape Mapping
@@ -674,7 +674,7 @@ export default function Home() {
                       className="text-xs font-bold uppercase tracking-widest block mb-1"
                       style={{ color: 'rgba(0,10,30,0.4)' }}
                     >
-                      Phase 02 — Completed
+                      Phase 02 - Completed
                     </span>
                     <h4 className="text-xl font-headline font-bold text-[var(--cl-primary)]">
                       Framework Drafting
@@ -695,7 +695,7 @@ export default function Home() {
                   </div>
                   <div className="pb-4 min-w-0 flex-1">
                     <span className="text-xs font-bold uppercase tracking-widest text-[var(--cl-tertiary)] block mb-1">
-                      Phase 03 — In Progress
+                      Phase 03 - In Progress
                     </span>
                     <h4 className="text-xl font-headline font-bold text-[var(--cl-primary)]">
                       Stakeholder Validation
@@ -720,7 +720,7 @@ export default function Home() {
                       className="text-xs font-bold uppercase tracking-widest block mb-1"
                       style={{ color: 'rgba(0,10,30,0.2)' }}
                     >
-                      Phase 04 — Upcoming
+                      Phase 04 - Upcoming
                     </span>
                     <h4 className="text-xl font-headline font-bold text-[var(--cl-primary)] opacity-40">
                       National Deployment

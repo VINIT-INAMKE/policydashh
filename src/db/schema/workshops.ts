@@ -20,7 +20,7 @@ export const checklistSlotStatusEnum = pgEnum('checklist_slot_status', ['empty',
 
 export const artifactReviewStatusEnum = pgEnum('artifact_review_status', ['draft', 'approved'])
 
-// Phase 20 — cal.com workshop registration lifecycle
+// Phase 20 - cal.com workshop registration lifecycle
 export const registrationStatusEnum = pgEnum('registration_status', [
   'registered', 'cancelled', 'rescheduled',
 ])
@@ -42,7 +42,7 @@ export const workshops = pgTable('workshops', {
   createdBy:           uuid('created_by').notNull().references(() => users.id),
   createdAt:           timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:           timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  milestoneId:         uuid('milestone_id'),  // FK to milestones — constraint in SQL migration only (avoids circular import)
+  milestoneId:         uuid('milestone_id'),  // FK to milestones - constraint in SQL migration only (avoids circular import)
 })
 
 export const workshopArtifacts = pgTable('workshop_artifacts', {
@@ -79,10 +79,10 @@ export const workshopEvidenceChecklist = pgTable('workshop_evidence_checklist', 
   uniqueIndex('workshop_evidence_checklist_uniq').on(t.workshopId, t.slot),
 ])
 
-// Phase 20 — cal.com-driven workshop registrations. One row per cal.com booking
+// Phase 20 - cal.com-driven workshop registrations. One row per cal.com booking
 // (unique on bookingUid) plus synthetic walk-in rows created when MEETING_ENDED
 // reports an attendee email with no prior booking. Attendance is surfaced via
-// `attendedAt IS NOT NULL` — no separate attendance table (D-10).
+// `attendedAt IS NOT NULL` - no separate attendance table (D-10).
 export const workshopRegistrations = pgTable('workshop_registrations', {
   id:               uuid('id').primaryKey().defaultRandom(),
   workshopId:       uuid('workshop_id').notNull().references(() => workshops.id, { onDelete: 'cascade' }),

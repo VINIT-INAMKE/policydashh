@@ -4,14 +4,14 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
  * Plan 20-04 test contract for workshopFeedbackInviteFn (WS-15).
  *
  * Covers six behaviors (T1-T6 from 20-04-PLAN.md):
- *   T1 — event.data → workshop looked up from DB (title + scheduledAt).
- *   T2 — signFeedbackToken called with (workshopId, email); token embedded
+ *   T1 - event.data → workshop looked up from DB (title + scheduledAt).
+ *   T2 - signFeedbackToken called with (workshopId, email); token embedded
  *        in feedbackUrl.
- *   T3 — feedbackUrl format: ${baseUrl}/participate?workshopId=X&token=Y.
- *   T4 — sendWorkshopFeedbackInviteEmail called with to=email, workshopTitle,
+ *   T3 - feedbackUrl format: ${baseUrl}/participate?workshopId=X&token=Y.
+ *   T4 - sendWorkshopFeedbackInviteEmail called with to=email, workshopTitle,
  *        feedbackUrl.
- *   T5 — missing workshop → NonRetriableError.
- *   T6 — triggers inlined as [{ event: 'workshop.feedback.invite' }].
+ *   T5 - missing workshop → NonRetriableError.
+ *   T6 - triggers inlined as [{ event: 'workshop.feedback.invite' }].
  *
  * Mock strategy mirrors workshop-registration-received.test.ts.
  */
@@ -111,7 +111,7 @@ async function invoke(
   return await handler({ event, step, runId: 'test', attempt: 0, logger: console })
 }
 
-describe('workshopFeedbackInviteFn — JWT-signed deep-link email (WS-15)', () => {
+describe('workshopFeedbackInviteFn - JWT-signed deep-link email (WS-15)', () => {
   const workshopRow = {
     title: 'Policy Roundtable',
     scheduledAt: new Date('2026-05-01T15:00:00Z'),

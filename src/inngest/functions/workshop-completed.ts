@@ -10,7 +10,7 @@ import { users } from '@/src/db/schema/users'
 import { sendWorkshopEvidenceNudgeEmail } from '@/src/lib/email'
 
 /**
- * workshop-completed — evidence checklist creation + durable nudge chain.
+ * workshop-completed - evidence checklist creation + durable nudge chain.
  *
  * Triggered by `workshop.completed` events emitted from the
  * `workshop.transition` mutation (Plan 17-01) when a moderator marks a
@@ -46,7 +46,7 @@ const REQUIRED_SLOTS = [
 export const workshopCompletedFn = inngest.createFunction(
   {
     id: 'workshop-completed',
-    name: 'Workshop completed — create checklist + nudge moderator',
+    name: 'Workshop completed - create checklist + nudge moderator',
     retries: 3,
     // Inlined per src/inngest/README.md §90-94 (type widening footgun).
     triggers: [{ event: workshopCompletedEvent }],
@@ -136,7 +136,7 @@ export const workshopCompletedFn = inngest.createFunction(
       new Date(completedAt.getTime() + 7 * 24 * 60 * 60 * 1000),
     )
 
-    // Step 5: final nudge — same shape as step 3 with different label.
+    // Step 5: final nudge - same shape as step 3 with different label.
     await step.run('nudge-7d', async () => {
       const emptyRows = await db
         .select({ slot: workshopEvidenceChecklist.slot })

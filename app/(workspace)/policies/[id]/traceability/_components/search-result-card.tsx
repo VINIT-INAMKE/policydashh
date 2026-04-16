@@ -7,7 +7,7 @@ import { StatusBadge, type FeedbackStatus } from '@/app/(workspace)/policies/[id
 import { CRStatusBadge, type CRStatus } from '@/app/(workspace)/policies/[id]/change-requests/_components/cr-status-badge'
 
 // ---------------------------------------------------------------------------
-// Types — mirror tRPC router outputs
+// Types - mirror tRPC router outputs
 // ---------------------------------------------------------------------------
 
 export interface SearchFeedbackResult {

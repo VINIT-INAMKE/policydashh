@@ -82,7 +82,7 @@ export async function POST(req: Request) {
     }).returning({ id: users.id })
 
     // Phase 20 (WS-10, D-11): backfill workshop_registrations.userId for any
-    // pre-existing rows matching this email — happens when cal.com booked the
+    // pre-existing rows matching this email - happens when cal.com booked the
     // workshop before the Clerk invite round-trip completed. Fire-and-forget;
     // must never block the webhook ack.
     const newUserId = upserted?.id ?? null

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// These tests are RED stubs — they will fail until src/lib/cardano.ts is implemented in Plan 23-01.
+// These tests are RED stubs - they will fail until src/lib/cardano.ts is implemented in Plan 23-01.
 // Each test.todo describes the expected behavior contract.
 
 describe('src/lib/cardano.ts (VERIFY-06, VERIFY-08)', () => {

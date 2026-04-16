@@ -21,7 +21,7 @@ import {
 } from '@/src/lib/hashing'
 
 /**
- * milestoneRouter — create-then-curate milestone lifecycle (VERIFY-01, VERIFY-02, VERIFY-03).
+ * milestoneRouter - create-then-curate milestone lifecycle (VERIFY-01, VERIFY-02, VERIFY-03).
  *
  * Six procedures:
  *   - create:       admin+policy_lead creates empty milestone with requiredSlots
@@ -29,7 +29,7 @@ import {
  *   - getById:      full milestone detail + linked entity counts + slot status
  *   - attachEntity: set milestoneId FK on child row (discriminated union by entityType)
  *   - detachEntity: clear milestoneId FK on child row
- *   - markReady:    the state transition — computes hashes, builds manifest, persists,
+ *   - markReady:    the state transition - computes hashes, builds manifest, persists,
  *                   and flips status defining → ready
  *
  * All mutations write audit log entries via writeAuditLog fire-and-forget
@@ -45,7 +45,7 @@ import {
  *   1. Load milestone + assert NOT anchored + assert state === 'defining'
  *   2. Compute slot status; reject with structured PRECONDITION_FAILED if unmet
  *   3. Load all 4 linked entity rows for the milestone
- *   4. Per-child hash computation via src/lib/hashing.ts (D-02a — no direct crypto)
+ *   4. Per-child hash computation via src/lib/hashing.ts (D-02a - no direct crypto)
  *   5. Build manifest array (sorted ascending by (entityType, entityId) before persist)
  *   6. Compute milestone hash via hashMilestone()
  *   7. Persist contentHash + manifest + status transition defining → ready
@@ -229,7 +229,7 @@ export const milestoneRouter = router({
     }),
 
   // ---- attachEntity (MILESTONE_ATTACH_ENTITY) ----
-  // Discriminated union on entityType — single procedure, branches by table.
+  // Discriminated union on entityType - single procedure, branches by table.
   attachEntity: requirePermission('milestone:manage')
     .input(
       z.object({
@@ -353,7 +353,7 @@ export const milestoneRouter = router({
       return { detached: true, entityType: input.entityType, entityId: input.entityId }
     }),
 
-  // ---- markReady (MILESTONE_MARK_READY) — THE state transition ----
+  // ---- markReady (MILESTONE_MARK_READY) - THE state transition ----
   // Steps:
   //   1. Load milestone; assert NOT anchored (immutability); assert state === 'defining'
   //   2. Compute slot status; reject with structured PRECONDITION_FAILED if unmet
@@ -379,7 +379,7 @@ export const milestoneRouter = router({
       if (unmet.length > 0) {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
-          message: `Cannot mark ready — ${unmet.length} required slot(s) unmet`,
+          message: `Cannot mark ready - ${unmet.length} required slot(s) unmet`,
           cause: { unmet } as unknown as Error,
         })
       }
@@ -404,7 +404,7 @@ export const milestoneRouter = router({
 
       // --- 4. Per-child hashes ---
       // Pitfall 2: Date columns must be converted to ISO strings before passing
-      // to hash functions — the hashing service input types expect `string | null`
+      // to hash functions - the hashing service input types expect `string | null`
       // for dates, not Date objects. Mismatched types produce different canonical
       // JSON and thus different hex.
       const versionEntries: ManifestEntry[] = linkedVersions.map((v) => ({
@@ -435,7 +435,7 @@ export const milestoneRouter = router({
           durationMinutes:  w.durationMinutes,
           status:           w.status,
           createdBy:        w.createdBy,
-          linkedArtifactIds: [], // Phase 22 scope — empty; Phase 23 wires joins
+          linkedArtifactIds: [], // Phase 22 scope - empty; Phase 23 wires joins
           linkedFeedbackIds: [],
         }),
       }))
@@ -535,7 +535,7 @@ export const milestoneRouter = router({
       }).catch(console.error)
 
       // Phase 23 VERIFY-06: Emit milestone.ready event to trigger Cardano anchor pipeline.
-      // Fire-and-forget — the mutation returns immediately; anchoring runs async via Inngest.
+      // Fire-and-forget - the mutation returns immediately; anchoring runs async via Inngest.
       sendMilestoneReady({
         milestoneId: milestone.id,
         triggeredBy: ctx.user.id,
@@ -549,7 +549,7 @@ export const milestoneRouter = router({
       }
     }),
 
-  // ---- retryAnchor (D-15) — re-emit milestone.ready for stuck anchoring state ----
+  // ---- retryAnchor (D-15) - re-emit milestone.ready for stuck anchoring state ----
   retryAnchor: requirePermission('milestone:manage')
     .input(z.object({ milestoneId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
@@ -563,7 +563,7 @@ export const milestoneRouter = router({
         })
       }
 
-      // Re-emit the milestone.ready event — milestoneReadyFn is idempotent
+      // Re-emit the milestone.ready event - milestoneReadyFn is idempotent
       // (D-08 concurrency lock + VERIFY-08 Blockfrost pre-check + DB UNIQUE)
       await sendMilestoneReady({
         milestoneId: milestone.id,

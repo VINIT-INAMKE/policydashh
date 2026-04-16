@@ -1,5 +1,5 @@
 /**
- * POST /api/intake/workshop-feedback — Phase 20 WS-15 submit route.
+ * POST /api/intake/workshop-feedback - Phase 20 WS-15 submit route.
  *
  * Receives post-workshop feedback from the `/participate?workshopId=&token=`
  * deep-link flow (Plan 20-06 UI). Differs from `/api/intake/participate` in
@@ -24,7 +24,7 @@
  *     workshopFeedbackLinks row which captures the workshop context.
  *
  * Public by proxy.ts `/api/intake(.*)` whitelist (Plan 19-05). No audit
- * log — unauthenticated, and the workshopFeedbackLinks row IS the audit.
+ * log - unauthenticated, and the workshopFeedbackLinks row IS the audit.
  */
 
 import { z } from 'zod'
@@ -42,7 +42,7 @@ import { verifyFeedbackToken } from '@/src/lib/feedback-token'
 
 export const runtime = 'nodejs'
 
-// z.guid() (not z.uuid()) — Phase 16 precedent: Zod 4 z.uuid() rejects
+// z.guid() (not z.uuid()) - Phase 16 precedent: Zod 4 z.uuid() rejects
 // version-0 UUIDs that fixtures and some test payloads carry. z.guid()
 // accepts any RFC 4122 shape.
 const bodySchema = z.object({
@@ -77,7 +77,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // 3. Load the workshop row — required both to confirm existence AND to
+  // 3. Load the workshop row - required both to confirm existence AND to
   //    resolve the fallback submitterId (workshops.createdBy).
   const workshopRows = await db
     .select({ id: workshops.id, createdBy: workshops.createdBy })
@@ -91,7 +91,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // 4. Resolve sectionId: use the caller-supplied value if present, else fall
   //    back to the first workshopSectionLinks row (workshop MUST link at
-  //    least one section — schema-level invariant Phase 17 established).
+  //    least one section - schema-level invariant Phase 17 established).
   let sectionId: string | undefined = body.sectionId
   if (!sectionId) {
     const linkRows = await db
@@ -132,8 +132,8 @@ export async function POST(request: Request): Promise<Response> {
     submitterId = userRows[0].id
   }
 
-  // 7. Generate readable id (mirrors existing short-code style — e.g.
-  //    FB-LZ5JK9 — no collision risk for workshop feedback given volume).
+  // 7. Generate readable id (mirrors existing short-code style - e.g.
+  //    FB-LZ5JK9 - no collision risk for workshop feedback given volume).
   const readableId = `FB-${Date.now().toString(36).toUpperCase()}`
 
   // 8. Atomic insert: feedbackItems + workshopFeedbackLinks in ONE txn.

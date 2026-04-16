@@ -23,7 +23,7 @@ export const documentVersions = pgTable('document_versions', {
   publishedAt:       timestamp('published_at', { withTimezone: true }),
   isPublished:       boolean('is_published').notNull().default(false),
   consultationSummary: jsonb('consultation_summary').$type<ConsultationSummaryJson | null>(),
-  milestoneId:       uuid('milestone_id'),  // FK to milestones — constraint in SQL migration only (avoids circular import)
+  milestoneId:       uuid('milestone_id'),  // FK to milestones - constraint in SQL migration only (avoids circular import)
   txHash:            text('tx_hash'),
   anchoredAt:        timestamp('anchored_at', { withTimezone: true }),
 }, (t) => [

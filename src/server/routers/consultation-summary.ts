@@ -16,7 +16,7 @@ import {
 } from '@/src/server/services/consultation-summary.service'
 
 /**
- * consultationSummaryRouter — moderator human-review gate (LLM-07).
+ * consultationSummaryRouter - moderator human-review gate (LLM-07).
  *
  * All 5 procedures are gated on `requirePermission('version:manage')`
  * (ADMIN + POLICY_LEAD). Every mutation writes an audit log entry via
@@ -96,10 +96,10 @@ export const consultationSummaryRouter = router({
       return (row?.consultationSummary as ConsultationSummaryJson | null) ?? null
     }),
 
-  // ---- getSectionFeedback (LLM-07 — right panel data) -------------
+  // ---- getSectionFeedback (LLM-07 - right panel data) -------------
   // Returns anonymized feedback for a single section so the moderator
   // can verify the LLM summary against source rows. NEVER returns
-  // names/emails/phones — uses orgType for role attribution only.
+  // names/emails/phones - uses orgType for role attribution only.
   getSectionFeedback: requirePermission('version:manage')
     .input(
       z.object({
@@ -132,7 +132,7 @@ export const consultationSummaryRouter = router({
       return rows.filter((r) => idSet.has(r.feedbackId))
     }),
 
-  // ---- approveSection (LLM-07 — human gate) ----------------------
+  // ---- approveSection (LLM-07 - human gate) ----------------------
   approveSection: requirePermission('version:manage')
     .input(
       z.object({
@@ -167,7 +167,7 @@ export const consultationSummaryRouter = router({
       return { status: updated.status, sectionStatus: 'approved' as const }
     }),
 
-  // ---- editSection (LLM-07 — moderator edits prose) ------------
+  // ---- editSection (LLM-07 - moderator edits prose) ------------
   editSection: requirePermission('version:manage')
     .input(
       z.object({
@@ -202,7 +202,7 @@ export const consultationSummaryRouter = router({
       return { sectionId: input.sectionId, edited: true }
     }),
 
-  // ---- regenerateSection (LLM-07/08 — re-run Inngest) --------
+  // ---- regenerateSection (LLM-07/08 - re-run Inngest) --------
   // Pitfall 5: synchronously reset this section to pending BEFORE
   // firing the event so the Inngest run sees the pending starting
   // state and its write-back preserves approved siblings.

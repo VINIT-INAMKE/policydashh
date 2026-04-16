@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 
 /**
- * Phase 20.5 Wave 0 — RED contract for PUB-07 section status derivation.
+ * Phase 20.5 Wave 0 - RED contract for PUB-07 section status derivation.
  *
  * Locks the three-state precedence rule that Plan 20.5-01 must satisfy:
  *   Validated (in published changelog) > Under Review (open CR row) > Draft.
@@ -34,7 +34,7 @@ function mockOpenCRs(rows: Array<{ sectionId: string }>) {
   })
 }
 
-describe('getSectionPublicStatuses — PUB-07 derivation rules', () => {
+describe('getSectionPublicStatuses - PUB-07 derivation rules', () => {
   it('returns validated for sections in published changelog', async () => {
     mockOpenCRs([])
     const versions = [

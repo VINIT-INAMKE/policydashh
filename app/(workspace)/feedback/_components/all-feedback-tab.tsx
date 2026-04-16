@@ -33,7 +33,7 @@ const STATUS_LABELS: Record<FeedbackStatus, string> = {
 }
 
 /**
- * All Feedback tab — cross-policy feedback list powered by
+ * All Feedback tab - cross-policy feedback list powered by
  * trpc.feedback.listCrossPolicy (added in Plan 13-01).
  *
  * The procedure is role-aware on the server:
@@ -41,7 +41,7 @@ const STATUS_LABELS: Record<FeedbackStatus, string> = {
  * - feedback:read_own callers see only their submissions
  *
  * Role gating for tab visibility happens at the parent GlobalFeedbackTabs level.
- * This component only handles the UI — filter bar + results list.
+ * This component only handles the UI - filter bar + results list.
  */
 export function AllFeedbackTab() {
   const [policyId, setPolicyId] = useState<string | undefined>(undefined)

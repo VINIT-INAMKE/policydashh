@@ -66,8 +66,8 @@ export default function ResearchPage() {
               that inform the draft framework under consultation.
             </p>
             <ul className="list-disc pl-6 space-y-2 text-[16px] leading-[1.8] mb-6">
-              <li><strong>Landscape Summary</strong> — the state of blockchain policy across comparable jurisdictions</li>
-              <li><strong>Key Policy Gaps</strong> — unresolved questions the framework must address</li>
+              <li><strong>Landscape Summary</strong> - the state of blockchain policy across comparable jurisdictions</li>
+              <li><strong>Key Policy Gaps</strong> - unresolved questions the framework must address</li>
             </ul>
             <a href="/research/consultation-research-report.pdf" download>
               <Button variant="default" size="sm">

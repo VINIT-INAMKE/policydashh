@@ -27,10 +27,10 @@ export const functions = [
   workshopRecordingProcessedFn,
   evidencePackExportFn, // Phase 18
   participateIntakeFn,  // Phase 19
-  workshopCreatedFn,    // Phase 20 Plan 02 — cal.com event-type provisioning
-  workshopRegistrationReceivedFn,  // Phase 20 Plan 04 — Clerk invite + confirmation email
-  workshopFeedbackInviteFn,  // Phase 20 Plan 04 — post-workshop feedback JWT deep-link email
-  consultationSummaryGenerateFn, // Phase 21 LLM-04/05/06/08 — per-section consultation summary via llama-3.3-70b-versatile
-  milestoneReadyFn,     // Phase 23 VERIFY-06 — milestoneReady 5-step Cardano anchor
-  versionAnchorFn,      // Phase 23 VERIFY-07 — per-version Cardano anchor on version.published
+  workshopCreatedFn,    // Phase 20 Plan 02 - cal.com event-type provisioning
+  workshopRegistrationReceivedFn,  // Phase 20 Plan 04 - Clerk invite + confirmation email
+  workshopFeedbackInviteFn,  // Phase 20 Plan 04 - post-workshop feedback JWT deep-link email
+  consultationSummaryGenerateFn, // Phase 21 LLM-04/05/06/08 - per-section consultation summary via llama-3.3-70b-versatile
+  milestoneReadyFn,     // Phase 23 VERIFY-06 - milestoneReady 5-step Cardano anchor
+  versionAnchorFn,      // Phase 23 VERIFY-07 - per-version Cardano anchor on version.published
 ]

@@ -123,7 +123,7 @@ export const traceabilityRouter = router({
       })
     }),
 
-  // TRACE-04: Section chain — feedback linked to a section through CRs with version info
+  // TRACE-04: Section chain - feedback linked to a section through CRs with version info
   sectionChain: requirePermission('trace:read')
     .input(z.object({
       sectionId: z.string().uuid(),
@@ -158,7 +158,7 @@ export const traceabilityRouter = router({
       return rows
     }),
 
-  // TRACE-05: Stakeholder outcomes — caller's feedback with resolved version info
+  // TRACE-05: Stakeholder outcomes - caller's feedback with resolved version info
   stakeholderOutcomes: protectedProcedure
     .input(z.object({
       documentId: z.string().uuid().optional(),

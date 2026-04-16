@@ -196,7 +196,7 @@ export const feedbackRouter = router({
   // Role-aware: read_all callers get everything; read_own callers get only their submissions.
   // NOTE: uses protectedProcedure with internal permission branching because
   // the two permissions (feedback:read_all and feedback:read_own) are disjoint
-  // in the permission matrix — no single requirePermission() call covers both.
+  // in the permission matrix - no single requirePermission() call covers both.
   listCrossPolicy: protectedProcedure
     .input(z.object({
       policyId: z.string().uuid().optional(),
@@ -245,7 +245,7 @@ export const feedbackRouter = router({
         .where(conditions.length ? and(...conditions) : undefined)
         .orderBy(desc(feedbackItems.createdAt))
 
-      // Anonymity enforcement — same pattern as feedback.list
+      // Anonymity enforcement - same pattern as feedback.list
       const canSeeIdentity = ctx.user.role === 'admin' || ctx.user.role === 'policy_lead'
       return rows.map((row) => {
         if (row.isAnonymous && !canSeeIdentity) {
@@ -398,7 +398,7 @@ export const feedbackRouter = router({
         payload: { decision: input.decision, rationale: input.rationale },
       }).catch(console.error)
 
-      // Emit Flow 5 event — the feedbackReviewedFn Inngest function handles
+      // Emit Flow 5 event - the feedbackReviewedFn Inngest function handles
       // in-app notification, email, and auto-draft CR creation with retries.
       await sendFeedbackReviewed({
         feedbackId: updated.id,

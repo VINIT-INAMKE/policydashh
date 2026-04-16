@@ -159,7 +159,7 @@ describe('hashEvidenceBundle (VERIFY-04, VERIFY-05)', () => {
     expect(hashEvidenceBundle(evidenceBundleFixture.input as EvidenceArtifactHashInput[])).toMatch(HEX_64)
   })
 
-  it('is order-independent — shuffled array produces same hash', () => {
+  it('is order-independent - shuffled array produces same hash', () => {
     const sorted = evidenceBundleFixture.input as EvidenceArtifactHashInput[]
     const shuffled = [...sorted].reverse()
     expect(hashEvidenceBundle(shuffled)).toBe(hashEvidenceBundle(sorted))

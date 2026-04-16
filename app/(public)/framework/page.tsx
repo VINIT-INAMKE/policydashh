@@ -76,7 +76,7 @@ async function renderFrameworkDetail(doc: typeof policyDocuments.$inferSelect) {
 
   // Phase 21 D-18: find the latest published version's approved
   // consultation summary (if any). NULL/no-approved-sections silently
-  // omits the FrameworkSummaryBlock — no placeholder on /framework.
+  // omits the FrameworkSummaryBlock - no placeholder on /framework.
   const latestPublished = [...publishedVersions].sort((a, b) => {
     const aTime = a.publishedAt?.getTime() ?? 0
     const bTime = b.publishedAt?.getTime() ?? 0

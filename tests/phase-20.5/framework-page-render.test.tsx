@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import React from 'react'
 
 /**
- * Phase 20.5 Wave 0 — RED contract for PUB-07 /framework no-drafts empty state.
+ * Phase 20.5 Wave 0 - RED contract for PUB-07 /framework no-drafts empty state.
  *
  * Locks the empty-state copy Plan 20.5-03 must render when zero policy
  * documents have isPublicDraft=true:
@@ -32,7 +32,7 @@ beforeAll(async () => {
   FrameworkPage = mod.default
 })
 
-describe('/framework page — PUB-07 empty state', () => {
+describe('/framework page - PUB-07 empty state', () => {
   it('renders "No drafts under consultation" heading when zero isPublicDraft docs', async () => {
     const element = await FrameworkPage()
     const html = renderToStaticMarkup(element)

@@ -12,7 +12,7 @@ import {
 } from '@/app/(workspace)/policies/[id]/feedback/_components/status-badge'
 
 /**
- * My Outcomes tab — caller's own feedback submissions with inline decision log.
+ * My Outcomes tab - caller's own feedback submissions with inline decision log.
  *
  * Role gating happens at the parent GlobalFeedbackTabs level; this component
  * assumes the viewer is allowed to see their own outcomes.

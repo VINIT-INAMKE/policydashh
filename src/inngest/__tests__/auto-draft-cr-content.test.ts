@@ -10,7 +10,7 @@ describe('buildAutoDraftCRContent', () => {
         body: 'The word "consent" is ambiguous in paragraph 2.',
       },
       decision: 'accept',
-      rationale: 'Good catch — rewriting for clarity.',
+      rationale: 'Good catch - rewriting for clarity.',
     })
 
     expect(result.title).toContain('FB-042')

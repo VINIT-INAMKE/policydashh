@@ -358,7 +358,7 @@
   opacity: 0.8;
 }
 
-/* Civilization Lab landing — exact palette from landing.html mockup.
+/* Civilization Lab landing - exact palette from landing.html mockup.
    Scoped to .cl-landing so it doesn't collide with shadcn's --primary etc. */
 .cl-landing {
   --cl-primary: #000a1e;
@@ -445,7 +445,7 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Material Symbols Outlined — loaded via @import at top of file.
+/* Material Symbols Outlined - loaded via @import at top of file.
    Class definition matches Google's recommended baseline. */
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
@@ -585,7 +585,7 @@
 }
 
 /* === Scroll-driven reveals (Chrome 115+, Edge, Safari 18+).
-       Firefox falls back to static — still readable. === */
+       Firefox falls back to static - still readable. === */
 @supports (animation-timeline: view()) {
   .cl-landing .cl-rise {
     opacity: 0;

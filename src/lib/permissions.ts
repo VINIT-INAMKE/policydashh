@@ -31,7 +31,7 @@ export const PERMISSIONS = {
   'feedback:submit':           [ROLES.STAKEHOLDER, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR] as readonly Role[],
   // Every authenticated role can read their own feedback. The read_own
   // procedures (listOwn / getById / listTransitions) scope by submitterId
-  // internally, so this is universally safe — an admin with no submissions
+  // internally, so this is universally safe - an admin with no submissions
   // simply sees an empty list. Restricting the grant 403s staff roles on
   // /feedback/outcomes for no security benefit.
   'feedback:read_own':         [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
@@ -67,7 +67,7 @@ export const PERMISSIONS = {
   'workshop:manage':           [ROLES.ADMIN, ROLES.WORKSHOP_MODERATOR] as readonly Role[],
   'workshop:read':             [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
 
-  // Milestones (Phase 22) — CONTEXT.md Claude's Discretion
+  // Milestones (Phase 22) - CONTEXT.md Claude's Discretion
   // "admin and moderator" maps to [ADMIN, POLICY_LEAD] following the
   // consultation-summary review pattern; no workshop_moderator role.
   'milestone:manage':          [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],

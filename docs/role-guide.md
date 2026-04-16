@@ -1,6 +1,6 @@
 # PolicyDash Role Guide
 
-This guide explains what each role can do in PolicyDash, how to perform key actions, and what each role sees when they log in. Admin is excluded — admins have full access to everything.
+This guide explains what each role can do in PolicyDash, how to perform key actions, and what each role sees when they log in. Admin is excluded - admins have full access to everything.
 
 ---
 
@@ -24,14 +24,14 @@ This guide explains what each role can do in PolicyDash, how to perform key acti
 
 Your dashboard shows a command-centre view:
 
-- **Open Feedback** — count of feedback items awaiting triage
-- **Active CRs** — count of in-progress change requests
-- **Total Policies** — documents you manage
-- **Published Versions** — how many versions are live on the public portal
-- **What Changed Since Last Visit** — new feedback submitted since your last login
-- **Feedback Inbox** — top 5 submitted items with priority and section, plus a "Triage Feedback" button
-- **Active Change Requests** — top 5 CRs with status badges
-- **Section Health** — every section rated Good / Warning / Critical based on open feedback volume
+- **Open Feedback** - count of feedback items awaiting triage
+- **Active CRs** - count of in-progress change requests
+- **Total Policies** - documents you manage
+- **Published Versions** - how many versions are live on the public portal
+- **What Changed Since Last Visit** - new feedback submitted since your last login
+- **Feedback Inbox** - top 5 submitted items with priority and section, plus a "Triage Feedback" button
+- **Active Change Requests** - top 5 CRs with status badges
+- **Section Health** - every section rated Good / Warning / Critical based on open feedback volume
 
 ### Navigation
 
@@ -44,7 +44,7 @@ You see: **Dashboard**, **Policies**, **Feedback** in the sidebar.
 1. Go to **Policies** in the sidebar
 2. Click **Create Policy** to create a new document (title + description)
 3. Click any policy card to open it
-4. Inside a policy, the left sidebar shows sections — click **Add Section** to create one
+4. Inside a policy, the left sidebar shows sections - click **Add Section** to create one
 5. Drag sections to reorder them
 6. Click a section to view its content, then click **Edit** to open the block editor
 7. The block editor supports headings, paragraphs, lists, tables, callouts, code blocks, images, and file attachments
@@ -65,13 +65,13 @@ Before stakeholders can submit feedback on a section, they must be assigned to i
 1. Go to **Feedback** or click the feedback link on your dashboard
 2. The inbox shows all feedback across your documents with filters (status, section, priority, type, impact, org type)
 3. Click any feedback card to open the detail sheet
-4. You can see the full feedback body, submitter info (even for anonymous items — you have identity access), and evidence
+4. You can see the full feedback body, submitter info (even for anonymous items - you have identity access), and evidence
 5. **Triage actions available:**
-   - **Start Review** — moves feedback from "Submitted" to "Under Review"
-   - **Accept** — marks feedback as accepted (requires rationale, minimum 20 characters)
-   - **Partially Accept** — accepts with caveats (requires rationale)
-   - **Reject** — rejects with explanation (requires rationale)
-   - **Close** — closes feedback without further action
+   - **Start Review** - moves feedback from "Submitted" to "Under Review"
+   - **Accept** - marks feedback as accepted (requires rationale, minimum 20 characters)
+   - **Partially Accept** - accepts with caveats (requires rationale)
+   - **Reject** - rejects with explanation (requires rationale)
+   - **Close** - closes feedback without further action
 6. Every decision is logged in the Decision Log visible on the feedback detail
 
 #### Creating Change Requests
@@ -89,27 +89,27 @@ Once feedback is accepted or partially accepted, you can bundle it into a Change
 1. Open a CR from the list
 2. You can add/remove linked sections and view linked feedback
 3. **Lifecycle transitions:**
-   - **Submit for Review** — moves from Drafting to In Review
-   - **Approve** — moves from In Review to Approved
-   - **Request Changes** — sends back to In Review
-   - **Merge** — creates a new version of the document (requires a merge summary). This atomically: creates a version snapshot, generates a changelog, and marks all linked feedback as "resolved in version X"
-   - **Close** — closes without merging (requires rationale, minimum 20 characters)
+   - **Submit for Review** - moves from Drafting to In Review
+   - **Approve** - moves from In Review to Approved
+   - **Request Changes** - sends back to In Review
+   - **Merge** - creates a new version of the document (requires a merge summary). This atomically: creates a version snapshot, generates a changelog, and marks all linked feedback as "resolved in version X"
+   - **Close** - closes without merging (requires rationale, minimum 20 characters)
 
 #### Versioning and Publishing
 
 1. Go to a policy's **Versions** tab
 2. You see all versions with their changelogs and status (Draft / Published)
 3. You can **create a manual version** (without a CR) by clicking "Create Version"
-4. You can **compare any two versions** using the comparison selector — this shows section-level diffs with word-level highlighting (green = added, red = removed)
-5. Click **Publish** on any version to make it publicly accessible on the portal. Published versions are **immutable** — they cannot be edited after publishing.
+4. You can **compare any two versions** using the comparison selector - this shows section-level diffs with word-level highlighting (green = added, red = removed)
+5. Click **Publish** on any version to make it publicly accessible on the portal. Published versions are **immutable** - they cannot be edited after publishing.
 
 #### Traceability
 
 1. Go to a policy's **Traceability** tab
-2. **Matrix view** — shows the full FB -> CR -> Section -> Version chain in a grid
-3. **By Section** — shows what changed in each section and why
-4. **By Stakeholder** — shows feedback outcomes per stakeholder
-5. **Search** — full-text search across feedback, sections, and CRs
+2. **Matrix view** - shows the full FB -> CR -> Section -> Version chain in a grid
+3. **By Section** - shows what changed in each section and why
+4. **By Stakeholder** - shows feedback outcomes per stakeholder
+5. **Search** - full-text search across feedback, sections, and CRs
 6. Use **Export CSV** or **Export PDF** to download traceability data for reporting
 
 #### Inline Comments
@@ -131,10 +131,10 @@ While editing in the block editor:
 
 Your dashboard focuses on evidence gaps:
 
-- **Feedback Without Evidence** — count of feedback items with no supporting evidence
-- **Total Evidence Items** — evidence artifacts across the system
-- **Claims Without Evidence** — table of feedback items lacking evidence, with "Attach Evidence" action
-- **Evidence Overview** — coverage rate percentage
+- **Feedback Without Evidence** - count of feedback items with no supporting evidence
+- **Total Evidence Items** - evidence artifacts across the system
+- **Claims Without Evidence** - table of feedback items lacking evidence, with "Attach Evidence" action
+- **Evidence Overview** - coverage rate percentage
 - **"Review Evidence"** button linking to the full evidence gaps page
 
 ### Navigation
@@ -172,11 +172,11 @@ This is your primary responsibility:
 #### Viewing Your Feedback Outcomes
 
 1. Go to **Feedback** > **Outcomes**
-2. See the status of all feedback you've submitted — accepted, rejected, pending, and which version it influenced
+2. See the status of all feedback you've submitted - accepted, rejected, pending, and which version it influenced
 
 #### Inline Comments
 
-You can participate in inline discussions on policy sections — create comments, reply, resolve, and reopen threads.
+You can participate in inline discussions on policy sections - create comments, reply, resolve, and reopen threads.
 
 ---
 
@@ -216,7 +216,7 @@ You see: **Dashboard**, **Policies**, **Feedback**, **Workshops** in the sidebar
 1. On the workshop detail page, click **Attach Artifact**
 2. Choose an artifact type: Promotional Material, Recording, Session Summary, Attendance Record, or Other
 3. Optionally give it a title
-4. Upload a file — it goes to Cloudflare R2 storage
+4. Upload a file - it goes to Cloudflare R2 storage
 5. Attached artifacts show in the artifact list with download and remove actions
 
 #### Linking Sections and Feedback
@@ -237,17 +237,17 @@ You can participate in inline discussions on policy sections.
 
 ## 4. Stakeholder
 
-**Who is this role for?** External participants in the consultation process — industry representatives, legal experts, academics, civil society members. This is the default role for new sign-ups.
+**Who is this role for?** External participants in the consultation process - industry representatives, legal experts, academics, civil society members. This is the default role for new sign-ups.
 
 ### What you see when you log in
 
 Your dashboard is a personal engagement view:
 
-- **What Changed Since Your Last Visit** — sections that were updated since you last logged in, with "View changes" links
-- **Your Assigned Sections** — sections you've been assigned to by a Policy Lead, with **Submit Feedback** buttons
-- **Your Pending Feedback** — feedback you've submitted that hasn't been resolved yet, with current status badges
-- **View All Feedback Outcomes** — link to see how your feedback was handled
-- **Upcoming Workshops** — placeholder for future workshop listings
+- **What Changed Since Your Last Visit** - sections that were updated since you last logged in, with "View changes" links
+- **Your Assigned Sections** - sections you've been assigned to by a Policy Lead, with **Submit Feedback** buttons
+- **Your Pending Feedback** - feedback you've submitted that hasn't been resolved yet, with current status badges
+- **View All Feedback Outcomes** - link to see how your feedback was handled
+- **Upcoming Workshops** - placeholder for future workshop listings
 
 ### Navigation
 
@@ -273,7 +273,7 @@ This is your primary action in the system. You can only submit feedback on secti
    - **Impact Category:** Legal, Security, Tax, Consumer, Innovation, Clarity, Governance, or Other
    - **Title and Body:** Describe your feedback
 4. **Privacy choice:** Select **Named** (your identity is visible to Policy Leads and Auditors) or **Anonymous** (your identity is hidden from everyone except system admins)
-5. Submit — your feedback gets a human-readable ID (FB-001, FB-002, etc.)
+5. Submit - your feedback gets a human-readable ID (FB-001, FB-002, etc.)
 
 #### Tracking Your Feedback
 
@@ -289,7 +289,7 @@ This is your primary action in the system. You can only submit feedback on secti
 
 #### Inline Comments
 
-You can participate in inline discussions on policy sections — create comments, reply, resolve, and reopen.
+You can participate in inline discussions on policy sections - create comments, reply, resolve, and reopen.
 
 ---
 
@@ -303,7 +303,7 @@ Your dashboard shows a publication-focused overview:
 
 - **Published Policies** count
 - **Open Consultations** count (policies currently receiving feedback)
-- **Published Policies list** — policies with at least one published version, showing the latest version label and publication date
+- **Published Policies list** - policies with at least one published version, showing the latest version label and publication date
 
 ### Navigation
 
@@ -315,11 +315,11 @@ You see: **Dashboard**, **Policies**, **Feedback** in the sidebar.
 
 You have broad read access:
 
-1. **Policies** — browse all documents, read all sections and content
-2. **Versions** — view version history, read changelogs, compare versions with diffs
-3. **Evidence** — view evidence artifacts attached to feedback and sections
-4. **Workshops** — view workshop listings and their artifacts
-5. **Comments** — read inline comment threads (but you cannot create, reply, or resolve comments)
+1. **Policies** - browse all documents, read all sections and content
+2. **Versions** - view version history, read changelogs, compare versions with diffs
+3. **Evidence** - view evidence artifacts attached to feedback and sections
+4. **Workshops** - view workshop listings and their artifacts
+5. **Comments** - read inline comment threads (but you cannot create, reply, or resolve comments)
 
 #### What you cannot do
 
@@ -344,11 +344,11 @@ The Observer role is strictly read-only with no write capabilities.
 
 Your dashboard is a compliance monitoring view:
 
-- **Audit Events (7 days)** — recent activity count
-- **Total Audit Events** — lifetime count
-- **Recent Audit Activity** — last 10 events with action type, actor role, entity, and timestamp
+- **Audit Events (7 days)** - recent activity count
+- **Total Audit Events** - lifetime count
+- **Recent Audit Activity** - last 10 events with action type, actor role, entity, and timestamp
 - **View Full Audit Trail** button
-- **Export Controls** — Export Audit Log (CSV) and Export Evidence Pack (ZIP)
+- **Export Controls** - Export Audit Log (CSV) and Export Evidence Pack (ZIP)
 
 ### Navigation
 
@@ -362,32 +362,32 @@ You see: **Dashboard**, **Policies**, **Feedback**, **Audit** in the sidebar. Yo
 2. The audit trail shows every significant action in the system: document creation, feedback submission, CR transitions, version publishes, user invites, etc.
 3. **Filter by:** action type, actor role, entity type, date range
 4. Click any row to expand and see the full metadata payload
-5. The audit log is immutable — entries cannot be edited or deleted
+5. The audit log is immutable - entries cannot be edited or deleted
 
 #### Evidence Pack Export
 
 1. From the Audit page, click **Export Evidence Pack**
 2. Select a policy document
 3. The system generates a ZIP containing:
-   - **INDEX.md** — table of contents
-   - **stakeholders.csv** — participating stakeholders
-   - **feedback-matrix.csv** — all feedback with decisions
-   - **version-history.json** — complete version chain
-   - **decision-log.json** — all workflow transitions
-   - **workshop-evidence.json** — linked workshop data
+   - **INDEX.md** - table of contents
+   - **stakeholders.csv** - participating stakeholders
+   - **feedback-matrix.csv** - all feedback with decisions
+   - **version-history.json** - complete version chain
+   - **decision-log.json** - all workflow transitions
+   - **workshop-evidence.json** - linked workshop data
 4. Download the ZIP for governance reporting
 
 #### Reading the Full Consultation Record
 
 You have comprehensive read access across the entire system:
 
-1. **All feedback** — you can read every feedback item across all documents (but anonymous submitter identities are masked — you see "Anonymous" not the real name)
-2. **All change requests** — read CR details, linked feedback, affected sections, lifecycle transitions, and decision logs
-3. **All versions** — read version history, changelogs, section-level diffs
-4. **Full traceability** — access the traceability matrix, section chain view, stakeholder outcomes view, and search
-5. **Export traceability** — download CSV or PDF exports of traceability data
-6. **Evidence** — read all evidence artifacts and export them
-7. **Workshops** — read workshop listings and artifacts
+1. **All feedback** - you can read every feedback item across all documents (but anonymous submitter identities are masked - you see "Anonymous" not the real name)
+2. **All change requests** - read CR details, linked feedback, affected sections, lifecycle transitions, and decision logs
+3. **All versions** - read version history, changelogs, section-level diffs
+4. **Full traceability** - access the traceability matrix, section chain view, stakeholder outcomes view, and search
+5. **Export traceability** - download CSV or PDF exports of traceability data
+6. **Evidence** - read all evidence artifacts and export them
+7. **Workshops** - read workshop listings and artifacts
 
 #### What you cannot do
 
@@ -398,7 +398,7 @@ You have comprehensive read access across the entire system:
 - Create inline comments (you can read them)
 - Manage workshops
 
-Your role is to verify and export — not to participate in the consultation process.
+Your role is to verify and export - not to participate in the consultation process.
 
 ---
 

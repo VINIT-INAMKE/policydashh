@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-// These tests are RED stubs — they will fail until milestone-ready.ts is implemented in Plan 23-02.
+// These tests are RED stubs - they will fail until milestone-ready.ts is implemented in Plan 23-02.
 
 describe('milestoneReadyFn (VERIFY-06)', () => {
   describe('5-step pipeline execution', () => {

@@ -61,7 +61,7 @@ export function MilestoneDetailTabs({
     () =>
       (feedbackQuery.data ?? []).map((f) => ({
         id: f.id,
-        displayName: `${f.readableId} — ${f.title}`,
+        displayName: `${f.readableId} - ${f.title}`,
         attached: f.milestoneId === milestoneId,
       })),
     [feedbackQuery.data, milestoneId],

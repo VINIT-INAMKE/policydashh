@@ -3,7 +3,7 @@ import { sampleHelloEvent } from '../events'
 import { buildGreeting } from '../lib/greeting'
 
 /**
- * Sample Inngest function — the bootstrap smoke test.
+ * Sample Inngest function - the bootstrap smoke test.
  *
  * Listens for `sample.hello`, builds a greeting inside a step.run so the
  * computation is idempotent and observable, sleeps 5 seconds to prove the

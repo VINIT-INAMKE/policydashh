@@ -243,7 +243,7 @@ For a fast launch:
 
 This quick instance is actually your first **Civilization Lab micro-instance**:
 
-a bounded, domain-specific socio-technical system with clear roles, feedback loops, evidence, and governance traceability — very much in line with the MyOS framing of domain instances and cross-domain fabrics.
+a bounded, domain-specific socio-technical system with clear roles, feedback loops, evidence, and governance traceability - very much in line with the MyOS framing of domain instances and cross-domain fabrics.
 
 ## Recommendation
 

@@ -60,9 +60,9 @@ beforeEach(() => {
   process.env.GROQ_API_KEY = 'test-key'
 })
 
-describe('llm.ts — Wave 0 RED contract', () => {
+describe('llm.ts - Wave 0 RED contract', () => {
   it('chatComplete throws when GROQ_API_KEY unset (LLM-01)', async () => {
-    if (!llmModule) throw new Error('llm.ts not yet implemented — Wave 0 RED')
+    if (!llmModule) throw new Error('llm.ts not yet implemented - Wave 0 RED')
     delete process.env.GROQ_API_KEY
     // New Groq() instance should fail inside chatComplete lazy init
     await expect(
@@ -75,7 +75,7 @@ describe('llm.ts — Wave 0 RED contract', () => {
   })
 
   it('chatComplete passes max_completion_tokens to Groq SDK (LLM-03)', async () => {
-    if (!llmModule) throw new Error('llm.ts not yet implemented — Wave 0 RED')
+    if (!llmModule) throw new Error('llm.ts not yet implemented - Wave 0 RED')
     await llmModule.chatComplete({
       model: 'llama-3.1-8b-instant',
       messages: [{ role: 'user', content: 'hi' }],
@@ -90,7 +90,7 @@ describe('llm.ts — Wave 0 RED contract', () => {
   })
 
   it('transcribeAudio calls audio.transcriptions.create with whisper-large-v3-turbo (LLM-02)', async () => {
-    if (!llmModule) throw new Error('llm.ts not yet implemented — Wave 0 RED')
+    if (!llmModule) throw new Error('llm.ts not yet implemented - Wave 0 RED')
     const buf = Buffer.from('fake-audio-bytes')
     const result = await llmModule.transcribeAudio(buf, 'recording.mp3')
     expect(mocks.toFileMock).toHaveBeenCalledTimes(1)
@@ -102,7 +102,7 @@ describe('llm.ts — Wave 0 RED contract', () => {
   })
 
   it('summarizeTranscript returns structured JSON object (LLM-03)', async () => {
-    if (!llmModule) throw new Error('llm.ts not yet implemented — Wave 0 RED')
+    if (!llmModule) throw new Error('llm.ts not yet implemented - Wave 0 RED')
     const result = await llmModule.summarizeTranscript('some transcript text')
     expect(result).toEqual({
       discussionPoints: ['point1'],

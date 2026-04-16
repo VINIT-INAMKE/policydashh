@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import React from 'react'
 
 /**
- * Phase 20.5 Wave 0 — RED contract for PUB-06 /research page render.
+ * Phase 20.5 Wave 0 - RED contract for PUB-06 /research page render.
  *
  * Locks four render rules Plan 20.5-02 must satisfy:
  *   A. Hero heading "Understanding the Landscape"
@@ -22,7 +22,7 @@ beforeAll(async () => {
   ResearchPage = mod.default
 })
 
-describe('/research page — PUB-06', () => {
+describe('/research page - PUB-06', () => {
   it('renders hero heading "Understanding the Landscape"', async () => {
     const html = renderToStaticMarkup(React.createElement(ResearchPage))
     expect(html).toContain('Understanding the Landscape')

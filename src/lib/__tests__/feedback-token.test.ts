@@ -1,5 +1,5 @@
 /**
- * Phase 20-01 — feedback-token sign/verify unit tests (HS256 via Node crypto).
+ * Phase 20-01 - feedback-token sign/verify unit tests (HS256 via Node crypto).
  *
  * Covers D-17 (RESEARCH §"Verified: Feedback Token Sign/Verify"):
  *   T5: signFeedbackToken + verifyFeedbackToken round-trips the payload
@@ -8,7 +8,7 @@
  *   T8: tampered signature → null
  *   T9: wrong secret → null
  *
- * No jose/jsonwebtoken dependency is present — implementation uses
+ * No jose/jsonwebtoken dependency is present - implementation uses
  * `crypto.createHmac` and `crypto.timingSafeEqual` only.
  */
 
@@ -45,7 +45,7 @@ describe('feedback-token (HS256 via Node crypto)', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
     const token = signFeedbackToken(WORKSHOP_ID, EMAIL)
-    // Jump 15 days forward — token's 14d expiry has passed.
+    // Jump 15 days forward - token's 14d expiry has passed.
     vi.setSystemTime(new Date('2026-01-16T00:00:00Z'))
     expect(verifyFeedbackToken(token, WORKSHOP_ID)).toBeNull()
   })
@@ -67,7 +67,7 @@ describe('feedback-token (HS256 via Node crypto)', () => {
   it('T8b: tampered body (recomputed to look valid) returns null under the original signature', () => {
     const token = signFeedbackToken(WORKSHOP_ID, EMAIL)
     const parts = token.split('.')
-    // Flip one character in the body and keep the original signature — HMAC must fail.
+    // Flip one character in the body and keep the original signature - HMAC must fail.
     const flipped = parts[1].slice(0, -1) + (parts[1].slice(-1) === 'A' ? 'B' : 'A')
     expect(verifyFeedbackToken(`${parts[0]}.${flipped}.${parts[2]}`, WORKSHOP_ID)).toBeNull()
   })

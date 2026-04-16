@@ -41,7 +41,7 @@ const typeLabels: Record<string, string> = {
 }
 
 /**
- * Evidence Gaps tab — claims with no supporting evidence attached.
+ * Evidence Gaps tab - claims with no supporting evidence attached.
  *
  * Role gating happens at the parent GlobalFeedbackTabs level
  * (admin + research_lead). This component assumes the viewer is allowed.
