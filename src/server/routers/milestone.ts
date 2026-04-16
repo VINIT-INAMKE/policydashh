@@ -11,6 +11,7 @@ import { feedbackItems } from '@/src/db/schema/feedback'
 import { evidenceArtifacts } from '@/src/db/schema/evidence'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
+import { sendMilestoneReady } from '@/src/inngest/events'
 import {
   hashPolicyVersion,
   hashWorkshop,
@@ -538,5 +539,39 @@ export const milestoneRouter = router({
         contentHash,
         manifest: sortedManifest,
       }
+    }),
+
+  // ---- retryAnchor (mutation) ----
+  // Phase 23 D-15: re-emit milestone.ready for a milestone stuck in 'anchoring' state.
+  // Safe + idempotent — the Inngest function has concurrency key + Blockfrost metadata
+  // pre-check to prevent double-anchor.
+  retryAnchor: requirePermission('milestone:manage')
+    .input(z.object({ milestoneId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const milestone = await loadMilestone(input.milestoneId)
+      if (milestone.status !== 'anchoring') {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: `Cannot retry anchor: milestone status is '${milestone.status}', expected 'anchoring'`,
+        })
+      }
+
+      await sendMilestoneReady({
+        milestoneId: milestone.id,
+        documentId:  milestone.documentId,
+        contentHash: milestone.contentHash!,
+        title:       milestone.title,
+      })
+
+      writeAuditLog({
+        actorId:    ctx.user.id,
+        actorRole:  ctx.user.role,
+        action:     ACTIONS.MILESTONE_ANCHOR_START,
+        entityType: 'milestone',
+        entityId:   milestone.id,
+        payload:    { trigger: 'retryAnchor' },
+      }).catch(console.error)
+
+      return { status: 'retrying' as const }
     }),
 })
