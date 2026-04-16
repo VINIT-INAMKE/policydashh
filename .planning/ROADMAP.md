@@ -274,7 +274,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 20.5. Public /research + /framework Pages | 4/4 | Complete    | 2026-04-14 |
 | 21. Public Shell + Consultation Summary + Theme | 5/5 | Complete    | 2026-04-15 |
 | 22. Milestone Entity + SHA256 Hashing | 5/5 | Complete    | 2026-04-16 |
-| 23. Cardano Preview-Net Anchoring | 4/4 | Complete   | 2026-04-16 |
+| 23. Cardano Preview-Net Anchoring | 4/4 | Complete    | 2026-04-16 |
 | 24. Stakeholder Engagement Tracking | 0/0 | v0.2 Planning | - |
 | 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
 
