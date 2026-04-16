@@ -31,7 +31,7 @@ export default function EditWorkshopPage() {
   // Role gate: redirect unauthorized users
   useEffect(() => {
     if (meQuery.data && !canManageWorkshops) {
-      router.replace(`/workshops/${workshopId}`)
+      router.replace(`/workshop-manage/${workshopId}`)
     }
   }, [meQuery.data, canManageWorkshops, router, workshopId])
 
@@ -59,7 +59,7 @@ export default function EditWorkshopPage() {
   const updateMutation = trpc.workshop.update.useMutation({
     onSuccess: () => {
       toast.success('Workshop updated.')
-      router.push(`/workshops/${workshopId}`)
+      router.push(`/workshop-manage/${workshopId}`)
     },
     onError: () => {
       toast.error("Couldn't save changes. Check your connection and try again.")
@@ -98,7 +98,7 @@ export default function EditWorkshopPage() {
 
   return (
     <div className="mx-auto max-w-[640px]">
-      <Button variant="ghost" size="sm" render={<Link href={`/workshops/${workshopId}`} />} className="mb-4">
+      <Button variant="ghost" size="sm" render={<Link href={`/workshop-manage/${workshopId}`} />} className="mb-4">
         <ArrowLeft className="size-3.5" />
         Back to Workshop
       </Button>
@@ -173,7 +173,7 @@ export default function EditWorkshopPage() {
           </CardContent>
           <CardFooter>
             <div className="flex w-full items-center justify-end gap-2">
-              <Button variant="outline" render={<Link href={`/workshops/${workshopId}`} />}>
+              <Button variant="outline" render={<Link href={`/workshop-manage/${workshopId}`} />}>
                 Discard
               </Button>
               <Button

@@ -126,7 +126,7 @@ export default function WorkshopDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            render={<Link href={`/workshops/${workshopId}/edit`} />}
+            render={<Link href={`/workshop-manage/${workshopId}/edit`} />}
           >
             <Pencil className="size-3.5" />
             Edit

@@ -22,7 +22,7 @@ export default function WorkshopsPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Workshops</h1>
         {canManage && (
-          <Button render={<Link href="/workshops/new" />}>
+          <Button render={<Link href="/workshop-manage/new" />}>
             <Plus className="size-4" />
             Create Workshop
           </Button>

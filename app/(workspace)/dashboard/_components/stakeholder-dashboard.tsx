@@ -222,7 +222,7 @@ export async function StakeholderDashboard({ userId, lastVisitedAt }: Stakeholde
             <CardTitle>
               <h2 className="text-xl font-semibold">Upcoming Workshops</h2>
             </CardTitle>
-            <Button variant="ghost" size="sm" render={<Link href="/workshops" />}>
+            <Button variant="ghost" size="sm" render={<Link href="/workshop-manage" />}>
               View All
             </Button>
           </div>
@@ -238,7 +238,7 @@ export async function StakeholderDashboard({ userId, lastVisitedAt }: Stakeholde
           ) : (
             <div className="space-y-2">
               {upcomingWorkshops.map((ws) => (
-                <Link key={ws.id} href={`/workshops/${ws.id}`} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
+                <Link key={ws.id} href={`/workshop-manage/${ws.id}`} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted">
                   <Calendar className="size-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm">{ws.title}</p>

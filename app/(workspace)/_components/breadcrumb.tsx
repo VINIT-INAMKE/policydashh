@@ -14,7 +14,7 @@ const ROUTE_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
   policies: 'Policies',
   feedback: 'Feedback',
-  workshops: 'Workshops',
+  'workshop-manage': 'Workshops',
   users: 'Users',
   audit: 'Audit',
   'change-requests': 'Change Requests',
@@ -40,13 +40,13 @@ export function Breadcrumb() {
 
   // Detect entity IDs by position:
   //   /policies/{uuid}[/...]   → segment[1] is policy UUID
-  //   /workshops/{uuid}[/...]  → segment[1] is workshop UUID
+  //   /workshop-manage/{uuid}[/...]  → segment[1] is workshop UUID
   const policyId =
     segments[0] === 'policies' && segments[1] && UUID_REGEX.test(segments[1])
       ? segments[1]
       : null
   const workshopId =
-    segments[0] === 'workshops' && segments[1] && UUID_REGEX.test(segments[1])
+    segments[0] === 'workshop-manage' && segments[1] && UUID_REGEX.test(segments[1])
       ? segments[1]
       : null
 

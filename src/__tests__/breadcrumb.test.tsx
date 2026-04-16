@@ -129,8 +129,8 @@ describe('<Breadcrumb />', () => {
     expect(crumb.getAttribute('aria-current')).toBe('page')
   })
 
-  it('at /workshops renders a single "Workshops" current-page crumb', () => {
-    setPathname('/workshops')
+  it('at /workshop-manage renders a single "Workshops" current-page crumb', () => {
+    setPathname('/workshop-manage')
     const { container } = render(<Breadcrumb />)
     const items = container.querySelectorAll('li')
     expect(items.length).toBe(1)
@@ -146,7 +146,7 @@ describe('<Breadcrumb />', () => {
   })
 
   it('nav element has aria-label="Breadcrumb" and current page has aria-current="page"', () => {
-    setPathname(`/workshops/${WORKSHOP_UUID}`)
+    setPathname(`/workshop-manage/${WORKSHOP_UUID}`)
     setWorkshopQuery({ data: { id: WORKSHOP_UUID, title: 'Stakeholder Workshop' }, isLoading: false })
     const { container } = render(<Breadcrumb />)
     const nav = container.querySelector('nav')

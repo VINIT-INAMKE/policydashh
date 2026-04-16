@@ -357,3 +357,288 @@
 .ProseMirror a:hover {
   opacity: 0.8;
 }
+
+/* Civilization Lab landing — exact palette from landing.html mockup.
+   Scoped to .cl-landing so it doesn't collide with shadcn's --primary etc. */
+.cl-landing {
+  --cl-primary: #000a1e;
+  --cl-on-primary: #ffffff;
+  --cl-primary-container: #002147;
+  --cl-on-primary-container: #708ab5;
+  --cl-on-primary-container-80: rgba(112, 138, 181, 0.8);
+  --cl-primary-container-40: rgba(0, 33, 71, 0.4);
+  --cl-primary-fixed: #d6e3ff;
+  --cl-primary-fixed-dim: #aec7f6;
+  --cl-on-primary-fixed: #001b3d;
+  --cl-on-primary-fixed-variant: #2d476f;
+  --cl-inverse-primary: #aec7f6;
+
+  --cl-secondary: #565f70;
+  --cl-on-secondary: #ffffff;
+  --cl-secondary-container: #d7e0f5;
+  --cl-on-secondary-container: #5a6375;
+  --cl-secondary-fixed: #dae3f8;
+  --cl-secondary-fixed-dim: #bec7db;
+  --cl-on-secondary-fixed: #131c2b;
+  --cl-on-secondary-fixed-variant: #3e4758;
+
+  --cl-tertiary: #000e03;
+  --cl-on-tertiary: #ffffff;
+  --cl-tertiary-05: rgba(0, 14, 3, 0.05);
+  --cl-tertiary-container: #002810;
+  --cl-on-tertiary-container: #179d53;
+  --cl-tertiary-fixed: #83fba5;
+  --cl-tertiary-fixed-30: rgba(131, 251, 165, 0.3);
+  --cl-tertiary-fixed-dim: #66dd8b;
+  --cl-on-tertiary-fixed: #00210c;
+  --cl-on-tertiary-fixed-variant: #005227;
+
+  --cl-error: #ba1a1a;
+  --cl-on-error: #ffffff;
+  --cl-error-container: #ffdad6;
+  --cl-on-error-container: #93000a;
+
+  --cl-background: #f7fafc;
+  --cl-on-background: #181c1e;
+  --cl-surface: #f7fafc;
+  --cl-on-surface: #181c1e;
+  --cl-surface-bright: #f7fafc;
+  --cl-surface-dim: #d7dadc;
+  --cl-surface-container: #ebeef0;
+  --cl-surface-container-low: #f1f4f6;
+  --cl-surface-container-lowest: #ffffff;
+  --cl-surface-container-high: #e5e9eb;
+  --cl-surface-container-highest: #e0e3e5;
+  --cl-surface-tint: #465f88;
+  --cl-surface-variant: #e0e3e5;
+  --cl-on-surface-variant: #44474e;
+  --cl-inverse-surface: #2d3133;
+  --cl-inverse-on-surface: #eef1f3;
+
+  --cl-outline: #74777f;
+  --cl-outline-variant: #c4c6cf;
+  --cl-outline-variant-10: rgba(196, 198, 207, 0.1);
+  --cl-outline-variant-20: rgba(196, 198, 207, 0.2);
+  --cl-outline-variant-30: rgba(196, 198, 207, 0.3);
+  --cl-outline-variant-40: rgba(196, 198, 207, 0.4);
+
+  background-color: var(--cl-surface);
+  color: var(--cl-on-surface);
+  font-family: var(--font-cl-body), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cl-landing .font-headline {
+  font-family: var(--font-cl-headline), 'Newsreader', ui-serif, Georgia, serif;
+}
+.cl-landing .font-body,
+.cl-landing .font-label,
+.cl-landing .font-sans {
+  font-family: var(--font-cl-body), 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+.cl-landing .font-serif {
+  font-family: var(--font-cl-headline), 'Newsreader', ui-serif, Georgia, serif;
+}
+
+.cl-landing .glass-nav {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Material Symbols Outlined — loaded via @import at top of file.
+   Class definition matches Google's recommended baseline. */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.material-symbols-outlined[data-weight='fill'] {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ──────────── OVERDRIVE: animations, scroll-driven reveals ──────────── */
+
+@property --cl-sweep {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: -50%;
+}
+
+@keyframes cl-word-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.45em);
+    filter: blur(10px);
+  }
+  60% {
+    filter: blur(0.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes cl-rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cl-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cl-sweep {
+  0% { --cl-sweep: -40%; }
+  100% { --cl-sweep: 140%; }
+}
+
+@keyframes cl-draw-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes cl-grow-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes cl-civil-parallax {
+  from { transform: translate3d(0, -25%, 0); }
+  to { transform: translate3d(0, 35%, 0); }
+}
+
+@keyframes cl-topo-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); }
+  50% { transform: translate3d(-1.5%, -1%, 0) scale(1.08); }
+}
+
+/* === Hero load entrance === */
+.cl-landing .cl-hero-word {
+  display: inline-block;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+  animation: cl-word-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 75ms + 200ms);
+}
+
+.cl-landing .cl-hero-italic {
+  display: inline;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  background-image: linear-gradient(
+    100deg,
+    var(--cl-primary) 0%,
+    var(--cl-primary) 38%,
+    var(--cl-primary-container) 50%,
+    var(--cl-primary) 62%,
+    var(--cl-primary) 100%
+  );
+  background-size: 220% 100%;
+  background-position: var(--cl-sweep) 0%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0;
+  animation:
+    cl-fade-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 450ms forwards,
+    cl-sweep 4.5s cubic-bezier(0.45, 0.05, 0.2, 1) 1700ms forwards;
+}
+
+.cl-landing .cl-hero-meta,
+.cl-landing .cl-hero-paragraph,
+.cl-landing .cl-hero-actions,
+.cl-landing .cl-hero-artifact-wrap {
+  opacity: 0;
+  will-change: opacity, transform;
+  animation: cl-rise-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.cl-landing .cl-hero-meta { animation-delay: 80ms; }
+.cl-landing .cl-hero-paragraph { animation-delay: 950ms; }
+.cl-landing .cl-hero-actions { animation-delay: 1080ms; }
+.cl-landing .cl-hero-artifact-wrap { animation-delay: 1200ms; }
+
+/* === Topographic backdrop drift === */
+.cl-landing .cl-topo {
+  animation: cl-topo-drift 28s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* === Scroll-driven reveals (Chrome 115+, Edge, Safari 18+).
+       Firefox falls back to static — still readable. === */
+@supports (animation-timeline: view()) {
+  .cl-landing .cl-rise {
+    opacity: 0;
+    animation: cl-rise-in linear both;
+    animation-timeline: view();
+    animation-range: entry 8% entry 55%;
+  }
+
+  .cl-landing .cl-meth-line {
+    transform: scaleX(0);
+    transform-origin: left center;
+    animation: cl-draw-x linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 35%;
+  }
+
+  .cl-landing .cl-timeline-line {
+    transform: scaleY(0);
+    transform-origin: top center;
+    animation: cl-grow-y linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 40%;
+  }
+
+  .cl-landing .cl-civil-parallax {
+    animation: cl-civil-parallax linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0% 50%;
+  }
+}
+
+/* === Reduced motion: kill everything, keep final state === */
+@media (prefers-reduced-motion: reduce) {
+  .cl-landing .cl-hero-word,
+  .cl-landing .cl-hero-italic,
+  .cl-landing .cl-hero-meta,
+  .cl-landing .cl-hero-paragraph,
+  .cl-landing .cl-hero-actions,
+  .cl-landing .cl-hero-artifact-wrap,
+  .cl-landing .cl-rise,
+  .cl-landing .cl-meth-line,
+  .cl-landing .cl-timeline-line,
+  .cl-landing .cl-civil-parallax,
+  .cl-landing .cl-topo {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  .cl-landing .cl-hero-italic {
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    color: var(--cl-primary);
+  }
+}

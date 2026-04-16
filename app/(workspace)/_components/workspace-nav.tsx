@@ -19,7 +19,7 @@ export function WorkspaceNav({ userRole }: WorkspaceNavProps) {
       { href: '/dashboard', label: 'Dashboard' },
       { href: '/policies', label: 'Policies' },
       { href: '/feedback', label: 'Feedback' },
-      { href: '/workshops', label: 'Workshops' },
+      { href: '/workshop-manage', label: 'Workshops' },
     ]
     if (userRole === 'admin' || userRole === 'policy_lead') {
       items.push({ href: '/users', label: 'Users' })

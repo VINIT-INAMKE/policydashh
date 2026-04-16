@@ -43,7 +43,7 @@ export function WorkshopCard({ workshop, canManage }: WorkshopCardProps) {
     <>
       <Card
         className="cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm"
-        onClick={() => router.push(`/workshops/${workshop.id}`)}
+        onClick={() => router.push(`/workshop-manage/${workshop.id}`)}
         aria-label={`${workshop.title}, scheduled ${formattedDate}`}
       >
         <CardHeader>
@@ -61,7 +61,7 @@ export function WorkshopCard({ workshop, canManage }: WorkshopCardProps) {
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation()
-                      router.push(`/workshops/${workshop.id}/edit`)
+                      router.push(`/workshop-manage/${workshop.id}/edit`)
                     }}
                   >
                     Edit Workshop
