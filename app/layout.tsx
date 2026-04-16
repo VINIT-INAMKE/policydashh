@@ -3,6 +3,8 @@ import { Newsreader, Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { TRPCReactProvider } from "@/src/trpc/client";
 import { Toaster } from "sonner";
+import { AdaptiveHeader } from "./_components/adaptive-header";
+import { Footer } from "./_components/footer";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -21,7 +23,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PolicyDash",
+  title: "Civilization Lab",
   description: "Stakeholder policy consultation platform",
 };
 
@@ -44,9 +46,11 @@ export default function RootLayout({
         </head>
         <body className="min-h-full flex flex-col">
           <TRPCReactProvider>
-            {children}
+            <AdaptiveHeader />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <Toaster />
           </TRPCReactProvider>
-          <Toaster />
         </body>
       </html>
     </ClerkProvider>
