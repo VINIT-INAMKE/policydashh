@@ -106,19 +106,20 @@ export const workshopCreatedFn = inngest.createFunction(
       }
     })
 
-    // Step 3: backfill the workshop row. cal.com returns a numeric id; we
-    // persist it as text to keep the FK column type-agnostic (cal.com's own
-    // docs also refer to the id as "string or number" in different places).
+    // Step 3: backfill the workshop row with the full cal link slug
+    // (username/event-slug) so the public embed can render directly.
+    const slug = `workshop-${workshop.id}`
     await step.run('backfill-calcom-event-type-id', async () => {
+      const calUsername = process.env.CAL_USERNAME || 'vinit-inamke'
       await db
         .update(workshops)
         .set({
-          calcomEventTypeId: String(eventTypeId),
+          calcomEventTypeId: `${calUsername}/${slug}`,
           updatedAt:         new Date(),
         })
         .where(eq(workshops.id, workshopId))
     })
 
-    return { workshopId, eventTypeId, ok: true as const }
+    return { workshopId, eventTypeId, slug, ok: true as const }
   },
 )
