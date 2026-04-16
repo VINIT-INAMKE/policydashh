@@ -52,6 +52,7 @@ export interface CalEmbedModalProps {
   workshopId: string
   workshopTitle: string
   calLink: string
+  scheduledAt: Date
   scheduledAtFormatted: string
   durationMinutes: number | null
   disabled?: boolean
@@ -61,10 +62,12 @@ export function CalEmbedModal({
   workshopId,
   workshopTitle,
   calLink,
+  scheduledAt,
   scheduledAtFormatted,
   durationMinutes,
   disabled,
 }: CalEmbedModalProps) {
+  const prefillDate = scheduledAt.toISOString().split('T')[0]
   const [open, setOpen] = useState(false)
 
   return (
@@ -96,7 +99,7 @@ export function CalEmbedModal({
           </DialogHeader>
           <div className="min-h-[400px] max-h-[70vh] overflow-y-auto">
             {open ? (
-              <LazyCalEmbed calLink={calLink} workshopId={workshopId} />
+              <LazyCalEmbed calLink={calLink} workshopId={workshopId} prefillDate={prefillDate} />
             ) : null}
           </div>
         </DialogContent>

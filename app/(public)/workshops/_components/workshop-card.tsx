@@ -144,6 +144,7 @@ export function WorkshopCard({
           workshopId={workshop.id}
           workshopTitle={workshop.title}
           calLink={workshop.calcomEventTypeId ?? ''}
+          scheduledAt={workshop.scheduledAt}
           scheduledAtFormatted={formattedDate}
           durationMinutes={workshop.durationMinutes}
           disabled={disabled}

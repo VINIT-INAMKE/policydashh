@@ -16,15 +16,20 @@ import Cal from '@calcom/embed-react'
 export default function CalEmbed({
   calLink,
   workshopId,
+  prefillDate,
 }: {
   calLink: string
   workshopId: string
+  prefillDate?: string
 }) {
   return (
     <Cal
       calLink={calLink}
       namespace={workshopId}
       style={{ width: '100%', minHeight: 400 }}
+      config={{
+        ...(prefillDate ? { date: prefillDate } : {}),
+      }}
     />
   )
 }
