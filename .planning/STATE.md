@@ -4,7 +4,7 @@ milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Phase complete — ready for verification
 stopped_at: Completed 24-02-PLAN.md
-last_updated: "2026-04-16T14:46:23.059Z"
+last_updated: "2026-04-16T15:01:59.670Z"
 progress:
   total_phases: 26
   completed_phases: 24
@@ -125,6 +125,7 @@ Plan: 3 of 3
 | Phase 24-stakeholder-engagement-tracking-lite P00 | 1min | 1 tasks | 2 files |
 | Phase 24-stakeholder-engagement-tracking-lite P01 | 5min | 2 tasks | 4 files |
 | Phase 24-stakeholder-engagement-tracking-lite P02 | 16min | 2 tasks | 4 files |
+| Phase 24 P02 | 16min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -329,6 +330,8 @@ Recent decisions affecting current work:
 - [Phase 24-stakeholder-engagement-tracking-lite]: Workshop attendance excluded from engagement score (workshopRegistrations table not yet available)
 - [Phase 24-stakeholder-engagement-tracking-lite]: Engagement score query in server component via Drizzle LEFT JOIN subquery (not tRPC) for admin dashboard
 - [Phase 24-stakeholder-engagement-tracking-lite]: Workshop attendance card shows empty state always (workshopRegistrations table pending)
+- [Phase 24]: Engagement score query duplicated in admin-dashboard server component (not via tRPC) to keep server component pattern consistent
+- [Phase 24]: Workshop attendance stubbed as empty array since workshopRegistrations table does not exist in schema
 
 ### Pending Todos
 
@@ -347,6 +350,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-16T14:46:23.045Z
+Last session: 2026-04-16T15:01:59.656Z
 Stopped at: Completed 24-02-PLAN.md
 Resume file: None
