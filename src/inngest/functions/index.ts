@@ -9,6 +9,8 @@ import { workshopCreatedFn } from './workshop-created'
 import { workshopRegistrationReceivedFn } from './workshop-registration-received'
 import { workshopFeedbackInviteFn } from './workshop-feedback-invite'
 import { consultationSummaryGenerateFn } from './consultation-summary-generate'
+import { milestoneReadyFn } from './milestone-ready'
+import { versionAnchorFn } from './version-anchor'
 
 /**
  * The array of Inngest functions mounted at /api/inngest.
@@ -29,4 +31,6 @@ export const functions = [
   workshopRegistrationReceivedFn,  // Phase 20 Plan 04 — Clerk invite + confirmation email
   workshopFeedbackInviteFn,  // Phase 20 Plan 04 — post-workshop feedback JWT deep-link email
   consultationSummaryGenerateFn, // Phase 21 LLM-04/05/06/08 — per-section consultation summary via llama-3.3-70b-versatile
+  milestoneReadyFn,     // Phase 23 VERIFY-06 — milestoneReady 5-step Cardano anchor
+  versionAnchorFn,      // Phase 23 VERIFY-07 — per-version Cardano anchor on version.published
 ]
