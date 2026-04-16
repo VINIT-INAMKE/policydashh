@@ -527,7 +527,12 @@ Plans:
   6. Every `version.published` event triggers a per-version anchor via the same pipeline (different metadata type)
   7. DB-level `UNIQUE(milestoneId)` / `UNIQUE(versionId)` constraint + `concurrency: { key: 'cardano-wallet', limit: 1 }` enforce idempotency at three layers
   8. Public `/portal` renders Verified State badge on anchored versions and milestones, linking to `https://preview.cardanoscan.io/transaction/{txHash}` explorer page
-**Plans:** TBD (run /gsd:plan-phase 23)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 23-01-PLAN.md -- Install Cardano SDK, create src/lib/cardano.ts server-only wrapper, DB migration (txHash + anchoredAt), Drizzle schema extensions, milestone.ready event, audit constants
+- [ ] 23-02-PLAN.md -- milestoneReadyFn 5-step Inngest pipeline, versionAnchorFn fan-out, markReady Inngest event emission, retryAnchor mutation
+- [ ] 23-03-PLAN.md -- VerifiedBadge component, public portal badge integration (3 locations), admin milestone detail Cardanoscan link + RetryAnchorButton
 
 ### Phase 24: Stakeholder Engagement Tracking (lite)
 
