@@ -47,7 +47,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 21: Public Shell + LLM Consultation Summary + Theme** - Minimal public shell routing; llama-3.3-70b consultation summary per section with human review gate; policy-grade theme (completed 2026-04-15)
 - [x] **Phase 22: Milestone Entity + SHA256 Hashing Service** - First-class milestones table, RFC 8785 JCS canonicalization, deterministic hashing for version/workshop/evidence/milestone (completed 2026-04-16)
 - [x] **Phase 23: Cardano Preview-Net Anchoring** - Mesh SDK + Blockfrost per-milestone and per-version anchoring with Verified State badges on public portal (completed 2026-04-16)
-- [ ] **Phase 24: Stakeholder Engagement Tracking Lite** - users.lastActivityAt via tRPC middleware, admin inactive-user widget, basic engagement score
+- [x] **Phase 24: Stakeholder Engagement Tracking Lite** - users.lastActivityAt via tRPC middleware, admin inactive-user widget, basic engagement score (completed 2026-04-16)
 - [ ] **Phase 25: Cross-Phase Integration Smoke** - Full E2E walk: /participate → workshop register → reminders → MEETING_ENDED → feedback → CR → merge → version → milestone → SHA256 → Cardano tx → Verified State badge
 
 ## Phase Details
@@ -275,7 +275,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 21. Public Shell + Consultation Summary + Theme | 5/5 | Complete    | 2026-04-15 |
 | 22. Milestone Entity + SHA256 Hashing | 5/5 | Complete    | 2026-04-16 |
 | 23. Cardano Preview-Net Anchoring | 4/4 | Complete    | 2026-04-16 |
-| 24. Stakeholder Engagement Tracking | 0/3 | Planned    |  |
+| 24. Stakeholder Engagement Tracking | 3/3 | Complete | 2026-04-16 |
 | 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
 
 ### Phase 12: Workshop System Fix
@@ -545,11 +545,12 @@ Plans:
   2. Admin dashboard widget lists users with no activity in a configurable window (default 30 days), sortable by last activity and engagement score
   3. Basic engagement score computed from feedback count + workshop attendance count; formula documented in code comment
   4. Stakeholder profile page shows workshop attendance history auto-populated from cal.com `MEETING_ENDED` webhook events
-**Plans:** 0/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 24-01-PLAN.md -- Schema migration (lastActivityAt + backfill), touchActivity tRPC middleware, listUsersWithEngagement + getUserProfile queries
-- [ ] 24-02-PLAN.md -- Admin dashboard inactive users widget (StatCard + sortable table + window dropdown), stakeholder profile page at /users/[id], users list name links
+- [x] 24-00-PLAN.md -- Wave 0: TDD test stubs for engagement score and user activity tracking
+- [x] 24-01-PLAN.md -- Schema migration (lastActivityAt + backfill), touchActivity tRPC middleware, listUsersWithEngagement + getUserProfile queries
+- [x] 24-02-PLAN.md -- Admin dashboard inactive users widget (StatCard + sortable table + window dropdown), stakeholder profile page at /users/[id], users list name links
 
 ### Phase 25: Cross-Phase Integration Smoke
 
