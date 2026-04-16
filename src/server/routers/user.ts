@@ -2,7 +2,8 @@ import { z } from 'zod'
 import { router, protectedProcedure, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
-import { eq } from 'drizzle-orm'
+import { eq, count, desc, sql } from 'drizzle-orm'
+import { feedbackItems } from '@/src/db/schema/feedback'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS, ORG_TYPE_VALUES } from '@/src/lib/constants'
 import { TRPCError } from '@trpc/server'
@@ -139,5 +140,78 @@ export const userRouter = router({
         orderBy: (users, { desc }) => [desc(users.createdAt)],
       })
       return allUsers
+    }),
+
+  // Admin only: list all users with computed engagement score (UX-09, UX-10)
+  // engagementScore = feedbackCount (+ attendedWorkshopCount when workshopRegistrations exists)
+  // Computed on-the-fly via LEFT JOIN subqueries -- no stored column (D-02)
+  // Returns ALL users -- client filters by inactivity window (D-04)
+  listUsersWithEngagement: requirePermission('user:list')
+    .query(async () => {
+      const feedbackCounts = db
+        .select({
+          submitterId: feedbackItems.submitterId,
+          cnt: count().as('cnt'),
+        })
+        .from(feedbackItems)
+        .groupBy(feedbackItems.submitterId)
+        .as('feedback_counts')
+
+      return db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          orgType: users.orgType,
+          createdAt: users.createdAt,
+          lastActivityAt: users.lastActivityAt,
+          engagementScore: sql<number>`
+            COALESCE(${feedbackCounts.cnt}, 0)
+          `.mapWith(Number),
+        })
+        .from(users)
+        .leftJoin(feedbackCounts, eq(users.id, feedbackCounts.submitterId))
+        .orderBy(users.createdAt)
+    }),
+
+  // Admin only: get detailed profile for a single user (UX-11, D-06, D-07)
+  // Returns user metadata, recent feedback, engagement score
+  getUserProfile: requirePermission('user:list')
+    .input(z.object({ userId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const [profile, userFeedback] = await Promise.all([
+        db.query.users.findFirst({ where: eq(users.id, input.userId) }),
+
+        // Feedback summary: recent 20 items (D-07)
+        db
+          .select({
+            id: feedbackItems.id,
+            readableId: feedbackItems.readableId,
+            title: feedbackItems.title,
+            status: feedbackItems.status,
+            createdAt: feedbackItems.createdAt,
+          })
+          .from(feedbackItems)
+          .where(eq(feedbackItems.submitterId, input.userId))
+          .orderBy(desc(feedbackItems.createdAt))
+          .limit(20),
+      ])
+
+      if (!profile) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
+      }
+
+      // Engagement score: feedbackCount (D-01)
+      // workshopRegistrations table not yet available -- score is feedback-only for now
+      const totalFeedbackCount = await db
+        .select({ cnt: count() })
+        .from(feedbackItems)
+        .where(eq(feedbackItems.submitterId, input.userId))
+        .then(r => r[0]?.cnt ?? 0)
+
+      const engagementScore = totalFeedbackCount
+
+      return { profile, attendedWorkshops: [] as never[], userFeedback, engagementScore }
     }),
 })
