@@ -365,3 +365,29 @@ export async function sendVersionPublished(
   await event.validate()
   await inngest.send(event)
 }
+
+// -- milestone.ready ------------------------------------------------------
+// Phase 23 VERIFY-06 -- emitted by markReady tRPC mutation after status
+// transition defining -> ready. Triggers milestoneReadyFn which runs the
+// 5-step Cardano anchor pipeline: compute-hash -> persist-hash ->
+// check-existing-tx -> submit-tx -> confirm-loop.
+
+const milestoneReadySchema = z.object({
+  milestoneId: z.guid(),
+  triggeredBy: z.guid(),  // admin userId who called markReady
+  documentId:  z.guid(),
+})
+
+export const milestoneReadyEvent = eventType('milestone.ready', {
+  schema: milestoneReadySchema,
+})
+
+export type MilestoneReadyData = z.infer<typeof milestoneReadySchema>
+
+export async function sendMilestoneReady(
+  data: MilestoneReadyData,
+): Promise<void> {
+  const event = milestoneReadyEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
