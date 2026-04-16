@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to plan
-stopped_at: Completed 22-04-PLAN.md (milestone admin UI surface — Wave 3)
-last_updated: "2026-04-16T11:23:05.361Z"
+stopped_at: Phase 23 context gathered
+last_updated: "2026-04-16T11:49:15.971Z"
 progress:
   total_phases: 26
   completed_phases: 23
@@ -326,6 +326,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-16T11:12:09.330Z
-Stopped at: Completed 22-04-PLAN.md (milestone admin UI surface — Wave 3)
-Resume file: None
+Last session: 2026-04-16T11:49:15.949Z
+Stopped at: Phase 23 context gathered
+Resume file: .planning/phases/23-cardano-preview-net-anchoring/23-CONTEXT.md
