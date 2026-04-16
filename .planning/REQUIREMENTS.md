@@ -206,10 +206,10 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 ### Engagement Tracking & UX Extensions
 
-- [ ] **UX-08**: `users.lastActivityAt` updated via tRPC middleware on every authenticated mutation
-- [ ] **UX-09**: Admin dashboard widget lists inactive users (no activity in configurable window) with engagement score
-- [ ] **UX-10**: Basic engagement score calculated from feedback count + workshop attendance count
-- [ ] **UX-11**: Workshop attendance history visible on stakeholder profile (auto-populated from cal.com webhooks)
+- [x] **UX-08**: `users.lastActivityAt` updated via tRPC middleware on every authenticated mutation
+- [x] **UX-09**: Admin dashboard widget lists inactive users (no activity in configurable window) with engagement score
+- [x] **UX-10**: Basic engagement score calculated from feedback count + workshop attendance count
+- [x] **UX-11**: Workshop attendance history visible on stakeholder profile (auto-populated from cal.com webhooks)
 
 ### Verification Layer (Cardano Anchoring)
 
@@ -411,10 +411,10 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | VERIFY-07 | Phase 23 | Complete |
 | VERIFY-08 | Phase 23 | Complete |
 | VERIFY-09 | Phase 23 | Complete |
-| UX-08 | Phase 24 | Pending |
-| UX-09 | Phase 24 | Pending |
-| UX-10 | Phase 24 | Pending |
-| UX-11 | Phase 24 | Pending |
+| UX-08 | Phase 24 | Complete |
+| UX-09 | Phase 24 | Complete |
+| UX-10 | Phase 24 | Complete |
+| UX-11 | Phase 24 | Complete |
 | INTEGRATION-01 | Phase 25 | Pending |
 
 **Coverage:**

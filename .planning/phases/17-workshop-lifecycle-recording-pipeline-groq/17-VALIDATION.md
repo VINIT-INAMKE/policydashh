@@ -1,8 +1,8 @@
 ---
 phase: 17
 slug: workshop-lifecycle-recording-pipeline-groq
-status: draft
-nyquist_compliant: false
+status: planned
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-04-14
 ---
@@ -41,23 +41,23 @@ Task IDs are placeholders — planner aligns them to actual plan task names.
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 0-01 | 00 | 0 | LLM-01/02/03 | unit (W0 stub) | `npm test -- --run src/lib/llm.test.ts` | ❌ → W0 | ⬜ pending |
-| 0-02 | 00 | 0 | WS-12, WS-13 | unit (W0 stub) | `npm test -- --run src/inngest/__tests__/workshop-completed.test.ts` | ❌ → W0 | ⬜ pending |
-| 0-03 | 00 | 0 | WS-14 | unit (W0 stub) | `npm test -- --run src/inngest/__tests__/workshop-recording-processed.test.ts` | ❌ → W0 | ⬜ pending |
-| 0-04 | 00 | 0 | WS-06 | unit (W0 stub) | `npm test -- --run src/server/routers/workshop-transition.test.ts` | ❌ → W0 | ⬜ pending |
-| 0-05 | 00 | 0 | LLM-01/02/03 | dependency install | `node -e "require('groq-sdk')"` exits 0 | ⚠️ W0 | ⬜ pending |
-| 01-01 | 01 | 1 | WS-06, WS-12 | migration DDL | `grep -n "workshop_status\|workshop_evidence_checklist" src/db/migrations/0010_*.sql` | ✅ after Plan 01 | ⬜ pending |
-| 01-02 | 01 | 1 | WS-06 | unit | `npm test -- --run src/server/routers/workshop-transition.test.ts` | ✅ | ⬜ pending |
-| 01-03 | 01 | 1 | WS-06 | router perm | `grep -c "workshop:manage" src/server/routers/workshop.ts` ≥ 1 | ✅ | ⬜ pending |
-| 02-01 | 02 | 2 | LLM-01, LLM-02, LLM-03 | unit | `npm test -- --run src/lib/llm.test.ts` | ✅ | ⬜ pending |
-| 02-02 | 02 | 2 | LLM-03 | type-check | `npx tsc --noEmit` | ✅ | ⬜ pending |
-| 03-01 | 03 | 3 | WS-12, WS-13 | unit (Inngest fn) | `npm test -- --run src/inngest/__tests__/workshop-completed.test.ts` | ✅ | ⬜ pending |
-| 03-02 | 03 | 3 | WS-12, WS-13 | barrel registration | `grep -c "workshopCompletedFn" src/inngest/functions/index.ts` ≥ 1 | ✅ | ⬜ pending |
-| 04-01 | 04 | 4 | WS-14 | recording category + 25MB cap | `grep -n "'recording'" app/api/upload/route.ts && grep -n "25 \* 1024" app/api/upload/route.ts` | ✅ | ⬜ pending |
-| 04-02 | 04 | 4 | WS-14 | unit (Inngest fn) | `npm test -- --run src/inngest/__tests__/workshop-recording-processed.test.ts` | ✅ | ⬜ pending |
-| 04-03 | 04 | 4 | WS-14 | barrel registration | `grep -c "workshopRecordingProcessedFn" src/inngest/functions/index.ts` ≥ 1 | ✅ | ⬜ pending |
-| 05-01 | 05 | 5 | WS-06, WS-12, WS-14 | UI mount + admin actions | manual UI walk in 17-SMOKE.md (deferred) | ✅ artifact only | ⬜ pending |
-| 05-02 | 05 | 5 | WS-14 | full suite + smoke placeholder | `npm test` ≥ 309 passed + 17-SMOKE.md exists with `status: deferred` | ✅ | ⬜ pending |
+| 00-01 | 00 | 0 | LLM-01/02/03 | dep install | `node -e "require('groq-sdk')"` exits 0 && grep GROQ_API_KEY .env.example | ⚠️ W0 | ⬜ pending |
+| 00-02 | 00 | 0 | LLM-01/02/03 | RED stub | `npx vitest run src/lib/llm.test.ts` exits non-zero | ❌ → W0 | ⬜ pending |
+| 00-03 | 00 | 0 | WS-12, WS-13 | RED stub | `npx vitest run src/inngest/__tests__/workshop-completed.test.ts` exits non-zero | ❌ → W0 | ⬜ pending |
+| 00-04 | 00 | 0 | WS-14 | RED stub | `npx vitest run src/inngest/__tests__/workshop-recording-processed.test.ts` exits non-zero | ❌ → W0 | ⬜ pending |
+| 00-05 | 00 | 0 | WS-06 | RED stub | `npx vitest run src/server/routers/workshop-transition.test.ts` exits non-zero | ❌ → W0 | ⬜ pending |
+| 01-01 | 01 | 1 | WS-06, WS-13 | migration DDL + DB apply | `grep -n "workshop_status\|workshop_evidence_checklist" src/db/migrations/0010_*.sql` ≥ 2 | ✅ after Plan 01 | ⬜ pending |
+| 01-02 | 01 | 1 | WS-06, WS-13 | Drizzle schema tsc | `npx tsc --noEmit` exits 0 && grep workshopStatusEnum src/db/schema/workshops.ts | ✅ | ⬜ pending |
+| 01-03 | 01 | 1 | WS-06 | unit GREEN | `npx vitest run src/server/routers/workshop-transition.test.ts` exits 0 | ✅ | ⬜ pending |
+| 02-01 | 02 | 2 | LLM-01, LLM-02, LLM-03 | unit GREEN + tsc | `npx vitest run src/lib/llm.test.ts` exits 0 && `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 03-01 | 03 | 3 | WS-12 | tsc + grep | grep sendWorkshopEvidenceNudgeEmail src/lib/email.ts && tsc clean | ✅ | ⬜ pending |
+| 03-02 | 03 | 3 | WS-12, WS-13 | unit GREEN + barrel | `npx vitest run src/inngest/__tests__/workshop-completed.test.ts` exits 0 && grep workshopCompletedFn src/inngest/functions/index.ts ≥ 2 | ✅ | ⬜ pending |
+| 04-01 | 04 | 4 | WS-14 | grep + tsc | grep "recording: 25 \* 1024" app/api/upload/route.ts && tsc clean | ✅ | ⬜ pending |
+| 04-02 | 04 | 4 | WS-14 | grep + tsc | grep sendWorkshopRecordingUploaded src/server/routers/workshop.ts && tsc clean | ✅ | ⬜ pending |
+| 04-03 | 04 | 4 | WS-14, LLM-02, LLM-03 | unit GREEN + barrel | `npx vitest run src/inngest/__tests__/workshop-recording-processed.test.ts` exits 0 && grep workshopRecordingProcessedFn src/inngest/functions/index.ts ≥ 2 | ✅ | ⬜ pending |
+| 05-01 | 05 | 5 | WS-06, WS-13, WS-14 | router extend | grep listChecklist src/server/routers/workshop.ts && tsc clean | ✅ | ⬜ pending |
+| 05-02 | 05 | 5 | WS-06, WS-12, WS-14 | UI mount + tsc | ls status-transition-buttons.tsx evidence-checklist.tsx && tsc clean | ✅ | ⬜ pending |
+| 05-03 | 05 | 5 | WS-06, WS-12, WS-14 | SMOKE deferred + full suite | grep "status: deferred" 17-SMOKE.md && `npm test` ≥ baseline | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
