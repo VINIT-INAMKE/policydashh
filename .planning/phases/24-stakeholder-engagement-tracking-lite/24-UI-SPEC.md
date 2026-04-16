@@ -148,7 +148,7 @@ Page layout: max-w-3xl mx-auto space-y-6
   Name  [Badge: role]  [Badge: orgType]
   Grid 2-col:
     Last Active: {date}  |  Member Since: {date}
-  Engagement Score: {integer}  (text-2xl font-semibold + "engagements" label text-xs text-muted-foreground)
+  Engagement Score: {integer}  (text-[28px] font-semibold + "engagements" label text-xs text-muted-foreground)
 
 [Card: Workshop Attendance]
   CardTitle: "Workshop Attendance"
