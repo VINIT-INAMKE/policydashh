@@ -5,12 +5,14 @@ import Link from 'next/link'
 import { db } from '@/src/db'
 import { policyDocuments } from '@/src/db/schema/documents'
 import { documentVersions } from '@/src/db/schema/changeRequests'
+import { milestones } from '@/src/db/schema/milestones'
 import { eq, and, desc } from 'drizzle-orm'
 import { format } from 'date-fns'
 import { ArrowLeft, Download, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { VersionStatusBadge } from '@/app/(workspace)/policies/[id]/versions/_components/version-status-badge'
 import { PublicVersionSelector } from './_components/public-version-selector'
+import { VerifiedBadge } from './_components/verified-badge'
 import { PublicSectionNav } from './_components/public-section-nav'
 import { PublicPolicyContent } from './_components/public-policy-content'
 import type { SectionSnapshot } from '@/src/server/services/version.service'
@@ -99,7 +101,24 @@ export default async function PublicPolicyDetailPage({
     id: v.id,
     versionLabel: v.versionLabel,
     publishedAt: v.publishedAt?.toISOString() ?? new Date().toISOString(),
+    txHash: v.txHash,
   }))
+
+  // Phase 23 VERIFY-09: query anchored milestones for this policy
+  const anchoredMilestones = await db
+    .select({
+      id: milestones.id,
+      title: milestones.title,
+      txHash: milestones.txHash,
+      anchoredAt: milestones.anchoredAt,
+    })
+    .from(milestones)
+    .where(
+      and(
+        eq(milestones.documentId, policyId),
+        eq(milestones.status, 'anchored'),
+      ),
+    )
 
   const sectionNavItems = sortedSections.map((s) => ({
     sectionId: s.sectionId,
@@ -128,6 +147,7 @@ export default async function PublicPolicyDetailPage({
           policyId={policyId}
         />
         <VersionStatusBadge isPublished={true} />
+        <VerifiedBadge txHash={selectedVersion.txHash} />
         <time className="text-xs text-muted-foreground">
           Published {format(new Date(selectedVersion.publishedAt ?? selectedVersion.createdAt), 'MMM d, yyyy')}
         </time>
@@ -146,6 +166,21 @@ export default async function PublicPolicyDetailPage({
           </Link>
         </div>
       </div>
+
+      {/* Phase 23 VERIFY-09: Milestone verification section */}
+      {anchoredMilestones.length > 0 ? (
+        <div className="rounded-lg border border-border bg-muted/50 px-4 py-3">
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Verification</h3>
+          <div className="space-y-1.5">
+            {anchoredMilestones.map((m) => (
+              <div key={m.id} className="flex items-center gap-2 text-sm">
+                <span className="text-foreground">{m.title}</span>
+                <VerifiedBadge txHash={m.txHash} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* Two-column layout: section nav + content */}
       <div className="flex gap-8">

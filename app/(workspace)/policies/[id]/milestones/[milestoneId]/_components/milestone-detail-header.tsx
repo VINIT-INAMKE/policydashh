@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ExternalLink, Loader2 } from 'lucide-react'
+import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { trpc } from '@/src/trpc/client'
 import { MilestoneStatusBadge, type MilestoneStatus } from '../../_components/milestone-status-badge'
 import { MilestoneSlotStatus, type SlotType } from './milestone-slot-status'
 import { MarkReadyErrorDisplay, type UnmetSlot } from './mark-ready-error-display'
+import { RetryAnchorButton } from './retry-anchor-button'
 
 interface SlotStatusRow {
   type: SlotType
@@ -23,6 +25,8 @@ interface MilestoneDetailHeaderProps {
   description: string | null
   status: MilestoneStatus
   contentHash: string | null
+  txHash: string | null
+  anchoredAt: string | null
   slotStatus: SlotStatusRow[]
   canManage: boolean
 }
@@ -91,6 +95,8 @@ export function MilestoneDetailHeader(props: MilestoneDetailHeaderProps) {
               'Mark ready'
             )}
           </Button>
+        ) : props.status === 'anchoring' && props.canManage ? (
+          <RetryAnchorButton milestoneId={props.milestoneId} />
         ) : null}
       </div>
 
@@ -113,6 +119,33 @@ export function MilestoneDetailHeader(props: MilestoneDetailHeaderProps) {
           <span className="font-semibold text-foreground">SHA256:</span>{' '}
           <code className="font-mono text-xs text-muted-foreground">{props.contentHash}</code>
         </p>
+      ) : null}
+
+      {props.status === 'anchored' && props.txHash ? (
+        <div className="mt-2 space-y-1">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">TX:</span>{' '}
+            <code className="font-mono text-xs text-muted-foreground">
+              <span className="md:hidden">{props.txHash.slice(0, 8)}…{props.txHash.slice(-8)}</span>
+              <span className="hidden md:inline">{props.txHash}</span>
+            </code>
+          </p>
+          {props.anchoredAt ? (
+            <p className="text-xs text-muted-foreground">
+              Anchored {format(new Date(props.anchoredAt), 'MMM d, yyyy')}
+            </p>
+          ) : null}
+          <a
+            href={`https://preview.cardanoscan.io/transaction/${props.txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View transaction on Cardanoscan preview-net"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            <ExternalLink className="size-3" aria-hidden="true" />
+            View on Cardanoscan (preview-net)
+          </a>
+        </div>
       ) : null}
 
       <MarkReadyErrorDisplay unmet={unmet} />

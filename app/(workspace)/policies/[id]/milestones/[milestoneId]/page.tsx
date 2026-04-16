@@ -44,6 +44,8 @@ export default function MilestoneDetailPage({
         description={milestone.description}
         status={status}
         contentHash={milestone.contentHash}
+        txHash={milestone.txHash ?? null}
+        anchoredAt={milestone.anchoredAt ? new Date(milestone.anchoredAt).toISOString() : null}
         slotStatus={slotStatus}
         canManage
       />

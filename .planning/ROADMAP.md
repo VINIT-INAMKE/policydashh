@@ -274,7 +274,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 20.5. Public /research + /framework Pages | 4/4 | Complete    | 2026-04-14 |
 | 21. Public Shell + Consultation Summary + Theme | 5/5 | Complete    | 2026-04-15 |
 | 22. Milestone Entity + SHA256 Hashing | 5/5 | Complete    | 2026-04-16 |
-| 23. Cardano Preview-Net Anchoring | 0/0 | v0.2 Planning | - |
+| 23. Cardano Preview-Net Anchoring | 3/4 | In Progress|  |
 | 24. Stakeholder Engagement Tracking | 0/0 | v0.2 Planning | - |
 | 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
 
@@ -527,12 +527,12 @@ Plans:
   6. Every `version.published` event triggers a per-version anchor via the same pipeline (different metadata type)
   7. DB-level `UNIQUE(milestoneId)` / `UNIQUE(versionId)` constraint + `concurrency: { key: 'cardano-wallet', limit: 1 }` enforce idempotency at three layers
   8. Public `/portal` renders Verified State badge on anchored versions and milestones, linking to `https://preview.cardanoscan.io/transaction/{txHash}` explorer page
-**Plans:** 4 plans
+**Plans:** 3/4 plans executed
 
 Plans:
-- [ ] 23-00-PLAN.md -- Wave 0 RED test stubs (cardano.test.ts, milestone-ready.test.ts, version-anchor.test.ts, verified-badge.test.tsx)
-- [ ] 23-01-PLAN.md -- Install Cardano SDK, create src/lib/cardano.ts server-only wrapper, DB migration (txHash + anchoredAt), Drizzle schema extensions, milestone.ready event, audit constants
-- [ ] 23-02-PLAN.md -- milestoneReadyFn 5-step Inngest pipeline, versionAnchorFn fan-out, markReady Inngest event emission, retryAnchor mutation
+- [x] 23-00-PLAN.md -- Wave 0 RED test stubs (cardano.test.ts, milestone-ready.test.ts, version-anchor.test.ts, verified-badge.test.tsx)
+- [x] 23-01-PLAN.md -- Install Cardano SDK, create src/lib/cardano.ts server-only wrapper, DB migration (txHash + anchoredAt), Drizzle schema extensions, milestone.ready event, audit constants
+- [x] 23-02-PLAN.md -- milestoneReadyFn 5-step Inngest pipeline, versionAnchorFn fan-out, markReady Inngest event emission, retryAnchor mutation
 - [ ] 23-03-PLAN.md -- VerifiedBadge component, public portal badge integration (3 locations), admin milestone detail Cardanoscan link + RetryAnchorButton
 
 ### Phase 24: Stakeholder Engagement Tracking (lite)

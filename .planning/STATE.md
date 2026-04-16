@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Phase 23 plans verified
-last_updated: "2026-04-16T12:36:16.145Z"
+status: Ready to execute
+stopped_at: Completed 23-02-PLAN.md
+last_updated: "2026-04-16T13:02:28.935Z"
 progress:
   total_phases: 26
   completed_phases: 23
   total_plans: 87
-  completed_plans: 83
+  completed_plans: 86
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 22 — milestone-entity-sha256-hashing-service
+**Current focus:** Phase 23 — cardano-preview-net-anchoring
 
 ## Current Position
 
-Phase: 23
-Plan: Not started
+Phase: 23 (cardano-preview-net-anchoring) — EXECUTING
+Plan: 4 of 4
 
 ## Performance Metrics
 
@@ -118,6 +118,9 @@ Plan: Not started
 | Phase 22-milestone-entity-sha256-hashing-service P01 | 15min | 4 tasks | 11 files |
 | Phase 22-milestone-entity-sha256-hashing-service P02 | 13min | 2 tasks | 7 files |
 | Phase 22 P04 | 10min | 3 tasks | 17 files |
+| Phase 23 P00 | 2min | 2 tasks | 4 files |
+| Phase 23-cardano-preview-net-anchoring P01 | 11min | 2 tasks | 9 files |
+| Phase 23 P02 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -308,6 +311,13 @@ Recent decisions affecting current work:
 - [Phase 22-milestone-entity-sha256-hashing-service]: Pattern 4 established: one-shot Vitest filler for TS-module fixture bootstrapping — sidesteps tsx's CJS loader inability to resolve ESM-only packages' exports field when imported from .ts files in CJS-default projects
 - [Phase 22]: Evidence tab renders empty — no document-scoped evidence listing exists; Phase 23 can wire one
 - [Phase 22]: canManage prop passed optimistically; tRPC milestone:manage permission gate is authorization source of truth
+- [Phase 23]: Used it.todo() for RED stubs — vitest reports as todo status, cleanly distinguishing from skipped tests
+- [Phase 23-cardano-preview-net-anchoring]: MeshSDK wallet is async (fromMnemonic) -- must be called inside Inngest step.run, never at module load
+- [Phase 23-cardano-preview-net-anchoring]: Blockfrost project ID prefix validation enforces preview-net only (no mainnet accidents)
+- [Phase 23-cardano-preview-net-anchoring]: z.guid() for milestone.ready schema fields matching Phase 16+ convention
+- [Phase 23-cardano-preview-net-anchoring]: CIP-10 label 674 for Cardano anchor metadata; network ID hardcoded 0 (preview-net)
+- [Phase 23]: Concurrency key 'cardano-wallet' limit 1 shared across milestoneReadyFn and versionAnchorFn for UTxO contention prevention
+- [Phase 23]: retryAnchor uses await sendMilestoneReady (not fire-and-forget) since user-initiated retry should confirm event dispatch
 
 ### Pending Todos
 
@@ -326,6 +336,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-16T12:36:16.128Z
-Stopped at: Phase 23 plans verified
-Resume file: .planning/phases/23-cardano-preview-net-anchoring/23-01-PLAN.md
+Last session: 2026-04-16T13:02:28.921Z
+Stopped at: Completed 23-02-PLAN.md
+Resume file: None

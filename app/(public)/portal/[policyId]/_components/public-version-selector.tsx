@@ -8,9 +8,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { VerifiedBadge } from './verified-badge'
 
 interface PublicVersionSelectorProps {
-  versions: Array<{ id: string; versionLabel: string; publishedAt: string }>
+  versions: Array<{ id: string; versionLabel: string; publishedAt: string; txHash: string | null }>
   currentVersionId: string
   policyId: string
 }
@@ -39,7 +40,10 @@ export function PublicVersionSelector({
         <SelectContent>
           {versions.map((v) => (
             <SelectItem key={v.id} value={v.id}>
-              {v.versionLabel}
+              <span className="flex items-center gap-2">
+                {v.versionLabel}
+                <VerifiedBadge txHash={v.txHash} />
+              </span>
             </SelectItem>
           ))}
         </SelectContent>
