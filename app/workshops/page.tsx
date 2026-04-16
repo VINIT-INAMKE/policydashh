@@ -9,7 +9,7 @@
  *   - Past:     status='completed' AND scheduledAt < now()
  *
  * Layout + copy come from UI-SPEC Surface A verbatim (max-w-3xl wrapper,
- * 28px page headline with Newsreader headline font; .cl-landing inherited from (public)/layout.tsx per Phase 21 D-02).
+ * 28px page headline with Newsreader headline font; CL design tokens global in :root).
  *
  * Caching: the listPublicWorkshops helper caches the per-workshop registered
  * count via unstable_cache (60s revalidate). `export const dynamic` below

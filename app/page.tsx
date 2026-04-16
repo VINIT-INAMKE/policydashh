@@ -1,26 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
-import { Inter, Newsreader } from 'next/font/google'
 import { CryptoSeal } from './_components/crypto-seal'
-
-const newsreader = Newsreader({
-  subsets: ['latin'],
-  weight: ['400', '600', '700'],
-  style: ['normal', 'italic'],
-  variable: '--font-cl-headline',
-  display: 'swap',
-})
-
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-cl-body',
-  display: 'swap',
-})
 
 export default function Home() {
   return (
     <div
-      className={`cl-landing ${newsreader.variable} ${inter.variable} bg-[var(--cl-surface)] text-[var(--cl-on-surface)] font-body selection:bg-[var(--cl-tertiary-fixed)] selection:text-[var(--cl-on-tertiary-fixed)] min-w-0 overflow-x-hidden`}
+      className="bg-[var(--cl-surface)] text-[var(--cl-on-surface)] font-body selection:bg-[var(--cl-tertiary-fixed)] selection:text-[var(--cl-on-tertiary-fixed)] min-w-0 overflow-x-hidden"
     >
       {/* Top Navigation */}
       <nav className="sticky top-0 z-50 w-full bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md">

@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Newsreader, Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { TRPCReactProvider } from "@/src/trpc/client";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const newsreader = Newsreader({
   subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-cl-headline",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-cl-body",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -29,7 +34,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        className={`${newsreader.variable} ${inter.variable} h-full antialiased`}
       >
         <head>
           <link

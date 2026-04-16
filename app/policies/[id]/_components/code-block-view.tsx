@@ -81,7 +81,7 @@ export function CodeBlockView({
         <pre className="!m-0 !bg-transparent !p-0">
           <NodeViewContent
             as={'code' as 'div'}
-            className="font-[var(--font-geist-mono)] text-[13px] leading-[1.6]"
+            className="font-mono text-[13px] leading-[1.6]"
           />
         </pre>
       </div>

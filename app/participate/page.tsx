@@ -12,7 +12,7 @@
  * `/api/intake/workshop-feedback` on submit so the route handler can
  * re-verify independently (never trust the client).
  *
- * Visual contract: `.cl-landing` scope now inherited from (public)/layout.tsx (Phase 21 D-02).
+ * Visual contract: CL design tokens are global in :root (promoted from .cl-landing scope).
  * Metadata is static across modes per D-18 (no info leak on expired links).
  */
 
