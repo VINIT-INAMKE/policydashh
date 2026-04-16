@@ -275,7 +275,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 21. Public Shell + Consultation Summary + Theme | 5/5 | Complete    | 2026-04-15 |
 | 22. Milestone Entity + SHA256 Hashing | 5/5 | Complete    | 2026-04-16 |
 | 23. Cardano Preview-Net Anchoring | 4/4 | Complete    | 2026-04-16 |
-| 24. Stakeholder Engagement Tracking | 3/3 | Complete    | 2026-04-16 |
+| 24. Stakeholder Engagement Tracking | 3/3 | Complete   | 2026-04-16 |
 | 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
 
 ### Phase 12: Workshop System Fix
@@ -545,7 +545,7 @@ Plans:
   2. Admin dashboard widget lists users with no activity in a configurable window (default 30 days), sortable by last activity and engagement score
   3. Basic engagement score computed from feedback count + workshop attendance count; formula documented in code comment
   4. Stakeholder profile page shows workshop attendance history auto-populated from cal.com `MEETING_ENDED` webhook events
-**Plans:** 2/3 plans complete
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 24-00-PLAN.md -- Wave 0: TDD test stubs for engagement score and user activity tracking
@@ -567,4 +567,8 @@ Plans:
   7. Admin merges CR → new document version published → `version.published` event triggers per-version Cardano anchor → `consultationSummaryGenerate` fires → moderator reviews LLM summary → marks approved
   8. Admin marks milestone ready → milestone hash computed → Cardano tx submitted → confirmed → Verified State badge visible on `/portal` with Cardanoscan preview-net link
   9. Integration smoke report written to `.planning/v0.2-INTEGRATION-SMOKE.md` documenting any gaps, flaky steps, or regressions
-**Plans:** TBD (run /gsd:plan-phase 25)
+**Plans:** 2 plans
+
+Plans:
+- [ ] 25-00-PLAN.md -- Wave 0: Fix TypeScript errors (185 TS18049 + 3 TS2307), fix 6 failing tests (touchActivity db.update mock), add WORKSHOP_FEEDBACK_JWT_SECRET to .env.example
+- [ ] 25-01-PLAN.md -- Integration walk: create smoke report template, execute 9-criterion walk (checkpoint), update 4 deferred UAT files to resolved-by-phase-25
