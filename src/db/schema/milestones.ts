@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, timestamp, jsonb, integer, check } from 'drizzle-orm/pg-core'
+import { pgTable, pgEnum, uuid, text, timestamp, jsonb, integer, check, unique } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { policyDocuments } from './documents'
 import { users } from './users'
@@ -46,9 +46,12 @@ export const milestones = pgTable('milestones', {
   createdBy:             uuid('created_by').notNull().references(() => users.id),
   createdAt:             timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:             timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  txHash:                text('tx_hash'),
+  anchoredAt:            timestamp('anchored_at', { withTimezone: true }),
 }, (t) => [
   check(
     'chk_content_hash_format',
     sql`${t.contentHash} IS NULL OR ${t.contentHash} ~ '^[0-9a-f]{64}$'`,
   ),
+  unique('milestones_tx_hash_unique').on(t.txHash),
 ])

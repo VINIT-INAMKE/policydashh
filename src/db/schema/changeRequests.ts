@@ -24,8 +24,11 @@ export const documentVersions = pgTable('document_versions', {
   isPublished:       boolean('is_published').notNull().default(false),
   consultationSummary: jsonb('consultation_summary').$type<ConsultationSummaryJson | null>(),
   milestoneId:       uuid('milestone_id'),  // FK to milestones — constraint in SQL migration only (avoids circular import)
+  txHash:            text('tx_hash'),
+  anchoredAt:        timestamp('anchored_at', { withTimezone: true }),
 }, (t) => [
   unique('uq_document_version').on(t.documentId, t.versionLabel),
+  unique('document_versions_tx_hash_unique').on(t.txHash),
 ])
 
 export const changeRequests = pgTable('change_requests', {
