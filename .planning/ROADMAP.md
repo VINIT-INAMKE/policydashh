@@ -45,7 +45,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 20: Cal.com Workshop Register (Flow 2)** - Public /workshops listing with cal.com embed, webhook handler, auto-user-create, MEETING_ENDED attendance, post-workshop feedback link (completed 2026-04-14)
 - [x] **Phase 20.5: Public /research + /framework Content** - Static /research content page; /framework draft consultation surface with per-section status badges and what-changed log (completed 2026-04-14)
 - [x] **Phase 21: Public Shell + LLM Consultation Summary + Theme** - Minimal public shell routing; llama-3.3-70b consultation summary per section with human review gate; policy-grade theme (completed 2026-04-15)
-- [ ] **Phase 22: Milestone Entity + SHA256 Hashing Service** - First-class milestones table, RFC 8785 JCS canonicalization, deterministic hashing for version/workshop/evidence/milestone
+- [x] **Phase 22: Milestone Entity + SHA256 Hashing Service** - First-class milestones table, RFC 8785 JCS canonicalization, deterministic hashing for version/workshop/evidence/milestone (completed 2026-04-16)
 - [ ] **Phase 23: Cardano Preview-Net Anchoring** - Mesh SDK + Blockfrost per-milestone and per-version anchoring with Verified State badges on public portal
 - [ ] **Phase 24: Stakeholder Engagement Tracking Lite** - users.lastActivityAt via tRPC middleware, admin inactive-user widget, basic engagement score
 - [ ] **Phase 25: Cross-Phase Integration Smoke** - Full E2E walk: /participate → workshop register → reminders → MEETING_ENDED → feedback → CR → merge → version → milestone → SHA256 → Cardano tx → Verified State badge
@@ -273,7 +273,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 20. Cal.com Workshop Register | 6/6 | Complete    | 2026-04-14 |
 | 20.5. Public /research + /framework Pages | 4/4 | Complete    | 2026-04-14 |
 | 21. Public Shell + Consultation Summary + Theme | 5/5 | Complete    | 2026-04-15 |
-| 22. Milestone Entity + SHA256 Hashing | 4/5 | In Progress|  |
+| 22. Milestone Entity + SHA256 Hashing | 5/5 | Complete   | 2026-04-16 |
 | 23. Cardano Preview-Net Anchoring | 0/0 | v0.2 Planning | - |
 | 24. Stakeholder Engagement Tracking | 0/0 | v0.2 Planning | - |
 | 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
@@ -504,14 +504,14 @@ Plans:
   4. `src/lib/hashing.ts` produces deterministic SHA256 hashes for `policyVersion`, `workshop`, `evidenceBundle`, `milestone` inputs
   5. Canonical JSON pass (RFC 8785 JCS or explicit sort+stringify) normalizes input before hashing
   6. Golden-fixture tests verify hash stability across permuted inputs, nested objects, and array orderings — failure means hash is non-deterministic and anchoring cannot proceed
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 22-00-PLAN.md — Wave 0 (TDD): canonicalize@3.0.0 install + RED hashing/router/schema tests + 6 golden-fixture scaffolds + Nyquist gate flip
 - [x] 22-01-PLAN.md — Wave 1: milestones schema + 0014 migration + milestoneId FK on 4 child tables + ACTIONS/PERMISSIONS constants
 - [x] 22-02-PLAN.md — Wave 1: src/lib/hashing.ts (canonicalize wrapper + sha256Hex + 6 hash functions) + fill fixture expectedHash values
 - [x] 22-03-PLAN.md — Wave 2: milestoneRouter (create, list, getById, attachEntity, detachEntity, markReady) + appRouter.milestone registration
-- [ ] 22-04-PLAN.md — Wave 3: admin milestone UI (PolicyTabBar tab + index page + detail page + 4 entity tabs + mark-ready button)
+- [x] 22-04-PLAN.md — Wave 3: admin milestone UI (PolicyTabBar tab + index page + detail page + 4 entity tabs + mark-ready button)
 
 ### Phase 23: Cardano Preview-Net Anchoring
 

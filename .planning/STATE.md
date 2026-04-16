@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 22-02-PLAN.md (hashing service + 6 filled fixtures — Wave 1 parallel with 22-01)
-last_updated: "2026-04-15T14:32:07.087Z"
+stopped_at: Completed 22-04-PLAN.md (milestone admin UI surface — Wave 3)
+last_updated: "2026-04-16T11:12:09.344Z"
 progress:
   total_phases: 26
-  completed_phases: 22
+  completed_phases: 23
   total_plans: 83
-  completed_plans: 81
+  completed_plans: 83
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 22 (milestone-entity-sha256-hashing-service) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 ## Performance Metrics
 
@@ -117,6 +117,7 @@ Plan: 4 of 5
 | Phase 22-milestone-entity-sha256-hashing-service P00 | 8min | 5 tasks | 12 files |
 | Phase 22-milestone-entity-sha256-hashing-service P01 | 15min | 4 tasks | 11 files |
 | Phase 22-milestone-entity-sha256-hashing-service P02 | 13min | 2 tasks | 7 files |
+| Phase 22 P04 | 10min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -305,6 +306,8 @@ Recent decisions affecting current work:
 - [Phase 22-milestone-entity-sha256-hashing-service]: src/lib/hashing.ts shipped as pure-function module (303 lines, 8 exports) with canonicalize wrapper throwing on undefined-return guard, Merkle-lite evidence bundle composition, and internal sort for set-containers; all SHA256 content hashing centralized here per D-02a
 - [Phase 22-milestone-entity-sha256-hashing-service]: D-01a position-independence verified: each per-entity standalone hash (policy-version 167614a6, workshop 46196950, feedback b66fb87f, evidence d8f76f77) equals the corresponding contentHash inside milestone.json manifest, flipping 27/27 Wave 0 RED hashing tests GREEN
 - [Phase 22-milestone-entity-sha256-hashing-service]: Pattern 4 established: one-shot Vitest filler for TS-module fixture bootstrapping — sidesteps tsx's CJS loader inability to resolve ESM-only packages' exports field when imported from .ts files in CJS-default projects
+- [Phase 22]: Evidence tab renders empty — no document-scoped evidence listing exists; Phase 23 can wire one
+- [Phase 22]: canManage prop passed optimistically; tRPC milestone:manage permission gate is authorization source of truth
 
 ### Pending Todos
 
@@ -323,6 +326,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T14:32:07.072Z
-Stopped at: Completed 22-02-PLAN.md (hashing service + 6 filled fixtures — Wave 1 parallel with 22-01)
+Last session: 2026-04-16T11:12:09.330Z
+Stopped at: Completed 22-04-PLAN.md (milestone admin UI surface — Wave 3)
 Resume file: None
