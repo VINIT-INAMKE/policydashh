@@ -1,6 +1,4 @@
 /* eslint-disable @next/next/no-img-element */
-import { redirect } from 'next/navigation'
-import { auth } from '@clerk/nextjs/server'
 import { Inter, Newsreader } from 'next/font/google'
 import { CryptoSeal } from './_components/crypto-seal'
 
@@ -19,10 +17,7 @@ const inter = Inter({
   display: 'swap',
 })
 
-export default async function Home() {
-  const { userId } = await auth()
-  if (userId) redirect('/dashboard')
-
+export default function Home() {
   return (
     <div
       className={`cl-landing ${newsreader.variable} ${inter.variable} bg-[var(--cl-surface)] text-[var(--cl-on-surface)] font-body selection:bg-[var(--cl-tertiary-fixed)] selection:text-[var(--cl-on-tertiary-fixed)] min-w-0 overflow-x-hidden`}
