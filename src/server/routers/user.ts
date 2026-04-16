@@ -4,6 +4,8 @@ import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
 import { eq, count, desc, sql } from 'drizzle-orm'
 import { feedbackItems } from '@/src/db/schema/feedback'
+import { workshopRegistrations, workshops } from '@/src/db/schema/workshops'
+import { and, isNotNull } from 'drizzle-orm'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS, ORG_TYPE_VALUES } from '@/src/lib/constants'
 import { TRPCError } from '@trpc/server'
@@ -142,10 +144,7 @@ export const userRouter = router({
       return allUsers
     }),
 
-  // Admin only: list all users with computed engagement score (UX-09, UX-10)
-  // engagementScore = feedbackCount (+ attendedWorkshopCount when workshopRegistrations exists)
-  // Computed on-the-fly via LEFT JOIN subqueries -- no stored column (D-02)
-  // Returns ALL users -- client filters by inactivity window (D-04)
+  // engagementScore = feedbackCount + attendedWorkshopCount (D-01, D-02)
   listUsersWithEngagement: requirePermission('user:list')
     .query(async () => {
       const feedbackCounts = db
@@ -157,6 +156,19 @@ export const userRouter = router({
         .groupBy(feedbackItems.submitterId)
         .as('feedback_counts')
 
+      const attendanceCounts = db
+        .select({
+          userId: workshopRegistrations.userId,
+          cnt: count().as('cnt'),
+        })
+        .from(workshopRegistrations)
+        .where(and(
+          isNotNull(workshopRegistrations.userId),
+          isNotNull(workshopRegistrations.attendedAt),
+        ))
+        .groupBy(workshopRegistrations.userId)
+        .as('attendance_counts')
+
       return db
         .select({
           id: users.id,
@@ -167,23 +179,21 @@ export const userRouter = router({
           createdAt: users.createdAt,
           lastActivityAt: users.lastActivityAt,
           engagementScore: sql<number>`
-            COALESCE(${feedbackCounts.cnt}, 0)
+            COALESCE(${feedbackCounts.cnt}, 0) + COALESCE(${attendanceCounts.cnt}, 0)
           `.mapWith(Number),
         })
         .from(users)
         .leftJoin(feedbackCounts, eq(users.id, feedbackCounts.submitterId))
+        .leftJoin(attendanceCounts, eq(users.id, attendanceCounts.userId))
         .orderBy(users.createdAt)
     }),
 
-  // Admin only: get detailed profile for a single user (UX-11, D-06, D-07)
-  // Returns user metadata, recent feedback, engagement score
   getUserProfile: requirePermission('user:list')
     .input(z.object({ userId: z.string().uuid() }))
     .query(async ({ input }) => {
-      const [profile, userFeedback] = await Promise.all([
+      const [profile, userFeedback, attendedWorkshops, feedbackCountResult, attendanceCountResult] = await Promise.all([
         db.query.users.findFirst({ where: eq(users.id, input.userId) }),
 
-        // Feedback summary: recent 20 items (D-07)
         db
           .select({
             id: feedbackItems.id,
@@ -196,22 +206,39 @@ export const userRouter = router({
           .where(eq(feedbackItems.submitterId, input.userId))
           .orderBy(desc(feedbackItems.createdAt))
           .limit(20),
+
+        db
+          .select({
+            workshopId: workshopRegistrations.workshopId,
+            title: workshops.title,
+            scheduledAt: workshops.scheduledAt,
+            attendedAt: workshopRegistrations.attendedAt,
+            status: workshopRegistrations.status,
+          })
+          .from(workshopRegistrations)
+          .innerJoin(workshops, eq(workshopRegistrations.workshopId, workshops.id))
+          .where(and(
+            eq(workshopRegistrations.userId, input.userId),
+            isNotNull(workshopRegistrations.attendedAt),
+          ))
+          .orderBy(desc(workshops.scheduledAt)),
+
+        db.select({ cnt: count() }).from(feedbackItems)
+          .where(eq(feedbackItems.submitterId, input.userId)),
+
+        db.select({ cnt: count() }).from(workshopRegistrations)
+          .where(and(
+            eq(workshopRegistrations.userId, input.userId),
+            isNotNull(workshopRegistrations.attendedAt),
+          )),
       ])
 
       if (!profile) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
       }
 
-      // Engagement score: feedbackCount (D-01)
-      // workshopRegistrations table not yet available -- score is feedback-only for now
-      const totalFeedbackCount = await db
-        .select({ cnt: count() })
-        .from(feedbackItems)
-        .where(eq(feedbackItems.submitterId, input.userId))
-        .then(r => r[0]?.cnt ?? 0)
+      const engagementScore = (feedbackCountResult[0]?.cnt ?? 0) + (attendanceCountResult[0]?.cnt ?? 0)
 
-      const engagementScore = totalFeedbackCount
-
-      return { profile, attendedWorkshops: [] as never[], userFeedback, engagementScore }
+      return { profile, attendedWorkshops, userFeedback, engagementScore }
     }),
 })

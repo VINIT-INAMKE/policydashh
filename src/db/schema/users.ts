@@ -12,12 +12,13 @@ export const orgTypeEnum = pgEnum('org_type', [
 export const users = pgTable('users', {
   id:        uuid('id').primaryKey().defaultRandom(),
   clerkId:   text('clerk_id').notNull().unique(),
-  phone:     text('phone'),          // Phone number from Clerk (primary auth method)
-  email:     text('email'),          // Optional email if user adds one later in Clerk
+  email:     text('email'),          // Email from Clerk (primary auth method)
+  phone:     text('phone'),          // Optional phone if user adds one later in Clerk
   name:      text('name'),           // Display name from Clerk profile
   role:      roleEnum('role').notNull().default('stakeholder'),
   orgType:   orgTypeEnum('org_type'),   // nullable until user sets profile
   lastVisitedAt: timestamp('last_visited_at', { withTimezone: true }),
+  lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

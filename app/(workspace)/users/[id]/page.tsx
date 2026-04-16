@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
 import { feedbackItems } from '@/src/db/schema/feedback'
-import { eq, desc, count } from 'drizzle-orm'
+import { workshopRegistrations, workshops } from '@/src/db/schema/workshops'
+import { eq, desc, count, and, isNotNull } from 'drizzle-orm'
 import { format } from 'date-fns'
 import { ChevronLeft } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,11 +49,9 @@ export default async function UserProfilePage({
   })
   if (!currentUser || currentUser.role !== 'admin') redirect('/dashboard')
 
-  // Fetch profile + engagement data in parallel (D-07)
-  const [profile, userFeedback, [feedbackCountResult]] = await Promise.all([
+  const [profile, userFeedback, attendedWorkshops, [feedbackCountResult], [attendanceCountResult]] = await Promise.all([
     db.query.users.findFirst({ where: eq(users.id, id) }),
 
-    // Recent feedback (D-07) -- last 20 items
     db
       .select({
         id: feedbackItems.id,
@@ -66,20 +65,33 @@ export default async function UserProfilePage({
       .orderBy(desc(feedbackItems.createdAt))
       .limit(20),
 
-    // Total feedback count for engagement score
+    db
+      .select({
+        workshopId: workshopRegistrations.workshopId,
+        title: workshops.title,
+        scheduledAt: workshops.scheduledAt,
+        attendedAt: workshopRegistrations.attendedAt,
+        status: workshopRegistrations.status,
+      })
+      .from(workshopRegistrations)
+      .innerJoin(workshops, eq(workshopRegistrations.workshopId, workshops.id))
+      .where(and(
+        eq(workshopRegistrations.userId, id),
+        isNotNull(workshopRegistrations.attendedAt),
+      ))
+      .orderBy(desc(workshops.scheduledAt)),
+
     db.select({ cnt: count() }).from(feedbackItems).where(eq(feedbackItems.submitterId, id)),
+
+    db.select({ cnt: count() }).from(workshopRegistrations)
+      .where(and(eq(workshopRegistrations.userId, id), isNotNull(workshopRegistrations.attendedAt))),
   ])
 
   if (!profile) {
     redirect('/users')
   }
 
-  // Workshop attendance: workshopRegistrations table not yet available (Plan 01 deviation)
-  // Empty array for stable UI shape -- will wire when schema exists
-  const attendedWorkshops: { workshopId: string; title: string; scheduledAt: Date; attendedAt: Date | null; status: string }[] = []
-
-  // Engagement score = feedbackCount (+ attendedWorkshopCount when workshopRegistrations exists) (D-01)
-  const engagementScore = (feedbackCountResult?.cnt ?? 0) + attendedWorkshops.length
+  const engagementScore = (feedbackCountResult?.cnt ?? 0) + (attendanceCountResult?.cnt ?? 0)
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
