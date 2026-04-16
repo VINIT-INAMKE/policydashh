@@ -54,7 +54,18 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
   })
 })
 
-export const protectedProcedure = t.procedure.use(enforceAuth)
+const touchActivity = t.middleware(async ({ ctx, next, type }) => {
+  const result = await next({ ctx })
+  if (type === 'mutation' && ctx.user) {
+    db.update(users)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(users.id, ctx.user.id))
+      .catch(() => {})
+  }
+  return result
+})
+
+export const protectedProcedure = t.procedure.use(enforceAuth).use(touchActivity)
 
 // Middleware 2: Role check -- throws FORBIDDEN if user's role is not in allowedRoles
 export const requireRole = (...allowedRoles: Role[]) =>

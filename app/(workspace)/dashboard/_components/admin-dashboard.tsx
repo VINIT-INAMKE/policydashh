@@ -6,7 +6,8 @@ import {
   documentVersions,
   feedbackItems,
 } from '@/src/db/schema'
-import { eq, inArray, count, sql } from 'drizzle-orm'
+import { workshopRegistrations } from '@/src/db/schema/workshops'
+import { eq, and, inArray, isNotNull, count, sql } from 'drizzle-orm'
 import { Users, FileText, BookOpen, MessageSquare } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -30,12 +31,18 @@ const ROLE_DISPLAY: Record<string, string> = {
 }
 
 export async function AdminDashboard({ userId }: AdminDashboardProps) {
-  // Named subquery for engagement score computation (D-02)
   const feedbackCounts = db
     .select({ submitterId: feedbackItems.submitterId, cnt: count().as('cnt') })
     .from(feedbackItems)
     .groupBy(feedbackItems.submitterId)
     .as('feedback_counts')
+
+  const attendanceCounts = db
+    .select({ userId: workshopRegistrations.userId, cnt: count().as('cnt') })
+    .from(workshopRegistrations)
+    .where(and(isNotNull(workshopRegistrations.userId), isNotNull(workshopRegistrations.attendedAt)))
+    .groupBy(workshopRegistrations.userId)
+    .as('attendance_counts')
 
   const [
     [totalUsersResult],
@@ -83,11 +90,12 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
         createdAt: users.createdAt,
         lastActivityAt: users.lastActivityAt,
         engagementScore: sql<number>`
-          COALESCE(${feedbackCounts.cnt}, 0)
+          COALESCE(${feedbackCounts.cnt}, 0) + COALESCE(${attendanceCounts.cnt}, 0)
         `.mapWith(Number),
       })
       .from(users)
       .leftJoin(feedbackCounts, eq(users.id, feedbackCounts.submitterId))
+      .leftJoin(attendanceCounts, eq(users.id, attendanceCounts.userId))
       .orderBy(users.createdAt),
   ])
 
