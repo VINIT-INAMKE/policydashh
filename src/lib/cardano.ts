@@ -108,7 +108,7 @@ export async function buildAndSubmitAnchorTx(
   const provider = getProvider()
   const wallet = await getWallet()
 
-  const walletAddress = wallet.getChangeAddress()
+  const walletAddress = await wallet.getChangeAddress()
   const utxos = await wallet.getUtxos()
 
   const txBuilder = new MeshTxBuilder({ fetcher: provider })
@@ -117,10 +117,10 @@ export async function buildAndSubmitAnchorTx(
     .txOut(walletAddress, [{ unit: 'lovelace', quantity: '1500000' }])
     .metadataValue('674', metadata)
     .changeAddress(walletAddress)
-    .selectUtxosFrom(utxos)
+    .selectUtxosFrom(utxos as any)
     .complete()
 
-  const signedTx = wallet.signTx(unsignedTx, false)
+  const signedTx = await wallet.signTx(unsignedTx, false)
   const txHash = await wallet.submitTx(signedTx)
 
   return txHash

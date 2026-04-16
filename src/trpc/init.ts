@@ -48,14 +48,20 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
   return next({
     ctx: {
       ...ctx,
-      userId: ctx.userId,
-      user: ctx.user,
+      userId: ctx.userId as string,
+      user: ctx.user as NonNullable<typeof ctx.user>,
     },
   })
 })
 
 const touchActivity = t.middleware(async ({ ctx, next, type }) => {
-  const result = await next({ ctx })
+  const result = await next({
+    ctx: {
+      ...ctx,
+      userId: ctx.userId as string,
+      user: ctx.user as NonNullable<typeof ctx.user>,
+    },
+  })
   if (type === 'mutation' && ctx.user) {
     db.update(users)
       .set({ lastActivityAt: new Date() })
