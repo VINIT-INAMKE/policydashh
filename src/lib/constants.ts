@@ -85,6 +85,9 @@ export const ACTIONS = {
   MILESTONE_ATTACH_ENTITY:  'milestone.attach_entity',
   MILESTONE_DETACH_ENTITY:  'milestone.detach_entity',
   MILESTONE_MARK_READY:     'milestone.mark_ready',
+  MILESTONE_ANCHOR_START:    'milestone.anchor_start',
+  MILESTONE_ANCHOR_COMPLETE: 'milestone.anchor_complete',
+  MILESTONE_ANCHOR_FAIL:     'milestone.anchor_fail',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]
