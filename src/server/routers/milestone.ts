@@ -534,6 +534,14 @@ export const milestoneRouter = router({
         },
       }).catch(console.error)
 
+      // Phase 23 VERIFY-06: Emit milestone.ready event to trigger Cardano anchor pipeline.
+      // Fire-and-forget — the mutation returns immediately; anchoring runs async via Inngest.
+      sendMilestoneReady({
+        milestoneId: milestone.id,
+        triggeredBy: ctx.user.id,
+        documentId:  milestone.documentId,
+      }).catch(console.error)
+
       return {
         status: 'ready' as const,
         contentHash,
@@ -541,26 +549,26 @@ export const milestoneRouter = router({
       }
     }),
 
-  // ---- retryAnchor (mutation) ----
-  // Phase 23 D-15: re-emit milestone.ready for a milestone stuck in 'anchoring' state.
-  // Safe + idempotent — the Inngest function has concurrency key + Blockfrost metadata
-  // pre-check to prevent double-anchor.
+  // ---- retryAnchor (D-15) — re-emit milestone.ready for stuck anchoring state ----
   retryAnchor: requirePermission('milestone:manage')
     .input(z.object({ milestoneId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const milestone = await loadMilestone(input.milestoneId)
-      if (milestone.status !== 'anchoring') {
+
+      // Only allow retry when stuck in 'anchoring' state
+      if ((milestone.status as MilestoneStatus) !== 'anchoring') {
         throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: `Cannot retry anchor: milestone status is '${milestone.status}', expected 'anchoring'`,
+          code: 'CONFLICT',
+          message: `Cannot retry anchor from state ${milestone.status} (must be anchoring)`,
         })
       }
 
+      // Re-emit the milestone.ready event — milestoneReadyFn is idempotent
+      // (D-08 concurrency lock + VERIFY-08 Blockfrost pre-check + DB UNIQUE)
       await sendMilestoneReady({
         milestoneId: milestone.id,
+        triggeredBy: ctx.user.id,
         documentId:  milestone.documentId,
-        contentHash: milestone.contentHash!,
-        title:       milestone.title,
       })
 
       writeAuditLog({
@@ -569,7 +577,7 @@ export const milestoneRouter = router({
         action:     ACTIONS.MILESTONE_ANCHOR_START,
         entityType: 'milestone',
         entityId:   milestone.id,
-        payload:    { trigger: 'retryAnchor' },
+        payload:    { retried: true },
       }).catch(console.error)
 
       return { status: 'retrying' as const }
