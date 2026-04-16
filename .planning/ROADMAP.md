@@ -275,7 +275,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 21. Public Shell + Consultation Summary + Theme | 5/5 | Complete    | 2026-04-15 |
 | 22. Milestone Entity + SHA256 Hashing | 5/5 | Complete    | 2026-04-16 |
 | 23. Cardano Preview-Net Anchoring | 4/4 | Complete    | 2026-04-16 |
-| 24. Stakeholder Engagement Tracking | 0/0 | v0.2 Planning | - |
+| 24. Stakeholder Engagement Tracking | 0/2 | v0.2 Planned | - |
 | 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
 
 ### Phase 12: Workshop System Fix
@@ -545,7 +545,11 @@ Plans:
   2. Admin dashboard widget lists users with no activity in a configurable window (default 30 days), sortable by last activity and engagement score
   3. Basic engagement score computed from feedback count + workshop attendance count; formula documented in code comment
   4. Stakeholder profile page shows workshop attendance history auto-populated from cal.com `MEETING_ENDED` webhook events
-**Plans:** TBD (run /gsd:plan-phase 24)
+**Plans:** 2 plans
+
+Plans:
+- [ ] 24-01-PLAN.md -- Schema migration (lastActivityAt + backfill), touchActivity tRPC middleware, listUsersWithEngagement + getUserProfile queries
+- [ ] 24-02-PLAN.md -- Admin dashboard inactive users widget (StatCard + sortable table + window dropdown), stakeholder profile page at /users/[id], users list name links
 
 ### Phase 25: Cross-Phase Integration Smoke
 
