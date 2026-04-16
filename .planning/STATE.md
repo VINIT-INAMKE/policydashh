@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Executing Phase 24
-stopped_at: Phase 25 context gathered
-last_updated: "2026-04-16T16:09:05.787Z"
+status: Ready to execute
+stopped_at: Completed 25-00-PLAN.md
+last_updated: "2026-04-16T17:52:26.347Z"
 progress:
   total_phases: 26
   completed_phases: 25
-  total_plans: 90
-  completed_plans: 90
+  total_plans: 92
+  completed_plans: 91
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 24 — stakeholder-engagement-tracking-lite
+**Current focus:** Phase 25 — cross-phase-integration-smoke
 
 ## Current Position
 
-Phase: 24 (stakeholder-engagement-tracking-lite) — EXECUTING
-Plan: 1 of 3
+Phase: 25 (cross-phase-integration-smoke) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -126,6 +126,7 @@ Plan: 1 of 3
 | Phase 24-stakeholder-engagement-tracking-lite P01 | 5min | 2 tasks | 4 files |
 | Phase 24-stakeholder-engagement-tracking-lite P02 | 16min | 2 tasks | 4 files |
 | Phase 24 P02 | 16min | 2 tasks | 4 files |
+| Phase 25-cross-phase-integration-smoke P00 | 14min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -332,6 +333,7 @@ Recent decisions affecting current work:
 - [Phase 24-stakeholder-engagement-tracking-lite]: Workshop attendance card shows empty state always (workshopRegistrations table pending)
 - [Phase 24]: Engagement score query duplicated in admin-dashboard server component (not via tRPC) to keep server component pattern consistent
 - [Phase 24]: Workshop attendance stubbed as empty array since workshopRegistrations table does not exist in schema
+- [Phase 25-cross-phase-integration-smoke]: Used NonNullable<typeof ctx.user> type assertion in tRPC middlewares instead of ! for proper type propagation through middleware chain
 
 ### Pending Todos
 
@@ -350,6 +352,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-16T16:09:05.772Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-cross-phase-integration-smoke/25-CONTEXT.md
+Last session: 2026-04-16T17:52:26.331Z
+Stopped at: Completed 25-00-PLAN.md
+Resume file: None

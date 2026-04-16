@@ -276,7 +276,7 @@ Note: Phases 9, 10, and 11 have partial independence. Phase 9 (Public Portal) de
 | 22. Milestone Entity + SHA256 Hashing | 5/5 | Complete    | 2026-04-16 |
 | 23. Cardano Preview-Net Anchoring | 4/4 | Complete    | 2026-04-16 |
 | 24. Stakeholder Engagement Tracking | 3/3 | Complete   | 2026-04-16 |
-| 25. Cross-Phase Integration Smoke | 0/0 | v0.2 Planning | - |
+| 25. Cross-Phase Integration Smoke | 1/2 | In Progress|  |
 
 ### Phase 12: Workshop System Fix
 
@@ -567,8 +567,8 @@ Plans:
   7. Admin merges CR → new document version published → `version.published` event triggers per-version Cardano anchor → `consultationSummaryGenerate` fires → moderator reviews LLM summary → marks approved
   8. Admin marks milestone ready → milestone hash computed → Cardano tx submitted → confirmed → Verified State badge visible on `/portal` with Cardanoscan preview-net link
   9. Integration smoke report written to `.planning/v0.2-INTEGRATION-SMOKE.md` documenting any gaps, flaky steps, or regressions
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 25-00-PLAN.md -- Wave 0: Fix TypeScript errors (185 TS18049 + 3 TS2307), fix 6 failing tests (touchActivity db.update mock), add WORKSHOP_FEEDBACK_JWT_SECRET to .env.example
+- [x] 25-00-PLAN.md -- Wave 0: Fix TypeScript errors (185 TS18049 + 3 TS2307), fix 6 failing tests (touchActivity db.update mock), add WORKSHOP_FEEDBACK_JWT_SECRET to .env.example
 - [ ] 25-01-PLAN.md -- Integration walk: create smoke report template, execute 9-criterion walk (checkpoint), update 4 deferred UAT files to resolved-by-phase-25

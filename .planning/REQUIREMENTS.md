@@ -225,7 +225,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 
 ### Cross-Phase Integration
 
-- [ ] **INTEGRATION-01**: End-to-end smoke test walks the full chain: `/participate` submit → Clerk invite → workshop register → 48h + 2h reminders fire → `MEETING_ENDED` webhook → workshop completed + attendance populated → moderator nudge → feedback submit → feedback.decide → notification Inngest → CR → merge → version published → per-version Cardano anchor → milestone ready → milestone hash → milestone Cardano anchor → Verified State badge visible on public portal
+- [x] **INTEGRATION-01**: End-to-end smoke test walks the full chain: `/participate` submit → Clerk invite → workshop register → 48h + 2h reminders fire → `MEETING_ENDED` webhook → workshop completed + attendance populated → moderator nudge → feedback submit → feedback.decide → notification Inngest → CR → merge → version published → per-version Cardano anchor → milestone ready → milestone hash → milestone Cardano anchor → Verified State badge visible on public portal
 
 ## v2 Requirements
 
@@ -415,7 +415,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | UX-09 | Phase 24 | Complete |
 | UX-10 | Phase 24 | Complete |
 | UX-11 | Phase 24 | Complete |
-| INTEGRATION-01 | Phase 25 | Pending |
+| INTEGRATION-01 | Phase 25 | Complete |
 
 **Coverage:**
 - v1 requirements: 87 total — 87 mapped, 87 complete
