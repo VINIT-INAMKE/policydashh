@@ -18,7 +18,7 @@ vi.mock('next/link', () => ({
 }))
 
 // Import the component AFTER mocks are declared
-import { PolicyTabBar } from '@/app/(workspace)/policies/[id]/_components/policy-tab-bar'
+import { PolicyTabBar } from '@/app/policies/[id]/_components/policy-tab-bar'
 
 const POLICY_ID = '11111111-1111-1111-1111-111111111111'
 

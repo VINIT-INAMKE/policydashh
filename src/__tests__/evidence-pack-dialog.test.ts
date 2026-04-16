@@ -63,7 +63,7 @@ beforeAll(async () => {
   // this path, but its current source body fails the assertions (it uses
   // fetch() + a download link rather than the trpc mutation + queued state).
   // The import resolves fine; the assertions go RED.
-  const path = ['@', 'app', '(workspace)', 'audit', '_components', 'evidence-pack-dialog'].join('/')
+  const path = ['@', 'app', 'audit', '_components', 'evidence-pack-dialog'].join('/')
   try {
     const mod = await import(/* @vite-ignore */ path)
     EvidencePackDialog = mod.EvidencePackDialog

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatCard } from './stat-card'
 import { formatDistanceToNow } from 'date-fns'
-import { EvidencePackDialog } from '@/app/(workspace)/audit/_components/evidence-pack-dialog'
+import { EvidencePackDialog } from '@/app/audit/_components/evidence-pack-dialog'
 
 interface AuditorDashboardProps {
   userId: string

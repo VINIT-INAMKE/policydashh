@@ -6,15 +6,25 @@ import { MessageSquare } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { StatusBadge, type FeedbackStatus } from '@/app/(workspace)/policies/[id]/feedback/_components/status-badge'
+import {
+  StatusBadge,
+  type FeedbackStatus,
+} from '@/app/policies/[id]/feedback/_components/status-badge'
 
-export function OutcomesList() {
+/**
+ * My Outcomes tab - caller's own feedback submissions with inline decision log.
+ *
+ * Role gating happens at the parent GlobalFeedbackTabs level; this component
+ * assumes the viewer is allowed to see their own outcomes.
+ *
+ * Uses trpc.feedback.listOwn which is caller-scoped by design.
+ */
+export function MyOutcomesTab() {
   const feedbackQuery = trpc.feedback.listOwn.useQuery()
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const items = feedbackQuery.data ?? []
 
-  // Summary stats
   const stats = useMemo(() => {
     const total = items.length
     const accepted = items.filter(
@@ -28,7 +38,7 @@ export function OutcomesList() {
 
   if (feedbackQuery.isLoading) {
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 pt-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
@@ -44,14 +54,15 @@ export function OutcomesList() {
           No feedback submitted yet
         </h2>
         <p className="mt-2 max-w-md text-center text-sm text-muted-foreground">
-          Submit feedback on the sections you&apos;re assigned to. Your submissions and their outcomes will appear here.
+          Submit feedback on the sections you&apos;re assigned to. Your
+          submissions and their outcomes will appear here.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 pt-4">
       {/* Summary stats row */}
       <div className="flex gap-6">
         <div className="flex flex-col">
@@ -92,13 +103,11 @@ export function OutcomesList() {
 
           return (
             <div key={item.id}>
-              {/* Item row */}
               <button
                 type="button"
                 className="flex w-full items-center gap-3 rounded-t-md px-3 py-2 text-left transition-colors hover:bg-muted/50"
                 onClick={() => setExpandedId(isExpanded ? null : item.id)}
               >
-                {/* FB-NNN */}
                 <Badge
                   variant="secondary"
                   className="shrink-0 border-transparent font-mono text-[12px]"
@@ -107,21 +116,20 @@ export function OutcomesList() {
                   {item.readableId}
                 </Badge>
 
-                {/* Title + section */}
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-[14px] font-normal">
                     {item.title}
                   </span>
                   <span className="text-[12px] font-normal text-muted-foreground">
-                    {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(item.createdAt), {
+                      addSuffix: true,
+                    })}
                   </span>
                 </div>
 
-                {/* Status badge */}
                 <StatusBadge status={item.status as FeedbackStatus} />
               </button>
 
-              {/* Inline decision log (accordion) */}
               {isExpanded && (
                 <div className="rounded-b-md bg-muted px-4 py-3">
                   {hasDecision ? (

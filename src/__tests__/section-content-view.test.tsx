@@ -24,7 +24,7 @@ vi.mock('next/dynamic', () => ({
 
 // SectionAssignments has its own trpc dependencies -- stub it.
 vi.mock(
-  '@/app/(workspace)/policies/[id]/_components/section-assignments',
+  '@/app/policies/[id]/_components/section-assignments',
   () => ({
     SectionAssignments: () =>
       React.createElement('div', { 'data-testid': 'section-assignments-stub' }),
@@ -44,7 +44,7 @@ vi.mock('@/src/trpc/client', () => ({
 }))
 
 // Import under test AFTER mocks.
-import { SectionContentView } from '@/app/(workspace)/policies/[id]/_components/section-content-view'
+import { SectionContentView } from '@/app/policies/[id]/_components/section-content-view'
 
 const baseSection = {
   id: 'sec-1',

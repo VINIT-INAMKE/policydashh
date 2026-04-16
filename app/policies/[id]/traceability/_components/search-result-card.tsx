@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
-import { StatusBadge, type FeedbackStatus } from '@/app/(workspace)/policies/[id]/feedback/_components/status-badge'
-import { CRStatusBadge, type CRStatus } from '@/app/(workspace)/policies/[id]/change-requests/_components/cr-status-badge'
+import { StatusBadge, type FeedbackStatus } from '@/app/policies/[id]/feedback/_components/status-badge'
+import { CRStatusBadge, type CRStatus } from '@/app/policies/[id]/change-requests/_components/cr-status-badge'
 
 // ---------------------------------------------------------------------------
 // Types - mirror tRPC router outputs

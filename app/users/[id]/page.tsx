@@ -40,7 +40,7 @@ export default async function UserProfilePage({
 }) {
   const { id } = await params
 
-  // Admin guard -- mirrors app/(workspace)/users/page.tsx
+  // Admin guard -- mirrors app/users/page.tsx
   const { userId } = await auth()
   if (!userId) redirect('/dashboard')
 

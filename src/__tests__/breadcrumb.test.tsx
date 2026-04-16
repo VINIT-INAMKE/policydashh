@@ -46,7 +46,7 @@ function setWorkshopQuery(q: QueryResult) {
 }
 
 // Import the component AFTER mocks are declared
-import { Breadcrumb } from '@/app/(workspace)/_components/breadcrumb'
+import { Breadcrumb } from '@/app/_components/breadcrumb'
 
 const POLICY_UUID = '11111111-1111-1111-1111-111111111111'
 const WORKSHOP_UUID = '22222222-2222-2222-2222-222222222222'

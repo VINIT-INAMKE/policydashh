@@ -14,7 +14,7 @@ vi.mock('next/link', () => ({
 }))
 
 // Import AFTER mocks
-import { WorkspaceNav } from '@/app/(workspace)/_components/workspace-nav'
+import { WorkspaceNav } from '@/app/_components/workspace-nav'
 
 beforeEach(() => {
   cleanup()

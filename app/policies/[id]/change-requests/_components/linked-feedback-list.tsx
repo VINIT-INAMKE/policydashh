@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ExternalLink } from 'lucide-react'
-import { StatusBadge, type FeedbackStatus } from '@/app/(workspace)/policies/[id]/feedback/_components/status-badge'
+import { StatusBadge, type FeedbackStatus } from '@/app/policies/[id]/feedback/_components/status-badge'
 
 interface LinkedFeedbackItem {
   id: string
