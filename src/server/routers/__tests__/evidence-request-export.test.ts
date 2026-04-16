@@ -77,6 +77,13 @@ vi.mock('@/src/db', () => ({
         returning: vi.fn().mockResolvedValue([{ id: 'mock' }]),
       }),
     }),
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          catch: vi.fn(),
+        }),
+      }),
+    }),
   },
 }))
 

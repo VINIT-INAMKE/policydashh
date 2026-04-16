@@ -17,7 +17,16 @@ import { describe, it, expect, vi, beforeAll } from 'vitest'
  */
 
 const { dbMock, writeAuditLogMock } = vi.hoisted(() => ({
-  dbMock: { update: vi.fn() },
+  dbMock: {
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'doc-1', isPublicDraft: true }]),
+          catch: vi.fn(),
+        }),
+      }),
+    }),
+  },
   writeAuditLogMock: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@/src/db', () => ({ db: dbMock }))
@@ -42,6 +51,7 @@ describe('document.setPublicDraft — PUB-07 mutation contract', () => {
           returning: vi
             .fn()
             .mockResolvedValue([{ id: 'doc-1', isPublicDraft: true }]),
+          catch: vi.fn(),
         }),
       }),
     })
