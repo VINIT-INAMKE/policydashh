@@ -117,6 +117,7 @@ export const feedbackRouter = router({
           reviewedAt: feedbackItems.reviewedAt,
           createdAt: feedbackItems.createdAt,
           updatedAt: feedbackItems.updatedAt,
+          milestoneId: feedbackItems.milestoneId,
           submitterName: users.name,
           submitterOrgType: users.orgType,
         })

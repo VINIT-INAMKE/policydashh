@@ -34,6 +34,7 @@ export const versionRouter = router({
           createdAt: documentVersions.createdAt,
           publishedAt: documentVersions.publishedAt,
           isPublished: documentVersions.isPublished,
+          milestoneId: documentVersions.milestoneId,
           creatorName: users.name,
         })
         .from(documentVersions)

@@ -32,22 +32,24 @@ beforeEach(() => {
 })
 
 describe('PolicyTabBar', () => {
-  it('renders all 5 tabs in order when admin (canViewCR + canViewTrace = true)', () => {
+  it('renders all 6 tabs in order when admin (canViewCR + canViewTrace + canViewMilestones = true)', () => {
     setPathname(`/policies/${POLICY_ID}`)
     render(
       <PolicyTabBar
         documentId={POLICY_ID}
         canViewCR={true}
         canViewTrace={true}
+        canViewMilestones={true}
       />
     )
     const links = screen.getAllByRole('link')
-    expect(links.length).toBe(5)
+    expect(links.length).toBe(6)
     expect(links[0].textContent).toBe('Content')
     expect(links[1].textContent).toBe('Feedback')
     expect(links[2].textContent).toBe('Change Requests')
     expect(links[3].textContent).toBe('Versions')
-    expect(links[4].textContent).toBe('Traceability')
+    expect(links[4].textContent).toBe('Milestones')
+    expect(links[5].textContent).toBe('Traceability')
   })
 
   it('hides Change Requests and Traceability for stakeholder (canViewCR=false, canViewTrace=false)', () => {
@@ -57,6 +59,7 @@ describe('PolicyTabBar', () => {
         documentId={POLICY_ID}
         canViewCR={false}
         canViewTrace={false}
+        canViewMilestones={false}
       />
     )
     const links = screen.getAllByRole('link')
@@ -75,6 +78,7 @@ describe('PolicyTabBar', () => {
         documentId={POLICY_ID}
         canViewCR={true}
         canViewTrace={true}
+        canViewMilestones={true}
       />
     )
     const contentLink = screen.getByRole('link', { name: 'Content' })
@@ -91,6 +95,7 @@ describe('PolicyTabBar', () => {
         documentId={POLICY_ID}
         canViewCR={true}
         canViewTrace={true}
+        canViewMilestones={true}
       />
     )
     const feedbackLink = screen.getByRole('link', { name: 'Feedback' })
@@ -106,6 +111,7 @@ describe('PolicyTabBar', () => {
         documentId={POLICY_ID}
         canViewCR={true}
         canViewTrace={true}
+        canViewMilestones={true}
       />
     )
     const crLink = screen.getByRole('link', { name: 'Change Requests' })

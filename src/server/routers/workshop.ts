@@ -109,6 +109,7 @@ export const workshopRouter = router({
           createdBy: workshops.createdBy,
           createdAt: workshops.createdAt,
           updatedAt: workshops.updatedAt,
+          milestoneId: workshops.milestoneId,
           creatorName: users.name,
         })
         .from(workshops)
