@@ -21,6 +21,7 @@ import {
   sendWorkshopRecordingUploaded,
   sendWorkshopCreated,
 } from '@/src/inngest/events'
+import { updateCalEventTypeSeats } from '@/src/lib/calcom'
 import { eq, gte, lt, desc, and, count } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
@@ -81,6 +82,39 @@ export const workshopRouter = router({
       }).catch(console.error)
 
       return workshop
+    }),
+
+  // One-shot repair for workshops whose cal.com event type was provisioned
+  // before seats config was added. Patches seatsPerTimeSlot to maxSeats
+  // (or 100 when uncapped) so multiple attendees can book the same slot.
+  reprovisionCalSeats: requirePermission('workshop:manage')
+    .input(z.object({ workshopId: z.string().uuid() }))
+    .mutation(async ({ input }) => {
+      const [workshop] = await db
+        .select({
+          id: workshops.id,
+          calcomEventTypeId: workshops.calcomEventTypeId,
+          maxSeats: workshops.maxSeats,
+        })
+        .from(workshops)
+        .where(eq(workshops.id, input.workshopId))
+        .limit(1)
+
+      if (!workshop) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Workshop not found' })
+      }
+      if (!workshop.calcomEventTypeId || !/^\d+$/.test(workshop.calcomEventTypeId)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Workshop has no numeric cal.com event type id',
+        })
+      }
+
+      await updateCalEventTypeSeats(
+        parseInt(workshop.calcomEventTypeId, 10),
+        workshop.maxSeats ?? 100,
+      )
+      return { ok: true, seatsPerTimeSlot: workshop.maxSeats ?? 100 }
     }),
 
   // List workshops with upcoming/past/all filter

@@ -43,6 +43,12 @@ export interface CalEventTypeInput {
   slug: string
   /** Meeting length in minutes. Must be a positive integer. */
   durationMinutes: number
+  /**
+   * Seats per time slot - workshops are multi-attendee broadcasts, so this
+   * must be > 1. Without it cal.com rejects the 2nd booking with "User
+   * already has booking at this time". Defaults to 100 when not provided.
+   */
+  seatsPerTimeSlot?: number
 }
 
 export interface CalEventTypeCreateResult {
@@ -95,6 +101,14 @@ export async function createCalEventType(
         length:          input.durationMinutes,
         // D-02: Cal Video as the default meeting location.
         locations: [{ type: 'integration', integration: 'cal-video' }],
+        // Workshops are multi-attendee. Without seats, cal.com treats the
+        // event type as 1-on-1 and rejects every booking after the first on
+        // the same slot. See commit adding this for context.
+        seats: {
+          seatsPerTimeSlot: input.seatsPerTimeSlot ?? 100,
+          showAttendeeInfo: false,
+          showAvailabilityCount: true,
+        },
       }),
     })
   } catch (err) {
@@ -131,6 +145,53 @@ export async function createCalEventType(
   }
 
   return { id }
+}
+
+/**
+ * Patch an existing cal.com event type to enable multi-attendee seats.
+ *
+ * Use when a workshop's event type was provisioned before the seats config
+ * was added to createCalEventType. Without this, only the first attendee
+ * can book; subsequent bookings fail with "User already has booking at this
+ * time or is not available" (400).
+ */
+export async function updateCalEventTypeSeats(
+  eventTypeId: number,
+  seatsPerTimeSlot: number,
+): Promise<void> {
+  const apiKey = process.env.CAL_API_KEY
+  if (!apiKey) {
+    throw new CalApiError(400, 'CAL_API_KEY not set')
+  }
+
+  let res: Response
+  try {
+    res = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization':    `Bearer ${apiKey}`,
+        'Content-Type':     'application/json',
+        'cal-api-version':  '2024-06-14',
+      },
+      body: JSON.stringify({
+        seats: {
+          seatsPerTimeSlot,
+          showAttendeeInfo: false,
+          showAvailabilityCount: true,
+        },
+      }),
+    })
+  } catch (err) {
+    throw new CalApiError(
+      500,
+      `cal.com PATCH network failure: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '<no body>')
+    throw new CalApiError(res.status, `cal.com PATCH ${res.status}: ${text}`)
+  }
 }
 
 export interface CalBookingInput {

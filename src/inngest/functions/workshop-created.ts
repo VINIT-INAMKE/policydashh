@@ -87,6 +87,9 @@ export const workshopCreatedFn = inngest.createFunction(
           title:           workshop.title,
           slug,
           durationMinutes: workshop.durationMinutes ?? 60,
+          // Workshops are multi-attendee broadcasts. Honor the admin-specified
+          // maxSeats, fallback to 100 for uncapped workshops.
+          seatsPerTimeSlot: workshop.maxSeats ?? 100,
         })
         return result.id
       } catch (err) {
