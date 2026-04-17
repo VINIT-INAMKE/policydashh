@@ -64,7 +64,16 @@ export const workshopFeedbackInviteFn = inngest.createFunction(
       if (!row) return null
       return {
         title: row.title,
-        scheduledAt: row.scheduledAt.toISOString(),
+        scheduledAt: row.scheduledAt.toLocaleString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'Asia/Kolkata',
+          timeZoneName: 'short',
+        }),
       }
     })
 
