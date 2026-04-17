@@ -1,5 +1,4 @@
 import { Resend } from 'resend'
-import { renderWelcomeEmail } from './email-templates/welcome-email'
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -139,66 +138,6 @@ export async function sendEvidencePackReadyEmail(
     to,
     subject,
     text,
-  })
-}
-
-/**
- * Send the Phase 19 welcome email to a /participate submitter.
- * Fire-and-forget-safe: silently no-ops if Resend unconfigured or recipient null.
- * Rendered HTML from renderWelcomeEmail - one of 6 org-bucket variants.
- *
- * Called from src/inngest/functions/participate-intake.ts in a step.run block.
- */
-export async function sendWelcomeEmail(
-  to: string | null | undefined,
-  data: { name: string; orgType: string; email: string },
-): Promise<void> {
-  if (!resend || !to) return
-
-  const html = await renderWelcomeEmail({
-    name: data.name,
-    email: data.email,
-    orgType: data.orgType,
-  })
-  const firstName = data.name.split(' ')[0] ?? data.name
-
-  await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: `Welcome to the consultation, ${firstName}`,
-    html,
-  })
-}
-
-/**
- * Send a workshop registration confirmation email (Phase 20 D-11).
- *
- * Called from workshopRegistrationReceivedFn (Plan 20-04) in a step.run
- * block after Clerk invite. Same silent-no-op semantics as the rest of the
- * helpers in this file. JSX template is dynamically imported so
- * `vi.mock('@/src/lib/email')` in Inngest fn tests does not need to
- * transform the .tsx file (Pitfall 8 - Phase 16/17/18/19 parity).
- */
-export async function sendWorkshopRegistrationEmail(
-  to: string | null | undefined,
-  data: { name?: string | null; workshopTitle: string; scheduledAt: string },
-): Promise<void> {
-  if (!resend || !to) return
-
-  const { renderWorkshopRegistrationEmail } = await import(
-    './email-templates/workshop-registration'
-  )
-  const html = await renderWorkshopRegistrationEmail({
-    name: data.name ?? null,
-    workshopTitle: data.workshopTitle,
-    scheduledAt: data.scheduledAt,
-  })
-
-  await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: `You\u2019re registered for ${data.workshopTitle}`,
-    html,
   })
 }
 
