@@ -57,10 +57,12 @@ export function WorkshopCard({
   workshop,
   variant,
   currentUser,
+  alreadyRegistered,
 }: {
   workshop: WorkshopCardData
   variant: WorkshopCardVariant
   currentUser?: { name: string | null; email: string | null } | null
+  alreadyRegistered?: boolean
 }) {
   const formattedDate = formatWorkshopDate(workshop.scheduledAt)
 
@@ -142,13 +144,24 @@ export function WorkshopCard({
       </CardContent>
 
       <CardFooter>
-        <RegisterForm
-          workshopId={workshop.id}
-          workshopTitle={workshop.title}
-          disabled={disabled}
-          prefillName={currentUser?.name}
-          prefillEmail={currentUser?.email}
-        />
+        {alreadyRegistered ? (
+          <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="text-sm font-medium text-emerald-800">
+              You&apos;re registered
+            </p>
+          </div>
+        ) : (
+          <RegisterForm
+            workshopId={workshop.id}
+            workshopTitle={workshop.title}
+            disabled={disabled}
+            prefillName={currentUser?.name}
+            prefillEmail={currentUser?.email}
+          />
+        )}
       </CardFooter>
     </Card>
   )

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { sendWorkshopRegistrationReceived } from '@/src/inngest/events'
 import { createCalBooking, CalApiError } from '@/src/lib/calcom'
 
@@ -40,6 +40,25 @@ export async function POST(req: Request): Promise<Response> {
   const cleanEmail = email.toLowerCase().trim()
   const cleanName = name?.trim() || ''
   const emailHash = emailHashOf(cleanEmail)
+
+  // Check if already registered for this workshop
+  const [existing] = await db
+    .select({ id: workshopRegistrations.id, status: workshopRegistrations.status })
+    .from(workshopRegistrations)
+    .where(
+      and(
+        eq(workshopRegistrations.workshopId, workshopId),
+        eq(workshopRegistrations.emailHash, emailHash),
+      ),
+    )
+    .limit(1)
+
+  if (existing && existing.status === 'registered') {
+    return Response.json(
+      { error: 'You are already registered for this workshop.' },
+      { status: 409 },
+    )
+  }
 
   try {
     let bookingUid = `direct:${workshopId}:${emailHash}`

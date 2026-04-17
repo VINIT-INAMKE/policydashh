@@ -16,12 +16,14 @@
  * still uses force-dynamic because we want every request to re-run the
  * sectioning filter against `now()` - the cache sits at the query level.
  */
+import { createHash } from 'node:crypto'
 import type { Metadata } from 'next'
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { auth } from '@clerk/nextjs/server'
 import { CalendarX } from 'lucide-react'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
+import { workshopRegistrations } from '@/src/db/schema/workshops'
 import { listPublicWorkshops } from '@/src/server/queries/workshops-public'
 import { WorkshopCard } from './_components/workshop-card'
 
@@ -40,15 +42,36 @@ export default async function WorkshopsPage() {
   const all = await listPublicWorkshops()
   const now = Date.now()
 
-  // Pre-fill registration for logged-in users
+  // Pre-fill registration for logged-in users + track which workshops they're registered for
   const { userId } = await auth()
   let currentUser: { name: string | null; email: string | null } | null = null
+  const registeredWorkshopIds = new Set<string>()
   if (userId) {
     const user = await db.query.users.findFirst({
       where: eq(users.clerkId, userId),
       columns: { name: true, email: true },
     })
     currentUser = user ?? null
+
+    if (user?.email) {
+      const emailHash = createHash('sha256')
+        .update(user.email.toLowerCase().trim())
+        .digest('hex')
+      const workshopIds = all.map((w) => w.id)
+      if (workshopIds.length > 0) {
+        const regs = await db
+          .select({ workshopId: workshopRegistrations.workshopId })
+          .from(workshopRegistrations)
+          .where(
+            and(
+              eq(workshopRegistrations.emailHash, emailHash),
+              eq(workshopRegistrations.status, 'registered'),
+              inArray(workshopRegistrations.workshopId, workshopIds),
+            ),
+          )
+        regs.forEach((r) => registeredWorkshopIds.add(r.workshopId))
+      }
+    }
   }
 
   const upcoming = all.filter(
@@ -95,7 +118,7 @@ export default async function WorkshopsPage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {upcoming.map((w) => (
-                    <WorkshopCard key={w.id} workshop={w} variant="upcoming" currentUser={currentUser} />
+                    <WorkshopCard key={w.id} workshop={w} variant="upcoming" currentUser={currentUser} alreadyRegistered={registeredWorkshopIds.has(w.id)} />
                   ))}
                 </div>
               </section>
@@ -108,7 +131,7 @@ export default async function WorkshopsPage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {live.map((w) => (
-                    <WorkshopCard key={w.id} workshop={w} variant="live" currentUser={currentUser} />
+                    <WorkshopCard key={w.id} workshop={w} variant="live" currentUser={currentUser} alreadyRegistered={registeredWorkshopIds.has(w.id)} />
                   ))}
                 </div>
               </section>
