@@ -138,6 +138,7 @@ export interface CalBookingInput {
   name: string
   email: string
   startTime: string
+  timeZone?: string
 }
 
 export interface CalBookingResult {
@@ -159,16 +160,22 @@ export async function createCalBooking(
       headers: {
         'Authorization':    `Bearer ${apiKey}`,
         'Content-Type':     'application/json',
-        'cal-api-version':  '2024-06-14',
+        // Bookings endpoint requires the 2024-08-13 API version; the older
+        // 2024-06-14 header triggers a legacy DTO that rejects the attendee
+        // shape and surfaces misleading "timeZone/language/metadata must be..."
+        // validation errors. Do not downgrade.
+        'cal-api-version':  '2024-08-13',
       },
       body: JSON.stringify({
-        eventTypeId: input.eventTypeId,
         start: input.startTime,
+        eventTypeId: input.eventTypeId,
         attendee: {
           name: input.name || 'Guest',
           email: input.email,
-          timeZone: 'UTC',
+          timeZone: input.timeZone || 'Asia/Kolkata',
+          language: 'en',
         },
+        metadata: {},
       }),
     })
   } catch (err) {

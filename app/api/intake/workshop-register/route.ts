@@ -63,26 +63,29 @@ export async function POST(req: Request): Promise<Response> {
   try {
     let bookingUid = `direct:${workshopId}:${emailHash}`
 
-    // Create cal.com booking server-side so the attendee gets a calendar invite
+    // Cal.com booking is best-effort. Only attempt it when the stored
+    // calcomEventTypeId is a pure numeric string — older workshops (created
+    // before commit 569d3e5) stored a slug, which parseInt turns into NaN → 0
+    // and cal.com rejects with a confusing class-validator error.
     const calEventTypeId = workshop.calcomEventTypeId
-    if (calEventTypeId && process.env.CAL_API_KEY) {
-      // calcomEventTypeId stores "username/slug" — extract the numeric ID
-      // by calling cal.com, or use the slug to book. Cal.com v2 bookings
-      // API needs the numeric eventTypeId. We stored it during provisioning
-      // but now store the slug. Fall back to direct registration if booking fails.
+    const numericEventTypeId =
+      calEventTypeId && /^\d+$/.test(calEventTypeId) ? parseInt(calEventTypeId, 10) : null
+
+    if (numericEventTypeId !== null && process.env.CAL_API_KEY) {
       try {
         const result = await createCalBooking({
-          eventTypeId: parseInt(calEventTypeId, 10) || 0,
+          eventTypeId: numericEventTypeId,
           name: cleanName || 'Guest',
           email: cleanEmail,
           startTime: workshop.scheduledAt.toISOString(),
+          timeZone: 'Asia/Kolkata',
         })
         bookingUid = result.uid
       } catch (err) {
-        // Cal.com booking failed — still register directly. The user won't
-        // get a calendar invite but will get the confirmation email.
         console.error('[workshop-register] cal.com booking failed, falling back to direct:', err)
       }
+    } else if (calEventTypeId) {
+      console.warn('[workshop-register] skipping cal.com — non-numeric eventTypeId stored:', calEventTypeId)
     }
 
     await db
@@ -106,6 +109,7 @@ export async function POST(req: Request): Promise<Response> {
       bookingUid,
       source: 'direct_register',
     })
+    console.log('[workshop-register] sent inngest event workshop.registration.received', { workshopId, emailHash: emailHash.slice(0, 8) })
   } catch (err) {
     console.error('[workshop-register] error:', err)
     return Response.json({ error: 'Registration failed' }, { status: 500 })
