@@ -106,20 +106,20 @@ export const workshopCreatedFn = inngest.createFunction(
       }
     })
 
-    // Step 3: backfill the workshop row with the full cal link slug
-    // (username/event-slug) so the public embed can render directly.
-    const slug = `workshop-${workshop.id}`
+    // Step 3: backfill the workshop row with the numeric cal.com event type ID.
+    // The slug (for embed calLink) is computed at render time as
+    // ${CAL_USERNAME}/workshop-${workshop.id} - deterministic and matches
+    // what was created in step 2.
     await step.run('backfill-calcom-event-type-id', async () => {
-      const calUsername = process.env.CAL_USERNAME || 'vinit-inamke'
       await db
         .update(workshops)
         .set({
-          calcomEventTypeId: `${calUsername}/${slug}`,
+          calcomEventTypeId: String(eventTypeId),
           updatedAt:         new Date(),
         })
         .where(eq(workshops.id, workshopId))
     })
 
-    return { workshopId, eventTypeId, slug, ok: true as const }
+    return { workshopId, eventTypeId, ok: true as const }
   },
 )
