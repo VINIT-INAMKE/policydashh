@@ -8,7 +8,11 @@ import {
 import { db } from '@/src/db'
 import { notifications } from '@/src/db/schema/notifications'
 import { users } from '@/src/db/schema/users'
-import { sendFeedbackReviewedEmail } from '@/src/lib/email'
+import {
+  sendFeedbackReviewedEmail,
+  sendVersionPublishedEmail,
+  sendSectionAssignedEmail,
+} from '@/src/lib/email'
 
 /**
  * notification-dispatch - off-critical-path notification + email dispatcher.
@@ -27,16 +31,11 @@ import { sendFeedbackReviewedEmail } from '@/src/lib/email'
  *
  * Phase 16 email scope (per RESEARCH §3.2 Open Question 2):
  *
- *   - `feedback_status_changed`, `version_published`, `section_assigned`
- *     route through `sendFeedbackReviewedEmail` with the notification's
- *     title and body mapped into its structured fields. This is a deliberate
- *     Phase 16 shortcut - the helper wraps Resend, respects the existing
- *     silent no-op when RESEND_API_KEY or `to` is null, and covers the test
- *     contract (notification-dispatch.test.ts) without forcing new per-type
- *     email templates into this phase. Per-type templates are deferred.
+ *   - `feedback_status_changed` routes through `sendFeedbackReviewedEmail`.
+ *   - `version_published` routes through `sendVersionPublishedEmail`.
+ *   - `section_assigned` routes through `sendSectionAssignedEmail`.
  *   - `cr_status_changed` is in-app only; the send-email step is skipped
- *     unconditionally - no CR-status email template exists and none is in
- *     scope for Phase 16.
+ *     unconditionally - no CR-status email template exists.
  *
  * Flow 5's own `feedback.reviewed` path continues to use `feedbackReviewedFn`
  * (which has a properly structured email payload built from `buildFeedback
@@ -113,24 +112,33 @@ export const notificationDispatchFn = inngest.createFunction(
       return row.email ?? null
     })
 
-    // Step 3: send the email, conditionally.
-    //
-    // Skip entirely (no step.run call at all) when:
-    //   - the user has no email address (phone-only), OR
-    //   - the notification type is cr_status_changed (in-app only).
-    //
-    // When an email IS sent, route through `sendFeedbackReviewedEmail` which
-    // silently no-ops if RESEND_API_KEY is unset. The helper's required
-    // shape (`{ feedbackReadableId, decision, rationale }`) is synthesized
-    // from the notification's own `title` and `body`. This is a Phase 16
-    // shortcut - see the file-level JSDoc for the full rationale.
+    // Step 3: send the email via the type-appropriate helper. Skip when the
+    // user has no email address or the type is in-app only. Each helper
+    // silently no-ops if RESEND_API_KEY is unset.
     if (recipientEmail && !SKIP_EMAIL_TYPES.has(data.type)) {
       await step.run('send-email', async () => {
-        await sendFeedbackReviewedEmail(recipientEmail, {
-          feedbackReadableId: data.title,
-          decision:           data.type,
-          rationale:          data.body ?? '',
-        })
+        switch (data.type) {
+          case 'version_published':
+            await sendVersionPublishedEmail(recipientEmail, {
+              policyName:   data.title,
+              versionLabel: data.body ?? '',
+            })
+            break
+          case 'section_assigned':
+            await sendSectionAssignedEmail(recipientEmail, {
+              sectionName: data.title,
+              policyName:  data.body ?? '',
+            })
+            break
+          case 'feedback_status_changed':
+          default:
+            await sendFeedbackReviewedEmail(recipientEmail, {
+              feedbackReadableId: data.title,
+              decision:           data.type,
+              rationale:          data.body ?? '',
+            })
+            break
+        }
       })
     }
 

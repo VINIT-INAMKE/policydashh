@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, GitBranch } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
@@ -13,9 +13,11 @@ import { CreateVersionDialog } from './_components/create-version-dialog'
 export default function VersionHistoryPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const documentId = params.id
+  const requestedVersionId = searchParams.get('v')
 
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(requestedVersionId)
   const [createOpen, setCreateOpen] = useState(false)
 
   const meQuery = trpc.user.getMe.useQuery()
@@ -24,12 +26,15 @@ export default function VersionHistoryPage() {
 
   const versionsQuery = trpc.version.list.useQuery({ documentId })
 
-  // Auto-select latest version on initial load
+  // Honor `?v=` from the URL, otherwise fall back to the latest version.
   useEffect(() => {
-    if (versionsQuery.data && versionsQuery.data.length > 0 && !selectedVersionId) {
-      setSelectedVersionId(versionsQuery.data[0].id)
-    }
-  }, [versionsQuery.data, selectedVersionId])
+    if (!versionsQuery.data || versionsQuery.data.length === 0) return
+    if (selectedVersionId) return
+    const match = requestedVersionId
+      ? versionsQuery.data.find((v) => v.id === requestedVersionId)
+      : null
+    setSelectedVersionId(match ? match.id : versionsQuery.data[0].id)
+  }, [versionsQuery.data, selectedVersionId, requestedVersionId])
 
   if (versionsQuery.isLoading) {
     return (

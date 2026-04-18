@@ -21,6 +21,20 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;')
 }
 
+const SAFE_URL_PROTOCOLS = /^(https?:|mailto:|tel:|\/|#)/i
+
+/**
+ * Reject hrefs whose protocol is not on the allowlist (e.g. javascript:,
+ * data:, vbscript:). Returns '#' as an inert placeholder so the link still
+ * renders but cannot execute.
+ */
+function sanitizeHref(raw: string): string {
+  const trimmed = raw.trim()
+  if (trimmed === '') return '#'
+  if (SAFE_URL_PROTOCOLS.test(trimmed)) return trimmed
+  return '#'
+}
+
 function renderMarks(text: string, marks?: TiptapNode['marks']): string {
   if (!marks || marks.length === 0) return escapeHtml(text)
 
@@ -44,7 +58,7 @@ function renderMarks(text: string, marks?: TiptapNode['marks']): string {
         result = `<code>${result}</code>`
         break
       case 'link': {
-        const href = escapeHtml(String(mark.attrs?.href ?? ''))
+        const href = escapeHtml(sanitizeHref(String(mark.attrs?.href ?? '')))
         const target = mark.attrs?.target ? ` target="${escapeHtml(String(mark.attrs.target))}"` : ''
         const rel = mark.attrs?.target === '_blank' ? ' rel="noopener noreferrer"' : ''
         result = `<a href="${href}"${target}${rel}>${result}</a>`
@@ -126,11 +140,36 @@ function renderNode(node: TiptapNode): string {
       return '<hr>'
 
     case 'image': {
-      const src = escapeHtml(String(node.attrs?.src ?? ''))
+      const src = escapeHtml(sanitizeHref(String(node.attrs?.src ?? '')))
       const alt = escapeHtml(String(node.attrs?.alt ?? ''))
       const title = node.attrs?.title ? ` title="${escapeHtml(String(node.attrs.title))}"` : ''
       return `<img src="${src}" alt="${alt}"${title}>`
     }
+
+    case 'fileAttachment': {
+      const href = escapeHtml(sanitizeHref(String(node.attrs?.href ?? '')))
+      const name = escapeHtml(String(node.attrs?.name ?? node.attrs?.filename ?? 'Attachment'))
+      const size = node.attrs?.size ? ` <span class="file-size">(${escapeHtml(String(node.attrs.size))})</span>` : ''
+      return `<div class="file-attachment"><a href="${href}" rel="noopener noreferrer">${name}</a>${size}</div>`
+    }
+
+    case 'linkPreview': {
+      const href = escapeHtml(sanitizeHref(String(node.attrs?.href ?? node.attrs?.url ?? '')))
+      const title = escapeHtml(String(node.attrs?.title ?? node.attrs?.href ?? href))
+      const desc = node.attrs?.description
+        ? `<p class="link-preview-desc">${escapeHtml(String(node.attrs.description))}</p>`
+        : ''
+      return `<a class="link-preview" href="${href}" rel="noopener noreferrer"><span class="link-preview-title">${title}</span>${desc}</a>`
+    }
+
+    case 'details':
+      return `<details class="tiptap-details">${renderNodes(node.content)}</details>`
+
+    case 'detailsSummary':
+      return `<summary>${renderInlineContent(node.content)}</summary>`
+
+    case 'detailsContent':
+      return `<div class="details-content">${renderNodes(node.content)}</div>`
 
     default:
       // Unknown node type -- try rendering children

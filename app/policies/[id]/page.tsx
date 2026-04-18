@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,9 +14,11 @@ import { EditPolicyDialog } from '../_components/edit-policy-dialog'
 
 export default function PolicyDetailPage() {
   const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
   const id = params.id
+  const initialSection = searchParams.get('section')
 
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(initialSection)
   const [editOpen, setEditOpen] = useState(false)
 
   const documentQuery = trpc.document.getById.useQuery({ id })

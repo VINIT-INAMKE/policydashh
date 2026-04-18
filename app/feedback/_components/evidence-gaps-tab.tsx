@@ -208,7 +208,7 @@ export function EvidenceGapsTab() {
                     variant="ghost"
                     size="sm"
                     aria-label={`Attach evidence to ${claim.readableId}: ${claim.title}`}
-                    render={<Link href={`/feedback/${claim.id}/evidence`} />}
+                    render={<Link href={`/feedback/${claim.id}`} />}
                   >
                     <Paperclip className="size-3.5" />
                     Attach Evidence

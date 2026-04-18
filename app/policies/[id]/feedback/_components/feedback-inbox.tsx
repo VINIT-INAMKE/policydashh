@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { ArrowLeft, Filter, MessageSquare } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,8 +18,10 @@ interface FeedbackInboxProps {
 }
 
 export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
+  const searchParams = useSearchParams()
+  const initialSelected = searchParams.get('selected')
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(null)
+  const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(initialSelected)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   // Build query input -- only pass the first filter value for server-side filtering

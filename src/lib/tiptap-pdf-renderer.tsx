@@ -30,7 +30,24 @@ const s = StyleSheet.create({
   codeText: { fontFamily: 'Courier', fontSize: 9, lineHeight: 1.4 },
   hr: { borderBottomWidth: 0.5, borderBottomColor: '#ccc', marginVertical: 10 },
   callout: { backgroundColor: '#f8f9fa', padding: 8, borderRadius: 4, marginVertical: 6, borderLeftWidth: 3, borderLeftColor: '#0066cc' },
+  table:         { marginVertical: 8, borderWidth: 0.5, borderColor: '#d0d7de', borderRightWidth: 0, borderBottomWidth: 0 },
+  tableRow:      { flexDirection: 'row' as const },
+  tableCell:     { flex: 1, padding: 6, fontSize: 10, borderRightWidth: 0.5, borderBottomWidth: 0.5, borderColor: '#d0d7de' },
+  tableHeader:   { flex: 1, padding: 6, fontSize: 10, fontFamily: 'Helvetica-Bold', backgroundColor: '#f6f8fa', borderRightWidth: 0.5, borderBottomWidth: 0.5, borderColor: '#d0d7de' },
+  attachment:    { fontSize: 10, color: '#0969da', marginVertical: 4 },
+  linkPreview:   { borderWidth: 0.5, borderColor: '#d0d7de', padding: 8, borderRadius: 4, marginVertical: 6 },
+  linkPreviewTitle: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#0969da', marginBottom: 2 },
+  linkPreviewDesc:  { fontSize: 9, color: '#57606a' },
+  details:          { marginVertical: 6, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: '#d0d7de' },
+  detailsSummary:   { fontSize: 11, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
 })
+
+const SAFE_URL_PROTOCOLS = /^(https?:|mailto:|tel:|\/|#)/i
+function safeSrc(raw: string): string {
+  const trimmed = raw.trim()
+  if (trimmed === '') return '#'
+  return SAFE_URL_PROTOCOLS.test(trimmed) ? trimmed : '#'
+}
 
 function renderInline(node: TiptapNode): React.ReactNode {
   if (node.type === 'text' && typeof node.text === 'string') {
@@ -41,7 +58,7 @@ function renderInline(node: TiptapNode): React.ReactNode {
         if (mark.type === 'italic') styles.push(s.italic)
         if (mark.type === 'code') styles.push(s.code)
         if (mark.type === 'link' && mark.attrs?.href) {
-          return <Link src={String(mark.attrs.href)}><Text style={styles}>{node.text}</Text></Link>
+          return <Link src={safeSrc(String(mark.attrs.href))}><Text style={styles}>{node.text}</Text></Link>
         }
       }
     }
@@ -133,6 +150,79 @@ function renderNode(node: TiptapNode, index: number): React.ReactNode {
 
     case 'horizontalRule':
       return <View key={index} style={s.hr} />
+
+    case 'table':
+      return (
+        <View key={index} style={s.table}>
+          {node.content?.map((row, i) => renderNode(row, i))}
+        </View>
+      )
+
+    case 'tableRow':
+      return (
+        <View key={index} style={s.tableRow}>
+          {node.content?.map((cell, i) => renderNode(cell, i))}
+        </View>
+      )
+
+    case 'tableHeader':
+      return (
+        <Text key={index} style={s.tableHeader}>
+          {renderInlineContent(node.content)}
+        </Text>
+      )
+
+    case 'tableCell':
+      return (
+        <Text key={index} style={s.tableCell}>
+          {renderInlineContent(node.content)}
+        </Text>
+      )
+
+    case 'fileAttachment': {
+      const href = safeSrc(String(node.attrs?.href ?? ''))
+      const name = String(node.attrs?.name ?? node.attrs?.filename ?? 'Attachment')
+      return (
+        <Link key={index} src={href}>
+          <Text style={s.attachment}>{`📎 ${name}`}</Text>
+        </Link>
+      )
+    }
+
+    case 'linkPreview': {
+      const href = safeSrc(String(node.attrs?.href ?? node.attrs?.url ?? ''))
+      const title = String(node.attrs?.title ?? node.attrs?.href ?? href)
+      const desc = node.attrs?.description ? String(node.attrs.description) : null
+      return (
+        <View key={index} style={s.linkPreview}>
+          <Link src={href}>
+            <Text style={s.linkPreviewTitle}>{title}</Text>
+          </Link>
+          {desc ? <Text style={s.linkPreviewDesc}>{desc}</Text> : null}
+        </View>
+      )
+    }
+
+    case 'details':
+      return (
+        <View key={index} style={s.details}>
+          {node.content?.map((child, i) => renderNode(child, i))}
+        </View>
+      )
+
+    case 'detailsSummary':
+      return (
+        <Text key={index} style={s.detailsSummary}>
+          {renderInlineContent(node.content)}
+        </Text>
+      )
+
+    case 'detailsContent':
+      return (
+        <View key={index}>
+          {node.content?.map((child, i) => renderNode(child, i))}
+        </View>
+      )
 
     default:
       if (node.content) {

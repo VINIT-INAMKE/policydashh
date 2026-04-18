@@ -80,13 +80,9 @@ export function WorkshopCard({
         </CardHeader>
         {workshop.hasApprovedSummary ? (
           <CardFooter>
-            <a
-              href={`/portal/workshops/${workshop.id}/summary`}
-              className="text-sm font-medium hover:underline"
-              style={{ color: 'var(--cl-primary, #000a1e)' }}
-            >
-              View summary &rarr;
-            </a>
+            <span className="text-sm text-muted-foreground">
+              Summary available on request
+            </span>
           </CardFooter>
         ) : null}
       </Card>
