@@ -1,60 +1,136 @@
 /**
- * RED TDD stub for RESEARCH-05 — research lifecycle state machine contract
+ * GREEN assertions for RESEARCH-05 — research lifecycle state machine.
  *
- * Wave 0 contract lock for Phase 26 Plan 26-04. All tests here are `it.todo`
- * (pending) — they describe the behavior Plan 26-04 must make GREEN without
- * failing the test suite at Wave 0 time.
+ * Phase 26 Plan 26-04. Flipped from RED `it.todo` stubs (Wave 0 contract)
+ * to real assertions after the implementation of `@/src/server/services/research.lifecycle`.
  *
- * Target module: `@/src/server/services/research.lifecycle` (does NOT yet exist at Wave 0)
+ * Target module: `@/src/server/services/research.lifecycle`
  *
- * Expected exports:
+ * Exports under test:
  *   - VALID_TRANSITIONS: Record<ResearchItemStatus, ResearchItemStatus[]>
  *   - assertValidTransition(from, to): throws TRPCError BAD_REQUEST on invalid
  *   - type ResearchItemStatus = 'draft' | 'pending_review' | 'published' | 'retracted'
  *
- * Future RED assertions (Plan 26-04 will flip these to it() bodies):
- *   import {
- *     VALID_TRANSITIONS,
- *     assertValidTransition,
- *     type ResearchItemStatus,
- *   } from '@/src/server/services/research.lifecycle'
- *
  * Q3 moderation gate encoded: draft -> published is BLOCKED (must go through pending_review).
- * Reject path: pending_review -> draft returns the item to editable (reject returns to editable).
+ * Reject path: pending_review -> draft returns the item to editable.
  * Terminal: retracted has empty transition list.
  * Immutability: published -> draft is BLOCKED (published is immutable — only retracted allowed).
  */
 
-import { describe, it } from 'vitest'
-
-// TRPCError + BAD_REQUEST references reserved for Plan 26-04 implementation tests.
-// Referenced here so the RED contract's assertion surface is visible at Wave 0.
-// TRPCError lives at '@trpc/server' and carries .code 'BAD_REQUEST' on invalid transitions.
+import { describe, it, expect } from 'vitest'
+import { TRPCError } from '@trpc/server'
+import {
+  VALID_TRANSITIONS,
+  assertValidTransition,
+  type ResearchItemStatus,
+} from '@/src/server/services/research.lifecycle'
 
 describe('VALID_TRANSITIONS table (RESEARCH-05) — from @/src/server/services/research.lifecycle', () => {
-  it.todo("VALID_TRANSITIONS.draft equals ['pending_review'] — submit is the only outbound edge from draft")
-  it.todo("VALID_TRANSITIONS.pending_review equals ['published', 'draft'] — approve | reject returns to editable")
-  it.todo("VALID_TRANSITIONS.published equals ['retracted'] — only retraction exits published")
-  it.todo("VALID_TRANSITIONS.retracted equals [] — terminal state, no outbound transitions")
+  it("VALID_TRANSITIONS.draft equals ['pending_review'] — submit is the only outbound edge from draft", () => {
+    expect(VALID_TRANSITIONS.draft).toEqual(['pending_review'])
+  })
+
+  it("VALID_TRANSITIONS.pending_review equals ['published', 'draft'] — approve | reject returns to editable", () => {
+    expect(VALID_TRANSITIONS.pending_review).toEqual(['published', 'draft'])
+  })
+
+  it("VALID_TRANSITIONS.published equals ['retracted'] — only retraction exits published", () => {
+    expect(VALID_TRANSITIONS.published).toEqual(['retracted'])
+  })
+
+  it("VALID_TRANSITIONS.retracted equals [] — terminal state, no outbound transitions", () => {
+    expect(VALID_TRANSITIONS.retracted).toEqual([])
+  })
 })
 
 describe('assertValidTransition() valid paths (RESEARCH-05)', () => {
-  it.todo("assertValidTransition('draft', 'pending_review') does NOT throw — submit path")
-  it.todo("assertValidTransition('pending_review', 'published') does NOT throw — approve path")
-  it.todo("assertValidTransition('pending_review', 'draft') does NOT throw — reject returns to editable")
-  it.todo("assertValidTransition('published', 'retracted') does NOT throw — retract path")
+  it("assertValidTransition('draft', 'pending_review') does NOT throw — submit path", () => {
+    expect(() => assertValidTransition('draft', 'pending_review')).not.toThrow()
+  })
+
+  it("assertValidTransition('pending_review', 'published') does NOT throw — approve path", () => {
+    expect(() => assertValidTransition('pending_review', 'published')).not.toThrow()
+  })
+
+  it("assertValidTransition('pending_review', 'draft') does NOT throw — reject returns to editable", () => {
+    expect(() => assertValidTransition('pending_review', 'draft')).not.toThrow()
+  })
+
+  it("assertValidTransition('published', 'retracted') does NOT throw — retract path", () => {
+    expect(() => assertValidTransition('published', 'retracted')).not.toThrow()
+  })
 })
 
 describe('assertValidTransition() invalid paths (RESEARCH-05)', () => {
-  it.todo("assertValidTransition('draft', 'published') throws TRPCError BAD_REQUEST — Q3 moderation gate, no self-publish, draft -> published blocked")
-  it.todo("assertValidTransition('draft', 'retracted') throws TRPCError BAD_REQUEST — cannot retract unpublished item")
-  it.todo("assertValidTransition('retracted', 'draft') throws TRPCError — terminal state cannot re-enter draft")
-  it.todo("assertValidTransition('retracted', 'published') throws TRPCError — terminal state cannot re-publish")
-  it.todo("assertValidTransition('published', 'draft') throws TRPCError BAD_REQUEST — published is immutable, published -> draft blocked")
-  it.todo("assertValidTransition('pending_review', 'retracted') throws TRPCError BAD_REQUEST — must go through published first")
-  it.todo("error message from assertValidTransition includes both 'from' state name and 'to' state name (contains 'draft' and 'published')")
+  it("assertValidTransition('draft', 'published') throws TRPCError BAD_REQUEST — Q3 moderation gate, no self-publish, draft -> published blocked", () => {
+    try {
+      assertValidTransition('draft', 'published')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(TRPCError)
+      expect((err as TRPCError).code).toBe('BAD_REQUEST')
+    }
+  })
+
+  it("assertValidTransition('draft', 'retracted') throws TRPCError BAD_REQUEST — cannot retract unpublished item", () => {
+    try {
+      assertValidTransition('draft', 'retracted')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(TRPCError)
+      expect((err as TRPCError).code).toBe('BAD_REQUEST')
+    }
+  })
+
+  it("assertValidTransition('retracted', 'draft') throws TRPCError — terminal state cannot re-enter draft", () => {
+    expect(() => assertValidTransition('retracted', 'draft')).toThrow(TRPCError)
+  })
+
+  it("assertValidTransition('retracted', 'published') throws TRPCError — terminal state cannot re-publish", () => {
+    expect(() => assertValidTransition('retracted', 'published')).toThrow(TRPCError)
+  })
+
+  it("assertValidTransition('published', 'draft') throws TRPCError BAD_REQUEST — published is immutable, published -> draft blocked", () => {
+    try {
+      assertValidTransition('published', 'draft')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(TRPCError)
+      expect((err as TRPCError).code).toBe('BAD_REQUEST')
+    }
+  })
+
+  it("assertValidTransition('pending_review', 'retracted') throws TRPCError BAD_REQUEST — must go through published first", () => {
+    try {
+      assertValidTransition('pending_review', 'retracted')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(TRPCError)
+      expect((err as TRPCError).code).toBe('BAD_REQUEST')
+    }
+  })
+
+  it("error message from assertValidTransition includes both 'from' state name and 'to' state name (contains 'draft' and 'published')", () => {
+    try {
+      assertValidTransition('draft', 'published')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(TRPCError)
+      const msg = (err as TRPCError).message
+      expect(msg).toContain('draft')
+      expect(msg).toContain('published')
+    }
+  })
 })
 
 describe('ResearchItemStatus type (RESEARCH-05)', () => {
-  it.todo("type ResearchItemStatus can be used as union of 4 states: 'draft', 'pending_review', 'published', 'retracted'")
+  it("type ResearchItemStatus can be used as union of 4 states: 'draft', 'pending_review', 'published', 'retracted'", () => {
+    const states: ResearchItemStatus[] = ['draft', 'pending_review', 'published', 'retracted']
+    expect(states).toHaveLength(4)
+    // Compile-time verification — if any of these weren't assignable, tsc would fail
+    expect(states).toContain('draft')
+    expect(states).toContain('pending_review')
+    expect(states).toContain('published')
+    expect(states).toContain('retracted')
+  })
 })
