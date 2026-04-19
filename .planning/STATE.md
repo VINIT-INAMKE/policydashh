@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 26-02-permissions-constants-PLAN.md
-last_updated: "2026-04-19T16:44:27.480Z"
+stopped_at: Completed 26-01-schema-migration-PLAN.md
+last_updated: "2026-04-19T16:47:42.775Z"
 progress:
   total_phases: 29
   completed_phases: 25
   total_plans: 98
-  completed_plans: 94
+  completed_plans: 95
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 26 (research-module-data-server) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 
 ## Performance Metrics
 
@@ -130,6 +130,7 @@ Plan: 4 of 6
 | Phase 26-research-module-data-server P00 | 12min | 7 tasks | 8 files |
 | Phase 26-research-module-data-server P03 | 4min | 1 tasks | 2 files |
 | Phase 26-research-module-data-server P02 | 5min | 2 tasks | 3 files |
+| Phase 26-research-module-data-server P01 | 7min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -346,6 +347,9 @@ Recent decisions affecting current work:
 - [Phase 26-research-module-data-server]: Plan 26-02: Pitfall 4 broad-read — research:read_published granted to all 7 authenticated roles in matrix; Phase 28 public surface bypasses tRPC entirely
 - [Phase 26-research-module-data-server]: Plan 26-02: No separate RESEARCH_PUBLISH action constant — CONTEXT.md Q3 locks approve == publish (single moderation gate), RESEARCH_APPROVE serves both
 - [Phase 26-research-module-data-server]: Plan 26-02 parallel-wave race: commit 00117fd mislabeled feat(26-01) but carries Plan 26-02 Task 1 files (permissions.ts + research-permissions.test.ts); content attribution via SUMMARY.md, no history rewrite (Phase 21 2cb6b7e precedent)
+- [Phase 26-research-module-data-server]: Plan 26-01: Feedback FK uses REFERENCES feedback(id) not feedback_items(id) — feedbackItems Drizzle export maps to pgTable('feedback',...) at schema/feedback.ts:26
+- [Phase 26-research-module-data-server]: Plan 26-01: research_item_id_seq CREATE SEQUENCE IF NOT EXISTS with START 1 — idempotent, re-run safe, matches feedback_id_seq precedent since Phase 4
+- [Phase 26-research-module-data-server]: Plan 26-01: Parallel-wave git-commit race — Task 1 commit 00117fd bundled Plan 26-02's research-permissions.test.ts + permissions.ts research grants alongside 26-01's intended files; same pattern documented for Phase 21 commit 2cb6b7e, no history rewrite, content attribution via this SUMMARY
 
 ### Pending Todos
 
@@ -364,6 +368,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T16:44:00.659Z
-Stopped at: Completed 26-02-permissions-constants-PLAN.md
+Last session: 2026-04-19T16:47:42.766Z
+Stopped at: Completed 26-01-schema-migration-PLAN.md
 Resume file: None

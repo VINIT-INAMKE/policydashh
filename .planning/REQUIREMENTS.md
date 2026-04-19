@@ -226,7 +226,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 ### Research Module
 
 - [x] **RESEARCH-01**: `research_items` table + three link tables (`research_item_section_links`, `research_item_version_links`, `research_item_feedback_links`) exist; migration 0025 applied; nullable `milestoneId` FK (SQL-only) on `research_items`; `isAuthorAnonymous` boolean (default false) filters `authors` field from public queries
-- [ ] **RESEARCH-02**: `readableId` column populated via `nextval('research_item_id_seq')` producing `RI-001`, `RI-002`, … — collision-safe under concurrent writes (pattern mirrors `feedback_id_seq`)
+- [x] **RESEARCH-02**: `readableId` column populated via `nextval('research_item_id_seq')` producing `RI-001`, `RI-002`, … — collision-safe under concurrent writes (pattern mirrors `feedback_id_seq`)
 - [x] **RESEARCH-03**: Seven new RBAC permissions added to `src/lib/permissions.ts` (`research:create`, `research:manage_own`, `research:submit_review`, `research:publish`, `research:retract`, `research:read_drafts`, `research:read_published`) with role grants per `.planning/research/research-module/INTEGRATION.md` §8
 - [ ] **RESEARCH-04**: tRPC `research` router registered in `src/server/routers/_app.ts` exposing 15 procedures (list, listPublic, getById, create, update, submitForReview, approve, reject, retract, linkSection, unlinkSection, linkVersion, unlinkVersion, linkFeedback, unlinkFeedback) — each with correct `requirePermission` guard, Zod input validation using `z.guid()` for UUIDs, and fire-and-forget `writeAuditLog`
 - [ ] **RESEARCH-05**: State machine (`draft → pending_review → {published | draft}`; `published → retracted`) enforced in `src/server/services/research.service.ts` via `VALID_TRANSITIONS` table in `research.lifecycle.ts`; `workflowTransitions` INSERT happens BEFORE `researchItems` UPDATE (R6 invariant mirroring `feedback.service.ts` lines 139–162)
@@ -425,7 +425,7 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | UX-11 | Phase 24 | Complete |
 | INTEGRATION-01 | Phase 25 | Complete |
 | RESEARCH-01 | Phase 26 | Complete |
-| RESEARCH-02 | Phase 26 | Pending |
+| RESEARCH-02 | Phase 26 | Complete |
 | RESEARCH-03 | Phase 26 | Complete |
 | RESEARCH-04 | Phase 26 | Pending |
 | RESEARCH-05 | Phase 26 | Pending |
