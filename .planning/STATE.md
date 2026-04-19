@@ -4,7 +4,7 @@ milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
 stopped_at: Completed 26-02-permissions-constants-PLAN.md
-last_updated: "2026-04-19T16:44:00.668Z"
+last_updated: "2026-04-19T16:44:27.480Z"
 progress:
   total_phases: 29
   completed_phases: 25
@@ -342,6 +342,10 @@ Recent decisions affecting current work:
 - [Phase 26-research-module-data-server]: Plan 26-00: Retain vi.mock('@/src/db') + vi.mock('@/src/lib/audit') + segs.join('/') helper in research-router.test.ts even with all tests it.todo — gives Plan 26-05 pre-wired mocking surface for zero-rework GREEN conversion
 - [Phase 26-research-module-data-server]: Plan 26-03: ManifestEntry duplicate-type audit — schema + hashing.ts both declare the same union; extension must propagate to BOTH files (Rule 1/3 auto-fix; 2 call sites relied on the plan's stated type-propagation invariant)
 - [Phase 26-research-module-data-server]: Plan 26-03: Pure-TypeScript union extension on Drizzle jsonb.$type<>() columns requires zero migration — DB layer is JSONB, only TS literals widen
+- [Phase 26-research-module-data-server]: Q3 moderation gate enforced at RBAC layer — research_lead explicitly NOT in research:publish or research:retract grant arrays (matrix-level enforcement, no extra router guard needed)
+- [Phase 26-research-module-data-server]: Plan 26-02: Pitfall 4 broad-read — research:read_published granted to all 7 authenticated roles in matrix; Phase 28 public surface bypasses tRPC entirely
+- [Phase 26-research-module-data-server]: Plan 26-02: No separate RESEARCH_PUBLISH action constant — CONTEXT.md Q3 locks approve == publish (single moderation gate), RESEARCH_APPROVE serves both
+- [Phase 26-research-module-data-server]: Plan 26-02 parallel-wave race: commit 00117fd mislabeled feat(26-01) but carries Plan 26-02 Task 1 files (permissions.ts + research-permissions.test.ts); content attribution via SUMMARY.md, no history rewrite (Phase 21 2cb6b7e precedent)
 
 ### Pending Todos
 
