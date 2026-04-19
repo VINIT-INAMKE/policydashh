@@ -616,7 +616,7 @@ Plans:
   5. Dashboard widgets: research_lead sees "My drafts" + "Pending review count"; admin/policy_lead sees "Research awaiting review" count linked to review queue
   6. All UI components use existing shadcn + base-ui primitives; policy-grade theme tokens; no new heavy dependencies; ≤3 new components per page shell
   7. Component tests green: create-edit dialog validation, link-picker multi-select, lifecycle action RBAC, anonymous-author toggle preview
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 - [x] 27-01-router-upload-wave0-PLAN.md — Wave 0: add research.listTransitions + authorId filter + linkSection onConflictDoUpdate + 'research' upload category + shouldHideAuthors util + 4 RED test scaffolds
@@ -624,7 +624,7 @@ Plans:
 - [x] 27-03-create-edit-pages-PLAN.md — Wave 1: /research-manage/new + /research-manage/[id]/edit + shared ResearchItemForm + AnonymousPreviewCard + fire-on-select upload (D-02/D-03/D-05) + router artifact-row extension
 - [x] 27-04-detail-page-lifecycle-PLAN.md — Wave 2: /research-manage/[id] detail page + ResearchDecisionLog + ResearchLifecycleActions (inline reject + Alert-Dialog retract, D-14)
 - [ ] 27-05-link-pickers-PLAN.md — Wave 3: Section/Version/Feedback link pickers + LinkedSectionRow inline relevanceNote editor (D-07) + getById linked-entity extension
-- [ ] 27-06-dashboard-widgets-PLAN.md — Wave 2: StatCards on research_lead / admin / policy_lead dashboards (D-10/D-11)
+- [x] 27-06-dashboard-widgets-PLAN.md — Wave 2: StatCards on research_lead / admin / policy_lead dashboards (D-10/D-11)
 
 ### Phase 28: Public /research/items Listing & Detail
 

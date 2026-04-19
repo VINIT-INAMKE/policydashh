@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 27-04-detail-page-lifecycle-PLAN.md
-last_updated: "2026-04-19T22:58:45.141Z"
+stopped_at: Completed 27-06-dashboard-widgets-PLAN.md
+last_updated: "2026-04-19T23:13:58.315Z"
 progress:
   total_phases: 29
   completed_phases: 26
   total_plans: 104
-  completed_plans: 101
+  completed_plans: 102
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 27 (research-workspace-admin-ui) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 
 ## Performance Metrics
 
@@ -136,6 +136,7 @@ Plan: 4 of 6
 | Phase 27-research-workspace-admin-ui P01 | 15min | 3 tasks | 10 files |
 | Phase 27-research-workspace-admin-ui P03 | 12min | 3 tasks | 6 files |
 | Phase 27-research-workspace-admin-ui P04 | 10min | 3 tasks | 3 files |
+| Phase 27-research-workspace-admin-ui P06 | 8min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -376,6 +377,9 @@ Recent decisions affecting current work:
 - [Phase 27-research-workspace-admin-ui]: Plan 27-04: Dual-invalidate pattern on every lifecycle mutation - utils.research.getById.invalidate + utils.research.listTransitions.invalidate so metadata header AND decision log re-fetch in same render pass after a transition
 - [Phase 27-research-workspace-admin-ui]: Plan 27-04: ArtifactDownloadLink as documented placeholder ('Attachment on file' + 8-char artifactId) - research.getById doesn't JOIN evidence_artifacts; presigned-GET deferred to Phase 28 OR a follow-up plan that extends getById to JOIN
 - [Phase 27-research-workspace-admin-ui]: Plan 27-04: Visibility matrix uses (isOwner || isAdminRole) for showSubmit/showEdit - mirrors Phase 26 assertOwnershipOrBypass pattern; admin/policy_lead bypass ownership entirely, research_lead gated to own items, defense in depth between client UX visibility and server authorization
+- [Phase 27-research-workspace-admin-ui]: Plan 27-06: Dashboard widgets pattern — Link-wrapped StatCard + pre-applied URL query params landing on existing list page (D-09 single-source-of-truth for queue surface). research_lead sees own scope (createdBy=userId AND status), admin/policy_lead see all-author moderation queue (status=pending_review only). Same widget label, different scope, encoded in URL params.
+- [Phase 27-research-workspace-admin-ui]: Plan 27-06: All 3 new dashboard count queries ride existing Promise.all blocks (research_lead 3→5, admin 6→7, policy_lead 7→8) — zero additional DB round-trips. Dashboard load latency unchanged.
+- [Phase 27-research-workspace-admin-ui]: Plan 27-06: Grid widening pattern (lg:grid-cols-4 → lg:grid-cols-5) chosen over 'own row' option for admin + policy_lead fifth StatCard — keeps dashboard chrome compact. UI-SPEC D-11 permitted either approach; spare-column path chosen for visual density.
 
 ### Pending Todos
 
@@ -394,6 +398,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T22:58:19.105Z
-Stopped at: Completed 27-04-detail-page-lifecycle-PLAN.md
+Last session: 2026-04-19T23:13:58.305Z
+Stopped at: Completed 27-06-dashboard-widgets-PLAN.md
 Resume file: None
