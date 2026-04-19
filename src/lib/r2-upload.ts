@@ -10,7 +10,10 @@ interface UploadResult {
 }
 
 interface UploadOptions {
-  category?: 'image' | 'document' | 'evidence'
+  // Phase 27 D-04: research category added for citable research artifacts
+  // (PDF/DOCX/DOC/CSV/XLSX/XLS, 32MB cap). Server allowlist in
+  // app/api/upload/route.ts MUST stay in sync with this literal.
+  category?: 'image' | 'document' | 'evidence' | 'research'
   onProgress?: (percent: number) => void
 }
 

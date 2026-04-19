@@ -18,6 +18,10 @@ const MAX_FILE_SIZE: Record<string, number> = {
   // MIME type.
   evidence: 32 * 1024 * 1024, // 32MB
   recording: 25 * 1024 * 1024, // 25MB - Groq Whisper free-tier file-size cap (LLM-02)
+  // Phase 27 D-04: research items include datasets (CSV/XLSX) that
+  // don't fit 'document' or 'evidence' MIME sets. 32MB cap matches
+  // document/evidence; exceeds the worst-case NITI report PDF by 2x.
+  research: 32 * 1024 * 1024,
 }
 
 // Audio/video MIME set shared between `evidence` (F20 - pass through audio
@@ -61,6 +65,17 @@ const ALLOWED_TYPES: Record<string, string[]> = {
   // browser MediaRecorder and screen-recording tools commonly wrap audio
   // streams in `video/mp4` / `video/webm`. Groq extracts the audio track.
   recording: [...AUDIO_VIDEO_MIME_TYPES],
+  // Phase 27 D-04: research module citable artifacts. PDF/DOCX/DOC
+  // cover reports + papers + memos; CSV/XLSX/XLS cover datasets. No
+  // audio/video — those remain in the recording category (WS-14).
+  research: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/csv',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ],
 }
 
 /**
@@ -122,7 +137,7 @@ export async function POST(request: NextRequest) {
   const { fileName, contentType, category = 'evidence', fileSize } = body as {
     fileName: string
     contentType: string
-    category: 'image' | 'document' | 'evidence' | 'recording'
+    category: 'image' | 'document' | 'evidence' | 'recording' | 'research'
     fileSize: number
   }
 
@@ -183,6 +198,11 @@ export async function POST(request: NextRequest) {
   const EXT_TO_FAMILY: Record<string, string> = {
     png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
     pdf: 'application', doc: 'application', docx: 'application',
+    // Phase 27 D-04: text/csv ↔ .csv extension; xls/xlsx are application/vnd.ms-excel
+    // and application/vnd.openxmlformats-officedocument.spreadsheetml.sheet respectively.
+    csv: 'text',
+    xls: 'application',
+    xlsx: 'application',
     mp3: 'audio', wav: 'audio', ogg: 'audio', flac: 'audio', m4a: 'audio',
     mp4: 'video', webm: 'video',
   }
