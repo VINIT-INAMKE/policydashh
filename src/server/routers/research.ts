@@ -11,7 +11,9 @@ import {
   researchItemVersionLinks,
   researchItemFeedbackLinks,
 } from '@/src/db/schema/research'
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { eq, and, desc, asc, sql } from 'drizzle-orm'
+import { workflowTransitions } from '@/src/db/schema/workflow'
+import { users } from '@/src/db/schema/users'
 import { TRPCError } from '@trpc/server'
 
 /**
@@ -150,12 +152,17 @@ export const researchRouter = router({
       documentId: z.guid().optional(),
       itemType:   z.enum(RESEARCH_ITEM_TYPES).optional(),
       status:     z.enum(RESEARCH_STATUSES).optional(),
+      // Pitfall 2 fix (RESEARCH-06 SC-1): research_lead list page passes
+      // authorId=ctx.user.id so role-scoped list returns only own items.
+      // Admin/policy_lead omit the filter to see all.
+      authorId:   z.guid().optional(),
     }))
     .query(async ({ input }) => {
       const conditions = []
       if (input.documentId) conditions.push(eq(researchItems.documentId, input.documentId))
       if (input.itemType)   conditions.push(eq(researchItems.itemType, input.itemType))
       if (input.status)     conditions.push(eq(researchItems.status, input.status))
+      if (input.authorId)   conditions.push(eq(researchItems.createdBy, input.authorId))
 
       const rows = await db
         .select()
@@ -217,6 +224,38 @@ export const researchRouter = router({
         return { ...row, authors: null }
       }
       return row
+    }),
+
+  // RESEARCH-06/07: decision-log data source. Returns all workflow
+  // transitions for a research item (oldest first) with actorName
+  // joined from users. Metadata JSONB carries { rejectionReason } on
+  // reject and { retractionReason } on retract — the DecisionLog UI
+  // maps these to `rationale` for rendering.
+  //
+  // Gated by research:read_drafts so research_lead can view the log on
+  // their own items (the getById guard already blocks cross-user reads
+  // at the list level, but this procedure is invoked only by the
+  // detail page which has already fetched the item).
+  listTransitions: requirePermission('research:read_drafts')
+    .input(z.object({ id: z.guid() }))
+    .query(async ({ input }) => {
+      return db
+        .select({
+          id:        workflowTransitions.id,
+          fromState: workflowTransitions.fromState,
+          toState:   workflowTransitions.toState,
+          actorId:   workflowTransitions.actorId,
+          timestamp: workflowTransitions.timestamp,
+          metadata:  workflowTransitions.metadata,
+          actorName: users.name,
+        })
+        .from(workflowTransitions)
+        .leftJoin(users, eq(workflowTransitions.actorId, users.id))
+        .where(and(
+          eq(workflowTransitions.entityType, 'research_item'),
+          eq(workflowTransitions.entityId, input.id),
+        ))
+        .orderBy(asc(workflowTransitions.timestamp))
     }),
 
   // ==========================================================================
@@ -471,14 +510,36 @@ export const researchRouter = router({
       relevanceNote:  z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await db
-        .insert(researchItemSectionLinks)
-        .values({
-          researchItemId: input.researchItemId,
-          sectionId:      input.sectionId,
-          relevanceNote:  input.relevanceNote ?? null,
-        })
-        .onConflictDoNothing()
+      // Pitfall 5 fix (RESEARCH-08 D-07): when relevanceNote is provided
+      // (inline-edit on the detail page), UPSERT on conflict so the note
+      // is saved for an already-linked pair. When omitted (bulk-link
+      // from the picker), stay .onConflictDoNothing() so re-link is
+      // idempotent.
+      if (input.relevanceNote !== undefined) {
+        await db
+          .insert(researchItemSectionLinks)
+          .values({
+            researchItemId: input.researchItemId,
+            sectionId:      input.sectionId,
+            relevanceNote:  input.relevanceNote,
+          })
+          .onConflictDoUpdate({
+            target: [
+              researchItemSectionLinks.researchItemId,
+              researchItemSectionLinks.sectionId,
+            ],
+            set: { relevanceNote: input.relevanceNote },
+          })
+      } else {
+        await db
+          .insert(researchItemSectionLinks)
+          .values({
+            researchItemId: input.researchItemId,
+            sectionId:      input.sectionId,
+            relevanceNote:  null,
+          })
+          .onConflictDoNothing()
+      }
 
       writeAuditLog({
         actorId:    ctx.user.id,
