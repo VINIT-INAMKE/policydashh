@@ -275,3 +275,13 @@ describe('Phase 27 router extensions (RESEARCH-06/07/08)', () => {
     expect(mod.researchRouter._def.procedures.linkSection._def).toBeDefined()
   })
 })
+
+describe('Phase 27 Plan 03 create/update artifact metadata extension (RESEARCH-06)', () => {
+  it('create procedure is still defined after artifact metadata fields added', () => {
+    expect(mod.researchRouter._def.procedures.create).toBeDefined()
+  })
+
+  it('update procedure is still defined after artifact metadata fields added', () => {
+    expect(mod.researchRouter._def.procedures.update).toBeDefined()
+  })
+})

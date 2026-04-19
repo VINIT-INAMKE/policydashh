@@ -14,6 +14,7 @@ import {
 import { eq, and, desc, asc, sql } from 'drizzle-orm'
 import { workflowTransitions } from '@/src/db/schema/workflow'
 import { users } from '@/src/db/schema/users'
+import { evidenceArtifacts } from '@/src/db/schema/evidence'
 import { TRPCError } from '@trpc/server'
 
 /**
@@ -97,6 +98,20 @@ const createInput = z.object({
   versionLabel:      z.string().max(50).optional(),
   previousVersionId: z.guid().optional(),
   isAuthorAnonymous: z.boolean().default(false),               // Q7
+  // Phase 27 D-02 upload metadata. When all four are provided, the
+  // server INSERTs an evidence_artifacts row inside the mutation and
+  // sets artifactId to that row's id. This is the single-write-boundary
+  // solution to Pitfall 1 (POST /api/upload presigns only; someone
+  // must create the DB row — we do it here, not client-side).
+  // NOTE: artifactR2Key is accepted in the schema for client-server
+  // contract symmetry with the upload helper, but evidence_artifacts
+  // has no r2_key column (Phase 26 schema choice — workshops follow the
+  // same pattern, see workshop.attachArtifact). The key is silently
+  // dropped server-side; only url/fileName/fileSize are persisted.
+  artifactFileName:  z.string().max(500).optional(),
+  artifactFileSize:  z.number().int().positive().max(32 * 1024 * 1024).optional(),
+  artifactR2Key:     z.string().max(1000).optional(),
+  artifactPublicUrl: z.string().url().max(2000).optional(),
 })
 
 const updateInput = z.object({
@@ -113,6 +128,11 @@ const updateInput = z.object({
   versionLabel:      z.string().max(50).optional(),
   previousVersionId: z.guid().nullable().optional(),
   isAuthorAnonymous: z.boolean().optional(),
+  // Phase 27 D-02 upload metadata — same contract as createInput.
+  artifactFileName:  z.string().max(500).optional(),
+  artifactFileSize:  z.number().int().positive().max(32 * 1024 * 1024).optional(),
+  artifactR2Key:     z.string().max(1000).optional(),
+  artifactPublicUrl: z.string().url().max(2000).optional(),
 })
 
 /**
@@ -277,6 +297,34 @@ export const researchRouter = router({
       const num = Number(seqResult.seq)
       const readableId = `RI-${String(num).padStart(3, '0')}`
 
+      // Pitfall 1 fix (Phase 27 D-02): when upload metadata provided, create
+      // the evidence_artifacts row first and use its id as artifactId. This
+      // keeps the write boundary inside the mutation — no orphan rows on
+      // success, no FK violation on create. The r2Key (if supplied) is not
+      // persisted because evidence_artifacts has no r2_key column; the
+      // public URL on artifact.url is what subsequent reads consume.
+      let resolvedArtifactId = input.artifactId ?? null
+      if (
+        !resolvedArtifactId &&
+        input.artifactFileName &&
+        input.artifactFileSize &&
+        input.artifactR2Key &&
+        input.artifactPublicUrl
+      ) {
+        const [artifact] = await db
+          .insert(evidenceArtifacts)
+          .values({
+            type:       'file',
+            title:      input.artifactFileName,
+            url:        input.artifactPublicUrl,
+            fileName:   input.artifactFileName,
+            fileSize:   input.artifactFileSize,
+            uploaderId: ctx.user.id,
+          })
+          .returning({ id: evidenceArtifacts.id })
+        resolvedArtifactId = artifact.id
+      }
+
       // 2. Insert the row. status defaults to 'draft' via pgEnum default.
       const [item] = await db
         .insert(researchItems)
@@ -288,7 +336,7 @@ export const researchRouter = router({
           createdBy:         ctx.user.id,
           description:       input.description ?? null,
           externalUrl:       input.externalUrl ?? null,
-          artifactId:        input.artifactId ?? null,
+          artifactId:        resolvedArtifactId,
           doi:               input.doi ?? null,
           authors:           input.authors ?? null,
           publishedDate:     input.publishedDate ?? null,
@@ -352,6 +400,37 @@ export const researchRouter = router({
 
       // 3. Pitfall 6 ownership check
       assertOwnershipOrBypass(ctx.user.role as Role, row.createdBy, ctx.user.id)
+
+      // Pitfall 1 parity with create (Phase 27 D-02): allow edit-page upload
+      // to create a fresh artifact row when the user replaces the file. The
+      // four upload metadata fields are stripped from `changes` before the
+      // UPDATE because they are not columns on research_items.
+      if (
+        changes.artifactFileName &&
+        changes.artifactFileSize &&
+        changes.artifactR2Key &&
+        changes.artifactPublicUrl
+      ) {
+        const [artifact] = await db
+          .insert(evidenceArtifacts)
+          .values({
+            type:       'file',
+            title:      changes.artifactFileName,
+            url:        changes.artifactPublicUrl,
+            fileName:   changes.artifactFileName,
+            fileSize:   changes.artifactFileSize,
+            uploaderId: ctx.user.id,
+          })
+          .returning({ id: evidenceArtifacts.id })
+        changes.artifactId = artifact.id
+      }
+      // Strip upload metadata from the update set — these are not columns on
+      // research_items. Cast through Record so delete operates without
+      // narrowing TypeScript's structural inference.
+      delete (changes as Record<string, unknown>).artifactFileName
+      delete (changes as Record<string, unknown>).artifactFileSize
+      delete (changes as Record<string, unknown>).artifactR2Key
+      delete (changes as Record<string, unknown>).artifactPublicUrl
 
       // 4. Apply update
       const [updated] = await db
