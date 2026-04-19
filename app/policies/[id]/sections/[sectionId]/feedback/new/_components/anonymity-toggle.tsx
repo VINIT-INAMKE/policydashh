@@ -38,7 +38,7 @@ export function AnonymityToggle({
               Named &mdash; {userName}, {orgType}
             </span>
             <span className="text-[12px] font-normal leading-[1.4] text-muted-foreground">
-              Your identity will be visible to Admins and Policy Leads.
+              Your identity will be visible to reviewers (Policy Leads and Admins).
             </span>
           </div>
         </label>
@@ -51,7 +51,7 @@ export function AnonymityToggle({
               Anonymous
             </span>
             <span className="text-[12px] font-normal leading-[1.4] text-muted-foreground">
-              Your feedback will be attributed as &lsquo;Anonymous&rsquo;. Admins and Policy Leads cannot see your identity.
+              Your feedback will be attributed as &lsquo;Anonymous&rsquo;. Only admins can see your identity (for audit purposes).
             </span>
           </div>
         </label>

@@ -144,9 +144,11 @@ export const traceabilityRouter = router({
         .limit(input.limit)
         .offset(input.offset)
 
-      // Anonymity enforcement: null out submitter info for anonymous items
-      // unless caller is admin or policy_lead
-      const canSeeIdentity = ctx.user.role === 'admin' || ctx.user.role === 'policy_lead'
+      // E5: anonymity enforcement restricted to admin only (matches feedback
+      // router). Participant-facing copy promises Policy Leads cannot see
+      // identity when Anonymous is chosen — honoring it means we cannot leak
+      // identity to policy_lead here either.
+      const canSeeIdentity = ctx.user.role === 'admin'
 
       return rows.map((row) => {
         if (row.feedbackIsAnonymous && !canSeeIdentity) {

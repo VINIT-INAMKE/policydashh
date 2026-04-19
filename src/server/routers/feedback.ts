@@ -13,7 +13,6 @@ import { sectionAssignments } from '@/src/db/schema/sectionAssignments'
 import { workflowTransitions } from '@/src/db/schema/workflow'
 import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
-import { createNotification } from '@/src/lib/notifications'
 import { sendFeedbackReviewed, sendNotificationCreate } from '@/src/inngest/events'
 
 const FEEDBACK_TYPES = ['issue', 'suggestion', 'endorsement', 'evidence', 'question'] as const
@@ -183,7 +182,11 @@ export const feedbackRouter = router({
       // Server-side anonymity enforcement: null out submitter info for anonymous items
       // unless caller is admin or policy_lead
       const userRole = ctx.user.role
-      const canSeeIdentity = userRole === 'admin' || userRole === 'policy_lead'
+      // E5: identity visibility restricted to admin only. Previously included
+      // policy_lead, but the participant-facing anonymity-toggle promised
+      // "Admins and Policy Leads cannot see your identity" — honoring that
+      // promise means the server must not expose identity to policy_lead.
+      const canSeeIdentity = userRole === 'admin'
 
       return rows.map((row) => {
         if (row.isAnonymous && !canSeeIdentity) {
@@ -220,7 +223,11 @@ export const feedbackRouter = router({
 
       // Anonymity enforcement (same pattern as feedback.list)
       const userRole = ctx.user.role
-      const canSeeIdentity = userRole === 'admin' || userRole === 'policy_lead'
+      // E5: identity visibility restricted to admin only. Previously included
+      // policy_lead, but the participant-facing anonymity-toggle promised
+      // "Admins and Policy Leads cannot see your identity" — honoring that
+      // promise means the server must not expose identity to policy_lead.
+      const canSeeIdentity = userRole === 'admin'
 
       return rows.map((row) => {
         if (row.isAnonymous && !canSeeIdentity) {
@@ -300,7 +307,7 @@ export const feedbackRouter = router({
         .orderBy(desc(feedbackItems.createdAt))
 
       // Anonymity enforcement - same pattern as feedback.list
-      const canSeeIdentity = ctx.user.role === 'admin' || ctx.user.role === 'policy_lead'
+      const canSeeIdentity = ctx.user.role === 'admin' // E5
       return rows.map((row) => {
         if (row.isAnonymous && !canSeeIdentity) {
           return { ...row, submitterId: null, submitterName: null, submitterOrgType: null }
@@ -354,7 +361,11 @@ export const feedbackRouter = router({
 
       // Anonymity enforcement
       const userRole = ctx.user.role
-      const canSeeIdentity = userRole === 'admin' || userRole === 'policy_lead'
+      // E5: identity visibility restricted to admin only. Previously included
+      // policy_lead, but the participant-facing anonymity-toggle promised
+      // "Admins and Policy Leads cannot see your identity" — honoring that
+      // promise means the server must not expose identity to policy_lead.
+      const canSeeIdentity = userRole === 'admin'
 
       if (row.isAnonymous && !canSeeIdentity) {
         return {

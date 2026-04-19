@@ -2,10 +2,7 @@ import { z } from 'zod'
 import { router, protectedProcedure, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
-import { eq, count, desc, sql } from 'drizzle-orm'
-import { feedbackItems } from '@/src/db/schema/feedback'
-import { workshopRegistrations, workshops } from '@/src/db/schema/workshops'
-import { and, isNotNull } from 'drizzle-orm'
+import { eq, count } from 'drizzle-orm'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS, ORG_TYPE_VALUES } from '@/src/lib/constants'
 import { TRPCError } from '@trpc/server'
@@ -305,101 +302,4 @@ export const userRouter = router({
       return allUsers
     }),
 
-  // engagementScore = feedbackCount + attendedWorkshopCount (D-01, D-02)
-  listUsersWithEngagement: requirePermission('user:list')
-    .query(async () => {
-      const feedbackCounts = db
-        .select({
-          submitterId: feedbackItems.submitterId,
-          cnt: count().as('fb_cnt'),
-        })
-        .from(feedbackItems)
-        .groupBy(feedbackItems.submitterId)
-        .as('feedback_counts')
-
-      const attendanceCounts = db
-        .select({
-          userId: workshopRegistrations.userId,
-          cnt: count().as('att_cnt'),
-        })
-        .from(workshopRegistrations)
-        .where(and(
-          isNotNull(workshopRegistrations.userId),
-          isNotNull(workshopRegistrations.attendedAt),
-        ))
-        .groupBy(workshopRegistrations.userId)
-        .as('attendance_counts')
-
-      return db
-        .select({
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-          orgType: users.orgType,
-          createdAt: users.createdAt,
-          lastActivityAt: users.lastActivityAt,
-          engagementScore: sql<number>`
-            COALESCE(${feedbackCounts.cnt}, 0) + COALESCE(${attendanceCounts.cnt}, 0)
-          `.mapWith(Number),
-        })
-        .from(users)
-        .leftJoin(feedbackCounts, eq(users.id, feedbackCounts.submitterId))
-        .leftJoin(attendanceCounts, eq(users.id, attendanceCounts.userId))
-        .orderBy(users.createdAt)
-    }),
-
-  getUserProfile: requirePermission('user:list')
-    .input(z.object({ userId: z.string().uuid() }))
-    .query(async ({ input }) => {
-      const [profile, userFeedback, attendedWorkshops, feedbackCountResult, attendanceCountResult] = await Promise.all([
-        db.query.users.findFirst({ where: eq(users.id, input.userId) }),
-
-        db
-          .select({
-            id: feedbackItems.id,
-            readableId: feedbackItems.readableId,
-            title: feedbackItems.title,
-            status: feedbackItems.status,
-            createdAt: feedbackItems.createdAt,
-          })
-          .from(feedbackItems)
-          .where(eq(feedbackItems.submitterId, input.userId))
-          .orderBy(desc(feedbackItems.createdAt))
-          .limit(20),
-
-        db
-          .select({
-            workshopId: workshopRegistrations.workshopId,
-            title: workshops.title,
-            scheduledAt: workshops.scheduledAt,
-            attendedAt: workshopRegistrations.attendedAt,
-            status: workshopRegistrations.status,
-          })
-          .from(workshopRegistrations)
-          .innerJoin(workshops, eq(workshopRegistrations.workshopId, workshops.id))
-          .where(and(
-            eq(workshopRegistrations.userId, input.userId),
-            isNotNull(workshopRegistrations.attendedAt),
-          ))
-          .orderBy(desc(workshops.scheduledAt)),
-
-        db.select({ cnt: count() }).from(feedbackItems)
-          .where(eq(feedbackItems.submitterId, input.userId)),
-
-        db.select({ cnt: count() }).from(workshopRegistrations)
-          .where(and(
-            eq(workshopRegistrations.userId, input.userId),
-            isNotNull(workshopRegistrations.attendedAt),
-          )),
-      ])
-
-      if (!profile) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
-      }
-
-      const engagementScore = (feedbackCountResult[0]?.cnt ?? 0) + (attendanceCountResult[0]?.cnt ?? 0)
-
-      return { profile, attendedWorkshops, userFeedback, engagementScore }
-    }),
 })

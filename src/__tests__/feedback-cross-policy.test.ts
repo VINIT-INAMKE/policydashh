@@ -45,7 +45,6 @@ vi.mock('@clerk/nextjs/server', () => ({
 
 // --- Services + audit mocks (to avoid DB usage in import chain) ------------
 vi.mock('@/src/lib/audit', () => ({ writeAuditLog: vi.fn(async () => {}) }))
-vi.mock('@/src/lib/notifications', () => ({ createNotification: vi.fn(async () => {}) }))
 vi.mock('@/src/lib/email', () => ({ sendFeedbackReviewedEmail: vi.fn(async () => {}) }))
 vi.mock('@/src/server/services/feedback.service', () => ({
   transitionFeedback: vi.fn(async () => ({})),

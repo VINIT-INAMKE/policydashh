@@ -20,26 +20,26 @@ Generated from 6-domain code review on 2026-04-19. Numbering is stable — do no
 - [x] A2.1 Added `sanitizeHref` + allowlist; link/image hrefs fall back to `#` for unsafe protocols in HTML renderer; mirrored in PDF renderer.
 - [x] A2.2 HTML renderer now handles `fileAttachment`, `linkPreview`, `details`, `detailsSummary`, `detailsContent`.
 - [x] A2.3 PDF renderer now handles `table/row/cell/header`, `fileAttachment`, `linkPreview`, `details/summary/content`.
-- [ ] A2.4 `renderTiptapToText` dead code — deferred to A5 cleanup.
+- [-] A2.4 `renderTiptapToText` kept — used as an assertion helper by `markdown-import.test.ts`; deleting it would break those tests. Function is ~15 LOC so the cost of keeping is negligible.
 
 ### A3. Email dispatch routing
 - [x] A3.1 `version_published` now routed through `sendVersionPublishedEmail` in dispatcher switch.
 - [x] A3.2 `section_assigned` now routed through `sendSectionAssignedEmail`; feedback-type fallback preserved as default.
-- [ ] A3.3 Remove unused `createNotification` import in `src/server/routers/feedback.ts:15` — pending A5.
+- [x] A3.3 Removed unused `createNotification` import from `src/server/routers/feedback.ts`; deleted `src/lib/notifications.ts` (zero non-test callers); removed `vi.mock` for it in `src/__tests__/feedback-cross-policy.test.ts`.
 
 ### A4. `.env.example` + docs
 - [x] A4.1 Added `NEXT_PUBLIC_APP_URL`, `APP_BASE_URL`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `CAL_API_KEY`, `CAL_WEBHOOK_SECRET`.
 - [x] A4.2 R2_PUBLIC_URL comment updated to instruct public domain + custom-domain setup steps.
 
 ### A5. Dead-code removal (only after verifying zero real callers)
-- [ ] A5.1 `app/workshops/_components/cal-embed-modal.tsx` + `cal-embed.tsx` — delete (workshop-card uses `RegisterForm`).
-- [ ] A5.2 `app/feedback/outcomes/_components/outcomes-list.tsx` — delete; `/feedback/outcomes` already redirects to `/feedback?tab=outcomes`.
-- [ ] A5.3 `app/framework/_components/section-status-badge.tsx` — delete if still unused after other fixes.
-- [ ] A5.4 `src/server/routers/user.ts` — delete `listUsersWithEngagement`, `getUserProfile`, `getMe`, and the `name` branch of `updateProfile` (unless any gets a caller through later fixes).
-- [ ] A5.5 `src/server/routers/workshop.ts` — either wire `reprovisionCalSeats` into an admin action or delete.
-- [ ] A5.6 `src/lib/notifications.ts` — `createNotification` helper; remove file if no callers after A3.3.
-- [ ] A5.7 `src/server/rbac/section-access.ts:12` — remove `BYPASS_SECTION_SCOPE` export (keep internal if still used internally).
-- [ ] A5.8 Schema stale fields (decide: wire up or drop): `evidenceArtifacts.content`, `documentVersions.anchoredAt`, `documentVersions.txHash`, `feedbackItems.resolvedInVersionId`, `feedbackItems.source`, `feedbackItems.milestoneId`, `workshopArtifactType.'attendance'`. Dropping any requires a migration — pick per-field action.
+- [x] A5.1 Deleted `app/workshops/_components/cal-embed-modal.tsx` + `cal-embed.tsx`; removed stale `vi.mock` from `tests/phase-20/workshops-listing.test.tsx`; updated workshop-card JSDoc to reference `RegisterForm`.
+- [x] A5.2 Deleted `app/feedback/outcomes/_components/` directory (the only file was an orphan `outcomes-list.tsx`).
+- [-] A5.3 `section-status-badge.tsx` kept — imported by `public-policy-content.tsx` + `summary-review-card.tsx`. Original audit was wrong about it being unreferenced.
+- [x] A5.4 Deleted dead procs `listUsersWithEngagement` + `getUserProfile` from `src/server/routers/user.ts`; deleted scaffold `engagement.test.ts`; cleaned up orphan drizzle imports. `getMe` kept (18+ active callers across UI). `updateProfile.name` branch kept (orgType path shares the handler).
+- [-] A5.5 `reprovisionCalSeats` kept and wired — F15 added an admin `ReprovisionCalButton` on the workshop manage detail page. No longer dead.
+- [x] A5.6 Deleted `src/lib/notifications.ts` (done alongside A3.3).
+- [-] A5.7 `BYPASS_SECTION_SCOPE` kept — imported by `src/server/routers/feedback.ts:3, 95` and the section-assignments contract test. Original audit was wrong.
+- [-] A5.8 Schema stale fields deferred — each removal requires a migration with semantic impact (e.g., `feedbackItems.source` may be read by future reporting). Keep columns, document as forward-compatible. No agent time wasted on the per-field calls.
 
 ---
 
@@ -54,8 +54,8 @@ Generated from 6-domain code review on 2026-04-19. Numbering is stable — do no
 - [x] B7. Added owner-check on `changeRequest.merge` mirroring the `approve` self-check — throws FORBIDDEN when `ownerId === ctx.user.id`. File: `src/server/routers/changeRequest.ts`.
 - [x] B8. Clerk `user.updated` now only writes the role when `publicMetadata.role` matches a valid enum value (preserves prior role otherwise on upsert); role deltas emit a `user.role_assign` audit event with `source: 'clerk_webhook'`. File: `app/api/webhooks/clerk/route.ts`.
 - [x] B9. Added `users.deletedAt` column (migration `0019_user_soft_delete.sql`) + `user.deleted` handler that anonymizes the row (nulls email/phone/name, rewrites `clerkId` to a `deleted:<id>:<ts>` sentinel so the UNIQUE index still holds, sets `deletedAt`). FK references remain intact; original email is freed for re-invite. Audit log emitted. Files: `app/api/webhooks/clerk/route.ts`, `src/db/schema/users.ts`, `src/db/migrations/0019_user_soft_delete.sql`.
-- [~] B10. Partial — body-size caps on three intake routes: `workshop-register` (16 KB), `participate` (64 KB), `workshop-feedback` (64 KB). Remaining: `/api/upload` (other agent).
-- [~] B11. `src/lib/rate-limit.ts` applied to `/api/intake/workshop-register` (per-IP + per-email) and `/api/intake/workshop-feedback` (10/min per-IP + 5/min per-token-hash).
+- [x] B10. Body-size caps on all four public routes: `workshop-register` (16 KB), `participate` (64 KB), `workshop-feedback` (64 KB), `upload` (4 KB envelope).
+- [x] B11. `src/lib/rate-limit.ts` applied to `/api/intake/workshop-register` (per-IP + per-email) and `/api/intake/workshop-feedback` (10/min per-IP + 5/min per-token-hash).
 - [x] B12. `/api/upload` presign now rate-limited per Clerk user (20 req/min) via `src/lib/rate-limit.ts#consume`. TODO comment replaced.
 - [x] B13. Workshop-feedback JWT token replay prevented by SHA-256 hashing the token into `workshop_feedback_token_nonces` on successful submit; subsequent submissions carrying the same token are rejected 401. New schema table + migration `0017_workshop_feedback_token_nonces.sql` + `scripts/apply-migration-0017.mjs`. Files: `src/db/schema/feedback.ts`, `src/lib/feedback-token.ts` (`hashFeedbackToken`), `app/api/intake/workshop-feedback/route.ts`.
 - [x] B14. `readableId` now generated via `nextval('feedback_id_seq')` (same path as authenticated `feedback.submit`) — no more `Date.now()` base-36 collisions. File: `app/api/intake/workshop-feedback/route.ts`.
@@ -110,26 +110,26 @@ Generated from 6-domain code review on 2026-04-19. Numbering is stable — do no
 
 ## E. FEEDBACK & PARTICIPATION
 
-- [x] E1. Added `feedback.canSubmit` tRPC query (mirrors `requireSectionAccess` middleware). Server-rendered submit page now renders a "You're not assigned to this section" banner and passes `disabled` into the form when the preflight fails. Files: `src/server/routers/feedback.ts`, `app/policies/[id]/sections/[sectionId]/feedback/new/page.tsx`, `app/policies/[id]/sections/[sectionId]/feedback/new/_components/submit-feedback-form.tsx`.
-- [ ] E2. `feedback.list` status filter — either always-server or always-client, don't switch behavior on count. File: `app/.../feedback-inbox.tsx:26-33`, `src/server/routers/feedback.ts`.
-- [ ] E3. Filter panel: add "All sections" sentinel (non-empty-string, clear via client). File: `app/.../filter-panel.tsx:158-178` and CR variant.
-- [ ] E4. Participate form: set `maxLength` on inputs per Zod caps. File: `app/participate/_components/participate-form.tsx`.
-- [ ] E5. Anonymity copy fix: say "Admins and Policy Leads" if server allows both to see identity — or restrict server to admin only. Files: `app/.../anonymity-toggle.tsx:54`, `src/server/routers/feedback.ts` (identity exposure logic).
-- [ ] E6. Workshop feedback title: include a short preview (first 80 chars of comment) instead of "Workshop feedback (n/5)". File: `app/api/intake/workshop-feedback/route.ts:151`.
-- [ ] E7. Workshop feedback: expose attendee-controlled `isAnonymous` toggle in the participate form; persist its real value. Files: `app/participate/_components/participate-form.tsx`, intake route line 154.
-- [ ] E8. Workshop feedback: do not fall back to `workshop.createdBy` as submitter when user not found. Leave `submitterId: null` with `isAnonymous: true`. File: `app/api/intake/workshop-feedback/route.ts:125-133`.
-- [ ] E9. Portal `/portal/[policyId]/consultation-summary`: render `documentVersions.consultationSummary` (approved LLM summary) instead of recomputing aggregates from `feedbackItems`. File: `app/portal/[policyId]/consultation-summary/page.tsx:44-134`.
-- [ ] E10. Consultation summary regenerate: polling / "stale" indicator (`generatedAt` vs `publishedAt`). Also surface failures. Files: `src/server/routers/consultation-summary.ts:209-253`, `app/.../consultation-summary` moderator UI.
-- [ ] E11. `/participate` without token: show an explainer page ("Enter your invite link") instead of silently redirecting to `/dashboard`. File: `app/participate/page.tsx:92-98`.
-- [ ] E12. Expired-token copy: differentiate "no token" from "expired token". File: `app/participate/_components/expired-link-card.tsx:17`.
-- [ ] E13. Global feedback page row click → link to `?selected=${id}` on the policy feedback page. File: `app/feedback/_components/all-feedback-tab.tsx:135-153`.
-- [ ] E14. Submitter outcomes: show full decision log, reviewer name, linked evidence. File: `app/feedback/_components/my-outcomes-tab.tsx`.
-- [ ] E15. `startReview` + `close` — route through Flow 5 or an Inngest-retryable event for parity with `decide`. Files: `src/server/routers/feedback.ts:346-356, 440-450`.
-- [ ] E16. Rationale dialog: show "20 character minimum" hint. File: `app/.../rationale-dialog.tsx:122-134`.
-- [ ] E17. Evidence-gaps tab: move claim-without-evidence filtering to server. Files: `src/server/routers/evidence.ts` (add input filter), `app/feedback/_components/evidence-gaps-tab.tsx:54-72`.
-- [ ] E18. Show "Under Review" transition to submitter outcomes view (currently shows "No decisions"). File: `app/feedback/_components/my-outcomes-tab.tsx:140-148`.
-- [ ] E19. Portal consultation-summary: stale indicator if version was published after `approvedAt`. File: `src/server/services/consultation-summary.service.ts:199` + portal page.
-- [ ] E20. Second `StatusBadge` inline component — replace with the shared one. File: `app/.../feedback-detail-sheet.tsx:45-64`.
+- [x] E1. Added `feedback.canSubmit` tRPC query + preflight banner + disabled form when not section-scoped.
+- [x] E2. Inbox always-server filters via arrays (`statuses`, `feedbackTypes`, `priorities`, `impactCategories`, `orgTypes`); router uses `inArray`.
+- [x] E3. Filter panel uses `__all__` sentinel for Section Select; section clears without wiping other filters.
+- [x] E4. Participate form inputs now carry `maxLength` matching Zod caps.
+- [x] E5. Server restricted to `admin` only for identity visibility (feedback.ts + traceability.ts); toggle copy updated to reflect.
+- [x] E6. Workshop feedback `title` = trimmed first-80-char preview + ellipsis, falls back to "Workshop feedback (n/5)" only for empty comments.
+- [x] E7. Workshop feedback form exposes `isAnonymous` toggle (default true); route persists attendee's choice.
+- [x] E8. Workshop feedback: submitter defaults to `submitterId: null` with `isAnonymous: true` when user row missing — no more moderator fallback.
+- [x] E9. Portal `/portal/[policyId]/consultation-summary` renders approved `documentVersions.consultationSummary` JSONB instead of recomputing aggregates.
+- [x] E10. `consultationSummary.status` procedure + stale indicator (`generatedAt < publishedAt`) + overall state; moderator UI polls.
+- [x] E11. `/participate` without token now renders `MissingInviteExplainer` shell (signed-in users) instead of redirecting to `/dashboard`.
+- [x] E12. Expired-vs-missing token copy split via `variant` prop on `ExpiredLinkCard`.
+- [x] E13. Global feedback rows link to `/policies/${documentId}/feedback?selected=${id}` (policy inbox, specific item).
+- [x] E14. Submitter outcomes tab renders full decision log + reviewer name + linked evidence.
+- [x] E15. `startReview` + `close` already route through `sendNotificationCreate` → Inngest `notificationDispatchFn` with `retries: 3` (Inngest-retryable parity with `decide`).
+- [x] E16. Rationale dialog shows "Minimum 20 characters" hint + live counter + disabled Confirm tooltip.
+- [x] E17. Evidence-gaps filter moved server-side (router accepts documentId/sectionId/feedbackType).
+- [x] E18. "Under review" transition now rendered in submitter outcomes (was showing "No decisions").
+- [x] E19. Portal consultation-summary shows stale banner when summary belongs to an older-than-latest version.
+- [x] E20. `feedback-detail-sheet` now imports the shared `StatusBadge`; inline duplicate removed.
 
 ---
 

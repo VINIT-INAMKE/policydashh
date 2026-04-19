@@ -2,9 +2,9 @@
  * Phase 20 Plan 20-05 - public workshop listing card.
  *
  * Three visual variants per UI-SPEC Surface A §Card Anatomy:
- *   - "upcoming": full card + CalEmbedModal + spots-left badge
- *   - "live":     full card + CalEmbedModal + "Live now" header badge (no spots)
- *   - "past":     compact card (title + date), optional "View summary" link
+ *   - "upcoming": full card + RegisterForm + spots-left badge
+ *   - "live":     full card + RegisterForm + "Live now" header badge (no spots)
+ *   - "past":     compact card (title + date), optional "Summary available" note
  *
  * Register CTA is only wired when the workshop has a non-null
  * `calcomEventTypeId` (D-03 - failed cal.com provisioning hides the embed).

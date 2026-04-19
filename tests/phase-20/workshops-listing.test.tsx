@@ -17,10 +17,6 @@
  * the real drizzle/unstable_cache layer. `@/components/ui/card`, `<WorkshopCard>`
  * etc render normally because we only assert on headings and empty-state copy.
  *
- * `CalEmbedModal` pulls in `next/dynamic` → `cal-embed.tsx` → `@calcom/embed-react`
- * which may not be installed in the local node_modules during parallel execution.
- * We mock `./_components/cal-embed-modal` to a trivial stub so the tree mounts
- * without hitting the cal.com package.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
@@ -32,17 +28,6 @@ const mockListPublicWorkshops = vi.fn()
 
 vi.mock('@/src/server/queries/workshops-public', () => ({
   listPublicWorkshops: (...args: unknown[]) => mockListPublicWorkshops(...args),
-}))
-
-// Replace the cal.com embed modal with a plain button so the test tree does
-// not try to load `@calcom/embed-react` (which requires the package actually
-// be installed in node_modules).
-vi.mock('@/app/workshops/_components/cal-embed-modal', () => ({
-  CalEmbedModal: ({ workshopTitle }: { workshopTitle: string }) => (
-    <button type="button" aria-label={`Register for ${workshopTitle}`}>
-      Register
-    </button>
-  ),
 }))
 
 // Import the page AFTER mocks are declared.

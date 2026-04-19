@@ -103,6 +103,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // B10: body-size cap. The presign envelope is a tiny JSON object
+  // (fileName/contentType/fileSize/category). Reject anything larger than
+  // 4 KB before calling .json() so a malicious caller cannot waste parse
+  // cycles on a multi-MB payload.
+  const contentLength = Number(request.headers.get('content-length') ?? '0')
+  if (contentLength > 4096) {
+    return NextResponse.json(
+      { error: 'Request body too large' },
+      { status: 413 },
+    )
+  }
+
   const body = await request.json()
   const { fileName, contentType, category = 'evidence', fileSize } = body as {
     fileName: string
