@@ -48,31 +48,50 @@ export interface PublicWorkshop {
   status: PublicWorkshopStatus
   calcomEventTypeId: string | null
   maxSeats: number | null
+  // F23: external registration override. Surfaced to the card as a fallback
+  // when cal.com is not wired for this workshop. Admins set this on the
+  // create/edit form when they want to route registrations to another
+  // system entirely (e.g. Eventbrite).
+  registrationLink: string | null
   registeredCount: number
   hasApprovedSummary: boolean
 }
 
 /**
  * Per-workshop registered-count lookup. Cached for 60 seconds and tagged so
- * Plan 20-04 (BOOKING_CREATED Inngest fn) can `revalidateTag` after a new
- * registration lands.
+ * the cal.com webhook handler (BOOKING_CREATED / _CANCELLED / _RESCHEDULED)
+ * can `revalidateTag('workshop-spots-${workshopId}')` after writes land.
+ *
+ * F5: `unstable_cache` options.tags is a static string[] in Next.js 16, so
+ * we must build a per-workshopId cache closure on demand rather than sharing
+ * one function with dynamic tags. The outer wrapper below memoizes these
+ * closures per workshopId to avoid re-allocating them on every SSR pass.
  */
-export const getRegisteredCount = unstable_cache(
-  async (workshopId: string): Promise<number> => {
-    const [row] = await db
-      .select({ n: count() })
-      .from(workshopRegistrations)
-      .where(
-        and(
-          eq(workshopRegistrations.workshopId, workshopId),
-          ne(workshopRegistrations.status, 'cancelled'),
-        ),
-      )
-    return Number(row?.n ?? 0)
-  },
-  ['workshop-registered-count'],
-  { revalidate: 60 },
-)
+const perWorkshopCountCache = new Map<string, () => Promise<number>>()
+
+export function getRegisteredCount(workshopId: string): Promise<number> {
+  let fn = perWorkshopCountCache.get(workshopId)
+  if (!fn) {
+    fn = unstable_cache(
+      async () => {
+        const [row] = await db
+          .select({ n: count() })
+          .from(workshopRegistrations)
+          .where(
+            and(
+              eq(workshopRegistrations.workshopId, workshopId),
+              ne(workshopRegistrations.status, 'cancelled'),
+            ),
+          )
+        return Number(row?.n ?? 0)
+      },
+      ['workshop-registered-count', workshopId],
+      { revalidate: 60, tags: [`workshop-spots-${workshopId}`] },
+    )
+    perWorkshopCountCache.set(workshopId, fn)
+  }
+  return fn()
+}
 
 /**
  * Load all public-visible workshops with spot counts and summary flags.
@@ -90,6 +109,7 @@ export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {
       status: workshops.status,
       calcomEventTypeId: workshops.calcomEventTypeId,
       maxSeats: workshops.maxSeats,
+      registrationLink: workshops.registrationLink,
     })
     .from(workshops)
     .where(isNotNull(workshops.calcomEventTypeId))
@@ -116,6 +136,7 @@ export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {
       status: w.status,
       calcomEventTypeId: w.calcomEventTypeId,
       maxSeats: w.maxSeats,
+      registrationLink: w.registrationLink,
       registeredCount,
       hasApprovedSummary: Number(summary?.n ?? 0) > 0,
     })

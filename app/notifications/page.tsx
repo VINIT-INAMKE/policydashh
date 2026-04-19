@@ -70,22 +70,62 @@ export default function NotificationsPage() {
     { refetchInterval: 10_000 },
   )
 
+  // H10: keep the feed fresh at the same cadence as unreadCount. Polling
+  // stops once the user has paginated past the first page so we don't
+  // quietly rewrite older pages on every refetch.
   const { data: rawNotifications, isLoading } = trpc.notification.list.useQuery(
     { limit: 20, cursor },
+    { refetchInterval: cursor ? false : 10_000 },
   )
 
   const notifications = rawNotifications as NotificationRow[] | undefined
 
-  // Accumulate pages as data arrives
+  // H11: dedupe on first-page refetch.
+  //
+  // Previously the first-page branch overwrote loadedPages[0] outright, but
+  // after markRead / markAllRead the subsequent refetch could return a
+  // newer slice that shares IDs with later pages - flat() would then list
+  // the same notification twice. We merge by id with a Map so the most
+  // recent server copy wins regardless of which page it landed on.
   useEffect(() => {
     if (notifications && notifications !== prevDataRef.current) {
       prevDataRef.current = notifications
       if (!cursor) {
-        // First page / reset
-        setLoadedPages([notifications])
+        // First page / reset: merge the new page over existing state so
+        // rows paged in earlier keep their order, but read-state updates
+        // from the refetch win for any overlapping id.
+        setLoadedPages((prev) => {
+          // Fresh load (no prior pages) - just seed with the page as-is.
+          if (prev.length === 0) return [notifications]
+
+          const merged = new Map<string, NotificationRow>()
+          // Preserve existing ordering by walking prior pages first, then
+          // overlay the refreshed first page on top.
+          for (const page of prev) {
+            for (const n of page) merged.set(n.id, n)
+          }
+          for (const n of notifications) merged.set(n.id, n)
+
+          // Rebuild the first page as the fresh slice (limit 20), then
+          // keep any remaining pages stripped of ids we've already seen.
+          const firstPageIds = new Set(notifications.map((n) => n.id))
+          const remainingPages = prev
+            .slice(1)
+            .map((page) => page.filter((n) => !firstPageIds.has(n.id)))
+            .filter((page) => page.length > 0)
+
+          const freshFirstPage = notifications.map((n) => merged.get(n.id)!)
+          return [freshFirstPage, ...remainingPages]
+        })
       } else {
-        // Append new page
-        setLoadedPages((prev) => [...prev, notifications])
+        // Append new page, but dedupe any ids already loaded from earlier
+        // pages so the same notification never appears twice.
+        setLoadedPages((prev) => {
+          const seen = new Set<string>()
+          for (const page of prev) for (const n of page) seen.add(n.id)
+          const filtered = notifications.filter((n) => !seen.has(n.id))
+          return filtered.length > 0 ? [...prev, filtered] : prev
+        })
       }
     }
   }, [notifications, cursor])

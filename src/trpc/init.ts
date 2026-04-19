@@ -4,6 +4,7 @@ import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
 import { eq } from 'drizzle-orm'
 import { cache } from 'react'
+import { z } from 'zod'
 import { can, type Permission } from '@/src/lib/permissions'
 import type { Role } from '@/src/lib/constants'
 
@@ -25,11 +26,20 @@ export type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>
 
 const t = initTRPC.context<TRPCContext>().create({
   errorFormatter({ shape, error }) {
+    const isZodError = error.cause instanceof z.ZodError
     return {
       ...shape,
       data: {
         ...shape.data,
-        zodError: error.cause instanceof Error ? error.cause.message : null,
+        // C7: surface field-level zod validation errors to clients (zod v4 API).
+        // Clients can inspect `error.data.zodError.issues` for per-field messages
+        // or `error.data.zodError.tree` for a nested shape mapping field path → errors.
+        zodError: isZodError
+          ? {
+              issues: (error.cause as z.ZodError).issues,
+              tree: z.treeifyError(error.cause as z.ZodError),
+            }
+          : null,
       },
     }
   },
@@ -63,10 +73,14 @@ const touchActivity = t.middleware(async ({ ctx, next, type }) => {
     },
   })
   if (type === 'mutation' && ctx.user) {
+    // C8: surface touchActivity failures rather than silently swallowing.
+    // Non-fatal to the caller, but useful for ops to notice DB pressure / schema drift.
     db.update(users)
       .set({ lastActivityAt: new Date() })
       .where(eq(users.id, ctx.user.id))
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('[trpc] touchActivity failed', err)
+      })
   }
   return result
 })

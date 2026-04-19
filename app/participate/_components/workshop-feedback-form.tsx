@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { StarRating } from './star-rating'
 
 export interface WorkshopFeedbackFormSection {
@@ -47,6 +48,10 @@ export function WorkshopFeedbackForm({ workshopId, token, sections }: WorkshopFe
   const [rating, setRating] = useState<number>(0)
   const [comment, setComment] = useState<string>('')
   const [sectionId, setSectionId] = useState<string>('')
+  // E7: attendee-controlled anonymity; default to anonymous because most
+  // post-workshop feedback is informal and attendees don't expect their
+  // name attached without explicit consent.
+  const [isAnonymous, setIsAnonymous] = useState<boolean>(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [topError, setTopError] = useState<string | null>(null)
@@ -87,6 +92,7 @@ export function WorkshopFeedbackForm({ workshopId, token, sections }: WorkshopFe
             rating,
             comment: trimmed,
             sectionId: sectionId || undefined,
+            isAnonymous,
           }),
         })
 
@@ -117,7 +123,7 @@ export function WorkshopFeedbackForm({ workshopId, token, sections }: WorkshopFe
         setSubmitting(false)
       }
     },
-    [workshopId, token, rating, comment, sectionId],
+    [workshopId, token, rating, comment, sectionId, isAnonymous],
   )
 
   if (submitted) {
@@ -228,6 +234,36 @@ export function WorkshopFeedbackForm({ workshopId, token, sections }: WorkshopFe
             </section>
           </>
         ) : null}
+
+        <Separator />
+
+        {/* E7: Attendee-controlled anonymity */}
+        <section className="flex flex-col gap-3">
+          <Label>Attribution</Label>
+          <RadioGroup
+            value={isAnonymous ? 'anonymous' : 'named'}
+            onValueChange={(v: string) => setIsAnonymous(v === 'anonymous')}
+          >
+            <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-muted/30">
+              <RadioGroupItem value="anonymous" className="mt-0.5" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium leading-snug">Anonymous</span>
+                <span className="text-[12px] font-normal leading-[1.4] text-muted-foreground">
+                  Your identity will not appear on this feedback.
+                </span>
+              </div>
+            </label>
+            <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-muted/30">
+              <RadioGroupItem value="named" className="mt-0.5" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium leading-snug">Attributed</span>
+                <span className="text-[12px] font-normal leading-[1.4] text-muted-foreground">
+                  Your email (from the invite link) will be associated with this feedback.
+                </span>
+              </div>
+            </label>
+          </RadioGroup>
+        </section>
 
         <Button
           type="submit"

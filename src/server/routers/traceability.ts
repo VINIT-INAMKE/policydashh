@@ -5,7 +5,8 @@ import { feedbackItems } from '@/src/db/schema/feedback'
 import { changeRequests, crFeedbackLinks, crSectionLinks, documentVersions } from '@/src/db/schema/changeRequests'
 import { policySections, policyDocuments } from '@/src/db/schema/documents'
 import { users } from '@/src/db/schema/users'
-import { eq, and, or, desc, ilike, inArray, sql, gte, lte } from 'drizzle-orm'
+import { eq, and, or, desc, ilike, inArray, isNull, gte, lte } from 'drizzle-orm'
+import { TRPCError } from '@trpc/server'
 
 const ORG_TYPES = ['government', 'industry', 'legal', 'academia', 'civil_society', 'internal'] as const
 const FEEDBACK_STATUSES = ['submitted', 'under_review', 'accepted', 'partially_accepted', 'rejected', 'closed'] as const
@@ -18,12 +19,20 @@ function escapeIlike(input: string): string {
 
 export const traceabilityRouter = router({
   // TRACE-01, TRACE-02, TRACE-03: Traceability matrix
+  //
+  // D5: multi-value filters. `orgTypes` and `decisionOutcomes` are accepted as
+  //     arrays and pushed through `inArray`. D6: the version-range predicate
+  //     applies to the *left-joined* documentVersions.createdAt column, so rows
+  //     whose CR was never merged (versionId IS NULL) would be silently dropped
+  //     under a plain gte/lte. We wrap the comparison with `OR IS NULL` so
+  //     un-merged feedback survives the filter.
+  // D7: a friendly `from > to` precheck.
   matrix: requirePermission('trace:read')
     .input(z.object({
       documentId: z.string().uuid(),
       sectionId: z.string().uuid().optional(),
-      orgType: z.enum(ORG_TYPES).optional(),
-      decisionOutcome: z.enum(FEEDBACK_STATUSES).optional(),
+      orgTypes: z.array(z.enum(ORG_TYPES)).optional(),
+      decisionOutcomes: z.array(z.enum(FEEDBACK_STATUSES)).optional(),
       versionFromLabel: z.string().max(20).optional(),
       versionToLabel: z.string().max(20).optional(),
       limit: z.number().int().min(1).max(500).default(200),
@@ -37,42 +46,70 @@ export const traceabilityRouter = router({
       if (input.sectionId) {
         conditions.push(eq(feedbackItems.sectionId, input.sectionId))
       }
-      if (input.decisionOutcome) {
-        conditions.push(eq(feedbackItems.status, input.decisionOutcome))
+      if (input.decisionOutcomes && input.decisionOutcomes.length > 0) {
+        conditions.push(inArray(feedbackItems.status, input.decisionOutcomes))
       }
-      if (input.orgType) {
-        conditions.push(eq(users.orgType, input.orgType))
+      if (input.orgTypes && input.orgTypes.length > 0) {
+        conditions.push(inArray(users.orgType, input.orgTypes))
       }
 
-      // Version range filter: resolve label strings to version IDs via subquery
-      if (input.versionFromLabel || input.versionToLabel) {
-        // Get version createdAt bounds for filtering
-        if (input.versionFromLabel) {
-          const [fromVersion] = await db
-            .select({ createdAt: documentVersions.createdAt })
-            .from(documentVersions)
-            .where(and(
-              eq(documentVersions.documentId, input.documentId),
-              eq(documentVersions.versionLabel, input.versionFromLabel),
-            ))
-            .limit(1)
-          if (fromVersion) {
-            conditions.push(gte(documentVersions.createdAt, fromVersion.createdAt))
-          }
+      // Version range filter: resolve label strings to version IDs via subquery.
+      // D6: documentVersions is LEFT JOINed below, so unbounded gte/lte would
+      // silently drop feedback whose CR has no merged version. Wrap in
+      // `OR IS NULL` so un-merged rows remain visible.
+      let fromCreatedAt: Date | null = null
+      let toCreatedAt: Date | null = null
+
+      if (input.versionFromLabel) {
+        const [fromVersion] = await db
+          .select({ createdAt: documentVersions.createdAt })
+          .from(documentVersions)
+          .where(and(
+            eq(documentVersions.documentId, input.documentId),
+            eq(documentVersions.versionLabel, input.versionFromLabel),
+          ))
+          .limit(1)
+        if (fromVersion) {
+          fromCreatedAt = fromVersion.createdAt
         }
-        if (input.versionToLabel) {
-          const [toVersion] = await db
-            .select({ createdAt: documentVersions.createdAt })
-            .from(documentVersions)
-            .where(and(
-              eq(documentVersions.documentId, input.documentId),
-              eq(documentVersions.versionLabel, input.versionToLabel),
-            ))
-            .limit(1)
-          if (toVersion) {
-            conditions.push(lte(documentVersions.createdAt, toVersion.createdAt))
-          }
+      }
+      if (input.versionToLabel) {
+        const [toVersion] = await db
+          .select({ createdAt: documentVersions.createdAt })
+          .from(documentVersions)
+          .where(and(
+            eq(documentVersions.documentId, input.documentId),
+            eq(documentVersions.versionLabel, input.versionToLabel),
+          ))
+          .limit(1)
+        if (toVersion) {
+          toCreatedAt = toVersion.createdAt
         }
+      }
+
+      // D7: reject inverted range with a friendly error.
+      if (fromCreatedAt && toCreatedAt && fromCreatedAt > toCreatedAt) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: '"From" version must be before "To" version. Swap the selections and try again.',
+        })
+      }
+
+      if (fromCreatedAt) {
+        conditions.push(
+          or(
+            gte(documentVersions.createdAt, fromCreatedAt),
+            isNull(documentVersions.createdAt),
+          )!,
+        )
+      }
+      if (toCreatedAt) {
+        conditions.push(
+          or(
+            lte(documentVersions.createdAt, toCreatedAt),
+            isNull(documentVersions.createdAt),
+          )!,
+        )
       }
 
       const rows = await db
@@ -124,6 +161,10 @@ export const traceabilityRouter = router({
     }),
 
   // TRACE-04: Section chain - feedback linked to a section through CRs with version info
+  //
+  // D19: `versionCreatedAt` is the renamed-for-clarity field (was `mergedAt`
+  // previously, which was misleading because it came from
+  // documentVersions.createdAt, not changeRequests.mergedAt).
   sectionChain: requirePermission('trace:read')
     .input(z.object({
       sectionId: z.string().uuid(),
@@ -144,7 +185,7 @@ export const traceabilityRouter = router({
           feedbackDecisionRationale: feedbackItems.decisionRationale,
           versionId: documentVersions.id,
           versionLabel: documentVersions.versionLabel,
-          mergedAt: documentVersions.createdAt,
+          versionCreatedAt: documentVersions.createdAt,
         })
         .from(policySections)
         .innerJoin(crSectionLinks, eq(policySections.id, crSectionLinks.sectionId))

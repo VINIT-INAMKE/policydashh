@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { formatDistanceToNow } from 'date-fns'
-import { MessageSquare } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { formatDistanceToNow, format } from 'date-fns'
+import { useSearchParams } from 'next/navigation'
+import { MessageSquare, FileText, ExternalLink, Paperclip } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import {
   StatusBadge,
   type FeedbackStatus,
@@ -17,13 +19,31 @@ import {
  * Role gating happens at the parent GlobalFeedbackTabs level; this component
  * assumes the viewer is allowed to see their own outcomes.
  *
- * Uses trpc.feedback.listOwn which is caller-scoped by design.
+ * Uses trpc.feedback.listOwn which is caller-scoped by design. Per
+ * E14/E18:
+ *   - Renders the full `workflow_transitions` log (start-review, decision,
+ *     close) with reviewer name and timestamp, not just the latest
+ *     decisionRationale field.
+ *   - Shows "Under Review" entries for submitted → under_review transitions
+ *     (previously collapsed to "No decisions recorded yet").
+ *   - Surfaces linked evidence so the submitter can confirm artifacts they
+ *     attached earlier made it into the review loop.
  */
 export function MyOutcomesTab() {
+  const searchParams = useSearchParams()
+  const initialSelected = searchParams.get('selected')
   const feedbackQuery = trpc.feedback.listOwn.useQuery()
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(initialSelected)
 
   const items = feedbackQuery.data ?? []
+
+  // Honor ?selected=<id> on first mount and scroll the row into view so
+  // notification deep-links land on the right item.
+  useEffect(() => {
+    if (!initialSelected) return
+    const el = document.getElementById(`outcome-row-${initialSelected}`)
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [initialSelected])
 
   const stats = useMemo(() => {
     const total = items.length
@@ -95,14 +115,8 @@ export function MyOutcomesTab() {
       <div className="flex flex-col gap-1">
         {items.map((item) => {
           const isExpanded = expandedId === item.id
-          const hasDecision =
-            item.status === 'accepted' ||
-            item.status === 'partially_accepted' ||
-            item.status === 'rejected' ||
-            item.status === 'closed'
-
           return (
-            <div key={item.id}>
+            <div key={item.id} id={`outcome-row-${item.id}`}>
               <button
                 type="button"
                 className="flex w-full items-center gap-3 rounded-t-md px-3 py-2 text-left transition-colors hover:bg-muted/50"
@@ -131,22 +145,7 @@ export function MyOutcomesTab() {
               </button>
 
               {isExpanded && (
-                <div className="rounded-b-md bg-muted px-4 py-3">
-                  {hasDecision ? (
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[12px] font-normal uppercase tracking-wide text-muted-foreground">
-                        Decision
-                      </span>
-                      <p className="text-[14px] font-normal leading-[1.5]">
-                        {item.decisionRationale ?? 'No rationale provided.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No decisions recorded yet.
-                    </p>
-                  )}
-                </div>
+                <OutcomeDetails feedbackId={item.id} />
               )}
             </div>
           )
@@ -154,4 +153,111 @@ export function MyOutcomesTab() {
       </div>
     </div>
   )
+}
+
+/**
+ * OutcomeDetails - expanded view for a single outcome row. Fetches the
+ * full workflow-transitions log and attached evidence so the submitter
+ * can see the entire review history, not just the most recent decision.
+ *
+ * E18: transitions include submitted → under_review so callers see
+ * "Under Review" context instead of "No decisions recorded yet".
+ */
+function OutcomeDetails({ feedbackId }: { feedbackId: string }) {
+  const transitionsQuery = trpc.feedback.listTransitions.useQuery({ feedbackId })
+  const evidenceQuery = trpc.evidence.listByFeedback.useQuery({ feedbackId })
+
+  const transitions = transitionsQuery.data ?? []
+  const evidence = evidenceQuery.data ?? []
+
+  return (
+    <div className="rounded-b-md bg-muted px-4 py-3">
+      {/* Decision log */}
+      <div className="flex flex-col gap-2">
+        <span className="text-[12px] font-normal uppercase tracking-wide text-muted-foreground">
+          Decision log
+        </span>
+        {transitionsQuery.isLoading ? (
+          <Skeleton className="h-6 w-full" />
+        ) : transitions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No activity recorded yet.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {transitions.map((t) => {
+              const rationale =
+                t.metadata && typeof t.metadata === 'object' && 'rationale' in t.metadata
+                  ? ((t.metadata as Record<string, unknown>).rationale as string | null)
+                  : null
+              const ts = typeof t.timestamp === 'string'
+                ? t.timestamp
+                : new Date(t.timestamp as unknown as string).toISOString()
+              return (
+                <li key={t.id} className="flex flex-col gap-0.5 rounded-md bg-background/60 px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      {formatStateLabel(t.toState)}
+                    </span>
+                    <span>&middot;</span>
+                    <span>{t.actorName ?? 'System'}</span>
+                    <span>&middot;</span>
+                    <span>{format(new Date(ts), 'MMM d, yyyy h:mm a')}</span>
+                  </div>
+                  {rationale ? (
+                    <p className="text-[14px] font-normal leading-[1.5]">
+                      {rationale}
+                    </p>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* Evidence */}
+      {(evidence.length > 0 || evidenceQuery.isLoading) && (
+        <>
+          <Separator className="my-3" />
+          <div className="flex flex-col gap-2">
+            <span className="text-[12px] font-normal uppercase tracking-wide text-muted-foreground">
+              Linked evidence
+            </span>
+            {evidenceQuery.isLoading ? (
+              <Skeleton className="h-6 w-full" />
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {evidence.map((e) => (
+                  <li key={e.id} className="flex items-center gap-2 text-sm">
+                    {e.type === 'link' ? (
+                      <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                    ) : e.type === 'file' ? (
+                      <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
+                    )}
+                    <a
+                      href={e.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-foreground hover:underline"
+                    >
+                      {e.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function formatStateLabel(state: string): string {
+  return state
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }

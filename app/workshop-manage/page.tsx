@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { keepPreviousData } from '@tanstack/react-query'
 import { Calendar, Plus } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
@@ -12,7 +13,13 @@ import { WorkshopCard } from './_components/workshop-card'
 export default function WorkshopsPage() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming')
   const meQuery = trpc.user.getMe.useQuery()
-  const workshopsQuery = trpc.workshop.list.useQuery({ filter: activeTab })
+  // F25: keep previous tab data visible on tab switch so the grid does not
+  // flash to skeletons. The query re-runs against the new filter in the
+  // background; users see the old list until the new one arrives.
+  const workshopsQuery = trpc.workshop.list.useQuery(
+    { filter: activeTab },
+    { placeholderData: keepPreviousData },
+  )
 
   const canManage =
     meQuery.data?.role === 'workshop_moderator' || meQuery.data?.role === 'admin'
@@ -70,6 +77,10 @@ interface WorkshopGridProps {
     scheduledAt: string | Date
     durationMinutes: number | null
     registrationLink: string | null
+    // F16: status + calcomEventTypeId surface provisioning state (badge)
+    // and cal.com external link on each manage card.
+    status: 'upcoming' | 'in_progress' | 'completed' | 'archived'
+    calcomEventTypeId: string | null
     createdBy: string
     createdAt: string | Date
     updatedAt: string | Date

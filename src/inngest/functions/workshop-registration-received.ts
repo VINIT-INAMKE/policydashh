@@ -28,7 +28,10 @@ import { inngest } from '../client'
 export const workshopRegistrationReceivedFn = inngest.createFunction(
   {
     id: 'workshop-registration-received',
-    name: 'Workshop registration received - Clerk invite + confirmation email',
+    // F28: label no longer mentions the dropped confirmation email - this
+    // function now only sends the Clerk invitation; the cal.com calendar
+    // invite is the sole booking-confirmation channel.
+    name: 'Workshop registration received - send Clerk invite',
     retries: 3,
     // D-11: absorb cal.com webhook retry bursts for the same registration.
     rateLimit: {

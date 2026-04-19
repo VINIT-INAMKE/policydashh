@@ -19,6 +19,11 @@ export const users = pgTable('users', {
   orgType:   orgTypeEnum('org_type'),   // nullable until user sets profile
   lastVisitedAt: timestamp('last_visited_at', { withTimezone: true }),
   lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
+  // B9: set when Clerk signals `user.deleted`. Row is anonymized at the same
+  // time (email nulled, name wiped, clerkId rewritten to a deleted-sentinel) so
+  // the original email is free to be invited again. FK references (feedback,
+  // sections, etc.) stay intact so audit trails remain queryable.
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

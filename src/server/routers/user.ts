@@ -42,16 +42,34 @@ export const userRouter = router({
         .where(eq(users.id, ctx.user.id))
         .returning()
 
+      // C11: produce a clean diff by merging the prior row with the input so
+      // `after` reflects the full post-state, not just the delta. This keeps
+      // audit payloads symmetrical (same keys on both sides).
+      const before = { orgType: ctx.user.orgType, name: ctx.user.name }
+      const after = { ...before, ...input }
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.USER_UPDATE,
         entityType: 'user',
         entityId: ctx.user.id,
-        payload: { before: { orgType: ctx.user.orgType, name: ctx.user.name }, after: input },
+        payload: { before, after },
       }).catch(console.error)
 
       return updated
+    }),
+
+  // Admin only: check whether an email already has a user row in our DB
+  // (C3 pre-flight so the invite dialog can warn instead of hitting Clerk
+  // and getting a vague already-exists error).
+  checkEmailExists: requirePermission('user:invite')
+    .input(z.object({ email: z.string().email() }))
+    .query(async ({ input }) => {
+      const existing = await db.query.users.findFirst({
+        where: eq(users.email, input.email.toLowerCase()),
+        columns: { id: true, email: true, role: true, name: true },
+      })
+      return { exists: !!existing, user: existing ?? null }
     }),
 
   // Admin only: invite a user by email with a pre-assigned role
@@ -91,6 +109,123 @@ export const userRouter = router({
       return { invitationId: invitation.id, email: input.email, role: input.role }
     }),
 
+  // C4: Admin only — list pending/revoked Clerk invitations for the Users UI.
+  // Pagination is simple (offset/limit) to match Clerk's API surface.
+  listPendingInvitations: requirePermission('user:invite')
+    .input(z.object({
+      status: z.enum(['pending', 'accepted', 'revoked', 'expired']).optional(),
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
+    }).optional())
+    .query(async ({ input }) => {
+      const filters = input ?? { limit: 50, offset: 0 }
+      const { createClerkClient } = await import('@clerk/backend')
+      const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
+
+      try {
+        const res = await clerk.invitations.getInvitationList({
+          status: filters.status ?? 'pending',
+          limit: filters.limit ?? 50,
+          offset: filters.offset ?? 0,
+        })
+        return {
+          totalCount: res.totalCount,
+          data: res.data.map((inv) => ({
+            id: inv.id,
+            emailAddress: inv.emailAddress,
+            status: inv.status,
+            role: (inv.publicMetadata && typeof inv.publicMetadata === 'object' && 'role' in inv.publicMetadata)
+              ? String((inv.publicMetadata as { role?: unknown }).role ?? '')
+              : null,
+            createdAt: inv.createdAt,
+            updatedAt: inv.updatedAt,
+            url: inv.url ?? null,
+            revoked: inv.revoked ?? false,
+          })),
+        }
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to list invitations: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      }
+    }),
+
+  // C4: Admin only — revoke a pending Clerk invitation.
+  revokeInvitation: requirePermission('user:invite')
+    .input(z.object({ invitationId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const { createClerkClient } = await import('@clerk/backend')
+      const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
+
+      try {
+        await clerk.invitations.revokeInvitation(input.invitationId)
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to revoke invitation: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      }
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.USER_INVITE,
+        entityType: 'user_invitation',
+        entityId: input.invitationId,
+        payload: { revoked: true },
+      }).catch(console.error)
+
+      return { invitationId: input.invitationId, revoked: true }
+    }),
+
+  // C4: Admin only — resend an invitation by revoking the existing one and
+  // creating a fresh invite for the same email/role. Clerk has no explicit
+  // "resend" endpoint, so this is the documented workaround.
+  resendInvitation: requirePermission('user:invite')
+    .input(z.object({
+      invitationId: z.string().min(1),
+      email: z.string().email(),
+      role: z.enum(['admin', 'policy_lead', 'research_lead', 'workshop_moderator', 'stakeholder', 'observer', 'auditor']),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { createClerkClient } = await import('@clerk/backend')
+      const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! })
+
+      // Revoke first; if it's already accepted/expired, surface that to the caller.
+      try {
+        await clerk.invitations.revokeInvitation(input.invitationId)
+      } catch (error) {
+        // Non-fatal: some states (e.g. accepted) cannot be revoked. Continue
+        // and let createInvitation decide whether to proceed.
+        console.warn('[user.resendInvitation] revoke skipped', error)
+      }
+
+      let invitation
+      try {
+        invitation = await clerk.invitations.createInvitation({
+          emailAddress: input.email,
+          publicMetadata: { role: input.role },
+        })
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to resend invite: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      }
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.USER_INVITE,
+        entityType: 'user_invitation',
+        entityId: invitation.id,
+        payload: { email: input.email, role: input.role, resent: true, previousInvitationId: input.invitationId },
+      }).catch(console.error)
+
+      return { invitationId: invitation.id, email: input.email, role: input.role }
+    }),
+
   // Admin only: update another user's role
   updateRole: requirePermission('user:manage_roles')
     .input(z.object({
@@ -103,6 +238,32 @@ export const userRouter = router({
       })
       if (!target) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
+      }
+
+      // B6: prevent an admin from demoting themselves — they could lock the
+      // org out of user management. The admin must ask another admin to do it.
+      if (input.userId === ctx.user.id && input.role !== 'admin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You cannot change your own admin role. Ask another admin to update it.',
+        })
+      }
+
+      // B6: last-admin guard — if this change would drop the admin count to 0,
+      // refuse. Applies whether the target is self (belt-and-braces) or another
+      // admin being demoted.
+      if (target.role === 'admin' && input.role !== 'admin') {
+        const [adminCountRow] = await db
+          .select({ cnt: count() })
+          .from(users)
+          .where(eq(users.role, 'admin'))
+        const adminCount = adminCountRow?.cnt ?? 0
+        if (adminCount <= 1) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Cannot remove the last admin. Promote another user to admin first.',
+          })
+        }
       }
 
       const [updated] = await db

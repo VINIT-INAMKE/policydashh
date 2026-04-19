@@ -23,8 +23,10 @@ function buildQueryParams(documentId: string, filters: TraceabilityFilterState):
   const params = new URLSearchParams()
   params.set('documentId', documentId)
   if (filters.sectionId) params.set('sectionId', filters.sectionId)
-  if (filters.orgTypes.length > 0) params.set('orgType', filters.orgTypes[0])
-  if (filters.decisionOutcomes.length > 0) params.set('decisionOutcome', filters.decisionOutcomes[0])
+  // D5: send all selected values as repeated params so the server sees the
+  // full set (was previously dropping all but the first selection).
+  for (const o of filters.orgTypes) params.append('orgTypes', o)
+  for (const d of filters.decisionOutcomes) params.append('decisionOutcomes', d)
   if (filters.versionFrom) params.set('versionFromLabel', filters.versionFrom)
   if (filters.versionTo) params.set('versionToLabel', filters.versionTo)
   return params.toString()

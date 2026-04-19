@@ -103,10 +103,14 @@ export const workshopRecordingProcessedFn = inngest.createFunction(
         .returning({ id: evidenceArtifacts.id })
 
       // Link transcript to workshop as a draft workshop_artifact.
+      // F30: use the dedicated 'transcript' artifact type (migration 0018)
+      // so UI can filter transcripts distinctly from the structured
+      // summary below. Previously both were stored as 'summary' which
+      // made the artifact list visually indistinguishable.
       await db.insert(workshopArtifacts).values({
         workshopId,
         artifactId:   transcriptEv.id,
-        artifactType: 'summary', // transcript stored under 'summary' family
+        artifactType: 'transcript',
         reviewStatus: 'draft',
       })
 

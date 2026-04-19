@@ -10,6 +10,7 @@ import {
   workshopSectionLinks,
   workshopFeedbackLinks,
   workshopEvidenceChecklist,
+  workshopRegistrations,
 } from '@/src/db/schema/workshops'
 import { evidenceArtifacts } from '@/src/db/schema/evidence'
 import { users } from '@/src/db/schema/users'
@@ -21,15 +22,21 @@ import {
   sendWorkshopRecordingUploaded,
   sendWorkshopCreated,
 } from '@/src/inngest/events'
-import { updateCalEventTypeSeats } from '@/src/lib/calcom'
-import { eq, gte, lt, desc, and, count } from 'drizzle-orm'
+import { updateCalEventTypeSeats, updateCalEventType } from '@/src/lib/calcom'
+import { eq, gte, lt, desc, and, count, ne } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
+// F8: mirror the webhook's transition set so the tRPC UI and the cal.com
+// webhook agree on legality. The webhook jumps `upcoming -> completed`
+// directly when MEETING_ENDED fires without a moderator having manually
+// clicked "Start"; we accept the same jump here. `archived` can be reached
+// from either `completed` (normal flow) or `upcoming` (cancelled-before-start).
+// F24: `archived` -> `completed` re-opens an accidentally-archived workshop.
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  upcoming:    ['in_progress'],
+  upcoming:    ['in_progress', 'completed', 'archived'],
   in_progress: ['completed'],
   completed:   ['archived'],
-  archived:    [],
+  archived:    ['completed'],
 }
 
 export const workshopRouter = router({
@@ -45,6 +52,9 @@ export const workshopRouter = router({
       // means "open registration" (no "X spots left" badge on the public
       // listing). Admins set this on the create form.
       maxSeats: z.number().int().min(1).max(10000).optional(),
+      // F9: IANA timezone name. Defaults to 'Asia/Kolkata' (project's prior
+      // hardcoded value). Max length guards against bogus input.
+      timezone: z.string().min(1).max(64).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const [workshop] = await db
@@ -56,6 +66,7 @@ export const workshopRouter = router({
           durationMinutes: input.durationMinutes ?? null,
           registrationLink: input.registrationLink ?? null,
           maxSeats: input.maxSeats ?? null,
+          timezone: input.timezone ?? 'Asia/Kolkata',
           createdBy: ctx.user.id,
         })
         .returning()
@@ -69,17 +80,24 @@ export const workshopRouter = router({
         payload: { title: input.title },
       }).catch(console.error)
 
-      // Phase 20 WS-07 (D-01, D-03): async cal.com event-type provisioning.
-      // Fire-and-forget - the workshop row persists even if the Inngest send
-      // itself fails (e.g. Inngest down), and the downstream
-      // `workshopCreatedFn` handles cal.com 5xx/4xx via its own retry policy.
-      // Public listing (Plan 20-05) gates the embed on
-      // `calcomEventTypeId IS NOT NULL`, so a failed provisioning just hides
-      // the embed until an admin retries.
-      sendWorkshopCreated({
-        workshopId: workshop.id,
-        moderatorId: ctx.user.id,
-      }).catch(console.error)
+      // F13: surface Inngest send failures up to the caller instead of
+      // silently swallowing with `.catch(console.error)`. The admin needs
+      // to know cal.com provisioning is degraded so they can reprovision or
+      // notify users. We still insert the row first, but the mutation throws
+      // if the send itself fails (Inngest down / misconfigured).
+      try {
+        await sendWorkshopCreated({
+          workshopId: workshop.id,
+          moderatorId: ctx.user.id,
+        })
+      } catch (err) {
+        console.error('[workshop.create] sendWorkshopCreated failed', err)
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message:
+            'Workshop created, but cal.com provisioning could not be scheduled. Please retry provisioning from the workshop page.',
+        })
+      }
 
       return workshop
     }),
@@ -132,6 +150,9 @@ export const workshopRouter = router({
         conditions.push(lt(workshops.scheduledAt, now))
       }
 
+      // F16: include status + calcomEventTypeId so the manage page can
+      // render provisioning state badges and an external cal.com link
+      // without a second lookup per card.
       const rows = await db
         .select({
           id: workshops.id,
@@ -140,6 +161,8 @@ export const workshopRouter = router({
           scheduledAt: workshops.scheduledAt,
           durationMinutes: workshops.durationMinutes,
           registrationLink: workshops.registrationLink,
+          status: workshops.status,
+          calcomEventTypeId: workshops.calcomEventTypeId,
           createdBy: workshops.createdBy,
           createdAt: workshops.createdAt,
           updatedAt: workshops.updatedAt,
@@ -158,6 +181,9 @@ export const workshopRouter = router({
   getById: requirePermission('workshop:read')
     .input(z.object({ workshopId: z.string().uuid() }))
     .query(async ({ input }) => {
+      // F17: include calcomEventTypeId + maxSeats + timezone so the detail
+      // page can render the cal.com deep-link, the "Reprovision seats"
+      // button (F15), and the timezone chip without extra lookups.
       const [workshop] = await db
         .select({
           id: workshops.id,
@@ -167,6 +193,9 @@ export const workshopRouter = router({
           durationMinutes: workshops.durationMinutes,
           registrationLink: workshops.registrationLink,
           status: workshops.status,
+          calcomEventTypeId: workshops.calcomEventTypeId,
+          maxSeats: workshops.maxSeats,
+          timezone: workshops.timezone,
           createdBy: workshops.createdBy,
           createdAt: workshops.createdAt,
           updatedAt: workshops.updatedAt,
@@ -232,11 +261,23 @@ export const workshopRouter = router({
       scheduledAt: z.string().datetime().optional(),
       durationMinutes: z.number().int().positive().nullable().optional(),
       registrationLink: z.string().url().nullable().optional(),
+      // F11: expose maxSeats on the update path so admins can bump capacity
+      // after launch. A subsequent reprovisionCalSeats call (F15) pushes the
+      // new seat count to cal.com.
+      maxSeats: z.number().int().min(1).max(10000).nullable().optional(),
+      // F9: per-workshop timezone. Changing this does NOT retro-apply to
+      // existing cal.com bookings - it only affects future bookings + email
+      // rendering.
+      timezone: z.string().min(1).max(64).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Fetch workshop for ownership check
+      // Fetch workshop for ownership check + existing cal.com id for F10.
       const [existing] = await db
-        .select({ createdBy: workshops.createdBy })
+        .select({
+          createdBy: workshops.createdBy,
+          calcomEventTypeId: workshops.calcomEventTypeId,
+          maxSeats: workshops.maxSeats,
+        })
         .from(workshops)
         .where(eq(workshops.id, input.workshopId))
         .limit(1)
@@ -255,12 +296,59 @@ export const workshopRouter = router({
       if (input.scheduledAt !== undefined) updateData.scheduledAt = new Date(input.scheduledAt)
       if (input.durationMinutes !== undefined) updateData.durationMinutes = input.durationMinutes
       if (input.registrationLink !== undefined) updateData.registrationLink = input.registrationLink
+      if (input.maxSeats !== undefined) updateData.maxSeats = input.maxSeats
+      if (input.timezone !== undefined) updateData.timezone = input.timezone
 
       const [updated] = await db
         .update(workshops)
         .set(updateData)
         .where(eq(workshops.id, input.workshopId))
         .returning()
+
+      // F10: propagate title / duration changes to cal.com. scheduledAt is
+      // per-booking (not per-event-type) so cal.com has no direct endpoint
+      // for rescheduling an event type's default time - attendees rebook
+      // through the embed. We document this limitation and skip schedule
+      // propagation here. Seats propagation is handled separately via
+      // `reprovisionCalSeats`.
+      const calId = existing.calcomEventTypeId
+      const calNumericId =
+        calId && /^\d+$/.test(calId) ? parseInt(calId, 10) : null
+      const calPatch: { title?: string; lengthInMinutes?: number } = {}
+      if (input.title !== undefined) calPatch.title = input.title
+      if (input.durationMinutes !== undefined && input.durationMinutes !== null) {
+        calPatch.lengthInMinutes = input.durationMinutes
+      }
+      if (calNumericId !== null && Object.keys(calPatch).length > 0) {
+        try {
+          await updateCalEventType(calNumericId, calPatch)
+        } catch (err) {
+          // Non-fatal: DB row is already updated. Log and continue so the
+          // admin sees their changes persisted even if cal.com is down.
+          console.error(
+            '[workshop.update] cal.com PATCH failed (DB update succeeded):',
+            err,
+          )
+        }
+      }
+
+      // F11: if maxSeats changed, push the new seat count to cal.com as
+      // well. Same best-effort policy - DB wins if cal.com is down.
+      if (
+        calNumericId !== null &&
+        input.maxSeats !== undefined &&
+        input.maxSeats !== null &&
+        input.maxSeats !== existing.maxSeats
+      ) {
+        try {
+          await updateCalEventTypeSeats(calNumericId, input.maxSeats)
+        } catch (err) {
+          console.error(
+            '[workshop.update] cal.com seats PATCH failed (DB update succeeded):',
+            err,
+          )
+        }
+      }
 
       writeAuditLog({
         actorId: ctx.user.id,
@@ -276,7 +364,14 @@ export const workshopRouter = router({
 
   // Delete a workshop (ownership check, cascades to artifacts and links)
   delete: requirePermission('workshop:manage')
-    .input(z.object({ workshopId: z.string().uuid() }))
+    .input(z.object({
+      workshopId: z.string().uuid(),
+      // F12: require explicit `force: true` to delete a workshop that has
+      // active (non-cancelled) registrations. Default behavior is to reject
+      // with a clear error listing the affected attendee count, so admins
+      // don't accidentally nuke a fully-booked upcoming workshop.
+      force: z.boolean().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       // Fetch workshop for ownership check
       const [existing] = await db
@@ -293,6 +388,26 @@ export const workshopRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the workshop creator or admin can delete this workshop' })
       }
 
+      // F12: active-registration guard.
+      if (!input.force) {
+        const [activeCount] = await db
+          .select({ n: count() })
+          .from(workshopRegistrations)
+          .where(
+            and(
+              eq(workshopRegistrations.workshopId, input.workshopId),
+              ne(workshopRegistrations.status, 'cancelled'),
+            ),
+          )
+        const activeN = Number(activeCount?.n ?? 0)
+        if (activeN > 0) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Workshop has ${activeN} active registration(s). Cancel them first, or pass force: true to delete anyway.`,
+          })
+        }
+      }
+
       await db.delete(workshops).where(eq(workshops.id, input.workshopId))
 
       writeAuditLog({
@@ -301,6 +416,7 @@ export const workshopRouter = router({
         action: ACTIONS.WORKSHOP_DELETE,
         entityType: 'workshop',
         entityId: input.workshopId,
+        payload: { forced: Boolean(input.force) },
       }).catch(console.error)
 
       return { success: true }
@@ -313,7 +429,7 @@ export const workshopRouter = router({
       title: z.string().min(1),
       type: z.enum(['file', 'link']),
       url: z.string().url(),
-      artifactType: z.enum(['promo', 'recording', 'summary', 'attendance', 'other']),
+      artifactType: z.enum(['promo', 'recording', 'transcript', 'summary', 'attendance', 'other']),
       fileName: z.string().optional(),
       fileSize: z.number().optional(),
       // r2Key is required for the recording pipeline (WS-14): the Inngest
@@ -640,6 +756,33 @@ export const workshopRouter = router({
       }).catch(console.error)
 
       return { success: true }
+    }),
+
+  // F18: attendee list for a workshop. Used by the manage detail page's
+  // Attendees tab. Returns email/name/status/registration time/attendance so
+  // moderators can verify who's coming + who actually showed up. Scoped to
+  // workshop:read (same gate as getById) because the attendee PII is
+  // admin-grade.
+  listRegistrations: requirePermission('workshop:read')
+    .input(z.object({ workshopId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const rows = await db
+        .select({
+          id:                 workshopRegistrations.id,
+          email:              workshopRegistrations.email,
+          name:               workshopRegistrations.name,
+          status:             workshopRegistrations.status,
+          bookingUid:         workshopRegistrations.bookingUid,
+          bookingStartTime:   workshopRegistrations.bookingStartTime,
+          registeredAt:       workshopRegistrations.createdAt,
+          cancelledAt:        workshopRegistrations.cancelledAt,
+          attendedAt:         workshopRegistrations.attendedAt,
+          attendanceSource:   workshopRegistrations.attendanceSource,
+        })
+        .from(workshopRegistrations)
+        .where(eq(workshopRegistrations.workshopId, input.workshopId))
+        .orderBy(desc(workshopRegistrations.createdAt))
+      return rows
     }),
 
   // Phase 20 Plan 20-05 (D-05, D-06, D-07, D-08, WS-08):

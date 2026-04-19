@@ -24,6 +24,14 @@ export interface ChangelogEntry {
   crReadableId: string | null
   crTitle: string
   summary: string
+  /**
+   * D8: canonical shape is the *readable* id (e.g. "FB-014"). We deliberately
+   * chose readable IDs over UUIDs because the changelog is a human-facing
+   * artefact — displayed in the publish dialog, public portal summary,
+   * version history — and a UUID means nothing to a reader. If anything
+   * downstream needs the underlying UUID it should join on
+   * `feedbackItems.readableId` rather than round-trip through this JSON.
+   */
   feedbackIds: string[]
   affectedSectionIds: string[]
 }

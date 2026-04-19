@@ -1,16 +1,17 @@
 import { z } from 'zod'
 import { router, requirePermission, protectedProcedure } from '@/src/trpc/init'
-import { requireSectionAccess } from '@/src/server/rbac/section-access'
+import { requireSectionAccess, BYPASS_SECTION_SCOPE } from '@/src/server/rbac/section-access'
 import { transitionFeedback } from '@/src/server/services/feedback.service'
 import { writeAuditLog } from '@/src/lib/audit'
-import { ACTIONS } from '@/src/lib/constants'
+import { ACTIONS, type Role } from '@/src/lib/constants'
 import { can } from '@/src/lib/permissions'
 import { db } from '@/src/db'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { users } from '@/src/db/schema/users'
 import { policySections } from '@/src/db/schema/documents'
+import { sectionAssignments } from '@/src/db/schema/sectionAssignments'
 import { workflowTransitions } from '@/src/db/schema/workflow'
-import { eq, and, desc, asc, sql } from 'drizzle-orm'
+import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { createNotification } from '@/src/lib/notifications'
 import { sendFeedbackReviewed, sendNotificationCreate } from '@/src/inngest/events'
@@ -76,26 +77,79 @@ export const feedbackRouter = router({
       return { id: feedback.id, readableId }
     }),
 
+  // E1: preflight check for feedback-submit form. Returns whether the current
+  // caller can submit feedback on the given section. A client-side mirror of
+  // the `feedback:submit` + `requireSectionAccess` gate used by `submit` above.
+  // Keeps the UI honest without a failed-mutation round-trip.
+  canSubmit: protectedProcedure
+    .input(z.object({ sectionId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // Must have the base permission.
+      if (!can(ctx.user.role, 'feedback:submit')) {
+        return { canSubmit: false, reason: 'role' as const }
+      }
+
+      // Bypass roles (admin/auditor/policy_lead) would satisfy the RBAC
+      // middleware but they don't hold `feedback:submit` in the matrix, so
+      // the role check above already handles them. Keep the bypass list in
+      // mind so the branch below mirrors requireSectionAccess exactly.
+      if (BYPASS_SECTION_SCOPE.includes(ctx.user.role as Role)) {
+        return { canSubmit: true, reason: null }
+      }
+
+      const [assignment] = await db
+        .select({ id: sectionAssignments.id })
+        .from(sectionAssignments)
+        .where(
+          and(
+            eq(sectionAssignments.userId, ctx.user.id),
+            eq(sectionAssignments.sectionId, input.sectionId),
+          ),
+        )
+        .limit(1)
+
+      if (!assignment) {
+        return { canSubmit: false, reason: 'assignment' as const }
+      }
+      return { canSubmit: true, reason: null }
+    }),
+
   // List all feedback for a document (admin/policy_lead/auditor)
+  // E2: accept arrays for multi-select filters (statuses/types/priorities/impacts/orgTypes)
+  // so filtering is always server-side regardless of how many chips are checked.
+  // Singular inputs (status/feedbackType/priority/impactCategory/orgType) are
+  // retained for backward compatibility with older callers (e.g. CR dialog).
   list: requirePermission('feedback:read_all')
     .input(z.object({
       documentId: z.string().uuid(),
       sectionId: z.string().uuid().optional(),
       status: z.enum(STATUSES).optional(),
+      statuses: z.array(z.enum(STATUSES)).optional(),
       feedbackType: z.enum(FEEDBACK_TYPES).optional(),
+      feedbackTypes: z.array(z.enum(FEEDBACK_TYPES)).optional(),
       priority: z.enum(PRIORITIES).optional(),
+      priorities: z.array(z.enum(PRIORITIES)).optional(),
       impactCategory: z.enum(IMPACT_CATEGORIES).optional(),
+      impactCategories: z.array(z.enum(IMPACT_CATEGORIES)).optional(),
       orgType: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal'] as const).optional(),
+      orgTypes: z.array(z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal'] as const)).optional(),
     }))
     .query(async ({ ctx, input }) => {
       const conditions = [eq(feedbackItems.documentId, input.documentId)]
 
       if (input.sectionId) conditions.push(eq(feedbackItems.sectionId, input.sectionId))
-      if (input.status) conditions.push(eq(feedbackItems.status, input.status))
-      if (input.feedbackType) conditions.push(eq(feedbackItems.feedbackType, input.feedbackType))
-      if (input.priority) conditions.push(eq(feedbackItems.priority, input.priority))
-      if (input.impactCategory) conditions.push(eq(feedbackItems.impactCategory, input.impactCategory))
-      if (input.orgType) conditions.push(eq(users.orgType, input.orgType))
+      // Merge singular + array forms; singular wraps into a 1-element array.
+      const statuses = input.statuses && input.statuses.length > 0 ? input.statuses : input.status ? [input.status] : []
+      const feedbackTypes = input.feedbackTypes && input.feedbackTypes.length > 0 ? input.feedbackTypes : input.feedbackType ? [input.feedbackType] : []
+      const priorities = input.priorities && input.priorities.length > 0 ? input.priorities : input.priority ? [input.priority] : []
+      const impactCategories = input.impactCategories && input.impactCategories.length > 0 ? input.impactCategories : input.impactCategory ? [input.impactCategory] : []
+      const orgTypes = input.orgTypes && input.orgTypes.length > 0 ? input.orgTypes : input.orgType ? [input.orgType] : []
+
+      if (statuses.length > 0) conditions.push(inArray(feedbackItems.status, statuses))
+      if (feedbackTypes.length > 0) conditions.push(inArray(feedbackItems.feedbackType, feedbackTypes))
+      if (priorities.length > 0) conditions.push(inArray(feedbackItems.priority, priorities))
+      if (impactCategories.length > 0) conditions.push(inArray(feedbackItems.impactCategory, impactCategories))
+      if (orgTypes.length > 0) conditions.push(inArray(users.orgType, orgTypes))
 
       const rows = await db
         .select({

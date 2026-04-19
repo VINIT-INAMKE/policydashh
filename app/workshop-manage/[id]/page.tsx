@@ -8,6 +8,7 @@ import {
   Calendar,
   Clock,
   ExternalLink,
+  Globe,
   Pencil,
   Paperclip,
   Plus,
@@ -18,12 +19,15 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ArtifactList } from './_components/artifact-list'
 import { ArtifactAttachDialog } from './_components/artifact-attach-dialog'
 import { SectionLinkPicker } from './_components/section-link-picker'
 import { FeedbackLinkPicker } from './_components/feedback-link-picker'
 import { StatusTransitionButtons } from './_components/status-transition-buttons'
 import { EvidenceChecklist } from './_components/evidence-checklist'
+import { AttendeeList } from './_components/attendee-list'
+import { ReprovisionCalButton } from './_components/reprovision-cal-button'
 
 export default function WorkshopDetailPage() {
   const params = useParams<{ id: string }>()
@@ -111,6 +115,20 @@ export default function WorkshopDetailPage() {
           </div>
         )}
 
+        {/* F17: timezone chip + capacity readout */}
+        {workshop.timezone && (
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Globe className="size-3.5" />
+            <span>{workshop.timezone}</span>
+          </div>
+        )}
+
+        {workshop.maxSeats != null && (
+          <div className="text-sm text-muted-foreground">
+            Capacity: <span className="font-medium text-foreground">{workshop.maxSeats}</span>
+          </div>
+        )}
+
         {workshop.registrationLink && (
           <Button
             variant="ghost"
@@ -119,6 +137,25 @@ export default function WorkshopDetailPage() {
           >
             <ExternalLink className="size-3.5" />
             Registration Link
+          </Button>
+        )}
+
+        {/* F17: direct deep-link into cal.com event type management.
+            Cal.com exposes admin event types under /event-types/<id>. */}
+        {workshop.calcomEventTypeId && /^\d+$/.test(workshop.calcomEventTypeId) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              window.open(
+                `https://app.cal.com/event-types/${workshop.calcomEventTypeId}`,
+                '_blank',
+                'noopener,noreferrer',
+              )
+            }
+          >
+            <ExternalLink className="size-3.5" />
+            Open in cal.com
           </Button>
         )}
 
@@ -131,6 +168,16 @@ export default function WorkshopDetailPage() {
             <Pencil className="size-3.5" />
             Edit
           </Button>
+        )}
+
+        {/* F15: admin-only reprovision seats button. Inner component
+            renders null unless the workshop has a numeric cal event type id. */}
+        {canManage && (
+          <ReprovisionCalButton
+            workshopId={workshopId}
+            calcomEventTypeId={workshop.calcomEventTypeId}
+            maxSeats={workshop.maxSeats}
+          />
         )}
 
         {workshop.description && (
@@ -250,23 +297,34 @@ export default function WorkshopDetailPage() {
         </div>
       </div>
 
-      {/* Right content area */}
+      {/* Right content area - F18: Artifacts + Attendees + Checklist tabs */}
       <div className="flex-1">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Artifacts</h2>
-          {canManage && (
-            <Button onClick={() => setAttachDialogOpen(true)}>
-              <Paperclip className="size-4" />
-              Attach Artifact
-            </Button>
-          )}
-        </div>
-
-        <ArtifactList workshopId={workshopId} canManage={canManage} />
-
-        <div className="mt-8">
-          <EvidenceChecklist workshopId={workshopId} />
-        </div>
+        <Tabs defaultValue="artifacts">
+          <TabsList>
+            <TabsTrigger value="artifacts">Artifacts</TabsTrigger>
+            <TabsTrigger value="attendees">Attendees</TabsTrigger>
+            <TabsTrigger value="checklist">Checklist</TabsTrigger>
+          </TabsList>
+          <TabsContent value="artifacts" className="mt-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Artifacts</h2>
+              {canManage && (
+                <Button onClick={() => setAttachDialogOpen(true)}>
+                  <Paperclip className="size-4" />
+                  Attach Artifact
+                </Button>
+              )}
+            </div>
+            <ArtifactList workshopId={workshopId} canManage={canManage} />
+          </TabsContent>
+          <TabsContent value="attendees" className="mt-4">
+            <h2 className="mb-4 text-xl font-semibold">Attendees</h2>
+            <AttendeeList workshopId={workshopId} />
+          </TabsContent>
+          <TabsContent value="checklist" className="mt-4">
+            <EvidenceChecklist workshopId={workshopId} />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Dialogs / Pickers */}

@@ -150,17 +150,17 @@ export function FilterPanel({ filters, onFiltersChange, sections }: FilterPanelP
         )}
       </div>
 
-      {/* Section filter */}
+      {/* Section filter - E3: use '__all__' sentinel (non-empty) per base-ui */}
       <div className="flex flex-col gap-2">
         <Label className="text-[12px] font-normal uppercase tracking-wide text-muted-foreground">
           Section
         </Label>
         <Select
-          value={filters.sectionId ?? ''}
+          value={filters.sectionId ?? '__all__'}
           onValueChange={(val) => {
             onFiltersChange({
               ...filters,
-              sectionId: val || undefined,
+              sectionId: !val || val === '__all__' ? undefined : val,
             })
           }}
         >
@@ -168,6 +168,7 @@ export function FilterPanel({ filters, onFiltersChange, sections }: FilterPanelP
             <SelectValue placeholder="All sections" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="__all__">All sections</SelectItem>
             {sections.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.title}

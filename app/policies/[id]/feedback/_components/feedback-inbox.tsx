@@ -24,15 +24,16 @@ export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
   const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(initialSelected)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
-  // Build query input -- only pass the first filter value for server-side filtering
-  // Client-side will further filter for multi-select (statuses, types, etc.)
+  // E2: build query input using array filters so multi-select is always
+  // server-side. The matching server-side route uses inArray() for each.
   const queryInput = useMemo(() => ({
     documentId,
     sectionId: filters.sectionId,
-    status: filters.statuses.length === 1 ? filters.statuses[0] as 'submitted' | 'under_review' | 'accepted' | 'partially_accepted' | 'rejected' | 'closed' : undefined,
-    feedbackType: filters.types.length === 1 ? filters.types[0] as 'issue' | 'suggestion' | 'endorsement' | 'evidence' | 'question' : undefined,
-    priority: filters.priorities.length === 1 ? filters.priorities[0] as 'low' | 'medium' | 'high' : undefined,
-    impactCategory: filters.impacts.length === 1 ? filters.impacts[0] as 'legal' | 'security' | 'tax' | 'consumer' | 'innovation' | 'clarity' | 'governance' | 'other' : undefined,
+    statuses: filters.statuses.length > 0 ? (filters.statuses as Array<'submitted' | 'under_review' | 'accepted' | 'partially_accepted' | 'rejected' | 'closed'>) : undefined,
+    feedbackTypes: filters.types.length > 0 ? (filters.types as Array<'issue' | 'suggestion' | 'endorsement' | 'evidence' | 'question'>) : undefined,
+    priorities: filters.priorities.length > 0 ? (filters.priorities as Array<'low' | 'medium' | 'high'>) : undefined,
+    impactCategories: filters.impacts.length > 0 ? (filters.impacts as Array<'legal' | 'security' | 'tax' | 'consumer' | 'innovation' | 'clarity' | 'governance' | 'other'>) : undefined,
+    orgTypes: filters.orgTypes.length > 0 ? (filters.orgTypes as Array<'government' | 'industry' | 'legal' | 'academia' | 'civil_society' | 'internal'>) : undefined,
   }), [documentId, filters])
 
   const feedbackQuery = trpc.feedback.list.useQuery(queryInput)
@@ -40,29 +41,10 @@ export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
   // Fetch sections for the filter panel
   const sectionsQuery = trpc.document.getSections.useQuery({ documentId })
 
-  // Client-side multi-filter (for when more than one checkbox is selected)
-  const filteredItems = useMemo(() => {
-    if (!feedbackQuery.data) return []
-    let items = feedbackQuery.data as (typeof feedbackQuery.data[number] & { sectionTitle?: string; hasEvidence?: boolean })[]
-
-    if (filters.statuses.length > 1) {
-      items = items.filter((item) => filters.statuses.includes(item.status))
-    }
-    if (filters.types.length > 1) {
-      items = items.filter((item) => filters.types.includes(item.feedbackType))
-    }
-    if (filters.priorities.length > 1) {
-      items = items.filter((item) => filters.priorities.includes(item.priority))
-    }
-    if (filters.impacts.length > 1) {
-      items = items.filter((item) => filters.impacts.includes(item.impactCategory))
-    }
-    if (filters.orgTypes.length > 0) {
-      items = items.filter((item) => item.submitterOrgType && filters.orgTypes.includes(item.submitterOrgType))
-    }
-
-    return items
-  }, [feedbackQuery.data, filters])
+  const filteredItems = useMemo(
+    () => feedbackQuery.data ?? [],
+    [feedbackQuery.data],
+  )
 
   const sections = sectionsQuery.data ?? []
 

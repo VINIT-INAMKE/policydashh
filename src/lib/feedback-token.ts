@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 
 /**
  * Lightweight HS256 JWT for post-workshop feedback deep-links.
@@ -111,4 +111,16 @@ export function verifyFeedbackToken(
   } catch {
     return null
   }
+}
+
+/**
+ * B13: SHA-256 hash of the raw JWT, used as the primary key in
+ * `workshop_feedback_token_nonces` so the full token never touches the DB.
+ *
+ * Why hash instead of storing raw: if the nonce table ever leaks, an attacker
+ * still cannot replay because the replay endpoint rejects any token whose
+ * hash is present. And they can't derive the token from the hash.
+ */
+export function hashFeedbackToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
 }

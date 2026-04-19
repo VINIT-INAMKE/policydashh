@@ -24,11 +24,23 @@ interface WorkshopData {
   scheduledAt: string | Date
   durationMinutes: number | null
   registrationLink: string | null
+  // F16: status drives the badge, calcomEventTypeId drives the "View on
+  // cal.com" link. Both optional so the type stays compatible with callers
+  // that have not wired the new columns yet.
+  status?: 'upcoming' | 'in_progress' | 'completed' | 'archived'
+  calcomEventTypeId?: string | null
 }
 
 interface WorkshopCardProps {
   workshop: WorkshopData
   canManage: boolean
+}
+
+const STATUS_BADGE_CLASS: Record<NonNullable<WorkshopData['status']>, string> = {
+  upcoming:    'bg-blue-100 text-blue-800',
+  in_progress: 'bg-amber-100 text-amber-800',
+  completed:   'bg-green-100 text-green-800',
+  archived:    'bg-slate-100 text-slate-800',
 }
 
 export function WorkshopCard({ workshop, canManage }: WorkshopCardProps) {
@@ -48,7 +60,16 @@ export function WorkshopCard({ workshop, canManage }: WorkshopCardProps) {
       >
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
-            <span className="text-base font-semibold leading-snug">{workshop.title}</span>
+            <div className="flex min-w-0 flex-1 items-start gap-2">
+              <span className="truncate text-base font-semibold leading-snug">{workshop.title}</span>
+              {workshop.status ? (
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE_CLASS[workshop.status]}`}
+                >
+                  {workshop.status.replace('_', ' ')}
+                </span>
+              ) : null}
+            </div>
             {canManage && (
               <DropdownMenu>
                 <DropdownMenuTrigger
@@ -98,6 +119,19 @@ export function WorkshopCard({ workshop, canManage }: WorkshopCardProps) {
               <Badge variant="secondary">{workshop.durationMinutes} min</Badge>
             ) : (
               <span />
+            )}
+            {workshop.calcomEventTypeId ? (
+              <Badge
+                variant="secondary"
+                className="bg-emerald-50 text-emerald-800"
+                aria-label="Cal.com event type provisioned"
+              >
+                cal.com linked
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-amber-700" aria-label="cal.com provisioning pending">
+                cal.com pending
+              </Badge>
             )}
             {workshop.registrationLink && (
               <Button

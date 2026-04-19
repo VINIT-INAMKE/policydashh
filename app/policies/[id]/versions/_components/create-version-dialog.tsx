@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertTriangle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { trpc } from '@/src/trpc/client'
 import { toast } from 'sonner'
+import { subscribePendingCount } from '../../_components/section-autosave-pending'
 
 const MIN_NOTES_LENGTH = 10
 const MAX_NOTES_LENGTH = 2000
@@ -39,8 +40,16 @@ export function CreateVersionDialog({
   documentId,
 }: CreateVersionDialogProps) {
   const [notes, setNotes] = useState('')
+  const [pendingSaves, setPendingSaves] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const utils = trpc.useUtils()
+
+  // D14: track section autosave pending state. If any section is still
+  // flushing, block the "Create Version" action so we don't snapshot stale
+  // content.
+  useEffect(() => {
+    return subscribePendingCount(setPendingSaves)
+  }, [])
 
   const versionsQuery = trpc.version.list.useQuery(
     { documentId },
@@ -68,7 +77,8 @@ export function CreateVersionDialog({
     }
   }, [open])
 
-  const canCreate = notes.trim().length >= MIN_NOTES_LENGTH
+  // D14: disable Create while autosaves are in flight.
+  const canCreate = notes.trim().length >= MIN_NOTES_LENGTH && pendingSaves === 0
 
   function handleCreate() {
     if (!canCreate) return
@@ -143,6 +153,17 @@ export function CreateVersionDialog({
             </p>
           </div>
         </div>
+
+        {/* D14: warn user while autosave is still running. */}
+        {pendingSaves > 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-[13px]">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+            <p>
+              Saving {pendingSaves} section{pendingSaves === 1 ? '' : 's'}&hellip; Wait for the save
+              to finish before creating a snapshot so the new version reflects your latest edits.
+            </p>
+          </div>
+        )}
 
         <DialogFooter>
           <Button

@@ -194,6 +194,63 @@ export async function updateCalEventTypeSeats(
   }
 }
 
+/**
+ * Generic PATCH for cal.com event-types used by F10 workshop-edit propagation.
+ *
+ * Only the fields actually provided on the input are sent in the PATCH body -
+ * cal.com merges the partial update so we do not clobber unrelated settings.
+ * Any failure (network, 4xx, 5xx) surfaces as CalApiError; the caller decides
+ * whether to surface a user-facing warning or silently swallow.
+ */
+export interface CalEventTypePatch {
+  title?: string
+  lengthInMinutes?: number
+}
+
+export async function updateCalEventType(
+  eventTypeId: number,
+  patch: CalEventTypePatch,
+): Promise<void> {
+  const apiKey = process.env.CAL_API_KEY
+  if (!apiKey) {
+    throw new CalApiError(400, 'CAL_API_KEY not set')
+  }
+
+  const body: Record<string, unknown> = {}
+  if (patch.title !== undefined) body.title = patch.title
+  if (patch.lengthInMinutes !== undefined) {
+    // Mirror createCalEventType's doc-discrepancy workaround - cal.com docs
+    // disagree on field name; sending both is safe.
+    body.lengthInMinutes = patch.lengthInMinutes
+    body.length = patch.lengthInMinutes
+  }
+
+  if (Object.keys(body).length === 0) return
+
+  let res: Response
+  try {
+    res = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization':    `Bearer ${apiKey}`,
+        'Content-Type':     'application/json',
+        'cal-api-version':  '2024-06-14',
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    throw new CalApiError(
+      500,
+      `cal.com PATCH network failure: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '<no body>')
+    throw new CalApiError(res.status, `cal.com PATCH ${res.status}: ${text}`)
+  }
+}
+
 export interface CalBookingInput {
   eventTypeId: number
   name: string

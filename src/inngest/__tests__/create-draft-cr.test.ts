@@ -7,7 +7,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mocks = vi.hoisted(() => {
   return {
     executeMock: vi.fn(),
-    transactionMock: vi.fn(),
+    selectMock: vi.fn(),
+    insertMock: vi.fn(),
   }
 })
 
@@ -15,7 +16,8 @@ vi.mock('@/src/db', () => {
   return {
     db: {
       execute: mocks.executeMock,
-      transaction: mocks.transactionMock,
+      select: mocks.selectMock,
+      insert: mocks.insertMock,
     },
   }
 })
@@ -35,53 +37,66 @@ const VALID_INPUT = {
 }
 
 /**
- * Build a fake tx object that records every insert/values/returning call
- * and returns a single-row array when .returning() is invoked on the
- * changeRequests insert. Subsequent .values() calls (for crFeedbackLinks
- * and crSectionLinks) resolve to void.
+ * Build a fake select chain that returns `rows` when .limit() is awaited.
+ * The neon-http driver exposes db.select().from().innerJoin().where().limit()
+ * and createDraftCRFromFeedback uses exactly that chain for its idempotency
+ * check.
  */
-function makeTx() {
+function makeSelectChain(rows: unknown[]) {
+  const chain = {
+    from: vi.fn(() => chain),
+    innerJoin: vi.fn(() => chain),
+    where: vi.fn(() => chain),
+    limit: vi.fn(async () => rows),
+  }
+  return chain
+}
+
+/**
+ * Build a fake insert chain that captures every .values() call and lets
+ * the test assert on the payloads. The first insert is changeRequests and
+ * uses .returning(); the two link inserts use .onConflictDoNothing().
+ */
+function makeInsertBuilders() {
   const calls: Array<{ table: unknown; values: unknown }> = []
   let insertCount = 0
-  const tx = {
-    insert: vi.fn((table: unknown) => {
-      insertCount += 1
-      const thisInsertIndex = insertCount
-      return {
-        values: vi.fn((values: unknown) => {
-          calls.push({ table, values })
-          // First insert is changeRequests and uses .returning()
-          if (thisInsertIndex === 1) {
-            return {
-              returning: vi.fn(async () => [{ id: 'cr-uuid-generated' }]),
-            }
+  const factory = vi.fn((table: unknown) => {
+    insertCount += 1
+    const thisInsertIndex = insertCount
+    return {
+      values: vi.fn((values: unknown) => {
+        calls.push({ table, values })
+        if (thisInsertIndex === 1) {
+          // changeRequests - uses .returning()
+          return {
+            returning: vi.fn(async () => [{ id: 'cr-uuid-generated' }]),
           }
-          // Subsequent inserts (links) resolve to void directly.
-          return Promise.resolve()
-        }),
-      }
-    }),
-  }
-  return { tx, calls }
+        }
+        // link rows - use .onConflictDoNothing() which returns a thenable.
+        return {
+          onConflictDoNothing: vi.fn(async () => undefined),
+        }
+      }),
+    }
+  })
+  return { factory, calls }
 }
 
 describe('createDraftCRFromFeedback', () => {
   beforeEach(() => {
     mocks.executeMock.mockReset()
-    mocks.transactionMock.mockReset()
-    // Sanity-check that the mocked db module is the one under test.
+    mocks.selectMock.mockReset()
+    mocks.insertMock.mockReset()
     expect(db.execute).toBe(mocks.executeMock)
-    expect(db.transaction).toBe(mocks.transactionMock)
+    expect(db.select).toBe(mocks.selectMock)
+    expect(db.insert).toBe(mocks.insertMock)
   })
 
   it('allocates a CR-NNN readable id from cr_id_seq (seq=42 → CR-042)', async () => {
+    mocks.selectMock.mockReturnValueOnce(makeSelectChain([]))
     mocks.executeMock.mockResolvedValueOnce({ rows: [{ seq: 42 }] })
-    const { tx } = makeTx()
-    mocks.transactionMock.mockImplementationOnce(
-      async (cb: (tx: unknown) => Promise<unknown>) => {
-        return await cb(tx)
-      },
-    )
+    const { factory } = makeInsertBuilders()
+    mocks.insertMock.mockImplementation(factory)
 
     const result = await createDraftCRFromFeedback(VALID_INPUT)
 
@@ -89,23 +104,18 @@ describe('createDraftCRFromFeedback', () => {
     expect(result.readableId).toBe('CR-042')
   })
 
-  it('inserts a changeRequests row plus crFeedbackLinks and crSectionLinks rows inside db.transaction', async () => {
+  it('inserts a changeRequests row plus crFeedbackLinks and crSectionLinks via sequential writes', async () => {
+    mocks.selectMock.mockReturnValueOnce(makeSelectChain([]))
     mocks.executeMock.mockResolvedValueOnce({ rows: [{ seq: 7 }] })
-    const { tx, calls } = makeTx()
-    mocks.transactionMock.mockImplementationOnce(
-      async (cb: (tx: unknown) => Promise<unknown>) => {
-        return await cb(tx)
-      },
-    )
+    const { factory, calls } = makeInsertBuilders()
+    mocks.insertMock.mockImplementation(factory)
 
     await createDraftCRFromFeedback(VALID_INPUT)
 
-    expect(mocks.transactionMock).toHaveBeenCalledTimes(1)
-    // Three inserts expected: changeRequests, crFeedbackLinks, crSectionLinks
-    expect(tx.insert).toHaveBeenCalledTimes(3)
+    // Three sequential inserts: changeRequests, crFeedbackLinks, crSectionLinks.
+    expect(factory).toHaveBeenCalledTimes(3)
     expect(calls).toHaveLength(3)
 
-    // The first insert values must carry the documentId, ownerId, title, description, readableId
     const crRow = calls[0].values as Record<string, unknown>
     expect(crRow.documentId).toBe(VALID_INPUT.documentId)
     expect(crRow.ownerId).toBe(VALID_INPUT.ownerId)
@@ -113,7 +123,6 @@ describe('createDraftCRFromFeedback', () => {
     expect(crRow.description).toBe(VALID_INPUT.description)
     expect(crRow.readableId).toBe('CR-007')
 
-    // The two link rows must reference the inserted CR id ('cr-uuid-generated')
     const fbLink = calls[1].values as Record<string, unknown>
     expect(fbLink.crId).toBe('cr-uuid-generated')
     expect(fbLink.feedbackId).toBe(VALID_INPUT.feedbackId)
@@ -124,13 +133,10 @@ describe('createDraftCRFromFeedback', () => {
   })
 
   it('returns { id, readableId } with id from the inserted changeRequests row', async () => {
+    mocks.selectMock.mockReturnValueOnce(makeSelectChain([]))
     mocks.executeMock.mockResolvedValueOnce({ rows: [{ seq: 1 }] })
-    const { tx } = makeTx()
-    mocks.transactionMock.mockImplementationOnce(
-      async (cb: (tx: unknown) => Promise<unknown>) => {
-        return await cb(tx)
-      },
-    )
+    const { factory } = makeInsertBuilders()
+    mocks.insertMock.mockImplementation(factory)
 
     const result = await createDraftCRFromFeedback(VALID_INPUT)
 
@@ -140,10 +146,8 @@ describe('createDraftCRFromFeedback', () => {
     })
   })
 
-  it('propagates sequence allocation failure before opening a transaction', async () => {
-    // Simulate cr_id_seq being missing (or any other db.execute failure) -
-    // createDraftCRFromFeedback should reject BEFORE db.transaction is ever
-    // called, so no partial writes can land.
+  it('propagates sequence allocation failure before any insert runs', async () => {
+    mocks.selectMock.mockReturnValueOnce(makeSelectChain([]))
     mocks.executeMock.mockRejectedValueOnce(
       new Error('relation "cr_id_seq" does not exist'),
     )
@@ -153,35 +157,37 @@ describe('createDraftCRFromFeedback', () => {
     )
 
     expect(mocks.executeMock).toHaveBeenCalledTimes(1)
-    // Transaction must NEVER be opened on sequence failure.
-    expect(mocks.transactionMock).not.toHaveBeenCalled()
+    // Insert must NEVER fire on sequence failure.
+    expect(mocks.insertMock).not.toHaveBeenCalled()
   })
 
-  it('propagates errors thrown inside the transaction (rollback path)', async () => {
-    // Sequence allocates fine, but the first insert inside the transaction
-    // blows up - db.transaction semantics must propagate the error out of
-    // createDraftCRFromFeedback so the Inngest step.run fails and retries,
-    // and the caller never sees a half-written CR.
-    mocks.executeMock.mockResolvedValueOnce({ rows: [{ seq: 99 }] })
+  it('returns the existing CR when a draft already exists for this feedbackId (retry no-op)', async () => {
+    // Simulate the idempotency guard finding a prior draft from an earlier
+    // attempt. The function should short-circuit and NEVER touch the
+    // sequence or insert builders.
+    mocks.selectMock.mockReturnValueOnce(
+      makeSelectChain([{ id: 'existing-cr-id', readableId: 'CR-099' }]),
+    )
 
+    const result = await createDraftCRFromFeedback(VALID_INPUT)
+
+    expect(result).toEqual({ id: 'existing-cr-id', readableId: 'CR-099' })
+    expect(mocks.executeMock).not.toHaveBeenCalled()
+    expect(mocks.insertMock).not.toHaveBeenCalled()
+  })
+
+  it('propagates errors thrown inside a sequential insert (Inngest retry path)', async () => {
+    mocks.selectMock.mockReturnValueOnce(makeSelectChain([]))
+    mocks.executeMock.mockResolvedValueOnce({ rows: [{ seq: 99 }] })
     const insertSpy = vi.fn(() => {
       throw new Error('duplicate key value violates unique constraint')
     })
-    const tx = { insert: insertSpy }
-    mocks.transactionMock.mockImplementationOnce(
-      async (cb: (tx: unknown) => Promise<unknown>) => {
-        // Real drizzle.transaction re-throws whatever the callback throws
-        // (and rolls back the underlying SQL tx). The fake mirrors that
-        // contract - we don't need a real rollback, just error propagation.
-        return await cb(tx)
-      },
-    )
+    mocks.insertMock.mockImplementation(insertSpy)
 
     await expect(createDraftCRFromFeedback(VALID_INPUT)).rejects.toThrow(
       /duplicate key value/,
     )
 
-    expect(mocks.transactionMock).toHaveBeenCalledTimes(1)
-    expect(insertSpy).toHaveBeenCalledTimes(1)
+    expect(mocks.insertMock).toHaveBeenCalledTimes(1)
   })
 })

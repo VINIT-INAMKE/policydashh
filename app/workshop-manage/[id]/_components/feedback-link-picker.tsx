@@ -29,24 +29,41 @@ export function FeedbackLinkPicker({ workshopId, linkedFeedbackIds, open, onOpen
 
   const feedbackQuery = trpc.feedback.listAll.useQuery(undefined, { enabled: open })
 
-  const linkMutation = trpc.workshop.linkFeedback.useMutation({
-    onSuccess: () => {
-      utils.workshop.getById.invalidate({ workshopId })
-      toast.success('Feedback linked to workshop')
-    },
-    onError: () => {
-      toast.error("Couldn't link feedback. Try again.")
-    },
-  })
+  const linkMutation = trpc.workshop.linkFeedback.useMutation()
 
-  function handleLink() {
-    for (const feedbackId of selected) {
-      linkMutation.mutate({ workshopId, feedbackId })
+  // F21: await each mutation, show a consolidated toast. Previous fire-and-
+  // forget logic silenced errors after the first call returned.
+  async function handleLink() {
+    if (selected.length === 0) {
+      onOpenChange(false)
+      return
     }
-    setSelected([])
-    setSearch('')
-    setTypeFilter('')
-    onOpenChange(false)
+    try {
+      const results = await Promise.allSettled(
+        selected.map((feedbackId) => linkMutation.mutateAsync({ workshopId, feedbackId })),
+      )
+      const failures = results.filter((r) => r.status === 'rejected').length
+      const successes = results.length - failures
+      if (successes > 0) {
+        utils.workshop.getById.invalidate({ workshopId })
+      }
+      if (failures === 0) {
+        toast.success(
+          successes === 1
+            ? 'Feedback linked to workshop'
+            : `${successes} feedback items linked to workshop`,
+        )
+      } else {
+        toast.error(
+          `Linked ${successes} of ${results.length}. ${failures} failed — try again.`,
+        )
+      }
+    } finally {
+      setSelected([])
+      setSearch('')
+      setTypeFilter('')
+      onOpenChange(false)
+    }
   }
 
   function toggleFeedback(id: string) {

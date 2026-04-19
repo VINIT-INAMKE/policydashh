@@ -9,6 +9,18 @@ export const crStatusEnum = pgEnum('cr_status', [
   'drafting', 'in_review', 'approved', 'merged', 'closed',
 ])
 
+// G8: documentVersions <-> changeRequests is a true circular FK.
+// `documentVersions.crId` references `changeRequests.id` with ON DELETE
+// SET NULL (a version should survive if its originating CR is deleted),
+// and `changeRequests.mergedVersionId` references `documentVersions.id`.
+// Drizzle's `() =>` closures delay evaluation to runtime so Postgres sees
+// both constraints, but TypeScript's type inference hits infinite
+// recursion trying to resolve the cross-table types. We break the cycle
+// by declaring `documentVersions.crId` WITHOUT a Drizzle `.references()`
+// in the schema file -- the FK lives in migration 0020 (ON DELETE SET
+// NULL) only. This mirrors the approach already used for
+// `documentVersions.milestoneId`.
+
 // Document versions with section snapshots and publish support
 export const documentVersions = pgTable('document_versions', {
   id:                uuid('id').primaryKey().defaultRandom(),
@@ -16,7 +28,7 @@ export const documentVersions = pgTable('document_versions', {
   versionLabel:      text('version_label').notNull(),
   mergeSummary:      text('merge_summary'),
   createdBy:         uuid('created_by').notNull().references(() => users.id),
-  crId:              uuid('cr_id'),  // FK added after changeRequests defined (avoid circular)
+  crId:              uuid('cr_id'),  // FK to change_requests.id (ON DELETE SET NULL) — constraint in migration 0020; TS-level reference skipped to avoid circular-type recursion
   createdAt:         timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   sectionsSnapshot:  jsonb('sections_snapshot').$type<SectionSnapshot[] | null>(),
   changelog:         jsonb('changelog').$type<ChangelogEntry[] | null>(),

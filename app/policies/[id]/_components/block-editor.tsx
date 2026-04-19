@@ -20,6 +20,7 @@ import { CodeBlockView } from './code-block-view'
 import { EditorToolbar } from './editor-toolbar'
 import { FloatingLinkEditor } from './floating-link-editor'
 import { SlashCommandMenu, type SlashCommandMenuRef } from './slash-command-menu'
+import { markSectionPending, markSectionFlushed } from './section-autosave-pending'
 import type { Editor } from '@tiptap/core'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import type { SlashCommandItem } from '@/src/lib/tiptap-extensions/slash-command-extension'
@@ -79,6 +80,9 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
     onSuccess: () => {
       isDirtyRef.current = false
       updateSaveState('saved')
+      // D14: report this section as flushed so the Create-Version dialog
+      // can block when anything is still pending.
+      markSectionFlushed(section.id)
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = setTimeout(() => {
         updateSaveState('idle')
@@ -86,6 +90,8 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
     },
     onError: () => {
       updateSaveState('error')
+      // Keep the pending flag set so the UI keeps blocking snapshots while
+      // the user retries.
       toast.error("Couldn't save your changes. Check your connection and try again.")
     },
   })
@@ -104,9 +110,12 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
   const handleUpdate = useCallback(
     ({ editor }: { editor: Editor }) => {
       isDirtyRef.current = true
+      // D14: mark pending immediately so a freshly typed character is
+      // visible to any watchers before the debounced write fires.
+      markSectionPending(section.id)
       debouncedSave(editor.getJSON() as Record<string, unknown>)
     },
-    [debouncedSave],
+    [debouncedSave, section.id],
   )
 
   const handleBlur = useCallback(() => {
@@ -252,12 +261,15 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
 
-  // Cleanup timeouts
+  // Cleanup timeouts + clear pending flag when the editor unmounts so a
+  // left-behind marker doesn't block future "Create Version" clicks.
   useEffect(() => {
+    const sectionId = section.id
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      markSectionFlushed(sectionId)
     }
-  }, [])
+  }, [section.id])
 
   if (!editor) {
     return (

@@ -83,8 +83,19 @@ export function EvidencePackDialog({ trigger }: EvidencePackDialogProps = {}) {
 
   const handleExport = useCallback(() => {
     if (!policyId) return
-    requestExport.mutate({ documentId: policyId })
-  }, [policyId, requestExport])
+    // H1: forward the checkbox state so the Inngest function builds only
+    // the selected sections. Map the UI keys to the wire contract.
+    requestExport.mutate({
+      documentId: policyId,
+      sections: {
+        stakeholders: checklist.stakeholders,
+        feedback:     checklist.feedbackMatrix,
+        versions:     checklist.versionHistory,
+        decisions:    checklist.decisionLogs,
+        workshops:    checklist.workshopEvidence,
+      },
+    })
+  }, [policyId, checklist, requestExport])
 
   const handleRetry = useCallback(() => {
     requestExport.reset()

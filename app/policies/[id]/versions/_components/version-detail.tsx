@@ -49,11 +49,12 @@ interface VersionListItem {
 interface VersionDetailProps {
   versionId: string
   documentId: string
+  documentTitle?: string
   versions: VersionListItem[]
   canPublish?: boolean
 }
 
-export function VersionDetail({ versionId, documentId, versions, canPublish = false }: VersionDetailProps) {
+export function VersionDetail({ versionId, documentId, documentTitle, versions, canPublish = false }: VersionDetailProps) {
   const [publishOpen, setPublishOpen] = useState(false)
 
   const versionQuery = trpc.version.getById.useQuery(
@@ -171,7 +172,7 @@ export function VersionDetail({ versionId, documentId, versions, canPublish = fa
           onOpenChange={setPublishOpen}
           versionId={version.id}
           versionLabel={version.versionLabel}
-          documentTitle=""
+          documentTitle={documentTitle ?? ''}
           changelog={changelog}
         />
       )}

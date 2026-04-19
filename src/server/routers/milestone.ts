@@ -163,12 +163,14 @@ export const milestoneRouter = router({
         documentId:  z.string().uuid(),
         title:       z.string().min(1).max(200),
         description: z.string().max(2000).optional(),
+        // D20: cap per-slot requirement at 50 so an accidental large number
+        // can't brick the UI (counts + manifest hashing).
         requiredSlots: z
           .object({
-            versions:  z.number().int().min(0).optional(),
-            workshops: z.number().int().min(0).optional(),
-            feedback:  z.number().int().min(0).optional(),
-            evidence:  z.number().int().min(0).optional(),
+            versions:  z.number().int().min(0).max(50).optional(),
+            workshops: z.number().int().min(0).max(50).optional(),
+            feedback:  z.number().int().min(0).max(50).optional(),
+            evidence:  z.number().int().min(0).max(50).optional(),
           })
           .default({}),
       }),
@@ -377,10 +379,18 @@ export const milestoneRouter = router({
       )
       const unmet = slotStatus.filter((s) => s.required > 0 && !s.met)
       if (unmet.length > 0) {
+        // D3: the shared `errorFormatter` (src/trpc/init.ts) only forwards
+        // `error.cause.message` by default, and the auth agent owns that file
+        // while it migrates to Zod-aware formatting. As a portable fallback
+        // we embed a JSON sidecar in the error *message* that the client
+        // parses. Format:  "<human text>\n\n<MARK_READY_META>{...}"
+        const sidecar = JSON.stringify({ unmet })
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
-          message: `Cannot mark ready - ${unmet.length} required slot(s) unmet`,
-          cause: { unmet } as unknown as Error,
+          message:
+            `Cannot mark ready - ${unmet.length} required slot(s) unmet\n\n` +
+            `<MARK_READY_META>${sidecar}`,
+          cause: new Error(sidecar),
         })
       }
 

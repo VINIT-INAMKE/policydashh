@@ -3,16 +3,26 @@ import { router, requirePermission } from '@/src/trpc/init'
 import { transitionCR, mergeCR } from '@/src/server/services/changeRequest.service'
 import { getNextVersionLabel } from '@/src/server/services/version.service'
 import { writeAuditLog } from '@/src/lib/audit'
-import { ACTIONS } from '@/src/lib/constants'
+import { ACTIONS, type Role } from '@/src/lib/constants'
+import { PERMISSIONS, type Permission } from '@/src/lib/permissions'
 import { db } from '@/src/db'
 import { changeRequests, crFeedbackLinks, crSectionLinks, documentVersions } from '@/src/db/schema/changeRequests'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { policySections } from '@/src/db/schema/documents'
 import { users } from '@/src/db/schema/users'
 import { workflowTransitions } from '@/src/db/schema/workflow'
-import { eq, and, desc, asc, sql, inArray, ilike } from 'drizzle-orm'
+import { eq, and, desc, asc, sql, inArray, ilike, ne } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { sendNotificationCreate } from '@/src/inngest/events'
+
+// CR reviewers = everyone who can approve/merge (cr:manage). G7 uses this
+// to fan out the "sent for review" notification to actual reviewers rather
+// than echoing it back to the submitter. The PERMISSIONS table is the
+// single source of truth; if the matrix expands (e.g. a dedicated
+// cr:review permission ships), swap the constant below without touching
+// the query shape.
+const REVIEWER_PERMISSION: Permission = 'cr:manage'
+const REVIEWER_ROLES = PERMISSIONS[REVIEWER_PERMISSION] as readonly Role[]
 
 const CR_STATUSES = ['drafting', 'in_review', 'approved', 'merged', 'closed'] as const
 
@@ -213,9 +223,11 @@ export const changeRequestRouter = router({
           createdAt: changeRequests.createdAt,
           updatedAt: changeRequests.updatedAt,
           ownerName: users.name,
+          mergedVersionLabel: documentVersions.versionLabel,
         })
         .from(changeRequests)
         .leftJoin(users, eq(changeRequests.ownerId, users.id))
+        .leftJoin(documentVersions, eq(changeRequests.mergedVersionId, documentVersions.id))
         .where(eq(changeRequests.id, input.id))
         .limit(1)
 
@@ -223,7 +235,22 @@ export const changeRequestRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Change request not found' })
       }
 
-      // Get linked feedback items
+      // Fetch approver and merger names separately (avoids aliased joins)
+      const extraUserIds = [cr.approverId, cr.mergedBy].filter(
+        (id): id is string => id !== null,
+      )
+      const userNameMap = new Map<string, string | null>()
+      if (extraUserIds.length > 0) {
+        const userRows = await db
+          .select({ id: users.id, name: users.name })
+          .from(users)
+          .where(inArray(users.id, extraUserIds))
+        for (const row of userRows) {
+          userNameMap.set(row.id, row.name)
+        }
+      }
+
+      // Get linked feedback items (G5: include sectionTitle via join)
       const linkedFeedback = await db
         .select({
           feedbackId: crFeedbackLinks.feedbackId,
@@ -231,9 +258,11 @@ export const changeRequestRouter = router({
           title: feedbackItems.title,
           status: feedbackItems.status,
           sectionId: feedbackItems.sectionId,
+          sectionTitle: policySections.title,
         })
         .from(crFeedbackLinks)
         .innerJoin(feedbackItems, eq(crFeedbackLinks.feedbackId, feedbackItems.id))
+        .leftJoin(policySections, eq(feedbackItems.sectionId, policySections.id))
         .where(eq(crFeedbackLinks.crId, input.id))
 
       // Get linked sections
@@ -248,6 +277,8 @@ export const changeRequestRouter = router({
 
       return {
         ...cr,
+        approverName: cr.approverId ? userNameMap.get(cr.approverId) ?? null : null,
+        mergerName: cr.mergedBy ? userNameMap.get(cr.mergedBy) ?? null : null,
         linkedFeedback,
         linkedSections,
       }
@@ -271,18 +302,35 @@ export const changeRequestRouter = router({
         entityId: input.id,
       }).catch(console.error)
 
+      // G7: fan the "sent for review" notification out to reviewers (users
+      // with cr:manage) - the submitter already knows they just clicked the
+      // button. Exclude the actor so they don't ping themselves.
+      const reviewers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(
+          inArray(users.role, REVIEWER_ROLES as unknown as Role[]),
+          ne(users.id, ctx.user.id),
+        ))
+
       // NOTIF-04: route notification through notificationDispatchFn (Inngest).
-      await sendNotificationCreate({
-        userId:     updated.ownerId,
-        type:       'cr_status_changed',
-        title:      'CR sent for review',
-        body:       `Change request ${updated.readableId} is now in review.`,
-        entityType: 'cr',
-        entityId:   updated.id,
-        linkHref:   `/change-requests/${updated.id}`,
-        createdBy:  ctx.user.id,
-        action:     'submitForReview',
-      })
+      // Fan-out with Promise.allSettled so one bad userId doesn't block the
+      // rest of the queue.
+      await Promise.allSettled(
+        reviewers.map((reviewer) =>
+          sendNotificationCreate({
+            userId:     reviewer.id,
+            type:       'cr_status_changed',
+            title:      'CR sent for review',
+            body:       `Change request ${updated.readableId} is ready for review.`,
+            entityType: 'cr',
+            entityId:   updated.id,
+            linkHref:   `/change-requests/${updated.id}`,
+            createdBy:  ctx.user.id,
+            action:     'submitForReview',
+          }),
+        ),
+      )
 
       return updated
     }),
@@ -341,11 +389,14 @@ export const changeRequestRouter = router({
 
   // Request changes on CR (send back from approved to in_review)
   requestChanges: requirePermission('cr:manage')
-    .input(z.object({ id: z.string().uuid() }))
+    .input(z.object({
+      id: z.string().uuid(),
+      rationale: z.string().min(20).max(2000),
+    }))
     .mutation(async ({ ctx, input }) => {
       const updated = await transitionCR(
         input.id,
-        { type: 'REQUEST_CHANGES' },
+        { type: 'REQUEST_CHANGES', rationale: input.rationale },
         ctx.user.id,
       )
 
@@ -355,6 +406,7 @@ export const changeRequestRouter = router({
         action: ACTIONS.CR_REQUEST_CHANGES,
         entityType: 'change_request',
         entityId: input.id,
+        payload: { rationale: input.rationale },
       }).catch(console.error)
 
       return updated
@@ -367,6 +419,26 @@ export const changeRequestRouter = router({
       mergeSummary: z.string().min(20).max(2000),
     }))
     .mutation(async ({ ctx, input }) => {
+      // B7 / G6: Prevent self-merge - merger cannot be the CR owner.
+      // Mirrors the approve owner check above so one reviewer cannot both
+      // approve and merge their own change request.
+      const [ownerRow] = await db
+        .select({ ownerId: changeRequests.ownerId, readableId: changeRequests.readableId })
+        .from(changeRequests)
+        .where(eq(changeRequests.id, input.id))
+        .limit(1)
+
+      if (!ownerRow) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Change request not found' })
+      }
+
+      if (ownerRow.ownerId === ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: `Cannot merge your own change request ${ownerRow.readableId}`,
+        })
+      }
+
       const result = await mergeCR(input.id, input.mergeSummary, ctx.user.id)
 
       writeAuditLog({

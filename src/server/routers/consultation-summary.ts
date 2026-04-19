@@ -8,7 +8,7 @@ import { feedbackItems } from '@/src/db/schema/feedback'
 import { users } from '@/src/db/schema/users'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
-import { sendVersionPublished } from '@/src/inngest/events'
+import { sendConsultationSummaryRegen } from '@/src/inngest/events'
 import {
   computeOverallStatus,
   type ConsultationSummaryJson,
@@ -94,6 +94,61 @@ export const consultationSummaryRouter = router({
         .where(eq(documentVersions.id, input.versionId))
         .limit(1)
       return (row?.consultationSummary as ConsultationSummaryJson | null) ?? null
+    }),
+
+  // ---- status (E10 - polling endpoint) -----------------------------
+  // Light-weight status projection. Clients polling during regenerate can
+  // hit this on a short interval without refetching the full JSONB payload.
+  // `publishedAt` lets the UI show "stale" when the version was published
+  // after the summary's generatedAt timestamp.
+  status: requirePermission('version:manage')
+    .input(z.object({ versionId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const [row] = await db
+        .select({
+          consultationSummary: documentVersions.consultationSummary,
+          publishedAt:         documentVersions.publishedAt,
+        })
+        .from(documentVersions)
+        .where(eq(documentVersions.id, input.versionId))
+        .limit(1)
+
+      if (!row) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Version not found' })
+      }
+
+      const summary = row.consultationSummary as ConsultationSummaryJson | null
+      if (!summary) {
+        return {
+          status:      'pending' as const,
+          generatedAt: null as string | null,
+          publishedAt: row.publishedAt,
+          isStale:     false,
+          sections:    [] as { sectionId: string; status: string; error?: string }[],
+        }
+      }
+
+      // Stale if the latest publish happened after the summary was
+      // generated - happens after a regenerate was fired for a newer CR.
+      const publishedAt = row.publishedAt
+      const generatedAt = summary.generatedAt
+      const isStale = !!(
+        publishedAt &&
+        generatedAt &&
+        new Date(publishedAt).getTime() > new Date(generatedAt).getTime()
+      )
+
+      return {
+        status:      summary.status,
+        generatedAt: summary.generatedAt,
+        publishedAt: row.publishedAt,
+        isStale,
+        sections:    summary.sections.map((s) => ({
+          sectionId: s.sectionId,
+          status:    s.status,
+          error:     s.error,
+        })),
+      }
     }),
 
   // ---- getSectionFeedback (LLM-07 - right panel data) -------------
@@ -243,7 +298,9 @@ export const consultationSummaryRouter = router({
         payload:    { sectionId: input.sectionId },
       }).catch(console.error)
 
-      await sendVersionPublished({
+      // I3: use the dedicated regen event so versionAnchorFn does not re-fire
+      // and emit NonRetriableError('Already anchored') on every section regen.
+      await sendConsultationSummaryRegen({
         versionId:    input.versionId,
         documentId,
         overrideOnly: [input.sectionId],

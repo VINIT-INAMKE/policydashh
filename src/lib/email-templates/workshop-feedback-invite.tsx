@@ -33,12 +33,19 @@ export interface WorkshopFeedbackInviteEmailProps {
   workshopTitle: string
   /** Fully-qualified /participate?workshopId=...&token=... URL. */
   feedbackUrl: string
+  /**
+   * F29: pre-formatted "Friday, April 19, 2026, 2:00 PM IST" label so the
+   * template renders workshop timing without re-formatting Date in the
+   * email layer. Optional for back-compat.
+   */
+  scheduledAtLabel?: string | null
 }
 
 export function WorkshopFeedbackInviteEmail({
   name,
   workshopTitle,
   feedbackUrl,
+  scheduledAtLabel,
 }: WorkshopFeedbackInviteEmailProps) {
   const greetingName = (name?.trim() || 'there').split(' ')[0] ?? 'there'
 
@@ -80,6 +87,18 @@ export function WorkshopFeedbackInviteEmail({
           <Text style={{ fontSize: '16px', lineHeight: 1.6, marginBottom: '16px' }}>
             {`Hi ${greetingName}, thank you for attending.`}
           </Text>
+          {scheduledAtLabel ? (
+            <Text
+              style={{
+                fontSize: '14px',
+                lineHeight: 1.6,
+                marginBottom: '16px',
+                color: '#44474e',
+              }}
+            >
+              {scheduledAtLabel}
+            </Text>
+          ) : null}
           <Text style={{ fontSize: '16px', lineHeight: 1.6, marginBottom: '24px' }}>
             {'Your insights from the workshop help shape the policy consultation. Please take a minute to rate the session and share what stood out.'}
           </Text>

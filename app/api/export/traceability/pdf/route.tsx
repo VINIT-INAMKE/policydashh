@@ -9,7 +9,31 @@ import { can } from '@/src/lib/permissions'
 import { ACTIONS } from '@/src/lib/constants'
 import { writeAuditLog } from '@/src/lib/audit'
 import type { Role } from '@/src/lib/constants'
-import { eq, and, desc, gte, lte } from 'drizzle-orm'
+import { eq, and, desc, gte, lte, inArray, isNull, or } from 'drizzle-orm'
+
+const VALID_ORG_TYPES = ['government', 'industry', 'legal', 'academia', 'civil_society', 'internal'] as const
+const VALID_DECISIONS = ['submitted', 'under_review', 'accepted', 'partially_accepted', 'rejected', 'closed'] as const
+
+type OrgType = (typeof VALID_ORG_TYPES)[number]
+type DecisionOutcome = (typeof VALID_DECISIONS)[number]
+
+function parseEnumList<T extends string>(
+  searchParams: URLSearchParams,
+  paramName: string,
+  allowed: readonly T[],
+): T[] {
+  // Accept repeated OR comma-separated params. Unknown values dropped.
+  const raw = searchParams.getAll(paramName)
+  const tokens: string[] = []
+  for (const v of raw) {
+    for (const tok of v.split(',')) {
+      const trimmed = tok.trim()
+      if (trimmed) tokens.push(trimmed)
+    }
+  }
+  const allowedSet = new Set<string>(allowed)
+  return tokens.filter((t): t is T => allowedSet.has(t))
+}
 
 export async function GET(request: NextRequest) {
   // Auth check
@@ -34,9 +58,17 @@ export async function GET(request: NextRequest) {
     return new Response('documentId is required', { status: 400 })
   }
 
-  const orgType = searchParams.get('orgType')
+  // D5: accept array filters with backward-compat for old singular keys.
+  const orgTypes: OrgType[] = [
+    ...parseEnumList(searchParams, 'orgTypes', VALID_ORG_TYPES),
+    ...parseEnumList(searchParams, 'orgType', VALID_ORG_TYPES),
+  ]
+  const decisionOutcomes: DecisionOutcome[] = [
+    ...parseEnumList(searchParams, 'decisionOutcomes', VALID_DECISIONS),
+    ...parseEnumList(searchParams, 'decisionOutcome', VALID_DECISIONS),
+  ]
+
   const sectionId = searchParams.get('sectionId')
-  const decisionOutcome = searchParams.get('decisionOutcome')
   const versionFromLabel = searchParams.get('versionFromLabel')
   const versionToLabel = searchParams.get('versionToLabel')
 
@@ -48,14 +80,18 @@ export async function GET(request: NextRequest) {
   if (sectionId) {
     conditions.push(eq(feedbackItems.sectionId, sectionId))
   }
-  if (decisionOutcome) {
-    conditions.push(eq(feedbackItems.status, decisionOutcome as 'submitted' | 'under_review' | 'accepted' | 'partially_accepted' | 'rejected' | 'closed'))
+  if (decisionOutcomes.length > 0) {
+    conditions.push(inArray(feedbackItems.status, decisionOutcomes))
   }
-  if (orgType) {
-    conditions.push(eq(users.orgType, orgType as 'government' | 'industry' | 'legal' | 'academia' | 'civil_society' | 'internal'))
+  if (orgTypes.length > 0) {
+    conditions.push(inArray(users.orgType, orgTypes))
   }
 
-  // Version range filter
+  // Version range filter — D6: wrap gte/lte with `OR IS NULL` so un-merged
+  // feedback isn't silently hidden.
+  let fromCreatedAt: Date | null = null
+  let toCreatedAt: Date | null = null
+
   if (versionFromLabel) {
     const [fromVersion] = await db
       .select({ createdAt: documentVersions.createdAt })
@@ -66,7 +102,7 @@ export async function GET(request: NextRequest) {
       ))
       .limit(1)
     if (fromVersion) {
-      conditions.push(gte(documentVersions.createdAt, fromVersion.createdAt))
+      fromCreatedAt = fromVersion.createdAt
     }
   }
   if (versionToLabel) {
@@ -79,8 +115,30 @@ export async function GET(request: NextRequest) {
       ))
       .limit(1)
     if (toVersion) {
-      conditions.push(lte(documentVersions.createdAt, toVersion.createdAt))
+      toCreatedAt = toVersion.createdAt
     }
+  }
+
+  // D7: friendly rejection of inverted range.
+  if (fromCreatedAt && toCreatedAt && fromCreatedAt > toCreatedAt) {
+    return new Response('"From" version must be before "To" version.', { status: 400 })
+  }
+
+  if (fromCreatedAt) {
+    conditions.push(
+      or(
+        gte(documentVersions.createdAt, fromCreatedAt),
+        isNull(documentVersions.createdAt),
+      )!,
+    )
+  }
+  if (toCreatedAt) {
+    conditions.push(
+      or(
+        lte(documentVersions.createdAt, toCreatedAt),
+        isNull(documentVersions.createdAt),
+      )!,
+    )
   }
 
   // Execute the matrix query

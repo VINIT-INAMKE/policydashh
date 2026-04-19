@@ -128,10 +128,16 @@ export function RationaleDialog({
             onChange={(e) => setRationale(e.target.value)}
             maxLength={MAX_RATIONALE_LENGTH}
             required
+            aria-describedby="rationale-hint"
           />
-          <p className="text-right text-xs text-muted-foreground">
-            {rationale.length}/{MAX_RATIONALE_LENGTH}
-          </p>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span id="rationale-hint">
+              {rationale.trim().length < MIN_RATIONALE_LENGTH
+                ? `${MIN_RATIONALE_LENGTH} character minimum (${rationale.trim().length}/${MIN_RATIONALE_LENGTH})`
+                : 'Minimum length met.'}
+            </span>
+            <span>{rationale.length}/{MAX_RATIONALE_LENGTH}</span>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
+import { revalidateTag } from 'next/cache'
+import { and, eq, inArray, desc } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
 import { workflowTransitions } from '@/src/db/schema/workflow'
@@ -9,6 +10,13 @@ import {
   sendWorkshopFeedbackInvite,
   sendWorkshopCompleted,
 } from '@/src/inngest/events'
+
+// F5: tag prefix matching the unstable_cache tag written by
+// `src/server/queries/workshops-public.ts`. Keep the prefix in lockstep with
+// that file.
+function spotsTag(workshopId: string): string {
+  return `workshop-spots-${workshopId}`
+}
 
 /**
  * Cal.com webhook handler (Phase 20, Plan 20-03, requirements WS-09/WS-10/WS-11).
@@ -135,12 +143,16 @@ export async function POST(req: Request): Promise<Response> {
           source: 'cal_booking',
         })
 
+        // F5: bust the per-workshop spots cache so the public listing
+        // reflects the new registration within the next SSR revalidation.
+        revalidateTag(spotsTag(workshopId), { expire: 0 })
+
         return new Response('OK', { status: 200 })
       }
 
       case 'BOOKING_CANCELLED': {
         if (!bookingData.uid) return new Response('OK', { status: 200 })
-        await db
+        const cancelled = await db
           .update(workshopRegistrations)
           .set({
             status: 'cancelled',
@@ -148,6 +160,11 @@ export async function POST(req: Request): Promise<Response> {
             updatedAt: new Date(),
           })
           .where(eq(workshopRegistrations.bookingUid, bookingData.uid))
+          .returning({ workshopId: workshopRegistrations.workshopId })
+        // F5: bust spots cache for the affected workshop.
+        for (const row of cancelled) {
+          if (row.workshopId) revalidateTag(spotsTag(row.workshopId), { expire: 0 })
+        }
         return new Response('OK', { status: 200 })
       }
 
@@ -159,7 +176,7 @@ export async function POST(req: Request): Promise<Response> {
         if (!origUid || !newUid || !bookingData.startTime) {
           return new Response('OK', { status: 200 })
         }
-        await db
+        const updated = await db
           .update(workshopRegistrations)
           .set({
             bookingUid: newUid,
@@ -168,6 +185,45 @@ export async function POST(req: Request): Promise<Response> {
             updatedAt: new Date(),
           })
           .where(eq(workshopRegistrations.bookingUid, origUid))
+          .returning({ workshopId: workshopRegistrations.workshopId })
+
+        // F6: if zero rows matched, the original booking never landed (missed
+        // BOOKING_CREATED webhook, race, or stale uid). Synthesize an INSERT
+        // using the attendee email + workshop resolved from the event type id,
+        // so the reschedule is still reflected in our registrations table.
+        if (updated.length === 0) {
+          const workshopId = await findWorkshopByCalEventTypeId(bookingData.eventTypeId)
+          const attendee = bookingData.attendees?.[0]
+          if (workshopId && attendee?.email) {
+            console.warn(
+              '[cal-webhook] BOOKING_RESCHEDULED matched 0 rows, inserting fallback',
+              { origUid, newUid, workshopId },
+            )
+            const emailHash = emailHashOf(attendee.email)
+            await db
+              .insert(workshopRegistrations)
+              .values({
+                workshopId,
+                bookingUid: newUid,
+                email: attendee.email,
+                emailHash,
+                name: attendee.name ?? null,
+                bookingStartTime: new Date(bookingData.startTime),
+                status: 'rescheduled',
+              })
+              .onConflictDoNothing({ target: workshopRegistrations.bookingUid })
+            revalidateTag(spotsTag(workshopId), { expire: 0 })
+          } else {
+            console.error(
+              '[cal-webhook] BOOKING_RESCHEDULED matched 0 rows AND could not resolve workshopId/email',
+              { origUid, newUid },
+            )
+          }
+        } else {
+          for (const row of updated) {
+            if (row.workshopId) revalidateTag(spotsTag(row.workshopId), { expire: 0 })
+          }
+        }
         return new Response('OK', { status: 200 })
       }
 
@@ -221,6 +277,10 @@ export async function POST(req: Request): Promise<Response> {
           if (!a.email) continue
           const emailHash = emailHashOf(a.email)
 
+          // F7: match on (workshopId, email, status in ('registered',
+          // 'rescheduled')) and take the latest booking. Previous code
+          // ignored status entirely so a prior 'cancelled' row could shadow
+          // the real current booking.
           const [existing] = await db
             .select()
             .from(workshopRegistrations)
@@ -228,8 +288,10 @@ export async function POST(req: Request): Promise<Response> {
               and(
                 eq(workshopRegistrations.workshopId, workshopId),
                 eq(workshopRegistrations.email, a.email),
+                inArray(workshopRegistrations.status, ['registered', 'rescheduled']),
               ),
             )
+            .orderBy(desc(workshopRegistrations.bookingStartTime))
             .limit(1)
 
           if (existing) {

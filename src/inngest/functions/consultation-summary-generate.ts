@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { inngest } from '../client'
-import { versionPublishedEvent } from '../events'
+import { versionPublishedEvent, consultationSummaryRegenEvent } from '../events'
 import { db } from '@/src/db'
 import { documentVersions } from '@/src/db/schema/changeRequests'
 import { generateConsultationSummary } from '@/src/lib/llm'
@@ -45,7 +45,15 @@ export const consultationSummaryGenerateFn = inngest.createFunction(
     name: 'Consultation summary - generate via Groq llama',
     retries: 2,
     concurrency: { key: 'groq-summary', limit: 2 },
-    triggers: [{ event: versionPublishedEvent }],
+    // I3: listen on BOTH events. `version.published` auto-generates the
+    // summary on publish; `consultation-summary.regen` runs a scoped,
+    // single-section regen from the moderator UI without re-firing the
+    // anchor pipeline. Payload shapes are identical (versionId,
+    // documentId, overrideOnly), so the handler body is unchanged.
+    triggers: [
+      { event: versionPublishedEvent },
+      { event: consultationSummaryRegenEvent },
+    ],
   },
   async ({ event, step }) => {
     const { versionId, documentId, overrideOnly } = event.data

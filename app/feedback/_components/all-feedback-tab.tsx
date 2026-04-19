@@ -133,7 +133,7 @@ export function AllFeedbackTab() {
               className="rounded-md border transition-colors hover:bg-muted/50"
             >
               <Link
-                href={`/policies/${row.documentId}/feedback`}
+                href={`/policies/${row.documentId}/feedback?selected=${row.id}`}
                 className="flex flex-col gap-1 p-3"
               >
                 <div className="flex flex-wrap items-center gap-2">

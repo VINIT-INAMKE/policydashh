@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { router, requirePermission } from '@/src/trpc/init'
-import { writeAuditLog } from '@/src/lib/audit'
+import { writeAuditLog, ipFromHeaders } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'
 import { evidenceArtifacts, feedbackEvidence, sectionEvidence } from '@/src/db/schema/evidence'
@@ -71,6 +71,7 @@ export const evidenceRouter = router({
           feedbackId: input.feedbackId,
           sectionId: input.sectionId,
         },
+        ipAddress: ipFromHeaders(ctx.headers),
       }).catch(console.error)
 
       return artifact
@@ -98,6 +99,60 @@ export const evidenceRouter = router({
         .where(eq(feedbackEvidence.feedbackId, input.feedbackId))
 
       return rows
+    }),
+
+  // D1: list every evidence artifact that belongs to a document (via sections
+  // or feedback join tables) with `milestoneId` so the milestone detail page
+  // can render the Evidence tab with per-row attached state. Results are
+  // deduped by artifact id.
+  listByDocument: requirePermission('evidence:read')
+    .input(z.object({ documentId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const viaSections = await db
+        .selectDistinct({
+          id: evidenceArtifacts.id,
+          title: evidenceArtifacts.title,
+          type: evidenceArtifacts.type,
+          url: evidenceArtifacts.url,
+          fileName: evidenceArtifacts.fileName,
+          fileSize: evidenceArtifacts.fileSize,
+          uploaderId: evidenceArtifacts.uploaderId,
+          createdAt: evidenceArtifacts.createdAt,
+          milestoneId: evidenceArtifacts.milestoneId,
+          uploaderName: users.name,
+        })
+        .from(evidenceArtifacts)
+        .innerJoin(sectionEvidence, eq(sectionEvidence.artifactId, evidenceArtifacts.id))
+        .innerJoin(policySections, eq(policySections.id, sectionEvidence.sectionId))
+        .innerJoin(users, eq(evidenceArtifacts.uploaderId, users.id))
+        .where(eq(policySections.documentId, input.documentId))
+
+      const viaFeedback = await db
+        .selectDistinct({
+          id: evidenceArtifacts.id,
+          title: evidenceArtifacts.title,
+          type: evidenceArtifacts.type,
+          url: evidenceArtifacts.url,
+          fileName: evidenceArtifacts.fileName,
+          fileSize: evidenceArtifacts.fileSize,
+          uploaderId: evidenceArtifacts.uploaderId,
+          createdAt: evidenceArtifacts.createdAt,
+          milestoneId: evidenceArtifacts.milestoneId,
+          uploaderName: users.name,
+        })
+        .from(evidenceArtifacts)
+        .innerJoin(feedbackEvidence, eq(feedbackEvidence.artifactId, evidenceArtifacts.id))
+        .innerJoin(feedbackItems, eq(feedbackItems.id, feedbackEvidence.feedbackId))
+        .innerJoin(users, eq(evidenceArtifacts.uploaderId, users.id))
+        .where(eq(feedbackItems.documentId, input.documentId))
+
+      const byId = new Map<string, (typeof viaSections)[number]>()
+      for (const row of [...viaSections, ...viaFeedback]) {
+        if (!byId.has(row.id)) byId.set(row.id, row)
+      }
+      return Array.from(byId.values()).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
     }),
 
   // List evidence attached to a section (EV-04: includes uploaderName)
@@ -160,6 +215,7 @@ export const evidenceRouter = router({
         action: ACTIONS.EVIDENCE_REMOVE,
         entityType: 'evidence',
         entityId: input.artifactId,
+        ipAddress: ipFromHeaders(ctx.headers),
       }).catch(console.error)
 
       return { success: true }
@@ -217,6 +273,15 @@ export const evidenceRouter = router({
       // version-0 UUIDs (Zod 4's z.uuid() rejects them). Identical to the
       // Phase 16 notification.create decision.
       documentId: z.guid(),
+      // H1: optional per-section opt-in. Absent values default to include
+      // so existing callers keep their full-export behavior.
+      sections: z.object({
+        stakeholders: z.boolean().optional(),
+        feedback:     z.boolean().optional(),
+        versions:     z.boolean().optional(),
+        decisions:    z.boolean().optional(),
+        workshops:    z.boolean().optional(),
+      }).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Pre-fetch user email at trigger time so the Inngest function doesn't
@@ -228,6 +293,7 @@ export const evidenceRouter = router({
         documentId:  input.documentId,
         requestedBy: ctx.user.id,
         userEmail,
+        sections:    input.sections,
       })
 
       // Fire-and-forget audit log for the REQUEST event (distinct from the
@@ -239,7 +305,8 @@ export const evidenceRouter = router({
         action:     ACTIONS.EVIDENCE_PACK_EXPORT,
         entityType: 'document',
         entityId:   input.documentId,
-        payload:    { async: true, stage: 'requested' },
+        payload:    { async: true, stage: 'requested', sections: input.sections },
+        ipAddress:  ipFromHeaders(ctx.headers),
       }).catch(console.error)
 
       return { status: 'queued' as const }

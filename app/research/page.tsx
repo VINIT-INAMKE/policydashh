@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ResearchTocAside } from './_components/research-toc-aside'
 
@@ -62,19 +61,18 @@ export default function ResearchPage() {
           <section id="outputs">
             <h2 className="text-[20px] font-semibold leading-[1.2] mb-4">Research Outputs</h2>
             <p className="text-[16px] font-normal leading-[1.8] mb-4">
-              The full research report synthesises the landscape summary, key policy gaps, and recommendations
-              that inform the draft framework under consultation.
+              The full research report will synthesise the landscape summary, key policy gaps, and
+              recommendations that inform the draft framework under consultation.
             </p>
             <ul className="list-disc pl-6 space-y-2 text-[16px] leading-[1.8] mb-6">
               <li><strong>Landscape Summary</strong> - the state of blockchain policy across comparable jurisdictions</li>
               <li><strong>Key Policy Gaps</strong> - unresolved questions the framework must address</li>
             </ul>
-            <a href="/research/consultation-research-report.pdf" download>
-              <Button variant="default" size="sm">
-                <Download className="size-3.5" />
-                Download Research Report
-              </Button>
-            </a>
+            <div className="rounded-md border border-dashed border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              <strong className="font-medium text-foreground">Coming soon.</strong>{' '}
+              The full research report is being finalised and will be published here once it
+              clears review.
+            </div>
           </section>
           <hr className="border-border my-12" />
 

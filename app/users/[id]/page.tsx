@@ -42,7 +42,8 @@ export default async function UserProfilePage({
 
   // Admin guard -- mirrors app/users/page.tsx
   const { userId } = await auth()
-  if (!userId) redirect('/dashboard')
+  // C9: unauthenticated users belong on /sign-in, not /dashboard.
+  if (!userId) redirect('/sign-in')
 
   const currentUser = await db.query.users.findFirst({
     where: eq(users.clerkId, userId),
@@ -173,9 +174,20 @@ export default async function UserProfilePage({
       {/* Feedback Submitted */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            <h2 className="text-xl font-semibold">Feedback Submitted</h2>
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle>
+              <h2 className="text-xl font-semibold">Feedback Submitted</h2>
+            </CardTitle>
+            {/* C10: link through to the full feedback list, scoped to this submitter. */}
+            {(feedbackCountResult?.cnt ?? 0) > 0 && (
+              <Link
+                href={`/feedback?submitter=${id}`}
+                className="text-sm text-[var(--cl-primary)] hover:underline"
+              >
+                View all ({feedbackCountResult?.cnt ?? 0})
+              </Link>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {userFeedback.length === 0 ? (
@@ -183,30 +195,38 @@ export default async function UserProfilePage({
               No feedback submitted yet.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Submitted</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {userFeedback.map((fb) => (
-                  <TableRow key={fb.id}>
-                    <TableCell className="font-mono text-xs">{fb.readableId}</TableCell>
-                    <TableCell className="font-medium">{fb.title}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{fb.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(fb.createdAt), 'MMM d, yyyy')}
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Submitted</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {userFeedback.map((fb) => (
+                    <TableRow key={fb.id}>
+                      <TableCell className="font-mono text-xs">{fb.readableId}</TableCell>
+                      <TableCell className="font-medium">{fb.title}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{fb.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {format(new Date(fb.createdAt), 'MMM d, yyyy')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {/* C10: clarify that this is a capped window, not the full history. */}
+              {(feedbackCountResult?.cnt ?? 0) > userFeedback.length && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Showing latest {userFeedback.length} of {feedbackCountResult?.cnt ?? userFeedback.length}.
+                </p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

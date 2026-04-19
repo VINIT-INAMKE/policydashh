@@ -10,7 +10,7 @@ export type CRStatus =
 export type CREvent =
   | { type: 'SUBMIT_FOR_REVIEW' }
   | { type: 'APPROVE'; approverId: string }
-  | { type: 'REQUEST_CHANGES' }
+  | { type: 'REQUEST_CHANGES'; rationale: string }
   | { type: 'MERGE'; mergedVersionId: string }
   | { type: 'CLOSE'; rationale: string }
 
@@ -84,7 +84,10 @@ export const changeRequestMachine = setup({
           target: 'merged',
           actions: 'setMergedVersion',
         },
-        REQUEST_CHANGES: { target: 'in_review' },
+        REQUEST_CHANGES: {
+          target: 'in_review',
+          guard: 'hasRationale',
+        },
         CLOSE: {
           target: 'closed',
           guard: 'hasRationale',

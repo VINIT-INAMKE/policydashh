@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { zipSync, strToU8 } from 'fflate'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 
@@ -12,6 +12,7 @@ import {
   sectionEvidence,
 } from '@/src/db/schema/evidence'
 import { feedbackItems } from '@/src/db/schema/feedback'
+import { users } from '@/src/db/schema/users'
 import { buildEvidencePack } from '@/src/server/services/evidence-pack.service'
 import { r2Client, getDownloadUrl, R2_PUBLIC_URL } from '@/src/lib/r2'
 import { sendEvidencePackReadyEmail } from '@/src/lib/email'
@@ -138,13 +139,14 @@ export const evidencePackExportFn = inngest.createFunction(
     triggers: [{ event: evidenceExportRequestedEvent }],
   },
   async ({ event, step }) => {
-    const { documentId, requestedBy, userEmail } = event.data
+    const { documentId, requestedBy, userEmail, sections } = event.data
 
     // Step 1: build all metadata files (CSV/JSON) - reuses existing service.
     // Record<string, Uint8Array> is not JSON-safe, so we serialize to
     // Record<string, number[]> at the step boundary and rehydrate later.
+    // H1: forward the caller's section selection through to the service.
     const metadataFiles = await step.run('build-metadata', async () => {
-      const record = await buildEvidencePack(documentId)
+      const record = await buildEvidencePack(documentId, sections)
       const serializable: Record<string, number[]> = {}
       for (const [name, bytes] of Object.entries(record)) {
         serializable[name] = Array.from(bytes)
@@ -333,14 +335,22 @@ export const evidencePackExportFn = inngest.createFunction(
     })
 
     // Step 6: audit log (EV-05 trace).
+    // B15 / H5: the actorRole must reflect the triggering user, not a
+    // hardcoded 'auditor'. Admins also hold `evidence:export`, and earlier
+    // the role label was wrong for any non-auditor requester. Read the row
+    // from the users table; fall back to 'unknown' only when the user has
+    // been deleted between the tRPC request and this Inngest run.
     await step.run('write-audit-log', async () => {
+      const [actorRow] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, requestedBy))
+        .limit(1)
+      const actorRole = actorRow?.role ?? 'unknown'
+
       await writeAuditLog({
         actorId:    requestedBy,
-        // actorRole is not carried on the event; downstream permission checks
-        // are on the `evidence:export` capability, not the role label. Use
-        // 'auditor' as a conservative default (only auditor + admin hold the
-        // export permission in the current matrix).
-        actorRole:  'auditor',
+        actorRole,
         action:     ACTIONS.EVIDENCE_PACK_EXPORT,
         entityType: 'document',
         entityId:   documentId,

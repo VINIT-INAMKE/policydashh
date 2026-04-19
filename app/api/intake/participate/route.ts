@@ -33,6 +33,12 @@ const bodySchema = z.object({
 type ParseFail = { ok: false; status: 400 }
 type ParseOk = { ok: true; data: z.infer<typeof bodySchema> }
 
+// B10: request body cap. The Zod schema bounds every field (name 120,
+// email ~254, expertise 1000, orgName 200, etc.) so legit payloads max
+// out well under 16KB. We gate at 64KB to give the turnstile token
+// + FormData headroom while still rejecting pathological JSON.
+const MAX_BODY_BYTES = 64 * 1024
+
 async function parseBody(req: Request): Promise<ParseFail | ParseOk> {
   const json = await req.json().catch(() => null)
   if (!json) return { ok: false, status: 400 }
@@ -70,6 +76,13 @@ async function verifyTurnstile(token: string, req: Request): Promise<{ success: 
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // B10: short-circuit oversized payloads before JSON parsing so a
+  // malicious client can't exhaust the parser with a 100MB body.
+  const contentLength = request.headers.get('content-length')
+  if (contentLength && Number(contentLength) > MAX_BODY_BYTES) {
+    return Response.json({ error: 'Payload too large' }, { status: 413 })
+  }
+
   const parsed = await parseBody(request)
   if (!parsed.ok) {
     return Response.json({ error: 'Invalid input' }, { status: 400 })
@@ -89,6 +102,9 @@ export async function POST(request: Request): Promise<Response> {
 
   // Step 3: Fire Inngest event. Rate limit + Clerk + welcome email all run
   // inside participateIntakeFn (src/inngest/functions/participate-intake.ts).
+  // I4: forward orgName and role so the worker can persist them on the
+  // Clerk invitation publicMetadata and emit an audit event containing
+  // the full intake payload.
   try {
     await sendParticipateIntake({
       emailHash,
@@ -97,6 +113,8 @@ export async function POST(request: Request): Promise<Response> {
       orgType: data.orgType,
       expertise: data.expertise,
       howHeard: data.howHeard,
+      orgName: data.orgName,
+      role: data.role,
     })
   } catch (err) {
     // Inngest send failure is a real server error - surface generically.

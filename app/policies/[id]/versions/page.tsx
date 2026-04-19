@@ -25,6 +25,7 @@ export default function VersionHistoryPage() {
   const canManageVersions = role === 'admin' || role === 'policy_lead'
 
   const versionsQuery = trpc.version.list.useQuery({ documentId })
+  const documentQuery = trpc.document.getById.useQuery({ id: documentId })
 
   // Honor `?v=` from the URL, otherwise fall back to the latest version.
   useEffect(() => {
@@ -122,15 +123,10 @@ export default function VersionHistoryPage() {
             )}
           </div>
 
-          {/* Version detail or empty state */}
-          {selectedVersionId ? (
-            <VersionDetail
-              versionId={selectedVersionId}
-              documentId={documentId}
-              versions={versions}
-              canPublish={canManageVersions}
-            />
-          ) : versions.length === 0 ? (
+          {/* Version detail or empty state. D17: if a `?v=` was requested but
+              no versions exist at all, still show the empty state rather than
+              a stale VersionDetail that queries a non-existent ID. */}
+          {versions.length === 0 ? (
             <div className="flex flex-col items-center gap-4 py-16 text-center">
               <GitBranch className="h-12 w-12 text-muted-foreground/50" />
               <div>
@@ -140,6 +136,14 @@ export default function VersionHistoryPage() {
                 </p>
               </div>
             </div>
+          ) : selectedVersionId ? (
+            <VersionDetail
+              versionId={selectedVersionId}
+              documentId={documentId}
+              documentTitle={documentQuery.data?.title}
+              versions={versions}
+              canPublish={canManageVersions}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">
               Select a version to view its details.

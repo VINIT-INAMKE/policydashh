@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean, jsonb, pgEnum, unique } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, boolean, jsonb, pgEnum, index } from 'drizzle-orm/pg-core'
 import { users } from './users'
 import { policySections, policyDocuments } from './documents'
 
@@ -47,3 +47,28 @@ export const feedbackItems = pgTable('feedback', {
   createdAt:         timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:         timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/**
+ * B13: Workshop feedback JWT token replay prevention.
+ *
+ * Each successful workshop-feedback submission records a SHA-256 hash of the
+ * submitted JWT here. On subsequent submissions we look up by hash; a hit
+ * means the token has been burned and we reject.
+ *
+ * We store the HASH rather than the raw token so a leaked DB row cannot be
+ * replayed directly against /api/intake/workshop-feedback.
+ *
+ * The `usedAt` column doubles as an audit timestamp and a pruning key: a
+ * nightly job can delete rows older than the 14-day token lifetime.
+ */
+export const workshopFeedbackTokenNonces = pgTable(
+  'workshop_feedback_token_nonces',
+  {
+    tokenHash: text('token_hash').primaryKey(),
+    workshopId: uuid('workshop_id').notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    byWorkshop: index('wft_nonces_workshop_idx').on(table.workshopId),
+  }),
+)

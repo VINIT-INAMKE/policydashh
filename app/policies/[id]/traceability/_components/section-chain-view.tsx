@@ -36,13 +36,13 @@ interface SectionChainRow {
   feedbackDecisionRationale: string | null
   versionId: string | null
   versionLabel: string | null
-  mergedAt: string | null
+  versionCreatedAt: string | null
 }
 
 interface VersionGroup {
   versionId: string | null
   versionLabel: string | null
-  mergedAt: string | null
+  versionCreatedAt: string | null
   crs: {
     crId: string
     crReadableId: string
@@ -68,7 +68,7 @@ function groupByVersion(rows: SectionChainRow[]): VersionGroup[] {
       versionMap.set(vKey, {
         versionId: row.versionId,
         versionLabel: row.versionLabel,
-        mergedAt: row.mergedAt,
+        versionCreatedAt: row.versionCreatedAt,
         crs: [],
       })
     }
@@ -203,7 +203,7 @@ export function SectionChainView({ documentId, sections }: SectionChainViewProps
                   {group.versionLabel
                     ? `\u2192 ${group.versionLabel}`
                     : 'Unversioned'}
-                  {group.mergedAt && ` \u00B7 ${formatDate(group.mergedAt)}`}
+                  {group.versionCreatedAt && ` \u00B7 ${formatDate(group.versionCreatedAt)}`}
                 </h3>
               </CardHeader>
               <CardContent>

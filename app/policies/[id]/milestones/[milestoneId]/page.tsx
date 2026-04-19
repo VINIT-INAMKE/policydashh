@@ -1,7 +1,9 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use } from 'react'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { trpc } from '@/src/trpc/client'
 import { MilestoneDetailHeader } from './_components/milestone-detail-header'
@@ -14,7 +16,9 @@ export default function MilestoneDetailPage({
   params: Promise<{ id: string; milestoneId: string }>
 }) {
   const { id: documentId, milestoneId } = use(params)
-  const [, force] = useState(0)
+  // D18: drop the redundant `force` state — the tabs call
+  // `utils.milestone.getById.invalidate()` which re-renders this tree via
+  // tRPC's reactive cache. The old `force` counter never did anything useful.
   const { data, isLoading, error } = trpc.milestone.getById.useQuery({ milestoneId })
 
   if (isLoading) {
@@ -37,6 +41,16 @@ export default function MilestoneDetailPage({
 
   return (
     <div className="flex h-full flex-col">
+      {/* D16: breadcrumb back to the milestones list. */}
+      <div className="px-6 pt-4">
+        <Link
+          href={`/policies/${documentId}/milestones`}
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-3" aria-hidden="true" />
+          Back to milestones
+        </Link>
+      </div>
       <MilestoneDetailHeader
         milestoneId={milestone.id}
         documentId={documentId}
@@ -54,7 +68,7 @@ export default function MilestoneDetailPage({
           milestoneId={milestone.id}
           documentId={documentId}
           isReadOnly={isReadOnly}
-          onMutated={() => force((n) => n + 1)}
+          onMutated={() => {}}
         />
       </div>
     </div>

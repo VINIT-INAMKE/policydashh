@@ -25,21 +25,43 @@ export function SectionLinkPicker({ workshopId, linkedSectionIds, open, onOpenCh
   const utils = trpc.useUtils()
 
   const documentsQuery = trpc.document.list.useQuery({ includeSections: true })
-  const linkMutation = trpc.workshop.linkSection.useMutation({
-    onSuccess: () => {
-      utils.workshop.getById.invalidate({ workshopId })
-      toast.success('Section linked to workshop')
-    },
-  })
+  const linkMutation = trpc.workshop.linkSection.useMutation()
 
-  function handleLink() {
-    for (const sectionId of selected) {
-      if (!linkedSectionIds.includes(sectionId)) {
-        linkMutation.mutate({ workshopId, sectionId })
-      }
+  // F21: await each mutation so we show a single consolidated toast after
+  // all sections are linked (or report the first failure). Previous code
+  // fan-out .mutate() calls without awaiting, so a rejection from the 2nd
+  // call was swallowed.
+  async function handleLink() {
+    const targets = selected.filter((id) => !linkedSectionIds.includes(id))
+    if (targets.length === 0) {
+      setSelected([])
+      onOpenChange(false)
+      return
     }
-    setSelected([])
-    onOpenChange(false)
+    try {
+      const results = await Promise.allSettled(
+        targets.map((sectionId) => linkMutation.mutateAsync({ workshopId, sectionId })),
+      )
+      const failures = results.filter((r) => r.status === 'rejected').length
+      const successes = results.length - failures
+      if (successes > 0) {
+        utils.workshop.getById.invalidate({ workshopId })
+      }
+      if (failures === 0) {
+        toast.success(
+          successes === 1
+            ? 'Section linked to workshop'
+            : `${successes} sections linked to workshop`,
+        )
+      } else {
+        toast.error(
+          `Linked ${successes} of ${results.length} sections. ${failures} failed — try again.`,
+        )
+      }
+    } finally {
+      setSelected([])
+      onOpenChange(false)
+    }
   }
 
   function toggleSection(id: string) {

@@ -45,72 +45,72 @@ Generated from 6-domain code review on 2026-04-19. Numbering is stable — do no
 
 ## B. SECURITY / DATA INTEGRITY
 
-- [ ] B1. `/api/export/policy-pdf/[versionId]` is publicly exposed. Gate on `isPublicDraft` (from `policy_documents`) AND `isPublished`; add a basic per-IP rate limit. File: `app/api/export/policy-pdf/[versionId]/route.tsx:8-26`.
-- [ ] B2. `db.transaction()` on neon-http will throw. Replace with sequential writes + compensation or switch to an http-compatible approach in `src/inngest/lib/create-draft-cr.ts:41`.
-- [ ] B3. `mergeCR` does 5 sequential neon-http writes with no atomicity — add explicit ordering + idempotency keys per step so retries won't double-insert. File: `src/server/services/changeRequest.service.ts:174-259`.
-- [ ] B4. Published version immutability: block `updateSectionContent`, `renameSection`, `deleteSection` when any `documentVersions.isPublished=true` exists for the document (or require the change go through a CR). File: `src/server/routers/document.ts:365-386` and sibling procs.
-- [ ] B5. Policy delete must either block or cascade cleanly. Decide: (a) block with a clear error listing blockers, or (b) add `ON DELETE CASCADE` on `documentVersions`, `changeRequests`, `feedback`, `milestones` FKs. Plus update `DeletePolicyDialog` copy. Files: migrations `0001`, `0003`, `0014`; router `document.ts` delete; `app/policies/_components/delete-policy-dialog.tsx`.
-- [ ] B6. Admin self-demotion + last-admin guard on `user.updateRole`. File: `src/server/routers/user.ts:95-124`.
-- [ ] B7. Self-merge guard on `changeRequest.merge` (mirror the `approve` owner-check). File: `src/server/routers/changeRequest.ts:364`.
-- [ ] B8. Clerk `user.updated` role handling — only apply role change when `publicMetadata.role` is a valid enum value; log an audit event when role changes. File: `app/api/webhooks/clerk/route.ts:56-79`.
-- [ ] B9. Clerk `user.deleted` handler — soft-delete or anonymize the `users` row so re-invite by email is possible. File: `app/api/webhooks/clerk/route.ts`.
-- [ ] B10. Body-size cap on public intake. Add `NextResponse` short-circuit if `Content-Length > N` (or use a streaming body read). Files: `app/api/intake/participate/route.ts`, `app/api/intake/workshop-feedback/route.ts`, `app/api/intake/workshop-register/route.ts`, `app/api/upload/route.ts`.
-- [ ] B11. Rate-limit `/api/intake/workshop-register` and `/api/intake/workshop-feedback` (per-IP + per-email/token). Reuse the Inngest-side rate-limit pattern or add a simple in-memory/Upstash-backed limiter.
-- [ ] B12. `/api/upload` presign rate limit (per-user). Resolve the existing TODO at `app/api/upload/route.ts:48-51`.
-- [ ] B13. `workshop-feedback` token replay — add a one-time-use flag (either DB row keyed on token nonce, or sign the token with an ID that's marked used). File: `src/lib/feedback-token.ts` + `app/api/intake/workshop-feedback/route.ts`.
-- [ ] B14. `readableId` collision: use `nextval('feedback_id_seq')` in the public workshop-feedback path (same as authenticated submit). File: `app/api/intake/workshop-feedback/route.ts:137`.
-- [ ] B15. `evidence:requestExport` audit event hard-codes `actorRole: 'auditor'` — read from session. File: `src/inngest/functions/evidence-pack-export.ts:343`.
+- [x] B1. Gated public PDF on `policyDocuments.isPublicDraft` AND `documentVersions.isPublished`; added per-IP in-memory rate limit (10/min, x-forwarded-for aware). File: `app/api/export/policy-pdf/[versionId]/route.tsx`.
+- [x] B2. Replaced `db.transaction()` in `createDraftCRFromFeedback` with sequential writes + feedbackId-keyed idempotency guard; link inserts use `.onConflictDoNothing()` against the existing UNIQUE(crId,feedbackId)/UNIQUE(crId,sectionId) indexes. Documented "eventually consistent" semantics inline. File: `src/inngest/lib/create-draft-cr.ts`.
+- [x] B3. `mergeCR` now documents "eventually consistent" retry semantics and adds per-step idempotency guards: early-return if CR already merged, dedupe document_versions insert by `cr_id`, flip CR only when `status='approved'` (concurrent-safe), skip feedback rows already pointing at the new version, skip workflow_transitions insert when a merge row exists. File: `src/server/services/changeRequest.service.ts`.
+- [x] B4. Added `hasPublishedVersion(documentId)` pre-check in `createSection`, `renameSection`, `updateSectionContent`, `deleteSection` — returns FORBIDDEN once any published version exists. File: `src/server/routers/document.ts`.
+- [x] B5. Policy delete now pre-counts blockers (versions, changeRequests, feedback, milestones) and throws `PRECONDITION_FAILED` with counts in the message + JSON-in-cause payload. Delete dialog parses and displays the blocker list. Files: `src/server/routers/document.ts` delete, `app/policies/_components/delete-policy-dialog.tsx`.
+- [x] B6. Admin self-demotion + last-admin guards on `user.updateRole` — self→non-admin throws FORBIDDEN; admin-count check before demoting any admin blocks drop-to-zero. File: `src/server/routers/user.ts`.
+- [x] B7. Added owner-check on `changeRequest.merge` mirroring the `approve` self-check — throws FORBIDDEN when `ownerId === ctx.user.id`. File: `src/server/routers/changeRequest.ts`.
+- [x] B8. Clerk `user.updated` now only writes the role when `publicMetadata.role` matches a valid enum value (preserves prior role otherwise on upsert); role deltas emit a `user.role_assign` audit event with `source: 'clerk_webhook'`. File: `app/api/webhooks/clerk/route.ts`.
+- [x] B9. Added `users.deletedAt` column (migration `0019_user_soft_delete.sql`) + `user.deleted` handler that anonymizes the row (nulls email/phone/name, rewrites `clerkId` to a `deleted:<id>:<ts>` sentinel so the UNIQUE index still holds, sets `deletedAt`). FK references remain intact; original email is freed for re-invite. Audit log emitted. Files: `app/api/webhooks/clerk/route.ts`, `src/db/schema/users.ts`, `src/db/migrations/0019_user_soft_delete.sql`.
+- [~] B10. Partial — body-size caps on three intake routes: `workshop-register` (16 KB), `participate` (64 KB), `workshop-feedback` (64 KB). Remaining: `/api/upload` (other agent).
+- [~] B11. `src/lib/rate-limit.ts` applied to `/api/intake/workshop-register` (per-IP + per-email) and `/api/intake/workshop-feedback` (10/min per-IP + 5/min per-token-hash).
+- [x] B12. `/api/upload` presign now rate-limited per Clerk user (20 req/min) via `src/lib/rate-limit.ts#consume`. TODO comment replaced.
+- [x] B13. Workshop-feedback JWT token replay prevented by SHA-256 hashing the token into `workshop_feedback_token_nonces` on successful submit; subsequent submissions carrying the same token are rejected 401. New schema table + migration `0017_workshop_feedback_token_nonces.sql` + `scripts/apply-migration-0017.mjs`. Files: `src/db/schema/feedback.ts`, `src/lib/feedback-token.ts` (`hashFeedbackToken`), `app/api/intake/workshop-feedback/route.ts`.
+- [x] B14. `readableId` now generated via `nextval('feedback_id_seq')` (same path as authenticated `feedback.submit`) — no more `Date.now()` base-36 collisions. File: `app/api/intake/workshop-feedback/route.ts`.
+- [x] B15. `evidence:requestExport` audit event hard-codes `actorRole: 'auditor'` — read from session. File: `src/inngest/functions/evidence-pack-export.ts:343`.
 
 ---
 
 ## C. AUTH & USERS
 
-- [ ] C1. Align `/users` role gating. Decide: (a) expose `/users` to `policy_lead` on both server and client, or (b) hide the nav link for policy_lead. Today server-side says admin-only. Files: `app/_components/adaptive-header-client.tsx:66`, `app/users/page.tsx:18`, `app/users/[id]/page.tsx:50`, `src/lib/permissions.ts:9`.
-- [ ] C2. Role-change confirm dialog in users table — prevent single-click misfire. File: `app/users/_components/users-client.tsx:131-147`.
-- [ ] C3. Invite dialog: client-side email validation + existing-user check before hitting Clerk. File: `app/users/_components/invite-user-dialog.tsx:61-66`.
-- [ ] C4. Pending invitations UI — new table section (or tab) listing open Clerk invitations with resend/revoke actions. Needs new router procs (`listPendingInvitations`, `revokeInvitation`, `resendInvitation`) and UI. File additions expected in `src/server/routers/user.ts`, `app/users/_components/`.
-- [ ] C5. Setup page: stop polling after a hard cap (e.g., 2 min) and show actionable error with sign-out + retry links. File: `app/setup/page.tsx:12-42, 57-61`.
-- [ ] C6. `/api/auth/check` — return a `staleness` signal (seconds since Clerk session started vs. missing row) so UI can escalate. File: `app/api/auth/check/route.ts:20-22`.
-- [ ] C7. tRPC `errorFormatter` — pass `error.cause.issues` for Zod errors so clients get field-level validation. File: `src/trpc/init.ts:27-36`.
-- [ ] C8. `protectedProcedure` — stop silently swallowing `touchActivity` errors; log with `console.warn`. File: `src/trpc/init.ts:66-70`.
-- [ ] C9. `UsersPage` fallback should redirect to `/sign-in`, not `/dashboard`. Files: `app/users/page.tsx:11`, `app/users/[id]/page.tsx:45`.
-- [ ] C10. Profile `Feedback Submitted` card — add "View all" link and "showing latest 20" indicator. File: `app/users/[id]/page.tsx:66`.
-- [ ] C11. `updateProfile` audit `after`: merge prior row with input so the diff is clean. File: `src/server/routers/user.ts:51`.
-- [ ] C12. `audit:read` permission — allow users to view their own audit entries (scoped procedure `listMine`). Files: `src/server/routers/audit.ts`, `src/lib/permissions.ts`.
+- [x] C1. Hid `/users` nav link for `policy_lead` in `adaptive-header-client.tsx` so it matches the admin-only server guards; permissions matrix stays admin-only for `user:list`. File: `app/_components/adaptive-header-client.tsx`.
+- [x] C2. Added `AlertDialog`-based role-change confirmation in the users table. Selecting a new role stages a `PendingRoleChange`; nothing mutates until the admin confirms. File: `app/users/_components/users-client.tsx`.
+- [x] C3. Invite dialog now validates email shape client-side + debounces a `user.checkEmailExists` tRPC query (added, admin-gated) to flag users that already exist before hitting Clerk. Files: `app/users/_components/invite-user-dialog.tsx`, `src/server/routers/user.ts`.
+- [x] C4. Added `user.listPendingInvitations / revokeInvitation / resendInvitation` tRPC procedures and a `PendingInvitationsTable` rendered on `/users`. Resend is implemented as revoke+recreate (Clerk has no explicit resend endpoint). Files: `src/server/routers/user.ts`, `app/users/_components/pending-invitations-table.tsx`, `app/users/_components/users-client.tsx`.
+- [x] C5. Setup page: hard cap at 120s, shows an actionable timeout state with Try again (restarts polling) and Sign out (via `useClerk().signOut({ redirectUrl: '/sign-in' })`). Countdown displayed after 60s. File: `app/setup/page.tsx`.
+- [x] C6. `/api/auth/check` now returns `stalenessSeconds` derived from Clerk `sessionClaims.iat` (fallback 0 if claim missing). File: `app/api/auth/check/route.ts`.
+- [x] C7. tRPC `errorFormatter` now checks `error.cause instanceof z.ZodError` and returns `{ issues, tree }` (zod v4 `treeifyError`). File: `src/trpc/init.ts`.
+- [x] C8. `touchActivity` middleware logs failures via `console.warn('[trpc] touchActivity failed', err)` instead of silently swallowing. File: `src/trpc/init.ts`.
+- [x] C9. `UsersPage` + `UserProfilePage` now redirect unauthenticated users to `/sign-in` (not `/dashboard`). Admin-role guard still redirects to `/dashboard`. Files: `app/users/page.tsx`, `app/users/[id]/page.tsx`.
+- [x] C10. Profile Feedback Submitted card: header now shows a `View all (n)` link to `/feedback?submitter=<id>` when any feedback exists, and a `Showing latest N of M` footer when total > 20. File: `app/users/[id]/page.tsx`.
+- [x] C11. `updateProfile` audit payload now merges prior row + input so `after` reflects the full post-state — both sides carry the same keys. File: `src/server/routers/user.ts`.
+- [x] C12. Added `audit:read_own` permission (all authenticated roles) and `audit.listMine` procedure that scopes by `actorId = ctx.user.id`. Files: `src/lib/permissions.ts`, `src/server/routers/audit.ts`.
 
 ---
 
 ## D. POLICY LIFECYCLE
 
-- [ ] D1. Milestone "Evidence" tab: render real evidence rows (router supports `entityType: 'evidence'`). Files: `app/policies/[id]/milestones/[milestoneId]/_components/milestone-detail-tabs.tsx:30-37, 112-122`.
-- [ ] D2. Milestone "Workshops" tab: filter to workshops linked to this policy (or gate attach by policy match). File: same as above, line 25.
-- [ ] D3. `milestone.markReady` error payload: switch from `cause: { unmet }` to a custom `error.cause` serialization format that the client renders. Files: `src/server/routers/milestone.ts:379-385`, `src/trpc/init.ts:27-36` (extend formatter), `app/.../mark-ready-error-display.tsx`.
-- [ ] D4. Milestone stuck in `anchoring` (permanent Cardano failure) — either auto-revert to `ready` or mark `anchor_failed` state with a "Retry from ready" action. File: `src/inngest/functions/milestone-ready.ts:282-303`, `src/server/routers/milestone.ts`.
-- [ ] D5. Traceability multi-value filters: accept arrays server-side for `orgType` / `decisionOutcome`; update UI filter binding; update CSV + PDF exporters. Files: `src/server/routers/traceability.ts:22-30, 48-76`, `app/policies/[id]/traceability/_components/matrix-filter-panel.tsx:168-225`, `export-actions.tsx:22-31`, `app/api/export/traceability/csv/route.ts`, `pdf/route.tsx`.
-- [ ] D6. Traceability export `gte/lte` on left-join: use `OR IS NULL` (or left-join-aware filter) so un-merged feedback is not silently dropped. Files: `app/api/export/traceability/csv/route.ts:60-85`, `pdf/route.tsx:58-84`.
-- [ ] D7. Version-range filter: reject `from > to` server-side with a friendly error. File: `src/server/routers/traceability.ts:48-76`.
-- [ ] D8. `VersionChangelog.feedbackIds` — decide canonical ID shape (UUID vs readable). Store consistently; render accordingly. Files: `src/server/services/version.service.ts:192-199`, `app/.../version-changelog.tsx:47-57`.
-- [ ] D9. `PublishDialog` — pass `documentTitle` prop in `app/policies/[id]/_components/version-detail.tsx:174` and render it in the dialog.
-- [ ] D10. Publish notification fan-out: parallelize `sendNotificationCreate` loop with `Promise.allSettled`. File: `src/server/routers/version.ts:152-164`.
-- [ ] D11. Matrix cells: feedback cell → link to `/policies/${id}/feedback?selected=${feedbackId}`; section cell clickable; version cell includes versionId. File: `app/.../matrix-table.tsx:154-155`.
-- [ ] D12. `MilestonesPage` — gate "Create milestone" button on `canManage` from session role. File: `app/policies/[id]/milestones/page.tsx:15-29`.
-- [ ] D13. `document.update` — accept `description: z.string().max(1000).nullable()` and write `null` when cleared. File: `src/server/routers/document.ts:190-221`.
-- [ ] D14. `CreateVersionDialog` — block "New Version" when autosave is pending (flush before snapshot). File: `app/.../create-version-dialog.tsx` + `section-content-view.tsx`.
-- [ ] D15. `VersionComparisonSelector` — move section-default-selection from `useMemo` to `useEffect`. File: `app/.../version-comparison-selector.tsx:60-64`.
-- [ ] D16. Breadcrumbs/back link on `/policies/[id]/milestones` and `/policies/[id]/milestones/[milestoneId]`. Files: those pages.
-- [ ] D17. `VersionHistoryPage` empty state when `selectedVersionId` set but no versions exist. File: `app/.../versions/page.tsx:128-142`.
-- [ ] D18. Remove redundant `force` re-render state in milestone detail page; rely on tRPC invalidation. File: `app/.../milestones/[milestoneId]/page.tsx:17, 57`.
-- [ ] D19. Traceability "mergedAt": rename to `versionCreatedAt` in router output + UI, OR join on `change_requests.mergedAt` for CR-merged versions. File: `src/server/routers/traceability.ts:146-147`.
-- [ ] D20. `CreateMilestoneDialog` — cap slot requirements (e.g., max 50 per entity type).
-- [ ] D21. `document.list` default sort — don't bump `updatedAt` on `setPublicDraft`, OR sort by a stable column. File: `src/server/routers/document.ts` + `setPublicDraft`.
-- [ ] D22. `framework` page: decide public-toggle semantics. Currently any `isPublicDraft=true` doc is publicly discoverable. Add a confirm dialog when first enabling public for a policy. File: `app/policies/_components/...` + `document.setPublicDraft`.
-- [ ] D23. `updateSectionContent` audit log — at minimum log coarse diffs (e.g., one entry per section per 60s window, or on-publish diff). File: `src/server/routers/document.ts:361-386`.
+- [x] D1. Added `evidence.listByDocument` (dedup join on `sectionEvidence` + `feedbackEvidence`) and wired the milestone Evidence tab to use it. Rows now render real artifacts with per-row `attached` state.
+- [x] D2. Milestone Workshops tab now filters to workshops either unattached, attached to this milestone, or attached to a sibling milestone of the same document.
+- [x] D3. `milestone.markReady` now embeds a `<MARK_READY_META>{...}` JSON sidecar in the error message; client parses it in `milestone-detail-header.tsx`. Coupling with `src/trpc/init.ts` documented.
+- [x] D4. Already shipped — `retryAnchor` proc + `RetryAnchorButton` render when `status === 'anchoring'`. Permanent fail path also emits admin notification in `milestone-ready.ts`.
+- [x] D5. Traceability matrix now accepts `orgTypes` + `decisionOutcomes` arrays via `inArray`; CSV/PDF exporters accept repeated `orgTypes=`/`decisionOutcomes=` params (+ backward-compat for legacy singular keys); page + export-actions serialize full selections.
+- [x] D6. Traceability version-range filters (matrix + CSV + PDF) now wrap `gte/lte(documentVersions.createdAt, ...)` with `OR IS NULL` so un-merged feedback isn't silently dropped by the left join.
+- [x] D7. Server rejects `from > to` with `BAD_REQUEST` + friendly message; CSV + PDF routes also refuse with 400.
+- [x] D8. Documented `feedbackIds` canonical shape as *readable id* (human-facing) via JSDoc on `ChangelogEntry`. UI (`version-changelog.tsx`) was already rendering the readable ID correctly.
+- [x] D9. `PublishDialog` now receives `documentTitle` from `VersionHistoryPage` via `VersionDetail`. Already renders the title next to the version label.
+- [x] D10. Publish fan-out now uses `Promise.allSettled`; rejections log without failing the whole dispatch.
+- [x] D11. Matrix table: feedback cell links `?selected=${feedbackId}`, section cell links `?section=${sectionId}`, version cell includes `?v=${versionId}`.
+- [x] D12. Milestones page now fetches `user.getMe`, hides Create button for non-admin/policy_lead, and passes `canManage` to `MilestoneList`.
+- [x] D13. `document.update` now accepts `description: z.string().max(1000).nullable().optional()` — explicit `null` clears the field, `undefined` leaves it alone.
+- [x] D14. Added a tiny pub/sub tracker (`app/policies/[id]/_components/section-autosave-pending.ts`); block-editor reports pending on each keystroke and flushed on success/unmount; `CreateVersionDialog` subscribes, disables the Create button while pending > 0, and shows an amber warning.
+- [x] D15. `VersionComparisonSelector` auto-select first section moved from `useMemo` to `useEffect`.
+- [x] D16. Breadcrumb "Back to policy" / "Back to milestones" added to milestones list and detail pages.
+- [x] D17. `VersionHistoryPage` now shows the empty state first when `versions.length === 0`, regardless of `selectedVersionId`.
+- [x] D18. Removed unused `force` re-render state in milestone detail page; tabs' `utils.milestone.getById.invalidate()` already re-renders.
+- [x] D19. Renamed traceability `sectionChain.mergedAt` → `versionCreatedAt` in router output + `section-chain-view.tsx` consumer.
+- [x] D20. Zod schema + UI input both cap slot requirements at 50 per entity type.
+- [x] D21. `document.list` now sorts by `createdAt desc` (stable) and `setPublicDraft` no longer bumps `updatedAt`.
+- [x] D22. `PublicDraftToggle` now opens a confirm AlertDialog when flipping from off → on; disabling stays one-click. Copy explains `/framework` visibility + public PDF implication.
+- [x] D23. `updateSectionContent` now emits one `SECTION_CONTENT_UPDATE` audit entry per section per 60s window (in-memory throttle). Added `ACTIONS.SECTION_CONTENT_UPDATE` constant.
 
 ---
 
 ## E. FEEDBACK & PARTICIPATION
 
-- [ ] E1. Section-assignment preflight on feedback submit form — show "You're not assigned to this section" and disable submit if the user cannot submit. Files: `app/policies/[id]/sections/[sectionId]/feedback/new/page.tsx`, `src/server/routers/feedback.ts:26` (expose a `canSubmit` check via a lightweight query).
+- [x] E1. Added `feedback.canSubmit` tRPC query (mirrors `requireSectionAccess` middleware). Server-rendered submit page now renders a "You're not assigned to this section" banner and passes `disabled` into the form when the preflight fails. Files: `src/server/routers/feedback.ts`, `app/policies/[id]/sections/[sectionId]/feedback/new/page.tsx`, `app/policies/[id]/sections/[sectionId]/feedback/new/_components/submit-feedback-form.tsx`.
 - [ ] E2. `feedback.list` status filter — either always-server or always-client, don't switch behavior on count. File: `app/.../feedback-inbox.tsx:26-33`, `src/server/routers/feedback.ts`.
 - [ ] E3. Filter panel: add "All sections" sentinel (non-empty-string, clear via client). File: `app/.../filter-panel.tsx:158-178` and CR variant.
 - [ ] E4. Participate form: set `maxLength` on inputs per Zod caps. File: `app/participate/_components/participate-form.tsx`.
@@ -135,81 +135,81 @@ Generated from 6-domain code review on 2026-04-19. Numbering is stable — do no
 
 ## F. WORKSHOPS
 
-- [ ] F1. Max-seats enforcement in `/api/intake/workshop-register`. File: `app/api/intake/workshop-register/route.ts:25-89`.
-- [ ] F2. Email format validation on register (use `z.string().email()`). File: same, line 21-22.
-- [ ] F3. Rate limit on register (per-IP + per-email). File: same.
-- [ ] F4. Already-registered check: treat any status other than `cancelled` as registered. File: same, line 45-61.
-- [ ] F5. `revalidateTag('workshop-spots-${id}')` after BOOKING_CREATED / CANCELLED / RESCHEDULED. File: `app/api/webhooks/cal/route.ts:141-172`.
-- [ ] F6. `BOOKING_RESCHEDULED` — if update matches 0 rows, log + attempt INSERT fallback. File: same, 154-172.
-- [ ] F7. `MEETING_ENDED` — match on `(workshopId, email, status='registered' | 'rescheduled')` with latest booking. File: same, 224-246.
-- [ ] F8. Webhook `MEETING_ENDED` transitions — gate on `status in ('upcoming', 'in_progress')` OR update tRPC `ALLOWED_TRANSITIONS` to mirror webhook. Files: webhook 186-194, `src/server/routers/workshop.ts:28-33`.
-- [ ] F9. Cal.com timezone: accept per-workshop `timezone` field instead of hardcoded `Asia/Kolkata`. Files: schema `workshops.ts`, router create/update, `src/lib/calcom.ts:236`, `app/api/intake/workshop-register/route.ts:81`.
-- [ ] F10. Workshop edit: propagate title/schedule/duration changes to cal.com event type via PATCH. File: `src/server/routers/workshop.ts:227-275`.
-- [ ] F11. Add `maxSeats` to `update` input schema + edit form. Files: `src/server/routers/workshop.ts:227-235`, `app/workshop-manage/[id]/edit/...`.
-- [ ] F12. Workshop delete: reject if active registrations exist, OR cancel cal.com event type + notify attendees. File: `src/server/routers/workshop.ts:278-307`.
-- [ ] F13. Workshop creation: surface Inngest delivery failure (don't swallow `.catch(console.error)`); add `status='provisioning'` state or block creation if cal.com is down. File: same, 79-83.
-- [ ] F14. Direct-register cal.com fallback reconciliation: mark fallback rows with `needsCalComReconcile=true` and run a reconciliation job, or drop the fallback UID pattern entirely. File: `app/api/intake/workshop-register/route.ts:63-110`.
-- [ ] F15. Admin "Reprovision cal.com seats" button wired to `reprovisionCalSeats`. Files: `src/server/routers/workshop.ts:87-118`, `app/workshop-manage/[id]/_components/`.
-- [ ] F16. `workshop.list` returns `status` and `calcomEventTypeId`. Add status badges + cal.com link to `app/workshop-manage/page.tsx` cards. Files: router `list` 135-154, manage page 41-59.
-- [ ] F17. `workshop.getById` returns `calcomEventTypeId`, `maxSeats`. File: router 161-178, detail page.
-- [ ] F18. New router: `workshop.listRegistrations(workshopId)` → attendee list (email, name, status, registered_at, attended_at). Build attendee-list tab in `app/workshop-manage/[id]/_components/`.
-- [ ] F19. `ArtifactAttachDialog` — pass `r2Key` so recording pipeline fires. File: `app/.../artifact-attach-dialog.tsx:63-71`.
-- [ ] F20. Extend `/api/upload` `evidence` category to include audio/video MIME types (`audio/webm`, `audio/mp3`, `video/mp4`, `video/webm`). OR: move recording uploads to a new `recording` category used by the artifact dialog. File: `app/api/upload/route.ts:19-21`.
-- [ ] F21. `SectionLinkPicker` + `FeedbackLinkPicker`: await each mutation, show consolidated success/error. Files: `section-link-picker.tsx:35-42`, `feedback-link-picker.tsx:42-50`.
-- [ ] F22. Public workshop cancellation: add "Cancel registration" button on `/workshops` and call cal.com cancel API. Or: link to the cal.com cancellation page from the registration success state.
-- [ ] F23. Workshop `registrationLink` on public listing: either expose it to `PublicWorkshop` + UI or drop the field. Files: `src/server/queries/workshops-public.ts`, schema, manage pages.
-- [ ] F24. Archived state: add unarchive transition OR confirm terminal-state dialog. Files: `src/server/routers/workshop.ts:28-33`, `StatusTransitionButtons`.
-- [ ] F25. Workshop "past" tab flash — keep previous data visible under `placeholderData: keepPreviousData` on tab-switch. File: `app/workshop-manage/page.tsx:41-59`.
-- [ ] F26. Workshop feedback nudge email URL: prefix with `NEXT_PUBLIC_APP_URL` / `APP_BASE_URL`. File: `src/lib/email.ts:84`.
-- [ ] F27. Fallback deep-link host should not be `http://localhost:3000` in prod — fail noisily if envs are missing. File: `src/inngest/functions/workshop-feedback-invite.ts:87-90`.
-- [ ] F28. Inngest function `name` labels mentioning "confirmation email" — update to reflect the dropped emails. Files: `workshop-registration-received.ts:31`, `src/inngest/functions/index.ts:31`.
-- [ ] F29. Remove unused `scheduledAt` compute in `workshopFeedbackInviteFn` or include it in the email template. File: `src/inngest/functions/workshop-feedback-invite.ts:67-77`.
-- [ ] F30. Workshop recording transcript vs summary — use distinct `artifactType` values. File: `src/inngest/functions/workshop-recording-processed.ts:110,117`; schema `workshopArtifactType`.
-- [ ] F31. Workshop feedback JWT replay — see B13.
-- [ ] F32. Workshop-card `alreadyRegistered` card: revalidate other workshop cards after register success (e.g., `router.refresh()`). File: `app/workshops/_components/register-form.tsx:33-42`.
+- [x] F1. Max-seats enforcement — `/api/intake/workshop-register` counts non-cancelled registrations + returns 409 when `maxSeats` is hit.
+- [x] F2. Email format validated via `z.string().email()` on the register body schema.
+- [x] F3. Per-IP (20/5min) + per-email (5/10min) rate limit via `src/lib/rate-limit.ts`.
+- [x] F4. Already-registered check now treats `status !== 'cancelled'` as booked (covers `registered` + `rescheduled`).
+- [x] F5. Webhook handlers call `revalidateTag('workshop-spots-${id}', { expire: 0 })` on BOOKING_CREATED/_CANCELLED/_RESCHEDULED; `unstable_cache` keyed + tagged per-workshopId.
+- [x] F6. BOOKING_RESCHEDULED insert-fallback when 0 rows match (logs + synthesizes registration row).
+- [x] F7. MEETING_ENDED matcher filters `status in ('registered','rescheduled')`, orders by latest `bookingStartTime`.
+- [x] F8. tRPC `ALLOWED_TRANSITIONS` mirrors the webhook (upcoming → completed + archived → completed per F24).
+- [x] F9. `timezone` TEXT column added to `workshops` (migration 0017); router create/update + register route + feedback-invite email use the stored tz.
+- [x] F10. `workshop.update` PATCHes cal.com event type (title/duration) via new `updateCalEventType`; seats PATCH via `updateCalEventTypeSeats` when `maxSeats` changes.
+- [x] F11. `maxSeats` added to `update` input schema + edit form.
+- [x] F12. Delete mutation rejects when active registrations exist unless `force: true` is passed.
+- [x] F13. `workshop.create` surfaces Inngest send failure as a TRPCError instead of silently swallowing.
+- [x] F14. Direct-register cal.com fallback logs a `needsCalComReconcile` flag (kept deterministic `direct:` UID so dedupe still works).
+- [x] F15. `ReprovisionCalButton` on detail page behind a confirm dialog; wired to `reprovisionCalSeats`.
+- [x] F16. `workshop.list` returns `status` + `calcomEventTypeId`; manage card shows status pill + "cal.com linked/pending" badge.
+- [x] F17. `workshop.getById` returns `calcomEventTypeId`, `maxSeats`, `timezone`; detail page renders timezone chip, capacity, and "Open in cal.com" link.
+- [x] F18. New `workshop.listRegistrations` proc + `AttendeeList` component + Attendees tab on the detail page.
+- [x] F19. `ArtifactAttachDialog` passes `r2Key` + `fileSize` to `attachArtifact`.
+- [x] F20. `/api/upload` `evidence` category extended with shared `AUDIO_VIDEO_MIME_TYPES` constant (reused by `recording`).
+- [x] F21. Section + Feedback pickers await each mutation via `Promise.allSettled` with a consolidated success/error toast.
+- [x] F22. "You're registered" card now includes copy pointing to the cal.com cancellation link in the booking confirmation email (we can't know the booking uid from a public card without a tokenized URL, so we direct users to the email).
+- [x] F23. `registrationLink` exposed on `PublicWorkshop`; rendered as "Or register via external link" below the register button.
+- [x] F24. `archived → completed` unarchive transition wired into `ALLOWED_TRANSITIONS` and `StatusTransitionButtons`.
+- [x] F25. `/workshop-manage` list query uses `placeholderData: keepPreviousData` so tab switches don't flash skeletons.
+- [x] F26. `sendWorkshopEvidenceNudgeEmail` prefixes URL with `NEXT_PUBLIC_APP_URL`/`APP_BASE_URL` and points at `/workshop-manage/<id>`.
+- [x] F27. Feedback-invite URL construction throws NonRetriableError in production when both app URL envs are missing (dev still falls back to localhost).
+- [x] F28. `workshopRegistrationReceivedFn` renamed to "send Clerk invite"; index.ts comment aligned.
+- [x] F29. `scheduledAtLabel` threaded into the feedback-invite email template (computed value no longer discarded).
+- [x] F30. Recording pipeline writes `artifactType='transcript'` for the transcript row + `'summary'` for the summary row; schema enum + migration 0018 add `transcript`; dialog + router enum updated.
+- [-] F31. Workshop feedback JWT replay — OWNED BY FEEDBACK AGENT (B13). No change here.
+- [x] F32. `register-form` calls `router.refresh()` after successful registration so sibling cards see the new state.
 
 ---
 
 ## G. CHANGE REQUESTS
 
-- [ ] G1. Add "Request Changes" UI action on `approved` state (map to `requestChanges` router proc). Files: `app/.../cr-lifecycle-actions.tsx:114-150`, `src/server/routers/changeRequest.ts:343`.
-- [ ] G2. `mergeCR` — dispatch `MERGE` through XState machine instead of writing directly. Files: `src/server/services/changeRequest.service.ts:169-260`.
-- [ ] G3. Add "Close / Cancel draft" action on `drafting` state (machine already supports). File: `app/.../cr-lifecycle-actions.tsx:58-76`.
-- [ ] G4. CR detail page: render `closureRationale`, `approverId`, `approvedAt`, `mergedBy`, `mergedAt`. File: `app/.../cr-detail.tsx:163-170` + relevant sections.
-- [ ] G5. `linkedFeedback.sectionTitle`: join `policySections` in router, remove client `null` hardcode. Files: `src/server/routers/changeRequest.ts` list/getById, `cr-detail.tsx:159`.
-- [ ] G6. Self-merge guard — see B7.
-- [ ] G7. CR "sent for review" notification → reviewers (users with `change_request:review` permission), not the submitter. File: `src/server/routers/changeRequest.ts:275`.
-- [ ] G8. `cr_id` FK on `documentVersions` — add constraint in a new migration. Files: `src/db/schema/changeRequests.ts:19`, new migration.
-- [ ] G9. `create-cr-dialog`: label Description as required; field-level error for `min(10)`. File: `app/.../create-cr-dialog.tsx:147, 51`.
+- [x] G1. Add "Request Changes" UI action on `approved` state (map to `requestChanges` router proc). Files: `app/.../cr-lifecycle-actions.tsx:114-150`, `src/server/routers/changeRequest.ts:343`.
+- [x] G2. `mergeCR` — dispatch `MERGE` through XState machine instead of writing directly. Files: `src/server/services/changeRequest.service.ts:169-260`.
+- [x] G3. Add "Close / Cancel draft" action on `drafting` state (machine already supports). File: `app/.../cr-lifecycle-actions.tsx:58-76`.
+- [x] G4. CR detail page: render `closureRationale`, `approverId`, `approvedAt`, `mergedBy`, `mergedAt`. File: `app/.../cr-detail.tsx:163-170` + relevant sections.
+- [x] G5. `linkedFeedback.sectionTitle`: join `policySections` in router, remove client `null` hardcode. Files: `src/server/routers/changeRequest.ts` list/getById, `cr-detail.tsx:159`.
+- [x] G6. Self-merge guard — see B7.
+- [x] G7. CR "sent for review" notification → reviewers (users with `change_request:review` permission), not the submitter. File: `src/server/routers/changeRequest.ts:275`.
+- [x] G8. `cr_id` FK on `documentVersions` — add constraint in a new migration. Files: `src/db/schema/changeRequests.ts:19`, new migration.
+- [x] G9. `create-cr-dialog`: label Description as required; field-level error for `min(10)`. File: `app/.../create-cr-dialog.tsx:147, 51`.
 
 ---
 
 ## H. EVIDENCE, AUDIT, NOTIFICATIONS
 
-- [ ] H1. Evidence-pack dialog checkboxes: pass selections through to `requestExport` input; have the export service honor selection. Files: `app/audit/_components/evidence-pack-dialog.tsx:40-46, 86, 151-171`, `src/inngest/functions/evidence-pack-export.ts`, `src/server/routers/evidence.ts`.
-- [ ] H2. Evidence-pack workshop section: replace placeholder with real workshop evidence (artifacts, registrations, summaries). File: `src/server/services/evidence-pack.service.ts:202-209`.
-- [ ] H3. `evidenceArtifacts.content` (inline text) — include in export OR drop the column. Files: service, schema.
-- [ ] H4. Evidence-pack stakeholder name: respect `isAnonymous` (don't always set `'Anonymous'`). File: `src/server/services/evidence-pack.service.ts:41-55`.
-- [ ] H5. Evidence-pack audit actor role — see B15.
-- [ ] H6. Audit filter Selects: replace empty-string values with sentinel ("__all__") and filter client-side. File: `app/audit/_components/audit-filter-panel.tsx:64, 84, 104`.
-- [ ] H7. Audit date filter: use local-day range (or document UTC behavior). File: `app/.../audit-trail-client.tsx:19-20`.
-- [ ] H8. `ipAddress` capture: pass from tRPC context into `writeAuditLog` calls. Files: `src/lib/audit.ts:12, 23`, tRPC init, router callsites that should capture.
-- [ ] H9. Notification mark-read audit — emit `NOTIFICATION_READ` / `NOTIFICATION_MARK_READ` at router procs. Files: `src/server/routers/notification.ts`, `src/lib/constants.ts:71-72`.
-- [ ] H10. Notifications page: poll `notification.list` on same interval as `unreadCount`. File: `app/notifications/page.tsx:68-91`.
-- [ ] H11. Notifications page: dedupe on append when refetching first page after mark-read. File: same, 80-91, 103.
+- [x] H1. Evidence-pack dialog checkboxes: pass selections through to `requestExport` input; have the export service honor selection. Files: `app/audit/_components/evidence-pack-dialog.tsx:40-46, 86, 151-171`, `src/inngest/functions/evidence-pack-export.ts`, `src/server/routers/evidence.ts`.
+- [x] H2. Evidence-pack workshop section: replace placeholder with real workshop evidence (artifacts, registrations, summaries). File: `src/server/services/evidence-pack.service.ts:202-209`.
+- [x] H3. `evidenceArtifacts.content` (inline text) — include in export OR drop the column. Files: service, schema.
+- [x] H4. Evidence-pack stakeholder name: respect `isAnonymous` (don't always set `'Anonymous'`). File: `src/server/services/evidence-pack.service.ts:41-55`.
+- [x] H5. Evidence-pack audit actor role — see B15.
+- [x] H6. Audit filter Selects: replace empty-string values with sentinel ("__all__") and filter client-side. File: `app/audit/_components/audit-filter-panel.tsx:64, 84, 104`.
+- [x] H7. Audit date filter: use local-day range (or document UTC behavior). File: `app/.../audit-trail-client.tsx:19-20`.
+- [x] H8. `ipAddress` capture: pass from tRPC context into `writeAuditLog` calls. Files: `src/lib/audit.ts:12, 23`, tRPC init, router callsites that should capture.
+- [x] H9. Notification mark-read audit — emit `NOTIFICATION_READ` / `NOTIFICATION_MARK_READ` at router procs. Files: `src/server/routers/notification.ts`, `src/lib/constants.ts:71-72`.
+- [x] H10. Notifications page: poll `notification.list` on same interval as `unreadCount`. File: `app/notifications/page.tsx:68-91`.
+- [x] H11. Notifications page: dedupe on append when refetching first page after mark-read. File: same, 80-91, 103.
 
 ---
 
 ## I. INFRA
 
-- [ ] I1. Migration apply scripts for `0015_cardano_anchoring.sql` + `0016_engagement_tracking.sql`. Add `scripts/apply-migration-0015.mjs`, `apply-migration-0016.mjs`.
-- [ ] I2. `versionAnchorFn` — on confirmation-timeout, write audit event + admin notification + mark version anchor as `failed`. File: `src/inngest/functions/version-anchor.ts:91-114`.
-- [ ] I3. Don't re-emit `version.published` for section regen (causes spurious `NonRetriableError`). Use a distinct event for consultation-summary regen. Files: `src/server/routers/consultation-summary.ts:246-250`, `src/inngest/events.ts`, new handler or reuse.
-- [ ] I4. `participateIntakeFn` — forward `expertise`, `orgName`, `role` to audit log / user profile. Files: `app/api/intake/participate/route.ts:93-100`, `src/inngest/functions/participate-intake.ts:52-58`.
-- [ ] I5. Remove `sampleHelloEvent` / `helloFn` (or guard with `NODE_ENV !== 'production'`). Files: `src/inngest/functions/hello.ts`, `src/inngest/functions/index.ts`.
-- [ ] I6. `email.ts` Resend client instantiation: read env at each invocation (not module load). File: `src/lib/email.ts:3-7`.
-- [ ] I7. Research page `/research` — if no real content yet, show a clearly-labelled "Coming soon" state and remove the Download CTA. File: `app/research/page.tsx:1-95`; remove stub PDF `public/research/consultation-research-report.pdf`.
-- [ ] I8. Admin intake visibility: log intake submissions to audit + surface in `/audit`. Files: `app/api/intake/participate/route.ts`, `src/inngest/functions/participate-intake.ts`.
+- [x] I1. Migration apply scripts for `0015_cardano_anchoring.sql` + `0016_engagement_tracking.sql`. Add `scripts/apply-migration-0015.mjs`, `apply-migration-0016.mjs`.
+- [x] I2. `versionAnchorFn` — on confirmation-timeout, write audit event + admin notification. documentVersions has no anchor-status column today, so txHash stays NULL for retry; I left a comment for a future `anchorStatus` column add.
+- [x] I3. Don't re-emit `version.published` for section regen. Added `consultation-summary.regen` event; hooked `consultationSummaryGenerateFn` to both triggers; switched `regenerateSection` to the new event.
+- [x] I4. `participateIntakeFn` — forwards `expertise`/`orgName`/`role`/`howHeard` through the event, stashes them on Clerk invitation `publicMetadata`, and writes them into the intake audit payload.
+- [x] I5. `helloFn` kept but excluded from the functions array when `NODE_ENV === 'production'` via spread-conditional in `src/inngest/functions/index.ts`.
+- [x] I6. `src/lib/email.ts` now uses a `getResend()` factory that reads `RESEND_API_KEY` at each invocation; `FROM_ADDRESS` similarly read per-call.
+- [x] I7. Research page shows a "Coming soon" callout; Download CTA + `lucide-react Download` import removed; stub PDF deleted from `public/research/`.
+- [x] I8. `participateIntakeFn` writes an audit event (`action='PARTICIPATE_INTAKE'`, `actorRole='system'`) carrying the full intake payload so admins can surface intake submissions in `/audit`.
 
 ---
 

@@ -1,10 +1,12 @@
 import { eq } from 'drizzle-orm'
 import { NonRetriableError } from 'inngest'
 import { inngest } from '../client'
-import { versionPublishedEvent } from '../events'
+import { versionPublishedEvent, sendNotificationCreate } from '../events'
 import { db } from '@/src/db'
 import { documentVersions } from '@/src/db/schema/changeRequests'
 import { hashPolicyVersion } from '@/src/lib/hashing'
+import { writeAuditLog } from '@/src/lib/audit'
+import { ACTIONS } from '@/src/lib/constants'
 import {
   buildAndSubmitAnchorTx,
   checkExistingAnchorTx,
@@ -25,6 +27,12 @@ import {
  *   1. compute-hash      -- load version, compute SHA256 via hashPolicyVersion
  *   2. anchor            -- Blockfrost pre-check + submit tx (or reuse existing)
  *   3. confirm-and-persist -- poll confirmation + write txHash to DB
+ *   4. finalize          -- write audit event and (on timeout) send admin
+ *      notification. documentVersions has no anchor-status column today, so
+ *      we do NOT flip a status value here. Operators key off the audit trail
+ *      (MILESTONE_ANCHOR_FAIL action reused for version) and the notification.
+ *      If a dedicated `documentVersions.anchorStatus` column is added later,
+ *      flip it to 'failed' alongside the audit write.
  */
 export const versionAnchorFn = inngest.createFunction(
   {
@@ -67,7 +75,12 @@ export const versionAnchorFn = inngest.createFunction(
         createdBy: version.createdBy,
       })
 
-      return { contentHash, versionId: version.id }
+      return {
+        contentHash,
+        versionId: version.id,
+        documentId: version.documentId,
+        createdBy: version.createdBy,
+      }
     })
 
     // ---- Step 2: anchor ----
@@ -101,8 +114,9 @@ export const versionAnchorFn = inngest.createFunction(
       attempts++
     }
 
-    if (confirmed) {
-      await step.run('persist-anchor', async () => {
+    // ---- Step 4: finalize ----
+    await step.run('finalize', async () => {
+      if (confirmed) {
         await db
           .update(documentVersions)
           .set({
@@ -110,8 +124,49 @@ export const versionAnchorFn = inngest.createFunction(
             anchoredAt: new Date(),
           })
           .where(eq(documentVersions.id, hashData.versionId))
+        return
+      }
+
+      // I2: permanent failure -- tx not confirmed after MAX_ATTEMPTS * 30s = 10m.
+      //
+      // Write audit event so the admin audit UI and evidence pack export can
+      // surface the failure. We reuse MILESTONE_ANCHOR_FAIL as the action
+      // constant because `document_version` anchor failures follow the same
+      // operator-response pattern (retry-from-published). If a
+      // dedicated VERSION_ANCHOR_FAIL constant is added later, switch here.
+      //
+      // documentVersions today has no anchor-status column -- txHash stays
+      // NULL so a subsequent run can retry cleanly. If a follow-up migration
+      // adds `documentVersions.anchorStatus` (enum: pending|anchored|failed),
+      // set it to 'failed' inside this step.
+      await writeAuditLog({
+        actorId: hashData.createdBy,
+        actorRole: 'admin',
+        action: ACTIONS.MILESTONE_ANCHOR_FAIL,
+        entityType: 'document_version',
+        entityId: hashData.versionId,
+        payload: {
+          txHash,
+          contentHash: hashData.contentHash,
+          attempts,
+          reason: 'confirmation-timeout',
+        },
       })
-    }
+
+      // Admin notification -- target the version creator who also holds the
+      // 'version:manage' permission. Matches milestoneReadyFn's dispatch
+      // pattern, which uses the triggering admin as the notification recipient.
+      await sendNotificationCreate({
+        userId: hashData.createdBy,
+        type: 'cr_status_changed',
+        title: 'Anchoring failed for version',
+        body: 'Version anchoring timed out after 10 minutes. Retry from the version detail page.',
+        entityType: 'document_version',
+        entityId: hashData.versionId,
+        createdBy: hashData.createdBy,
+        action: ACTIONS.MILESTONE_ANCHOR_FAIL,
+      })
+    })
 
     return { versionId: hashData.versionId, txHash, confirmed }
   },

@@ -145,7 +145,8 @@ function SlotInput({
         type="number"
         min={0}
         value={value}
-        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+        max={50}
+        onChange={(e) => onChange(Math.min(50, Math.max(0, Number(e.target.value) || 0)))}
       />
       <p className="text-xs text-muted-foreground">{helper}</p>
     </div>

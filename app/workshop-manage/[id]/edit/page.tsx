@@ -42,6 +42,9 @@ export default function EditWorkshopPage() {
   const [scheduledAt, setScheduledAt] = useState('')
   const [durationMinutes, setDurationMinutes] = useState('')
   const [registrationLink, setRegistrationLink] = useState('')
+  // F11: maxSeats editable on the update path. F9: timezone editable too.
+  const [maxSeats, setMaxSeats] = useState('')
+  const [timezone, setTimezone] = useState('')
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
@@ -52,6 +55,8 @@ export default function EditWorkshopPage() {
       setScheduledAt(toDatetimeLocalValue(w.scheduledAt))
       setDurationMinutes(w.durationMinutes ? String(w.durationMinutes) : '')
       setRegistrationLink(w.registrationLink ?? '')
+      setMaxSeats(w.maxSeats != null ? String(w.maxSeats) : '')
+      setTimezone(w.timezone ?? 'Asia/Kolkata')
       setInitialized(true)
     }
   }, [workshopQuery.data, initialized])
@@ -75,6 +80,11 @@ export default function EditWorkshopPage() {
     const isoDate = new Date(scheduledAt).toISOString()
     const dur = durationMinutes ? parseInt(durationMinutes, 10) : null
     const regLink = registrationLink.trim() || null
+    // F11: blank maxSeats clears the cap (open registration). Non-numeric
+    // input is treated as "no change" - the server-side z.number() guard
+    // rejects stringified garbage either way.
+    const seats = maxSeats.trim() === '' ? null : parseInt(maxSeats, 10)
+    const tz = timezone.trim() || undefined
 
     updateMutation.mutate({
       workshopId,
@@ -83,6 +93,8 @@ export default function EditWorkshopPage() {
       scheduledAt: isoDate,
       durationMinutes: dur && dur > 0 ? dur : null,
       registrationLink: regLink,
+      maxSeats: seats === null ? null : seats > 0 ? seats : null,
+      timezone: tz,
     })
   }
 
@@ -158,6 +170,39 @@ export default function EditWorkshopPage() {
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(e.target.value)}
               />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="workshop-maxseats">
+                Maximum seats{' '}
+                <span className="text-xs text-muted-foreground">
+                  (leave blank for open registration)
+                </span>
+              </Label>
+              <Input
+                id="workshop-maxseats"
+                type="number"
+                min="1"
+                max="10000"
+                placeholder="e.g., 50"
+                value={maxSeats}
+                onChange={(e) => setMaxSeats(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="workshop-timezone">Timezone</Label>
+              <Input
+                id="workshop-timezone"
+                placeholder="Asia/Kolkata"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                maxLength={64}
+              />
+              <p className="text-xs text-muted-foreground">
+                IANA timezone (e.g. Asia/Kolkata, America/New_York). Applied to
+                new cal.com bookings and email timestamps.
+              </p>
             </div>
 
             <div className="flex flex-col gap-2">

@@ -10,11 +10,14 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
-const ARTIFACT_TYPES = ['promo', 'recording', 'summary', 'attendance', 'other'] as const
+// F30: include the dedicated 'transcript' type so moderators can attach a
+// raw transcript independently from a polished summary.
+const ARTIFACT_TYPES = ['promo', 'recording', 'transcript', 'summary', 'attendance', 'other'] as const
 type ArtifactType = (typeof ARTIFACT_TYPES)[number]
 const TYPE_LABELS: Record<ArtifactType, string> = {
   promo: 'Promotional Material',
   recording: 'Recording',
+  transcript: 'Transcript',
   summary: 'Session Summary',
   attendance: 'Attendance Record',
   other: 'Other',
@@ -61,6 +64,10 @@ export function ArtifactAttachDialog({ workshopId, open, onOpenChange }: Artifac
     setUploading(true)
     try {
       const result = await uploadFile(file, { category: 'evidence' })
+      // F19: pass r2Key so the recording pipeline (WS-14 Inngest function)
+      // can resolve a fresh presigned GET and pass the audio to Groq
+      // Whisper. Without r2Key, the transcription step silently no-ops
+      // because the public URL is not usable for programmatic fetch.
       attachMutation.mutate({
         workshopId,
         artifactType,
@@ -68,6 +75,8 @@ export function ArtifactAttachDialog({ workshopId, open, onOpenChange }: Artifac
         type: 'file',
         url: result.url,
         fileName: result.name,
+        fileSize: file.size,
+        r2Key: result.key,
       })
     } catch (err) {
       setUploading(false)

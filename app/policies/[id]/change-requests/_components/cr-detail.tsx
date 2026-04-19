@@ -130,6 +130,58 @@ export function CRDetail({ crId, documentId }: CRDetailProps) {
         </p>
       </div>
 
+      {/* Approval / merge / closure metadata (G4) */}
+      {(cr.approvedAt || cr.mergedAt || cr.closureRationale) && (
+        <div className="space-y-2 rounded-md border bg-muted/30 p-4">
+          {cr.approvedAt && (
+            <div className="flex items-center gap-2 text-[13px]">
+              <span className="text-muted-foreground">Approved</span>
+              <span className="font-normal">
+                {formatDate(cr.approvedAt as unknown as string)}
+              </span>
+              {cr.approverName && (
+                <>
+                  <span className="text-muted-foreground">by</span>
+                  <span className="font-normal">{cr.approverName}</span>
+                </>
+              )}
+            </div>
+          )}
+          {cr.mergedAt && (
+            <div className="flex items-center gap-2 text-[13px]">
+              <span className="text-muted-foreground">Merged</span>
+              <span className="font-normal">
+                {formatDate(cr.mergedAt as unknown as string)}
+              </span>
+              {cr.mergerName && (
+                <>
+                  <span className="text-muted-foreground">by</span>
+                  <span className="font-normal">{cr.mergerName}</span>
+                </>
+              )}
+              {cr.mergedVersionLabel && (
+                <>
+                  <span className="text-muted-foreground">into</span>
+                  <Badge variant="secondary" className="font-mono text-[12px]">
+                    {cr.mergedVersionLabel}
+                  </Badge>
+                </>
+              )}
+            </div>
+          )}
+          {cr.closureRationale && (
+            <div className="space-y-1">
+              <div className="text-[12px] font-normal uppercase tracking-wide text-muted-foreground">
+                Closure Rationale
+              </div>
+              <p className="text-[14px] font-normal leading-[1.5]">
+                {cr.closureRationale}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Lifecycle Actions */}
       {canManageCR && (
         <CRLifecycleActions
@@ -156,7 +208,7 @@ export function CRDetail({ crId, documentId }: CRDetailProps) {
             readableId: fb.readableId,
             title: fb.title,
             status: fb.status,
-            sectionTitle: null,
+            sectionTitle: fb.sectionTitle ?? null,
           }))}
         />
       </div>

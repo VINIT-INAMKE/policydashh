@@ -22,12 +22,16 @@ interface CreateCRDialogProps {
   documentId: string
 }
 
+const MIN_DESCRIPTION_LENGTH = 10
+const MAX_DESCRIPTION_LENGTH = 3000
+
 export function CreateCRDialog({ documentId }: CreateCRDialogProps) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedFeedbackIds, setSelectedFeedbackIds] = useState<string[]>([])
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [touchedDescription, setTouchedDescription] = useState(false)
 
   const utils = trpc.useUtils()
 
@@ -58,7 +62,18 @@ export function CreateCRDialog({ documentId }: CreateCRDialogProps) {
     setSelectedFeedbackIds([])
     setTitle('')
     setDescription('')
+    setTouchedDescription(false)
   }
+
+  const trimmedDescription = description.trim()
+  const descriptionError =
+    touchedDescription && trimmedDescription.length < MIN_DESCRIPTION_LENGTH
+      ? `Description must be at least ${MIN_DESCRIPTION_LENGTH} characters.`
+      : null
+  const canSubmit =
+    title.trim().length > 0 &&
+    trimmedDescription.length >= MIN_DESCRIPTION_LENGTH &&
+    selectedFeedbackIds.length > 0
 
   function toggleFeedback(id: string) {
     setSelectedFeedbackIds((prev) =>
@@ -67,11 +82,12 @@ export function CreateCRDialog({ documentId }: CreateCRDialogProps) {
   }
 
   function handleCreate() {
-    if (!title.trim() || selectedFeedbackIds.length === 0) return
+    setTouchedDescription(true)
+    if (!canSubmit) return
     createMutation.mutate({
       documentId,
       title: title.trim(),
-      description: description.trim(),
+      description: trimmedDescription,
       feedbackIds: selectedFeedbackIds,
     })
   }
@@ -144,20 +160,35 @@ export function CreateCRDialog({ documentId }: CreateCRDialogProps) {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="cr-description">Description (optional)</Label>
+                <Label htmlFor="cr-description">
+                  Description <span className="text-destructive">*</span>
+                </Label>
                 <Textarea
                   id="cr-description"
                   placeholder="Describe what this change request addresses..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => setTouchedDescription(true)}
+                  aria-invalid={descriptionError ? true : undefined}
+                  aria-describedby="cr-description-help"
+                  maxLength={MAX_DESCRIPTION_LENGTH}
                   className="min-h-[96px]"
                 />
+                <p
+                  id="cr-description-help"
+                  className={`text-xs ${
+                    descriptionError ? 'text-destructive' : 'text-muted-foreground'
+                  }`}
+                >
+                  {descriptionError ??
+                    `${MIN_DESCRIPTION_LENGTH} character minimum \u00B7 ${trimmedDescription.length}/${MAX_DESCRIPTION_LENGTH}`}
+                </p>
               </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               <Button
-                disabled={!title.trim() || createMutation.isPending}
+                disabled={!canSubmit || createMutation.isPending}
                 onClick={handleCreate}
               >
                 {createMutation.isPending ? 'Creating...' : 'Create Change Request'}

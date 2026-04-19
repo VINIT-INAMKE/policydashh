@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ArrowLeftRight, GitCompare } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
@@ -56,8 +56,11 @@ export function VersionComparisonSelector({
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [showDiff, setShowDiff] = useState(false)
 
-  // Auto-select first section when sections load
-  useMemo(() => {
+  // D15: auto-select first section via useEffect (side-effect) rather than
+  // useMemo. Using useMemo for state setters is an anti-pattern — the
+  // computation was being run during render, which React 19 flags in
+  // strict mode.
+  useEffect(() => {
     if (sections.length > 0 && !selectedSectionId) {
       setSelectedSectionId(sections[0].id)
     }

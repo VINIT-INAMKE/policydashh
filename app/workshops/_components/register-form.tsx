@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Loader2, CheckCircle2 } from 'lucide-react'
@@ -14,6 +15,7 @@ interface RegisterFormProps {
 }
 
 export function RegisterForm({ workshopId, workshopTitle, disabled, prefillName, prefillEmail }: RegisterFormProps) {
+  const router = useRouter()
   const [expanded, setExpanded] = useState(false)
   const [name, setName] = useState(prefillName || '')
   const [email, setEmail] = useState(prefillEmail || '')
@@ -55,6 +57,9 @@ export function RegisterForm({ workshopId, workshopTitle, disabled, prefillName,
         throw new Error(data.error || 'Registration failed')
       }
       setSuccess(true)
+      // F32: refresh the server component tree so other workshop cards
+      // pick up the new registeredCount / alreadyRegistered state.
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -115,6 +120,8 @@ export function RegisterForm({ workshopId, workshopTitle, disabled, prefillName,
       }
 
       setSuccess(true)
+      // F32: refresh server data so sibling cards see the new state.
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {

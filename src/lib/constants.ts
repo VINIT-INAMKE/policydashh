@@ -40,6 +40,7 @@ export const ACTIONS = {
   SECTION_DELETE: 'section.delete',
   SECTION_REORDER: 'section.reorder',
   SECTION_RENAME: 'section.rename',
+  SECTION_CONTENT_UPDATE: 'section.content_update',
   DOCUMENT_IMPORT: 'document.import',
   SECTION_ASSIGN: 'section.assign',
   SECTION_UNASSIGN: 'section.unassign',

@@ -3,6 +3,8 @@ import { router, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
 import { notifications } from '@/src/db/schema/notifications'
 import { eq, and, desc, sql, lt } from 'drizzle-orm'
+import { writeAuditLog, ipFromHeaders } from '@/src/lib/audit'
+import { ACTIONS } from '@/src/lib/constants'
 
 export const notificationRouter = router({
   /**
@@ -62,6 +64,10 @@ export const notificationRouter = router({
 
   /**
    * Mark a single notification as read.
+   *
+   * H9: emit an ACTIONS.NOTIFICATION_READ audit event so admins can trace
+   * which notifications a user has consumed. Fire-and-forget per the audit
+   * pattern used elsewhere in this router surface.
    */
   markRead: requirePermission('notification:manage')
     .input(z.object({ id: z.string().uuid() }))
@@ -76,11 +82,24 @@ export const notificationRouter = router({
           ),
         )
 
+      writeAuditLog({
+        actorId:    ctx.user.id,
+        actorRole:  ctx.user.role,
+        action:     ACTIONS.NOTIFICATION_READ,
+        entityType: 'notification',
+        entityId:   input.id,
+        ipAddress:  ipFromHeaders(ctx.headers),
+      }).catch(console.error)
+
       return { success: true }
     }),
 
   /**
    * Mark all notifications as read for the current user.
+   *
+   * H9: emit an ACTIONS.NOTIFICATION_MARK_READ audit event for the bulk
+   * action. Scoped to the caller so it doubles as a user-level "inbox
+   * cleared" trail entry.
    */
   markAllRead: requirePermission('notification:manage')
     .mutation(async ({ ctx }) => {
@@ -88,6 +107,16 @@ export const notificationRouter = router({
         .update(notifications)
         .set({ isRead: true })
         .where(eq(notifications.userId, ctx.user.id))
+
+      writeAuditLog({
+        actorId:    ctx.user.id,
+        actorRole:  ctx.user.role,
+        action:     ACTIONS.NOTIFICATION_MARK_READ,
+        entityType: 'user',
+        entityId:   ctx.user.id,
+        payload:    { scope: 'all' },
+        ipAddress:  ipFromHeaders(ctx.headers),
+      }).catch(console.error)
 
       return { success: true }
     }),

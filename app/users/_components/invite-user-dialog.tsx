@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { trpc } from '@/src/trpc/client'
 import {
   Dialog,
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 const ROLE_OPTIONS = [
@@ -40,14 +40,41 @@ interface InviteUserDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+// C3: simple RFC-compliant-enough email regex for client-side validation.
+// Server still re-validates via zod on the tRPC procedure.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<InviteRole>('stakeholder')
+  const [debouncedEmail, setDebouncedEmail] = useState('')
   const utils = trpc.useUtils()
+
+  const trimmedEmail = email.trim().toLowerCase()
+  const emailValid = trimmedEmail.length > 0 && EMAIL_RE.test(trimmedEmail)
+  const emailError = email.length > 0 && !emailValid
+    ? 'Enter a valid email address.'
+    : null
+
+  // Debounce the existing-user check so we don't spam tRPC on each keystroke.
+  useEffect(() => {
+    if (!emailValid) {
+      setDebouncedEmail('')
+      return
+    }
+    const h = setTimeout(() => setDebouncedEmail(trimmedEmail), 400)
+    return () => clearTimeout(h)
+  }, [trimmedEmail, emailValid])
+
+  const existsQuery = trpc.user.checkEmailExists.useQuery(
+    { email: debouncedEmail },
+    { enabled: debouncedEmail.length > 0, staleTime: 30_000 },
+  )
 
   const inviteMutation = trpc.user.invite.useMutation({
     onSuccess: (data) => {
       utils.user.listUsers.invalidate()
+      utils.user.listPendingInvitations.invalidate()
       toast.success(`Invitation sent to ${data.email}.`)
       setEmail('')
       setRole('stakeholder')
@@ -58,10 +85,12 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
     },
   })
 
+  const alreadyExists = existsQuery.data?.exists === true
+  const canSubmit = emailValid && !alreadyExists && !inviteMutation.isPending
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const trimmedEmail = email.trim()
-    if (!trimmedEmail) return
+    if (!canSubmit) return
     inviteMutation.mutate({ email: trimmedEmail, role })
   }
 
@@ -85,8 +114,21 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoFocus
+                aria-invalid={emailError !== null || alreadyExists}
                 className="mt-2"
               />
+              {emailError && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
+                  <AlertCircle className="size-3" />
+                  {emailError}
+                </p>
+              )}
+              {alreadyExists && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
+                  <AlertCircle className="size-3" />
+                  A user with this email already exists.
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="invite-role">Role</Label>
@@ -108,7 +150,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!email.trim() || inviteMutation.isPending}>
+            <Button type="submit" disabled={!canSubmit}>
               {inviteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Send Invitation
             </Button>

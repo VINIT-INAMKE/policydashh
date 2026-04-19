@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { CheckCircle, Paperclip } from 'lucide-react'
 import { format } from 'date-fns'
@@ -51,25 +51,30 @@ export function EvidenceGapsTab() {
   const [sectionId, setSectionId] = useState<string>('')
   const [feedbackType, setFeedbackType] = useState<string>('')
 
-  const claimsQuery = trpc.evidence.claimsWithoutEvidence.useQuery({})
+  // E17: pass filters through to the server so the procedure scopes the
+  // query on Postgres instead of shipping every gap to the client and
+  // filtering in JS. Router (evidence.claimsWithoutEvidence) already
+  // accepts documentId / sectionId / feedbackType input fields.
+  const claimsQuery = trpc.evidence.claimsWithoutEvidence.useQuery({
+    documentId: documentId || undefined,
+    sectionId: sectionId || undefined,
+    feedbackType: (feedbackType || undefined) as
+      | 'issue'
+      | 'suggestion'
+      | 'endorsement'
+      | 'evidence'
+      | 'question'
+      | undefined,
+  })
   const documentsQuery = trpc.document.list.useQuery()
   const sectionsQuery = trpc.document.getSections.useQuery(
     { documentId: documentId },
     { enabled: !!documentId },
   )
 
-  const allClaims = claimsQuery.data ?? []
+  const filteredClaims = claimsQuery.data ?? []
   const documents = documentsQuery.data ?? []
   const sections = sectionsQuery.data ?? []
-
-  const filteredClaims = useMemo(() => {
-    let result = allClaims
-    if (documentId) result = result.filter((c) => c.documentId === documentId)
-    if (sectionId) result = result.filter((c) => c.sectionId === sectionId)
-    if (feedbackType)
-      result = result.filter((c) => c.feedbackType === feedbackType)
-    return result
-  }, [allClaims, documentId, sectionId, feedbackType])
 
   function handleDocumentChange(value: string | null) {
     setDocumentId(!value || value === '__all__' ? '' : value)

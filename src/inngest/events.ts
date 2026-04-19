@@ -203,11 +203,24 @@ export async function sendWorkshopRecordingUploaded(
 // -- evidence.export_requested -------------------------------------------
 
 // Use z.guid() per Phase 16 decision: z.uuid() rejects version-0 test fixtures.
+// H1: `sections` lets the requester opt individual artifact categories in/out.
+// Each flag is optional; the service treats an absent/true value as "include".
+const evidenceExportSectionsSchema = z.object({
+  stakeholders: z.boolean().optional(),
+  feedback:     z.boolean().optional(),
+  versions:     z.boolean().optional(),
+  decisions:    z.boolean().optional(),
+  workshops:    z.boolean().optional(),
+}).optional()
+
 const evidenceExportRequestedSchema = z.object({
   documentId:  z.guid(),
   requestedBy: z.guid(),
   userEmail:   z.string().email().nullable(),
+  sections:    evidenceExportSectionsSchema,
 })
+
+export type EvidenceExportSections = z.infer<typeof evidenceExportSectionsSchema>
 
 export const evidenceExportRequestedEvent = eventType('evidence.export_requested', {
   schema: evidenceExportRequestedSchema,
@@ -233,6 +246,12 @@ const participateIntakeSchema = z.object({
   orgType: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal']),
   expertise: z.string().min(20).max(1000),
   howHeard: z.string().max(100).optional(),
+  // I4: forward orgName and role from the intake form so
+  // participateIntakeFn can stash them on the Clerk invitation's
+  // publicMetadata (then onto the users row via the Clerk user.created
+  // webhook) and the audit log.
+  orgName: z.string().min(2).max(200).optional(),
+  role: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal']).optional(),
 })
 
 export const participateIntakeEvent = eventType('participate.intake', {
@@ -362,6 +381,35 @@ export async function sendVersionPublished(
   data: VersionPublishedData,
 ): Promise<void> {
   const event = versionPublishedEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
+
+// -- consultation-summary.regen -----------------------------------------
+// I3: dedicated event for manual single-section regen from the moderator
+// UI. Re-using `version.published` re-fires versionAnchorFn which then
+// throws NonRetriableError ('Already anchored') for every regen and
+// pollutes the Inngest run history. This event ONLY triggers
+// consultationSummaryGenerateFn, with `overrideOnly` scoping the regen
+// to the one section the moderator clicked.
+
+const consultationSummaryRegenSchema = z.object({
+  versionId:    z.guid(),
+  documentId:   z.guid(),
+  overrideOnly: z.array(z.guid()).min(1),
+})
+
+export const consultationSummaryRegenEvent = eventType(
+  'consultation-summary.regen',
+  { schema: consultationSummaryRegenSchema },
+)
+
+export type ConsultationSummaryRegenData = z.infer<typeof consultationSummaryRegenSchema>
+
+export async function sendConsultationSummaryRegen(
+  data: ConsultationSummaryRegenData,
+): Promise<void> {
+  const event = consultationSummaryRegenEvent.create(data)
   await event.validate()
   await inngest.send(event)
 }

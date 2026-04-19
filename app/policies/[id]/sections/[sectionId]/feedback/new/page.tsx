@@ -36,6 +36,11 @@ export default async function SubmitFeedbackPage({
     notFound()
   }
 
+  // E1: section-assignment preflight. Mirrors the server-side requireSectionAccess
+  // middleware used by feedback.submit so the form itself tells the user upfront
+  // rather than eating a 403 on submit.
+  const preflight = await caller.feedback.canSubmit({ sectionId })
+
   const userName = user.name ?? 'Unknown User'
   const orgType = user.orgType
     ? user.orgType.charAt(0).toUpperCase() + user.orgType.slice(1).replace('_', ' ')
@@ -55,6 +60,15 @@ export default async function SubmitFeedbackPage({
         Submit Feedback
       </h1>
 
+      {!preflight.canSubmit && (
+        <div
+          role="alert"
+          className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          You&apos;re not assigned to this section. Only section assignees can submit feedback here.
+        </div>
+      )}
+
       <Suspense fallback={null}>
         <SubmitFeedbackForm
           sectionId={sectionId}
@@ -62,6 +76,7 @@ export default async function SubmitFeedbackPage({
           sectionTitle={section.title}
           userName={userName}
           orgType={orgType}
+          disabled={!preflight.canSubmit}
         />
       </Suspense>
     </div>

@@ -21,9 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { InviteUserDialog } from './invite-user-dialog'
+import { PendingInvitationsTable } from './pending-invitations-table'
 
 const ROLE_DISPLAY: Record<string, string> = {
   admin: 'Admin',
@@ -56,8 +67,18 @@ const ROLE_VALUES = [
 
 type UserRole = (typeof ROLE_VALUES)[number]
 
+interface PendingRoleChange {
+  userId: string
+  userName: string
+  currentRole: string
+  newRole: UserRole
+}
+
 export function UsersClient() {
   const [inviteOpen, setInviteOpen] = useState(false)
+  // C2: two-step confirmation prevents a single stray click from demoting
+  // an admin or accidentally promoting a stakeholder.
+  const [pendingChange, setPendingChange] = useState<PendingRoleChange | null>(null)
 
   const utils = trpc.useUtils()
   const usersQuery = trpc.user.listUsers.useQuery()
@@ -65,9 +86,11 @@ export function UsersClient() {
     onSuccess: (updated) => {
       utils.user.listUsers.invalidate()
       toast.success(`Role updated to ${ROLE_DISPLAY[updated.role] ?? updated.role}.`)
+      setPendingChange(null)
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to update role. Please try again.')
+      setPendingChange(null)
     },
   })
 
@@ -128,9 +151,15 @@ export function UsersClient() {
                 <TableCell>
                   <Select
                     value={user.role}
-                    onValueChange={(newRole) =>
-                      updateRoleMutation.mutate({ userId: user.id, role: newRole as UserRole })
-                    }
+                    onValueChange={(newRole) => {
+                      if (newRole === user.role) return
+                      setPendingChange({
+                        userId: user.id,
+                        userName: user.name || user.email || 'this user',
+                        currentRole: user.role,
+                        newRole: newRole as UserRole,
+                      })
+                    }}
                     disabled={updateRoleMutation.isPending}
                   >
                     <SelectTrigger className="h-7 w-[160px] text-xs">
@@ -159,7 +188,55 @@ export function UsersClient() {
         </Table>
       )}
 
+      {/* C4: pending invitations table */}
+      <PendingInvitationsTable />
+
       <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+
+      {/* C2: role-change confirm dialog */}
+      <AlertDialog
+        open={pendingChange !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingChange(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change role?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingChange && (
+                <>
+                  Change <span className="font-medium">{pendingChange.userName}</span> from{' '}
+                  <span className="font-medium">
+                    {ROLE_DISPLAY[pendingChange.currentRole] ?? pendingChange.currentRole}
+                  </span>{' '}
+                  to{' '}
+                  <span className="font-medium">
+                    {ROLE_DISPLAY[pendingChange.newRole] ?? pendingChange.newRole}
+                  </span>
+                  ? They will take on the new permissions on their next request.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updateRoleMutation.isPending}
+              onClick={() => {
+                if (pendingChange) {
+                  updateRoleMutation.mutate({
+                    userId: pendingChange.userId,
+                    role: pendingChange.newRole,
+                  })
+                }
+              }}
+            >
+              Change role
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

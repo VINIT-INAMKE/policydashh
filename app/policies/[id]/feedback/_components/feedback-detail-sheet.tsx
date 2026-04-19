@@ -13,25 +13,12 @@ import type { Role } from '@/src/lib/constants'
 import { TriageActions } from './triage-actions'
 import { DecisionLog } from './decision-log'
 import { EvidenceList } from './evidence-list'
-
-type FeedbackStatus =
-  | 'submitted'
-  | 'under_review'
-  | 'accepted'
-  | 'partially_accepted'
-  | 'rejected'
-  | 'closed'
+import { StatusBadge, type FeedbackStatus } from './status-badge'
 
 interface FeedbackDetailSheetProps {
   feedbackId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
-}
-
-function formatStatus(status: string): string {
-  return status
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function formatDate(dateStr: string): string {
@@ -40,27 +27,6 @@ function formatDate(dateStr: string): string {
     day: 'numeric',
     year: 'numeric',
   })
-}
-
-function StatusBadge({ status }: { status: FeedbackStatus }) {
-  const styles: Record<FeedbackStatus, string> = {
-    submitted: 'bg-muted text-muted-foreground',
-    under_review: 'bg-primary/10 text-primary',
-    accepted: 'bg-[var(--status-accepted-bg)] text-[var(--status-accepted-text)]',
-    partially_accepted: 'bg-[var(--status-partial-bg)] text-[var(--status-partial-text)]',
-    rejected: 'bg-[var(--status-rejected-bg)] text-destructive',
-    closed: 'bg-muted text-muted-foreground',
-  }
-
-  return (
-    <Badge
-      variant="secondary"
-      className={cn('border-0', styles[status])}
-      aria-label={status}
-    >
-      {formatStatus(status)}
-    </Badge>
-  )
 }
 
 function PriorityBadge({ priority }: { priority: string }) {

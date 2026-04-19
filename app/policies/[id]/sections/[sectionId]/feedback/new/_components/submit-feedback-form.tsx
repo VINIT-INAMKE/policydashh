@@ -53,6 +53,12 @@ interface SubmitFeedbackFormProps {
   sectionTitle: string
   userName: string
   orgType: string
+  /**
+   * E1: when true, the form renders in a read-only state and the submit
+   * button is disabled. Set by the server page when the caller is not
+   * assigned to this section (mirrors requireSectionAccess gate).
+   */
+  disabled?: boolean
 }
 
 export function SubmitFeedbackForm({
@@ -61,6 +67,7 @@ export function SubmitFeedbackForm({
   sectionTitle,
   userName,
   orgType,
+  disabled = false,
 }: SubmitFeedbackFormProps) {
   const router = useRouter()
 
@@ -250,7 +257,7 @@ export function SubmitFeedbackForm({
         </Button>
         <Button
           type="submit"
-          disabled={!isValid || submitMutation.isPending}
+          disabled={disabled || !isValid || submitMutation.isPending}
         >
           {submitMutation.isPending && (
             <Loader2 className="mr-1 size-4 animate-spin" />

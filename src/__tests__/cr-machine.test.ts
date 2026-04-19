@@ -53,11 +53,11 @@ describe('CR State Machine', () => {
   })
 
   describe('REQUEST_CHANGES transition', () => {
-    it('approved -> in_review on REQUEST_CHANGES', () => {
+    it('approved -> in_review on REQUEST_CHANGES with rationale', () => {
       const actor = createCRActor()
       actor.send({ type: 'SUBMIT_FOR_REVIEW' })
       actor.send({ type: 'APPROVE', approverId: 'approver-001' })
-      actor.send({ type: 'REQUEST_CHANGES' })
+      actor.send({ type: 'REQUEST_CHANGES', rationale: 'Needs revisions to section 3 before merge' })
       expect(actor.getSnapshot().value).toBe('in_review')
       actor.stop()
     })

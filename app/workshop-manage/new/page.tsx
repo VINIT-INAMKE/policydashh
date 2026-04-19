@@ -33,6 +33,8 @@ export default function CreateWorkshopPage() {
   // in DB which means "open registration" on the public listing.
   const [maxSeats, setMaxSeats] = useState('')
   const [registrationLink, setRegistrationLink] = useState('')
+  // F9: per-workshop timezone. Default matches the prior hardcoded value.
+  const [timezone, setTimezone] = useState('Asia/Kolkata')
 
   const createMutation = trpc.workshop.create.useMutation({
     onSuccess: (workshop) => {
@@ -62,6 +64,7 @@ export default function CreateWorkshopPage() {
       durationMinutes: dur && dur > 0 ? dur : undefined,
       maxSeats: seats && seats > 0 ? seats : undefined,
       registrationLink: regLink,
+      timezone: timezone.trim() || undefined,
     })
   }
 
@@ -142,6 +145,20 @@ export default function CreateWorkshopPage() {
                 value={maxSeats}
                 onChange={(e) => setMaxSeats(e.target.value)}
               />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="workshop-timezone">Timezone</Label>
+              <Input
+                id="workshop-timezone"
+                placeholder="Asia/Kolkata"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                maxLength={64}
+              />
+              <p className="text-xs text-muted-foreground">
+                IANA timezone (e.g. Asia/Kolkata, America/New_York).
+              </p>
             </div>
 
             <div className="flex flex-col gap-2">

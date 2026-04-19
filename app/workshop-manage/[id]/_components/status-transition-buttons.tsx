@@ -6,11 +6,14 @@ import { toast } from 'sonner'
 
 type WorkshopStatus = 'upcoming' | 'in_progress' | 'completed' | 'archived'
 
+// F24: archived state now has an unarchive action ("completed") so an
+// accidentally-archived workshop can be brought back without a DB patch.
+// The router's ALLOWED_TRANSITIONS mirrors this (archived -> completed).
 const NEXT_ACTION: Record<WorkshopStatus, { label: string; toStatus: Exclude<WorkshopStatus, 'upcoming'> } | null> = {
   upcoming:    { label: 'Start Workshop', toStatus: 'in_progress' },
   in_progress: { label: 'Mark Completed', toStatus: 'completed' },
   completed:   { label: 'Archive',        toStatus: 'archived' },
-  archived:    null,
+  archived:    { label: 'Unarchive',      toStatus: 'completed' },
 }
 
 const STATUS_BADGE: Record<WorkshopStatus, string> = {

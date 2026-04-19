@@ -7,8 +7,9 @@ import { UsersClient } from './_components/users-client'
 
 export default async function UsersPage() {
   const { userId } = await auth()
+  // C9: unauthenticated users belong on /sign-in, not a broken /dashboard loop.
   if (!userId) {
-    redirect('/dashboard')
+    redirect('/sign-in')
   }
 
   const user = await db.query.users.findFirst({

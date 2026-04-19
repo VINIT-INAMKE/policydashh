@@ -58,12 +58,17 @@ export default function TraceabilityPage() {
     router.replace(`/policies/${documentId}/traceability${qs ? `?${qs}` : ''}`)
   }
 
-  // Build tRPC query input from filter state
+  // Build tRPC query input from filter state. Multi-value filters (orgTypes,
+  // decisionOutcomes) are now applied server-side via `inArray`.
   const matrixQueryInput = useMemo(() => ({
     documentId,
     sectionId: filters.sectionId,
-    orgType: filters.orgTypes.length === 1 ? filters.orgTypes[0] as 'government' | 'industry' | 'legal' | 'academia' | 'civil_society' | 'internal' : undefined,
-    decisionOutcome: filters.decisionOutcomes.length === 1 ? filters.decisionOutcomes[0] as 'submitted' | 'under_review' | 'accepted' | 'partially_accepted' | 'rejected' | 'closed' : undefined,
+    orgTypes: filters.orgTypes.length > 0
+      ? (filters.orgTypes as ('government' | 'industry' | 'legal' | 'academia' | 'civil_society' | 'internal')[])
+      : undefined,
+    decisionOutcomes: filters.decisionOutcomes.length > 0
+      ? (filters.decisionOutcomes as ('submitted' | 'under_review' | 'accepted' | 'partially_accepted' | 'rejected' | 'closed')[])
+      : undefined,
     versionFromLabel: filters.versionFrom,
     versionToLabel: filters.versionTo,
   }), [documentId, filters])
@@ -84,25 +89,7 @@ export default function TraceabilityPage() {
     [versionsQuery.data]
   )
 
-  // Client-side multi-filter for org types and decision outcomes
-  const filteredRows = useMemo(() => {
-    if (!matrixQuery.data) return []
-    let rows = matrixQuery.data
-
-    if (filters.orgTypes.length > 1) {
-      rows = rows.filter(
-        (row) => row.submitterOrgType && filters.orgTypes.includes(row.submitterOrgType)
-      )
-    }
-    if (filters.decisionOutcomes.length > 1) {
-      rows = rows.filter((row) =>
-        filters.decisionOutcomes.includes(row.feedbackStatus)
-      )
-    }
-
-    return rows
-  }, [matrixQuery.data, filters.orgTypes, filters.decisionOutcomes])
-
+  const filteredRows = matrixQuery.data ?? []
   const resultCount = filteredRows.length
 
   return (

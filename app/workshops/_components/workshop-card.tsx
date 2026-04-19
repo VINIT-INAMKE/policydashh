@@ -33,6 +33,9 @@ export interface WorkshopCardData {
   durationMinutes: number | null
   calcomEventTypeId: string | null
   maxSeats: number | null
+  // F23: external registration URL. When set, the card offers a secondary
+  // "Register elsewhere" link next to the cal.com embed button.
+  registrationLink: string | null
   registeredCount: number
   hasApprovedSummary: boolean
 }
@@ -141,22 +144,48 @@ export function WorkshopCard({
 
       <CardFooter>
         {alreadyRegistered ? (
-          <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            <p className="text-sm font-medium text-emerald-800">
-              You&apos;re registered
+          <div className="flex w-full flex-col items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <p className="text-sm font-medium text-emerald-800">
+                You&apos;re registered
+              </p>
+            </div>
+            {/* F22: link to cal.com's public booking page for this attendee -
+                cal.com emails every booking with a "Manage booking" link that
+                handles cancellation server-side. We can't know the booking uid
+                from a public card, so route the user to their email and add
+                a hint here. */}
+            <p className="text-xs text-emerald-900/80">
+              Need to cancel? Use the link in your cal.com confirmation email.
             </p>
           </div>
         ) : (
-          <RegisterForm
-            workshopId={workshop.id}
-            workshopTitle={workshop.title}
-            disabled={disabled}
-            prefillName={currentUser?.name}
-            prefillEmail={currentUser?.email}
-          />
+          <div className="flex w-full flex-col gap-2">
+            <RegisterForm
+              workshopId={workshop.id}
+              workshopTitle={workshop.title}
+              disabled={disabled}
+              prefillName={currentUser?.name}
+              prefillEmail={currentUser?.email}
+            />
+            {/* F23: external registration link fallback. Admins can set this
+                when they want to route attendees to another system (e.g.
+                Eventbrite); we surface it as a secondary action below the
+                primary register button. */}
+            {workshop.registrationLink ? (
+              <a
+                href={workshop.registrationLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-center text-xs text-muted-foreground underline decoration-dotted hover:text-foreground"
+              >
+                Or register via external link
+              </a>
+            ) : null}
+          </div>
         )}
       </CardFooter>
     </Card>

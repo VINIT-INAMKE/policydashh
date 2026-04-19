@@ -62,8 +62,10 @@ export function AdaptiveHeaderClient({ userId, userRole }: AdaptiveHeaderClientP
       items.push({ href: '/workshop-manage', label: 'Workshop Manage' })
     }
 
-    // admin, policy_lead get Users
-    if (userRole === 'admin' || userRole === 'policy_lead') {
+    // C1: /users is admin-only on the server (permissions.ts `user:list` and
+    // the server guards in app/users/page.tsx). Keep the nav link in sync to
+    // avoid policy_lead clicking through to an immediate redirect.
+    if (userRole === 'admin') {
       items.push({ href: '/users', label: 'Users' })
     }
 

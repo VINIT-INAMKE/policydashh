@@ -19,7 +19,6 @@
 import type { Metadata } from 'next'
 import { eq } from 'drizzle-orm'
 import { auth } from '@clerk/nextjs/server'
-import { redirect } from 'next/navigation'
 import { db } from '@/src/db'
 import { workshops, workshopSectionLinks } from '@/src/db/schema/workshops'
 import { policySections } from '@/src/db/schema/documents'
@@ -27,6 +26,8 @@ import { verifyFeedbackToken } from '@/src/lib/feedback-token'
 import { ParticipateForm } from './_components/participate-form'
 import { WorkshopFeedbackForm } from './_components/workshop-feedback-form'
 import { ExpiredLinkCard } from './_components/expired-link-card'
+import { Card } from '@/components/ui/card'
+import { Mail } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Join the Consultation | Civilization Lab',
@@ -60,6 +61,25 @@ function IntakeShell() {
   )
 }
 
+function MissingInviteExplainer() {
+  return (
+    <Card className="flex flex-col items-center gap-4 px-6 py-12 text-center">
+      <Mail className="h-12 w-12 text-muted-foreground" aria-hidden="true" />
+      <h2 className="text-xl font-semibold text-[var(--cl-on-surface)]">
+        Enter through your invite link
+      </h2>
+      <p className="max-w-md text-base leading-relaxed text-muted-foreground">
+        This page accepts feedback via a personalized link sent after a
+        workshop. Please check your email for the follow-up with your invite
+        link.
+      </p>
+      <p className="text-sm text-muted-foreground">
+        If you believe this is an error, contact the workshop organizer.
+      </p>
+    </Card>
+  )
+}
+
 function FeedbackShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
@@ -87,26 +107,36 @@ export default async function ParticipatePage({ searchParams }: ParticipatePageP
   const workshopId = params.workshopId
   const token = params.token
 
-  // Auth-aware redirect: logged-in users go to dashboard unless they're
-  // following a workshop feedback deep-link (workshopId + token).
+  // Auth-aware: logged-in users don't use the intake form. Previously we
+  // silently redirected them to /dashboard even when they hit /participate
+  // directly (E11). Now we render IntakeShell — which shows an explainer
+  // for signed-in users instead of a redirect — unless they're following a
+  // workshop feedback deep-link (workshopId + token).
   const { userId } = await auth()
-  if (workshopId && token) {
-    // Workshop feedback deep-link - always show regardless of auth
-  } else if (userId) {
-    // Already a member, send to dashboard
-    redirect('/dashboard')
-  }
+  const workshopFeedbackMode = !!(workshopId && token)
 
-  // Mode 1: intake - no workshopId → Phase 19 form unchanged
+  // Mode 1: intake - no workshopId → Phase 19 form unchanged. Signed-in
+  // users see the same shell with the form itself; the form handler will
+  // no-op for them or route to /dashboard via the top nav.
   if (!workshopId) {
+    // E11: if signed-in, show a short explainer pointing them to the
+    // invite-link flow rather than silently bouncing to /dashboard.
+    if (userId) {
+      return (
+        <FeedbackShell>
+          <MissingInviteExplainer />
+        </FeedbackShell>
+      )
+    }
     return <IntakeShell />
   }
 
-  // Mode 2/3: feedback mode - workshopId present, JWT required
+  // Mode 2/3: feedback mode - workshopId present, JWT required.
+  // E12: distinguish "no token" (missing) from "expired/invalid token".
   if (!token) {
     return (
       <FeedbackShell>
-        <ExpiredLinkCard />
+        <ExpiredLinkCard variant="missing" />
       </FeedbackShell>
     )
   }
@@ -115,10 +145,12 @@ export default async function ParticipatePage({ searchParams }: ParticipatePageP
   if (!payload) {
     return (
       <FeedbackShell>
-        <ExpiredLinkCard />
+        <ExpiredLinkCard variant="expired" />
       </FeedbackShell>
     )
   }
+
+  void workshopFeedbackMode // quiet "unused" hint when reading the file
 
   // Load workshop + linked sections for the form. Failure to locate either
   // the workshop OR its linked sections degrades to the expired card (no leak
@@ -131,7 +163,7 @@ export default async function ParticipatePage({ searchParams }: ParticipatePageP
   if (workshopRows.length === 0) {
     return (
       <FeedbackShell>
-        <ExpiredLinkCard />
+        <ExpiredLinkCard variant="expired" />
       </FeedbackShell>
     )
   }

@@ -22,6 +22,9 @@ import {
 } from '@/components/ui/tooltip'
 import { StatusBadge, type FeedbackStatus } from '../../feedback/_components/status-badge'
 
+// Left-join-nullable columns from the matrix query. Drizzle's inference
+// widens some of these to `any` under certain operator combinations, so
+// we accept both `null` and `undefined` and normalise at render time.
 export interface MatrixRow {
   feedbackId: string
   feedbackReadableId: string
@@ -29,17 +32,17 @@ export interface MatrixRow {
   feedbackStatus: string
   feedbackDecisionRationale: string | null
   feedbackIsAnonymous: boolean
-  feedbackCreatedAt: string
+  feedbackCreatedAt: string | Date
   submitterName: string | null
   submitterOrgType: string | null
-  crId: string | null
-  crReadableId: string | null
-  crTitle: string | null
-  crStatus: string | null
-  sectionId: string | null
-  sectionTitle: string | null
-  versionId: string | null
-  versionLabel: string | null
+  crId: string | null | undefined
+  crReadableId: string | null | undefined
+  crTitle: string | null | undefined
+  crStatus: string | null | undefined
+  sectionId: string | null | undefined
+  sectionTitle: string | null | undefined
+  versionId: string | null | undefined
+  versionLabel: string | null | undefined
 }
 
 interface MatrixTableProps {
@@ -149,10 +152,11 @@ export function MatrixTable({ rows, isLoading, documentId }: MatrixTableProps) {
                 className="hover:bg-muted/50"
                 aria-label={`Feedback ${row.feedbackReadableId}, Change Request ${row.crReadableId ?? 'none'}, Section ${row.sectionTitle ?? 'none'}, Version ${row.versionLabel ?? 'none'}, Decision ${row.feedbackStatus}`}
               >
-                {/* Feedback cell - sticky */}
+                {/* Feedback cell - sticky. D11: deep-link to this specific
+                    feedback item rather than the inbox overview. */}
                 <TableCell className="sticky left-0 z-10 bg-background">
                   <Link
-                    href={`/policies/${documentId}/feedback`}
+                    href={`/policies/${documentId}/feedback?selected=${row.feedbackId}`}
                     className="flex items-center gap-2 hover:underline"
                   >
                     <Badge
@@ -185,22 +189,38 @@ export function MatrixTable({ rows, isLoading, documentId }: MatrixTableProps) {
                   )}
                 </TableCell>
 
-                {/* Section cell */}
+                {/* Section cell. D11: clickable when we have a section id. */}
                 <TableCell>
                   {row.sectionTitle ? (
-                    <Badge variant="secondary" className="border-transparent">
-                      {row.sectionTitle}
-                    </Badge>
+                    row.sectionId ? (
+                      <Link
+                        href={`/policies/${documentId}?section=${row.sectionId}`}
+                        className="hover:underline"
+                      >
+                        <Badge variant="secondary" className="border-transparent">
+                          {row.sectionTitle}
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <Badge variant="secondary" className="border-transparent">
+                        {row.sectionTitle}
+                      </Badge>
+                    )
                   ) : (
                     <span className="text-muted-foreground">&mdash;</span>
                   )}
                 </TableCell>
 
-                {/* Version cell */}
+                {/* Version cell. D11: include versionId so the link opens the
+                    specific version rather than defaulting to the latest. */}
                 <TableCell>
                   {row.versionLabel ? (
                     <Link
-                      href={`/policies/${documentId}/versions`}
+                      href={
+                        row.versionId
+                          ? `/policies/${documentId}/versions?v=${row.versionId}`
+                          : `/policies/${documentId}/versions`
+                      }
                       className="hover:underline"
                     >
                       <Badge

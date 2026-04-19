@@ -12,6 +12,9 @@ export const PERMISSIONS = {
 
   // Audit log access
   'audit:read':           [ROLES.ADMIN, ROLES.AUDITOR] as readonly Role[],
+  // C12: any authenticated user can view their own audit trail. The `listMine`
+  // router scopes by actorId internally, so this is safe across roles.
+  'audit:read_own':       [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
 
   // Document management
   'document:create':      [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],

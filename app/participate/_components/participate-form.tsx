@@ -199,6 +199,7 @@ export function ParticipateForm() {
               onChange={(e) => update('name', e.target.value)}
               aria-invalid={!!errors.name}
               aria-describedby={errors.name ? 'name-error' : undefined}
+              maxLength={120}
               required
             />
             {errors.name ? <p id="name-error" className="text-sm text-destructive">{errors.name}</p> : null}
@@ -213,6 +214,7 @@ export function ParticipateForm() {
               onChange={(e) => update('email', e.target.value)}
               aria-invalid={!!errors.email}
               aria-describedby={errors.email ? 'email-error' : undefined}
+              maxLength={254}
               required
             />
             {errors.email ? <p id="email-error" className="text-sm text-destructive">{errors.email}</p> : null}
@@ -268,6 +270,7 @@ export function ParticipateForm() {
               onChange={(e) => update('orgName', e.target.value)}
               aria-invalid={!!errors.orgName}
               aria-describedby={errors.orgName ? 'orgName-error' : undefined}
+              maxLength={200}
               required
             />
             {errors.orgName ? <p id="orgName-error" className="text-sm text-destructive">{errors.orgName}</p> : null}
@@ -289,6 +292,7 @@ export function ParticipateForm() {
               onChange={(e) => update('expertise', e.target.value)}
               aria-invalid={!!errors.expertise}
               aria-describedby={errors.expertise ? 'expertise-error' : undefined}
+              maxLength={1000}
               required
             />
             {errors.expertise ? <p id="expertise-error" className="text-sm text-destructive">{errors.expertise}</p> : null}

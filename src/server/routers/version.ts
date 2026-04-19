@@ -149,8 +149,11 @@ export const versionRouter = router({
         .where(eq(policySections.documentId, version.documentId))
         .groupBy(sectionAssignments.userId)
 
-      for (const { userId } of assignedUsers) {
-        await sendNotificationCreate({
+      // D10: parallelize per-user dispatch with Promise.allSettled so a
+      // transient Inngest failure for a single recipient doesn't block the
+      // rest. Errors still surface to the server log.
+      const dispatches = assignedUsers.map(({ userId }) =>
+        sendNotificationCreate({
           userId,
           type:       'version_published',
           title:      'New version published',
@@ -160,7 +163,11 @@ export const versionRouter = router({
           linkHref:   `/policies/${version.documentId}/versions/${version.id}`,
           createdBy:  ctx.user.id,
           action:     'publish',
-        })
+        }),
+      )
+      const results = await Promise.allSettled(dispatches)
+      for (const r of results) {
+        if (r.status === 'rejected') console.error('version.publish notification dispatch failed', r.reason)
       }
 
       // LLM-05: fire version.published so consultationSummaryGenerateFn

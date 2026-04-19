@@ -23,6 +23,11 @@ interface AuditFilterPanelProps {
   onFilterChange: (filters: FilterState) => void
 }
 
+// H6: Radix Select treats '' as "no value" and refuses to render SelectItems
+// with empty-string values. We use a sentinel that maps back to `undefined`
+// in the filter state so Select reliably renders and clears.
+const ALL_SENTINEL = '__all__'
+
 const actionOptions = Object.entries(ACTIONS).map(([, value]) => ({
   value,
   label: value,
@@ -46,6 +51,11 @@ function hasActiveFilters(filters: FilterState): boolean {
   return !!(filters.action || filters.actorRole || filters.entityType || filters.from || filters.to)
 }
 
+function decodeSentinel(val: string | null): string | undefined {
+  if (val == null || val === ALL_SENTINEL) return undefined
+  return val
+}
+
 export function AuditFilterPanel({ filters, onFilterChange }: AuditFilterPanelProps) {
   const isActive = hasActiveFilters(filters)
 
@@ -54,14 +64,14 @@ export function AuditFilterPanel({ filters, onFilterChange }: AuditFilterPanelPr
       <div className="flex flex-col gap-1">
         <label className="text-xs font-normal text-muted-foreground">Action type</label>
         <Select
-          value={filters.action ?? ''}
-          onValueChange={(val) => onFilterChange({ ...filters, action: val || undefined })}
+          value={filters.action ?? ALL_SENTINEL}
+          onValueChange={(val) => onFilterChange({ ...filters, action: decodeSentinel(val) })}
         >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All actions" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All actions</SelectItem>
+            <SelectItem value={ALL_SENTINEL}>All actions</SelectItem>
             {actionOptions.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}
@@ -74,14 +84,14 @@ export function AuditFilterPanel({ filters, onFilterChange }: AuditFilterPanelPr
       <div className="flex flex-col gap-1">
         <label className="text-xs font-normal text-muted-foreground">Actor role</label>
         <Select
-          value={filters.actorRole ?? ''}
-          onValueChange={(val) => onFilterChange({ ...filters, actorRole: val || undefined })}
+          value={filters.actorRole ?? ALL_SENTINEL}
+          onValueChange={(val) => onFilterChange({ ...filters, actorRole: decodeSentinel(val) })}
         >
           <SelectTrigger className="w-44">
             <SelectValue placeholder="All roles" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All roles</SelectItem>
+            <SelectItem value={ALL_SENTINEL}>All roles</SelectItem>
             {roleOptions.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}
@@ -94,14 +104,14 @@ export function AuditFilterPanel({ filters, onFilterChange }: AuditFilterPanelPr
       <div className="flex flex-col gap-1">
         <label className="text-xs font-normal text-muted-foreground">Entity type</label>
         <Select
-          value={filters.entityType ?? ''}
-          onValueChange={(val) => onFilterChange({ ...filters, entityType: val || undefined })}
+          value={filters.entityType ?? ALL_SENTINEL}
+          onValueChange={(val) => onFilterChange({ ...filters, entityType: decodeSentinel(val) })}
         >
           <SelectTrigger className="w-44">
             <SelectValue placeholder="All entities" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All entities</SelectItem>
+            <SelectItem value={ALL_SENTINEL}>All entities</SelectItem>
             {entityTypeOptions.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}

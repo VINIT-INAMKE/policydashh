@@ -31,6 +31,21 @@ interface MilestoneDetailHeaderProps {
   canManage: boolean
 }
 
+// D3 sidecar parser: server embeds a "<MARK_READY_META>{...}" chunk in the
+// error message when a markReady call fails due to unmet slots. We look for
+// that tag and parse the trailing JSON.
+function parseMarkReadyMeta(message: string): { unmet: UnmetSlot[] } | null {
+  const idx = message.indexOf('<MARK_READY_META>')
+  if (idx === -1) return null
+  try {
+    const json = message.slice(idx + '<MARK_READY_META>'.length)
+    const parsed = JSON.parse(json) as { unmet?: UnmetSlot[] }
+    return { unmet: parsed.unmet ?? [] }
+  } catch {
+    return null
+  }
+}
+
 export function MilestoneDetailHeader(props: MilestoneDetailHeaderProps) {
   const utils = trpc.useUtils()
   const [unmet, setUnmet] = useState<UnmetSlot[]>([])
@@ -43,10 +58,12 @@ export function MilestoneDetailHeader(props: MilestoneDetailHeaderProps) {
       utils.milestone.list.invalidate({ documentId: props.documentId })
     },
     onError: (err) => {
-      // Parse structured unmet-slot error from cause, if present
-      const cause = (err as unknown as { data?: { cause?: { unmet?: UnmetSlot[] } } }).data?.cause
-      if (cause?.unmet && cause.unmet.length > 0) {
-        setUnmet(cause.unmet)
+      // D3: the server embeds a "<MARK_READY_META>{...}" JSON sidecar in the
+      // error message so we can reconstruct the unmet-slot list even when
+      // the tRPC error formatter hasn't been updated to forward `cause`.
+      const parsed = parseMarkReadyMeta(err.message)
+      if (parsed && parsed.unmet.length > 0) {
+        setUnmet(parsed.unmet)
       }
       toast.error('Failed to mark milestone ready')
     },

@@ -4,8 +4,11 @@ import { policySections } from './documents'
 import { feedbackItems } from './feedback'
 import { evidenceArtifacts } from './evidence'
 
+// F30: `transcript` added so the recording pipeline can distinguish the
+// raw transcription from the structured summary artifact. Existing rows
+// remain valid; callers now pick the right type at insert time.
 export const workshopArtifactTypeEnum = pgEnum('workshop_artifact_type', [
-  'promo', 'recording', 'summary', 'attendance', 'other',
+  'promo', 'recording', 'transcript', 'summary', 'attendance', 'other',
 ])
 
 export const workshopStatusEnum = pgEnum('workshop_status', [
@@ -39,6 +42,11 @@ export const workshops = pgTable('workshops', {
   status:              workshopStatusEnum('status').notNull().default('upcoming'),
   calcomEventTypeId:   text('calcom_event_type_id'),
   maxSeats:            integer('max_seats'),
+  // F9: per-workshop timezone used when creating cal.com bookings (attendee
+  // `timeZone`) and when rendering absolute-time emails. IANA tz string -
+  // stored as text so we stay agnostic to locale/locale-changes. Default
+  // matches the project's historical hardcoded value for back-compat.
+  timezone:            text('timezone').notNull().default('Asia/Kolkata'),
   createdBy:           uuid('created_by').notNull().references(() => users.id),
   createdAt:           timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:           timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
