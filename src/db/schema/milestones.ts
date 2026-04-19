@@ -18,10 +18,12 @@ export type RequiredSlots = {
   workshops?: number
   feedback?: number
   evidence?: number
+  research_items?: number  // Phase 26 — research module as additive manifest slot
 }
 
 export type ManifestEntry = {
-  entityType: 'version' | 'workshop' | 'feedback' | 'evidence'
+  // Phase 26: 'research_item' added so milestones can include published research items in their manifest
+  entityType: 'version' | 'workshop' | 'feedback' | 'evidence' | 'research_item'
   entityId: string
   contentHash: string
 }

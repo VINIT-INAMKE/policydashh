@@ -249,7 +249,8 @@ export function hashEvidenceBundle(artifacts: EvidenceArtifactHashInput[]): stri
  * D-03a relies on.
  */
 export interface ManifestEntry {
-  entityType: 'version' | 'workshop' | 'feedback' | 'evidence'
+  // Phase 26: 'research_item' added so milestones can include published research items in their manifest
+  entityType: 'version' | 'workshop' | 'feedback' | 'evidence' | 'research_item'
   entityId: string
   contentHash: string
 }
@@ -270,6 +271,7 @@ export interface MilestoneMetadata {
     workshops?: number
     feedback?: number
     evidence?: number
+    research_items?: number  // Phase 26 — research module as additive manifest slot
   }
 }
 
