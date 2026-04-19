@@ -53,7 +53,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 23: Cardano Preview-Net Anchoring** - Mesh SDK + Blockfrost per-milestone and per-version anchoring with Verified State badges on public portal (completed 2026-04-16)
 - [x] **Phase 24: Stakeholder Engagement Tracking Lite** - users.lastActivityAt via tRPC middleware, admin inactive-user widget, basic engagement score (completed 2026-04-16)
 - [ ] **Phase 25: Cross-Phase Integration Smoke** - Full E2E walk: /participate → workshop register → reminders → MEETING_ENDED → feedback → CR → merge → version → milestone → SHA256 → Cardano tx → Verified State badge
-- [ ] **Phase 26: Research Module — Data & Server** - `research_items` schema + three linking tables, RBAC permissions, tRPC router, readableId sequence (RI-NNN), milestone manifest entityType extension
+- [x] **Phase 26: Research Module — Data & Server** - `research_items` schema + three linking tables, RBAC permissions, tRPC router, readableId sequence (RI-NNN), milestone manifest entityType extension (completed 2026-04-19)
 - [ ] **Phase 27: Research Workspace Admin UI** - research_lead + admin surface: create/edit drafts, R2 file upload via existing endpoint, submit for review, admin approve/reject/retract, section/version/feedback link-picker
 - [ ] **Phase 28: Public /research/items Listing & Detail** - Public dynamic listing at `/research/items` with document/type/date filters, `/research/items/[id]` detail page with presigned downloads and linked sections; existing static `/research` gets a Browse-Research CTA
 
@@ -593,7 +593,7 @@ Plans:
   5. XState-style lifecycle guards (draft → pending_review → {published | draft}, published → retracted) enforced in the service layer with a valid-transition table and audit trail identical to feedback.service.ts pattern
   6. `ManifestEntry.entityType` union extended with `'research_item'`; `RequiredSlots.research_items?` added; nullable `milestoneId` FK (SQL-level only) added to `research_items` following the `workshops.milestoneId` pattern
   7. Unit tests pass: CRUD, state machine, permissions matrix, readableId collision guard, linking table integrity, anonymous-author flag filter on public queries
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 26-00-PLAN.md -- Wave 0 TDD gate: register RESEARCH-01..05 in REQUIREMENTS.md + 5 RED stub test files + VALIDATION.md flag flip
@@ -601,7 +601,7 @@ Plans:
 - [x] 26-02-permissions-constants-PLAN.md -- Wave 1 (parallel): 7 research:* permissions + 12 RESEARCH_* ACTIONS constants (Q3 moderation gate enforced)
 - [x] 26-03-manifest-entry-extension-PLAN.md -- Wave 1 (parallel): Extend ManifestEntry.entityType union + RequiredSlots.research_items? (TypeScript-only)
 - [x] 26-04-lifecycle-service-PLAN.md -- Wave 2: research.lifecycle.ts VALID_TRANSITIONS + research.service.ts transitionResearch (R6 insert-before-update invariant)
-- [ ] 26-05-router-registration-PLAN.md -- Wave 3: researchRouter (15 procedures) + _app.ts registration
+- [x] 26-05-router-registration-PLAN.md -- Wave 3: researchRouter (15 procedures) + _app.ts registration
 
 ### Phase 27: Research Workspace Admin UI
 

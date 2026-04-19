@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to execute
-stopped_at: Completed 26-04-lifecycle-service-PLAN.md
-last_updated: "2026-04-19T17:03:48.490Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 26-05-router-registration-PLAN.md
+last_updated: "2026-04-19T17:27:35.034Z"
 progress:
   total_phases: 29
-  completed_phases: 25
+  completed_phases: 26
   total_plans: 98
-  completed_plans: 96
+  completed_plans: 97
 ---
 
 # Project State
@@ -132,6 +132,7 @@ Plan: 6 of 6
 | Phase 26-research-module-data-server P02 | 5min | 2 tasks | 3 files |
 | Phase 26-research-module-data-server P01 | 7min | 2 tasks | 6 files |
 | Phase 26-research-module-data-server P04 | 9min | 2 tasks | 4 files |
+| Phase 26-research-module-data-server PP05 | 15min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -356,6 +357,11 @@ Recent decisions affecting current work:
 - [Phase 26-research-module-data-server]: Plan 26-04: Q3 moderation gate encoded in data (VALID_TRANSITIONS.draft=['pending_review'] forbids draft->published by shape) AND code (Plan 26-02 RBAC excludes research_lead from research:publish/retract) — defense in depth
 - [Phase 26-research-module-data-server]: Plan 26-04: Rule 2 deviation — added INTERNAL_SERVER_ERROR guard on empty updated[] array in transitionResearch to defend against UPDATE-touches-zero-rows after successful audit INSERT (Object.assign(undefined) TypeError would be worse than typed TRPCError)
 - [Phase 26-research-module-data-server]: Plan 26-04: vi.hoisted() shared state + table-reference identity check in vi.mock('@/src/db') factory (table === workflowTransitions ? 'insert:workflowTransitions' : 'insert:unknown') — robust call-order tracking pattern surviving future INSERT/UPDATE target additions
+- [Phase 26-research-module-data-server]: Plan 26-05: Router-level two-tier RBAC — requirePermission for role membership + assertOwnershipOrBypass(role, rowCreatedBy, actorId) helper for row-scope ownership; canonical pattern for research_lead-style roles that have a permission but should only act on self-owned rows
+- [Phase 26-research-module-data-server]: Plan 26-05: Delegate-don't-duplicate — lifecycle mutations (submitForReview/approve/reject/retract) call transitionResearch() and DO NOT re-implement R6 invariant or VALID_TRANSITIONS; service layer is single source of truth
+- [Phase 26-research-module-data-server]: Plan 26-05: Test-harness server-only defanger pattern — vi.mock('server-only', () => ({})) + downstream mocks of calcom/cardano/rate-limit lets tRPC appRouter tests traverse the full _app.ts import graph without bundler sentinels throwing
+- [Phase 26-research-module-data-server]: Plan 26-05: listPublic uses protectedProcedure not publicProcedure (Open Q2 resolved) — Phase 28 will expose truly public routes via direct server-component DB queries, matching the existing /portal pattern
+- [Phase 26-research-module-data-server]: Plan 26-05: retract mutation requires retractionReason (not optional) — compliance demands the reason in workflowTransitions.metadata + audit payload
 
 ### Pending Todos
 
@@ -374,6 +380,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T17:03:15.353Z
-Stopped at: Completed 26-04-lifecycle-service-PLAN.md
+Last session: 2026-04-19T17:27:14.228Z
+Stopped at: Completed 26-05-router-registration-PLAN.md
 Resume file: None
