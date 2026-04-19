@@ -593,13 +593,13 @@ Plans:
   5. XState-style lifecycle guards (draft → pending_review → {published | draft}, published → retracted) enforced in the service layer with a valid-transition table and audit trail identical to feedback.service.ts pattern
   6. `ManifestEntry.entityType` union extended with `'research_item'`; `RequiredSlots.research_items?` added; nullable `milestoneId` FK (SQL-level only) added to `research_items` following the `workshops.milestoneId` pattern
   7. Unit tests pass: CRUD, state machine, permissions matrix, readableId collision guard, linking table integrity, anonymous-author flag filter on public queries
-**Plans:** 1/6 plans executed
+**Plans:** 2/6 plans executed
 
 Plans:
 - [x] 26-00-PLAN.md -- Wave 0 TDD gate: register RESEARCH-01..05 in REQUIREMENTS.md + 5 RED stub test files + VALIDATION.md flag flip
 - [ ] 26-01-schema-migration-PLAN.md -- Wave 1: Drizzle schema (4 tables + 2 enums) + migration 0025 + Neon HTTP apply script + research_item_id_seq sequence
 - [ ] 26-02-permissions-constants-PLAN.md -- Wave 1 (parallel): 7 research:* permissions + 12 RESEARCH_* ACTIONS constants (Q3 moderation gate enforced)
-- [ ] 26-03-manifest-entry-extension-PLAN.md -- Wave 1 (parallel): Extend ManifestEntry.entityType union + RequiredSlots.research_items? (TypeScript-only)
+- [x] 26-03-manifest-entry-extension-PLAN.md -- Wave 1 (parallel): Extend ManifestEntry.entityType union + RequiredSlots.research_items? (TypeScript-only)
 - [ ] 26-04-lifecycle-service-PLAN.md -- Wave 2: research.lifecycle.ts VALID_TRANSITIONS + research.service.ts transitionResearch (R6 insert-before-update invariant)
 - [ ] 26-05-router-registration-PLAN.md -- Wave 3: researchRouter (15 procedures) + _app.ts registration
 

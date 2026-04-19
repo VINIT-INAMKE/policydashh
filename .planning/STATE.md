@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 26-00-PLAN.md
-last_updated: "2026-04-19T16:35:00.604Z"
+stopped_at: Completed 26-02-permissions-constants-PLAN.md
+last_updated: "2026-04-19T16:44:00.668Z"
 progress:
   total_phases: 29
   completed_phases: 25
   total_plans: 98
-  completed_plans: 92
+  completed_plans: 94
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 26 (research-module-data-server) — EXECUTING
-Plan: 2 of 6
+Plan: 4 of 6
 
 ## Performance Metrics
 
@@ -128,6 +128,8 @@ Plan: 2 of 6
 | Phase 24 P02 | 16min | 2 tasks | 4 files |
 | Phase 25-cross-phase-integration-smoke P00 | 14min | 2 tasks | 5 files |
 | Phase 26-research-module-data-server P00 | 12min | 7 tasks | 8 files |
+| Phase 26-research-module-data-server P03 | 4min | 1 tasks | 2 files |
+| Phase 26-research-module-data-server P02 | 5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -338,6 +340,8 @@ Recent decisions affecting current work:
 - [Phase 26-research-module-data-server]: Wave 0 TDD gate pattern: it.todo for all stub tests keeps suite green while preserving verifiable RED contract via acceptance-criteria-matching description strings
 - [Phase 26-research-module-data-server]: Plan 26-00: RESEARCH-01..05 registered in REQUIREMENTS.md v0.2 Research Module subsection before INTEGRATION-01; 5 traceability rows appended after INTEGRATION-01 per canonical growth pattern
 - [Phase 26-research-module-data-server]: Plan 26-00: Retain vi.mock('@/src/db') + vi.mock('@/src/lib/audit') + segs.join('/') helper in research-router.test.ts even with all tests it.todo — gives Plan 26-05 pre-wired mocking surface for zero-rework GREEN conversion
+- [Phase 26-research-module-data-server]: Plan 26-03: ManifestEntry duplicate-type audit — schema + hashing.ts both declare the same union; extension must propagate to BOTH files (Rule 1/3 auto-fix; 2 call sites relied on the plan's stated type-propagation invariant)
+- [Phase 26-research-module-data-server]: Plan 26-03: Pure-TypeScript union extension on Drizzle jsonb.$type<>() columns requires zero migration — DB layer is JSONB, only TS literals widen
 
 ### Pending Todos
 
@@ -356,6 +360,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T16:35:00.595Z
-Stopped at: Completed 26-00-PLAN.md
+Last session: 2026-04-19T16:44:00.659Z
+Stopped at: Completed 26-02-permissions-constants-PLAN.md
 Resume file: None
