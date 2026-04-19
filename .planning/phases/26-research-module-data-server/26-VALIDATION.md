@@ -1,9 +1,9 @@
 ---
 phase: 26
 slug: research-module-data-server
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: wave_0_complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-19
 ---
 
@@ -38,11 +38,11 @@ created: 2026-04-19
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 26-W0-01 | 00 | 0 | RESEARCH-01..05 | infra | `test -f src/__tests__/research-permissions.test.ts` | ❌ W0 | ⬜ pending |
-| 26-W0-02 | 00 | 0 | RESEARCH-05 | infra | `test -f src/__tests__/research-lifecycle.test.ts` | ❌ W0 | ⬜ pending |
-| 26-W0-03 | 00 | 0 | RESEARCH-05 | infra | `test -f src/__tests__/research-service.test.ts` | ❌ W0 | ⬜ pending |
-| 26-W0-04 | 00 | 0 | RESEARCH-02, RESEARCH-04 | infra | `test -f src/__tests__/research-router.test.ts` | ❌ W0 | ⬜ pending |
-| 26-W0-05 | 00 | 0 | RESEARCH-01 | infra | `test -f src/__tests__/research-schema.test.ts` | ❌ W0 | ⬜ pending |
+| 26-W0-01 | 00 | 0 | RESEARCH-01..05 | infra | `test -f src/__tests__/research-permissions.test.ts` | ✅ | ✅ wave_0_complete |
+| 26-W0-02 | 00 | 0 | RESEARCH-05 | infra | `test -f src/__tests__/research-lifecycle.test.ts` | ✅ | ✅ wave_0_complete |
+| 26-W0-03 | 00 | 0 | RESEARCH-05 | infra | `test -f src/__tests__/research-service.test.ts` | ✅ | ✅ wave_0_complete |
+| 26-W0-04 | 00 | 0 | RESEARCH-02, RESEARCH-04 | infra | `test -f src/__tests__/research-router.test.ts` | ✅ | ✅ wave_0_complete |
+| 26-W0-05 | 00 | 0 | RESEARCH-01 | infra | `test -f src/__tests__/research-schema.test.ts` | ✅ | ✅ wave_0_complete |
 | 26-01-XX | 01 | 1 | RESEARCH-01 | unit | `npm test -- src/__tests__/research-schema.test.ts` | ❌ W0 | ⬜ pending |
 | 26-02-XX | 02 | 1 | RESEARCH-03 | unit | `npm test -- src/__tests__/research-permissions.test.ts` | ❌ W0 | ⬜ pending |
 | 26-03-XX | 03 | 1 | RESEARCH-01 (manifest union) | unit | `npm test -- --run src/db/schema/__tests__/milestones.test.ts` | ✓ existing | ⬜ pending |
@@ -58,11 +58,11 @@ created: 2026-04-19
 
 ## Wave 0 Requirements
 
-- [ ] `src/__tests__/research-schema.test.ts` — stubs for RESEARCH-01 (table imports, composite PK assertions)
-- [ ] `src/__tests__/research-permissions.test.ts` — stubs for RESEARCH-03 (7 permissions × role grants matrix)
-- [ ] `src/__tests__/research-lifecycle.test.ts` — stubs for RESEARCH-05 (valid/invalid transition assertions, retractionReason guard)
-- [ ] `src/__tests__/research-service.test.ts` — stubs for RESEARCH-05 (workflowTransitions insert-before-update invariant, reviewedBy on approve)
-- [ ] `src/__tests__/research-router.test.ts` — stubs for RESEARCH-02 (readableId uniqueness spy), RESEARCH-04 (FORBIDDEN/NOT_FOUND guards), RESEARCH-01 (anonymous-author filter on listPublic)
+- [x] `src/__tests__/research-schema.test.ts` — stubs for RESEARCH-01 (table imports, composite PK assertions)
+- [x] `src/__tests__/research-permissions.test.ts` — stubs for RESEARCH-03 (7 permissions × role grants matrix)
+- [x] `src/__tests__/research-lifecycle.test.ts` — stubs for RESEARCH-05 (valid/invalid transition assertions, retractionReason guard)
+- [x] `src/__tests__/research-service.test.ts` — stubs for RESEARCH-05 (workflowTransitions insert-before-update invariant, reviewedBy on approve)
+- [x] `src/__tests__/research-router.test.ts` — stubs for RESEARCH-02 (readableId uniqueness spy), RESEARCH-04 (FORBIDDEN/NOT_FOUND guards), RESEARCH-01 (anonymous-author filter on listPublic)
 
 *Framework already installed — no install step needed. All test files use existing `vi.mock('@/src/db')` pattern from `src/__tests__/feedback-*.test.ts`.*
 
@@ -76,11 +76,11 @@ created: 2026-04-19
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved
