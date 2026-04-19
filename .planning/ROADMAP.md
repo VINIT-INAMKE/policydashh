@@ -619,7 +619,7 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 27-01-router-upload-wave0-PLAN.md — Wave 0: add research.listTransitions + authorId filter + linkSection onConflictDoUpdate + 'research' upload category + shouldHideAuthors util + 4 RED test scaffolds
+- [x] 27-01-router-upload-wave0-PLAN.md — Wave 0: add research.listTransitions + authorId filter + linkSection onConflictDoUpdate + 'research' upload category + shouldHideAuthors util + 4 RED test scaffolds
 - [ ] 27-02-list-page-nav-PLAN.md — Wave 1: /research-manage list page + filter panel + ResearchStatusBadge + sidebar nav entry (D-12)
 - [ ] 27-03-create-edit-pages-PLAN.md — Wave 1: /research-manage/new + /research-manage/[id]/edit + shared ResearchItemForm + AnonymousPreviewCard + fire-on-select upload (D-02/D-03/D-05) + router artifact-row extension
 - [ ] 27-04-detail-page-lifecycle-PLAN.md — Wave 2: /research-manage/[id] detail page + ResearchDecisionLog + ResearchLifecycleActions (inline reject + Alert-Dialog retract, D-14)

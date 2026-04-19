@@ -230,9 +230,9 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [x] **RESEARCH-03**: Seven new RBAC permissions added to `src/lib/permissions.ts` (`research:create`, `research:manage_own`, `research:submit_review`, `research:publish`, `research:retract`, `research:read_drafts`, `research:read_published`) with role grants per `.planning/research/research-module/INTEGRATION.md` §8
 - [x] **RESEARCH-04**: tRPC `research` router registered in `src/server/routers/_app.ts` exposing 15 procedures (list, listPublic, getById, create, update, submitForReview, approve, reject, retract, linkSection, unlinkSection, linkVersion, unlinkVersion, linkFeedback, unlinkFeedback) — each with correct `requirePermission` guard, Zod input validation using `z.guid()` for UUIDs, and fire-and-forget `writeAuditLog`
 - [x] **RESEARCH-05**: State machine (`draft → pending_review → {published | draft}`; `published → retracted`) enforced in `src/server/services/research.service.ts` via `VALID_TRANSITIONS` table in `research.lifecycle.ts`; `workflowTransitions` INSERT happens BEFORE `researchItems` UPDATE (R6 invariant mirroring `feedback.service.ts` lines 139–162)
-- [ ] **RESEARCH-06**: `/research-manage` workspace surface with role-scoped list (research_lead sees own drafts; admin/policy_lead sees all), filter panel (document, type, status, author), sortable columns, and two-step create/edit flow (metadata → file upload via `app/api/upload/route.ts` R2 reuse, or URL-only) with anonymous-author toggle preview and audit-logged saves
-- [ ] **RESEARCH-07**: Research item detail page with lifecycle actions (research_lead Submit-for-Review; admin/policy_lead Approve, Reject-with-rationale, Retract-with-reason) wired to tRPC `research.{submitForReview|approve|reject|retract}` — every transition writes `workflow_transitions` row with before/after status and rationale
-- [ ] **RESEARCH-08**: Link-picker dialogs on the detail page attach research items to sections, versions, and feedback items (no duplicate rows; per-section `relevanceNote` editable inline); dashboard widgets surface "My drafts" + "Pending review count" for research_lead and "Research awaiting review" for admin/policy_lead
+- [x] **RESEARCH-06**: `/research-manage` workspace surface with role-scoped list (research_lead sees own drafts; admin/policy_lead sees all), filter panel (document, type, status, author), sortable columns, and two-step create/edit flow (metadata → file upload via `app/api/upload/route.ts` R2 reuse, or URL-only) with anonymous-author toggle preview and audit-logged saves
+- [x] **RESEARCH-07**: Research item detail page with lifecycle actions (research_lead Submit-for-Review; admin/policy_lead Approve, Reject-with-rationale, Retract-with-reason) wired to tRPC `research.{submitForReview|approve|reject|retract}` — every transition writes `workflow_transitions` row with before/after status and rationale
+- [x] **RESEARCH-08**: Link-picker dialogs on the detail page attach research items to sections, versions, and feedback items (no duplicate rows; per-section `relevanceNote` editable inline); dashboard widgets surface "My drafts" + "Pending review count" for research_lead and "Research awaiting review" for admin/policy_lead
 
 ### Cross-Phase Integration
 
@@ -432,9 +432,9 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | RESEARCH-03 | Phase 26 | Complete |
 | RESEARCH-04 | Phase 26 | Complete |
 | RESEARCH-05 | Phase 26 | Complete |
-| RESEARCH-06 | Phase 27 | Pending |
-| RESEARCH-07 | Phase 27 | Pending |
-| RESEARCH-08 | Phase 27 | Pending |
+| RESEARCH-06 | Phase 27 | Complete |
+| RESEARCH-07 | Phase 27 | Complete |
+| RESEARCH-08 | Phase 27 | Complete |
 
 **Coverage:**
 - v1 requirements: 87 total — 87 mapped, 87 complete

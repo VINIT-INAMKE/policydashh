@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Phase 27 context gathered
-last_updated: "2026-04-19T18:10:30.880Z"
+status: Ready to execute
+stopped_at: Completed 27-01-router-upload-wave0-PLAN.md
+last_updated: "2026-04-19T21:49:08.219Z"
 progress:
   total_phases: 29
   completed_phases: 26
-  total_plans: 98
-  completed_plans: 97
+  total_plans: 104
+  completed_plans: 98
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 26 — research-module-data-server
+**Current focus:** Phase 27 — research-workspace-admin-ui
 
 ## Current Position
 
-Phase: 27
-Plan: Not started
+Phase: 27 (research-workspace-admin-ui) — EXECUTING
+Plan: 2 of 6
 
 ## Performance Metrics
 
@@ -133,6 +133,7 @@ Plan: Not started
 | Phase 26-research-module-data-server P01 | 7min | 2 tasks | 6 files |
 | Phase 26-research-module-data-server P04 | 9min | 2 tasks | 4 files |
 | Phase 26-research-module-data-server PP05 | 15min | 2 tasks | 4 files |
+| Phase 27-research-workspace-admin-ui P01 | 15min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -362,6 +363,9 @@ Recent decisions affecting current work:
 - [Phase 26-research-module-data-server]: Plan 26-05: Test-harness server-only defanger pattern — vi.mock('server-only', () => ({})) + downstream mocks of calcom/cardano/rate-limit lets tRPC appRouter tests traverse the full _app.ts import graph without bundler sentinels throwing
 - [Phase 26-research-module-data-server]: Plan 26-05: listPublic uses protectedProcedure not publicProcedure (Open Q2 resolved) — Phase 28 will expose truly public routes via direct server-component DB queries, matching the existing /portal pattern
 - [Phase 26-research-module-data-server]: Plan 26-05: retract mutation requires retractionReason (not optional) — compliance demands the reason in workflowTransitions.metadata + audit payload
+- [Phase 27-research-workspace-admin-ui]: Conditional upsert in linkSection: branch on input.relevanceNote !== undefined to choose onConflictDoUpdate vs onConflictDoNothing - one mutation, two semantics, preserves bulk-link idempotency while enabling D-07 inline edit on existing links
+- [Phase 27-research-workspace-admin-ui]: shouldHideAuthors as pure helper in src/lib/research-utils.ts - both server queries and client preview/detail pages import the same function, D-05 single source of truth (Pitfall 4)
+- [Phase 27-research-workspace-admin-ui]: Plan 27-01 Wave 0 backend gate pattern: one router-only plan that ships listTransitions + authorId filter + linkSection upsert + upload research category + shared helper + 4 RED Nyquist scaffolds, all in one plan, before any UI work begins
 
 ### Pending Todos
 
@@ -380,6 +384,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T18:10:30.870Z
-Stopped at: Phase 27 context gathered
-Resume file: .planning/phases/27-research-workspace-admin-ui/27-CONTEXT.md
+Last session: 2026-04-19T21:49:08.207Z
+Stopped at: Completed 27-01-router-upload-wave0-PLAN.md
+Resume file: None
