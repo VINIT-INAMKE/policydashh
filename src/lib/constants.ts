@@ -99,6 +99,19 @@ export const ACTIONS = {
   // and alert rules can separate version anchor timeouts from milestone
   // anchor timeouts (versionAnchorFn previously reused MILESTONE_ANCHOR_FAIL).
   VERSION_ANCHOR_FAIL:       'version.anchor_fail',
+  // Research Module (Phase 26) — used by researchRouter mutations for writeAuditLog
+  RESEARCH_CREATE:           'research.create',
+  RESEARCH_UPDATE:           'research.update',
+  RESEARCH_SUBMIT_REVIEW:    'research.submit_review',
+  RESEARCH_APPROVE:          'research.approve',
+  RESEARCH_REJECT:           'research.reject',
+  RESEARCH_RETRACT:          'research.retract',
+  RESEARCH_SECTION_LINK:     'research.section_link',
+  RESEARCH_SECTION_UNLINK:   'research.section_unlink',
+  RESEARCH_VERSION_LINK:     'research.version_link',
+  RESEARCH_VERSION_UNLINK:   'research.version_unlink',
+  RESEARCH_FEEDBACK_LINK:    'research.feedback_link',
+  RESEARCH_FEEDBACK_UNLINK:  'research.feedback_unlink',
   // D8: audit action for public /participate form submissions. participateIntakeFn
   // previously wrote the raw literal 'PARTICIPATE_INTAKE' which bypassed the
   // ACTIONS constant and never surfaced in the filter dropdown.
