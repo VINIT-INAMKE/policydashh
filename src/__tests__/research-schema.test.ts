@@ -1,47 +1,112 @@
 /**
- * RED TDD stub for RESEARCH-01 — research schema contract
+ * GREEN TDD contract for RESEARCH-01 — research schema contract
  *
- * Wave 0 contract lock for Phase 26 Plan 26-01. All tests here are `it.todo`
- * (pending) — they describe the behavior Plan 26-01 must make GREEN without
- * failing the test suite at Wave 0 time.
- *
- * Target module: `@/src/db/schema/research` (does NOT yet exist at Wave 0)
+ * Wave 0 (Plan 26-00) locked the RED stubs (it.todo). Plan 26-01 flips them to
+ * real passing assertions by importing the freshly-authored
+ * `@/src/db/schema/research` module.
  *
  * Expected exports from '@/src/db/schema/research':
  *   - researchItems                (table)
  *   - researchItemSectionLinks     (table, composite PK on [researchItemId, sectionId])
  *   - researchItemVersionLinks     (table, composite PK on [researchItemId, versionId])
  *   - researchItemFeedbackLinks    (table, composite PK on [researchItemId, feedbackId])
- *   - researchItemStatusEnum       (pgEnum — 4 values: draft, pending_review, published, retracted)
- *   - researchItemTypeEnum         (pgEnum — 8 values: report, paper, dataset, memo,
- *                                   interview_transcript, media_coverage, legal_reference, case_study)
- *
- * Schema barrel `@/src/db/schema` must re-export all of the above.
- *
- * Referenced via future test-ready imports:
- *   import { researchItems, researchItemSectionLinks, researchItemVersionLinks,
- *     researchItemFeedbackLinks, researchItemStatusEnum, researchItemTypeEnum,
- *   } from '@/src/db/schema/research'
+ *   - researchItemStatusEnum       (pgEnum — 4 values)
+ *   - researchItemTypeEnum         (pgEnum — 8 values)
  */
 
-import { describe, it } from 'vitest'
+import { describe, it, expect } from 'vitest'
+import {
+  researchItems,
+  researchItemSectionLinks,
+  researchItemVersionLinks,
+  researchItemFeedbackLinks,
+  researchItemStatusEnum,
+  researchItemTypeEnum,
+} from '@/src/db/schema/research'
+import * as schemaBarrel from '@/src/db/schema'
 
 describe('research schema (RESEARCH-01)', () => {
-  it.todo("exports researchItems table from '@/src/db/schema/research'")
+  it("exports researchItems table from '@/src/db/schema/research'", () => {
+    expect(researchItems).toBeDefined()
+    // Drizzle tables expose columns through the `id` proxy; this confirms
+    // the object is a real pgTable with at least one column.
+    expect(researchItems.id).toBeDefined()
+  })
 
-  it.todo("exports researchItemStatusEnum with enumValues ['draft', 'pending_review', 'published', 'retracted']")
+  it("exports researchItemStatusEnum with enumValues ['draft', 'pending_review', 'published', 'retracted']", () => {
+    expect(researchItemStatusEnum).toBeDefined()
+    expect(researchItemStatusEnum.enumValues).toEqual([
+      'draft', 'pending_review', 'published', 'retracted',
+    ])
+  })
 
-  it.todo("exports researchItemTypeEnum with enumValues ['report', 'paper', 'dataset', 'memo', 'interview_transcript', 'media_coverage', 'legal_reference', 'case_study']")
+  it("exports researchItemTypeEnum with enumValues ['report', 'paper', 'dataset', 'memo', 'interview_transcript', 'media_coverage', 'legal_reference', 'case_study']", () => {
+    expect(researchItemTypeEnum).toBeDefined()
+    expect(researchItemTypeEnum.enumValues).toEqual([
+      'report', 'paper', 'dataset', 'memo', 'interview_transcript',
+      'media_coverage', 'legal_reference', 'case_study',
+    ])
+  })
 
-  it.todo("researchItems table has required columns: researchItems.id, researchItems.readableId, researchItems.documentId, researchItems.title, researchItems.itemType, researchItems.status, researchItems.createdBy, researchItems.isAuthorAnonymous, researchItems.milestoneId, researchItems.contentHash, researchItems.txHash, researchItems.anchoredAt, researchItems.createdAt, researchItems.updatedAt all defined")
+  it('researchItems table has required columns defined', () => {
+    expect(researchItems.id).toBeDefined()
+    expect(researchItems.readableId).toBeDefined()
+    expect(researchItems.documentId).toBeDefined()
+    expect(researchItems.title).toBeDefined()
+    expect(researchItems.itemType).toBeDefined()
+    expect(researchItems.status).toBeDefined()
+    expect(researchItems.createdBy).toBeDefined()
+    expect(researchItems.isAuthorAnonymous).toBeDefined()
+    expect(researchItems.milestoneId).toBeDefined()
+    expect(researchItems.contentHash).toBeDefined()
+    expect(researchItems.txHash).toBeDefined()
+    expect(researchItems.anchoredAt).toBeDefined()
+    expect(researchItems.createdAt).toBeDefined()
+    expect(researchItems.updatedAt).toBeDefined()
+  })
 
-  it.todo("researchItems table has optional/conditional columns: researchItems.description, researchItems.externalUrl, researchItems.artifactId, researchItems.doi, researchItems.authors, researchItems.publishedDate, researchItems.peerReviewed, researchItems.journalOrSource, researchItems.versionLabel, researchItems.previousVersionId, researchItems.reviewedBy, researchItems.reviewedAt, researchItems.retractionReason all defined")
+  it('researchItems table has optional/conditional columns defined', () => {
+    expect(researchItems.description).toBeDefined()
+    expect(researchItems.externalUrl).toBeDefined()
+    expect(researchItems.artifactId).toBeDefined()
+    expect(researchItems.doi).toBeDefined()
+    expect(researchItems.authors).toBeDefined()
+    expect(researchItems.publishedDate).toBeDefined()
+    expect(researchItems.peerReviewed).toBeDefined()
+    expect(researchItems.journalOrSource).toBeDefined()
+    expect(researchItems.versionLabel).toBeDefined()
+    expect(researchItems.previousVersionId).toBeDefined()
+    expect(researchItems.reviewedBy).toBeDefined()
+    expect(researchItems.reviewedAt).toBeDefined()
+    expect(researchItems.retractionReason).toBeDefined()
+  })
 
-  it.todo("exports researchItemSectionLinks with composite PK columns researchItemSectionLinks.researchItemId + researchItemSectionLinks.sectionId and researchItemSectionLinks.relevanceNote metadata column")
+  it('exports researchItemSectionLinks with composite PK columns + relevanceNote metadata column', () => {
+    expect(researchItemSectionLinks).toBeDefined()
+    expect(researchItemSectionLinks.researchItemId).toBeDefined()
+    expect(researchItemSectionLinks.sectionId).toBeDefined()
+    expect(researchItemSectionLinks.relevanceNote).toBeDefined()
+  })
 
-  it.todo("exports researchItemVersionLinks with composite PK columns researchItemVersionLinks.researchItemId + researchItemVersionLinks.versionId (versionId is SQL-only FK to documentVersions to avoid circular import)")
+  it('exports researchItemVersionLinks with composite PK columns (versionId is SQL-only FK to documentVersions to avoid circular import)', () => {
+    expect(researchItemVersionLinks).toBeDefined()
+    expect(researchItemVersionLinks.researchItemId).toBeDefined()
+    expect(researchItemVersionLinks.versionId).toBeDefined()
+  })
 
-  it.todo("exports researchItemFeedbackLinks with composite PK columns researchItemFeedbackLinks.researchItemId + researchItemFeedbackLinks.feedbackId")
+  it('exports researchItemFeedbackLinks with composite PK columns', () => {
+    expect(researchItemFeedbackLinks).toBeDefined()
+    expect(researchItemFeedbackLinks.researchItemId).toBeDefined()
+    expect(researchItemFeedbackLinks.feedbackId).toBeDefined()
+  })
 
-  it.todo("barrel @/src/db/schema re-exports researchItems, researchItemSectionLinks, researchItemVersionLinks, researchItemFeedbackLinks, researchItemStatusEnum, researchItemTypeEnum")
+  it('barrel @/src/db/schema re-exports researchItems, researchItemSectionLinks, researchItemVersionLinks, researchItemFeedbackLinks, researchItemStatusEnum, researchItemTypeEnum', () => {
+    const barrel = schemaBarrel as Record<string, unknown>
+    expect(barrel.researchItems).toBe(researchItems)
+    expect(barrel.researchItemSectionLinks).toBe(researchItemSectionLinks)
+    expect(barrel.researchItemVersionLinks).toBe(researchItemVersionLinks)
+    expect(barrel.researchItemFeedbackLinks).toBe(researchItemFeedbackLinks)
+    expect(barrel.researchItemStatusEnum).toBe(researchItemStatusEnum)
+    expect(barrel.researchItemTypeEnum).toBe(researchItemTypeEnum)
+  })
 })

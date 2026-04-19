@@ -82,6 +82,18 @@ export const PERMISSIONS = {
   // consultation-summary review pattern; no workshop_moderator role.
   'milestone:manage':          [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
   'milestone:read':            [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.AUDITOR] as readonly Role[],
+
+  // Research Module (Phase 26) — INTEGRATION.md §8 grant matrix
+  // Q3 moderation gate: research_lead CANNOT self-publish or retract
+  'research:create':          [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD] as readonly Role[],
+  'research:manage_own':      [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD] as readonly Role[],
+  'research:submit_review':   [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD] as readonly Role[],
+  'research:publish':         [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+  'research:retract':         [ROLES.ADMIN, ROLES.POLICY_LEAD] as readonly Role[],
+  'research:read_drafts':     [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD] as readonly Role[],
+  // Pitfall 4: broad read — all 7 authenticated roles can list published items.
+  // Phase 28 public listing queries the DB directly from server components (no tRPC).
+  'research:read_published':  [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
 } as const
 
 export type Permission = keyof typeof PERMISSIONS
