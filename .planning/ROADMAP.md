@@ -42,13 +42,20 @@ Decimal phases appear between their surrounding integers in numeric order.
  (completed 2026-04-14)
 - [x] **Phase 19: Public /participate Intake (Flow 1)** - Turnstile-gated public intake form, Clerk invitation auto-register, participateIntake Inngest fn with role-tailored welcome emails
  (completed 2026-04-14)
-- [x] **Phase 20: Cal.com Workshop Register (Flow 2)** - Public /workshops listing with cal.com embed, webhook handler, auto-user-create, MEETING_ENDED attendance, post-workshop feedback link (completed 2026-04-14)
-- [x] **Phase 20.5: Public /research + /framework Content** - Static /research content page; /framework draft consultation surface with per-section status badges and what-changed log (completed 2026-04-14)
-- [x] **Phase 21: Public Shell + LLM Consultation Summary + Theme** - Minimal public shell routing; llama-3.3-70b consultation summary per section with human review gate; policy-grade theme (completed 2026-04-15)
-- [x] **Phase 22: Milestone Entity + SHA256 Hashing Service** - First-class milestones table, RFC 8785 JCS canonicalization, deterministic hashing for version/workshop/evidence/milestone (completed 2026-04-16)
+- [x] **Phase 20: Cal.com Workshop Register (Flow 2)** - Public /workshops listing with cal.com embed, webhook handler, auto-user-create, MEETING_ENDED attendance, post-workshop feedback link
+ (completed 2026-04-14)
+- [x] **Phase 20.5: Public /research + /framework Content** - Static /research content page; /framework draft consultation surface with per-section status badges and what-changed log
+ (completed 2026-04-14)
+- [x] **Phase 21: Public Shell + LLM Consultation Summary + Theme** - Minimal public shell routing; llama-3.3-70b consultation summary per section with human review gate; policy-grade theme
+ (completed 2026-04-15)
+- [x] **Phase 22: Milestone Entity + SHA256 Hashing Service** - First-class milestones table, RFC 8785 JCS canonicalization, deterministic hashing for version/workshop/evidence/milestone
+ (completed 2026-04-16)
 - [x] **Phase 23: Cardano Preview-Net Anchoring** - Mesh SDK + Blockfrost per-milestone and per-version anchoring with Verified State badges on public portal (completed 2026-04-16)
 - [x] **Phase 24: Stakeholder Engagement Tracking Lite** - users.lastActivityAt via tRPC middleware, admin inactive-user widget, basic engagement score (completed 2026-04-16)
 - [ ] **Phase 25: Cross-Phase Integration Smoke** - Full E2E walk: /participate → workshop register → reminders → MEETING_ENDED → feedback → CR → merge → version → milestone → SHA256 → Cardano tx → Verified State badge
+- [ ] **Phase 26: Research Module — Data & Server** - `research_items` schema + three linking tables, RBAC permissions, tRPC router, readableId sequence (RI-NNN), milestone manifest entityType extension
+- [ ] **Phase 27: Research Workspace Admin UI** - research_lead + admin surface: create/edit drafts, R2 file upload via existing endpoint, submit for review, admin approve/reject/retract, section/version/feedback link-picker
+- [ ] **Phase 28: Public /research/items Listing & Detail** - Public dynamic listing at `/research/items` with document/type/date filters, `/research/items/[id]` detail page with presigned downloads and linked sections; existing static `/research` gets a Browse-Research CTA
 
 ## Phase Details
 
@@ -572,3 +579,56 @@ Plans:
 Plans:
 - [x] 25-00-PLAN.md -- Wave 0: Fix TypeScript errors (185 TS18049 + 3 TS2307), fix 6 failing tests (touchActivity db.update mock), add WORKSHOP_FEEDBACK_JWT_SECRET to .env.example
 - [ ] 25-01-PLAN.md -- Integration walk: create smoke report template, execute 9-criterion walk (checkpoint), update 4 deferred UAT files to resolved-by-phase-25
+
+### Phase 26: Research Module — Data & Server
+
+**Goal:** research_lead and admin can create, manage, review, publish, and retract citable research items attached to a policy document; research items participate in milestone manifests; schema and tRPC surface are in place with full audit/RBAC coverage
+**Depends on:** Phase 22 (milestone manifest), Phase 6 (document versions)
+**Requirements:** RESEARCH-01, RESEARCH-02, RESEARCH-03, RESEARCH-04, RESEARCH-05 (to be registered in REQUIREMENTS.md)
+**Success Criteria** (what must be TRUE):
+  1. `research_items` table exists with all required + optional fields (see `.planning/research/research-module/DOMAIN.md` Core Attributes); three linking tables (`research_item_section_links`, `research_item_version_links`, `research_item_feedback_links`) also in place; migration 0025 applied
+  2. `readableId` assigned via `nextval('research_item_id_seq')` produces `RI-001`, `RI-002`, … with no collisions under concurrent writes
+  3. Seven new permissions (`research:create`, `research:manage_own`, `research:submit_review`, `research:publish`, `research:retract`, `research:read_drafts`, `research:read_published`) added to `src/lib/permissions.ts` with grants per INTEGRATION.md §8
+  4. tRPC `research` router exposes: `list` (filter by doc/type/status), `listPublic` (published only), `getById`, `create`, `update`, `submitForReview`, `approve`, `reject`, `retract`, `linkSection`, `unlinkSection`, `linkVersion`, `unlinkVersion`, `linkFeedback`, `unlinkFeedback` — all with correct permission guards, audit writes, and Zod validation
+  5. XState-style lifecycle guards (draft → pending_review → {published | draft}, published → retracted) enforced in the service layer with a valid-transition table and audit trail identical to feedback.service.ts pattern
+  6. `ManifestEntry.entityType` union extended with `'research_item'`; `RequiredSlots.research_items?` added; nullable `milestoneId` FK (SQL-level only) added to `research_items` following the `workshops.milestoneId` pattern
+  7. Unit tests pass: CRUD, state machine, permissions matrix, readableId collision guard, linking table integrity, anonymous-author flag filter on public queries
+**Plans:** 6 plans
+
+Plans:
+- [ ] 26-00-PLAN.md -- Wave 0 TDD gate: register RESEARCH-01..05 in REQUIREMENTS.md + 5 RED stub test files + VALIDATION.md flag flip
+- [ ] 26-01-schema-migration-PLAN.md -- Wave 1: Drizzle schema (4 tables + 2 enums) + migration 0025 + Neon HTTP apply script + research_item_id_seq sequence
+- [ ] 26-02-permissions-constants-PLAN.md -- Wave 1 (parallel): 7 research:* permissions + 12 RESEARCH_* ACTIONS constants (Q3 moderation gate enforced)
+- [ ] 26-03-manifest-entry-extension-PLAN.md -- Wave 1 (parallel): Extend ManifestEntry.entityType union + RequiredSlots.research_items? (TypeScript-only)
+- [ ] 26-04-lifecycle-service-PLAN.md -- Wave 2: research.lifecycle.ts VALID_TRANSITIONS + research.service.ts transitionResearch (R6 insert-before-update invariant)
+- [ ] 26-05-router-registration-PLAN.md -- Wave 3: researchRouter (15 procedures) + _app.ts registration
+
+### Phase 27: Research Workspace Admin UI
+
+**Goal:** research_lead has a first-class workspace surface to author research items and submit them for review; admin/policy_lead has a review queue to approve, reject, or retract; all users can browse linked entities from a research item detail page
+**Depends on:** Phase 26
+**Requirements:** RESEARCH-06, RESEARCH-07, RESEARCH-08 (UI-bearing)
+**Success Criteria** (what must be TRUE):
+  1. `/research-manage` lists research items visible to current user (drafts scope by role: research_lead sees own; admin/policy_lead sees all), with filter panel (document, type, status) and sortable columns
+  2. Create and edit drafts via a two-step dialog: metadata (title, type, description, authors, publishedDate, DOI, journal, peer-reviewed flag, external URL, anonymous-author toggle) → file upload (reuses `app/api/upload/route.ts` R2 flow) or URL-only; save creates or updates with audit log
+  3. Draft detail page exposes Submit-for-Review button for research_lead; admin/policy_lead detail shows Approve, Reject-with-rationale, Retract-with-reason actions wired to tRPC; every transition writes `workflow_transitions` entry with before/after status
+  4. Link-picker dialog on the detail page lets authorized users attach the research item to one or more sections, versions, and feedback items; link tables round-trip without duplicates; per-section `relevanceNote` editable inline
+  5. Dashboard widgets: research_lead sees "My drafts" + "Pending review count"; admin/policy_lead sees "Research awaiting review" count linked to review queue
+  6. All UI components use existing shadcn + base-ui primitives; policy-grade theme tokens; no new heavy dependencies; ≤3 new components per page shell
+  7. Component tests green: create-edit dialog validation, link-picker multi-select, lifecycle action RBAC, anonymous-author toggle preview
+**Plans:** TBD
+
+### Phase 28: Public /research/items Listing & Detail
+
+**Goal:** Public visitors can browse and download all published research items, filter by type, date, and policy document, and navigate to the policy sections each item informs
+**Depends on:** Phase 26 (schema + public query), Phase 27 (ensures published items exist for manual verification)
+**Requirements:** RESEARCH-09, RESEARCH-10 (public-surface)
+**Success Criteria** (what must be TRUE):
+  1. `/research/items` server component at `app/(public)/research/items/page.tsx` renders all `status = 'published'` items; supports query-param-driven filters (`?document=`, `?type=`, `?from=`, `?to=`, `?sort=`); defaults to newest-first
+  2. Card layout per UI-SPEC: title, type badge, authors (or "Source: Confidential" when `isAuthorAnonymous`), publishedDate, download-or-external-link CTA; ≥40 cards/page with simple pagination
+  3. Existing `/research` static page gains a prominent "Browse published research" CTA linking to `/research/items` without modifying prose
+  4. `/research/items/[id]` detail page shows full metadata, formatted abstract, DOI rendered as `https://doi.org/{doi}` link, download button using presigned R2 GET (24h TTL) for file-backed items OR `externalUrl` for link-only types
+  5. Detail page lists sections this item informs (via `research_item_section_links`) as internal links to `/framework/[documentId]#section-{sectionId}`; lists versions via `research_item_version_links` as links to `/portal/[documentId]?v=<label>`; no feedback IDs or stakeholder names leak to the public surface
+  6. `proxy.ts` requires no new matchers — existing `/research(.*)` wildcard covers the new routes
+  7. Accessibility: filter controls keyboard-navigable, pagination announced via `aria-live`, card download CTA has descriptive `aria-label`; Lighthouse ≥90 on public detail page
+**Plans:** TBD

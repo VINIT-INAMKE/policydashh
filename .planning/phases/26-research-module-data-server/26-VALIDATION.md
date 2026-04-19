@@ -45,8 +45,9 @@ created: 2026-04-19
 | 26-W0-05 | 00 | 0 | RESEARCH-01 | infra | `test -f src/__tests__/research-schema.test.ts` | ❌ W0 | ⬜ pending |
 | 26-01-XX | 01 | 1 | RESEARCH-01 | unit | `npm test -- src/__tests__/research-schema.test.ts` | ❌ W0 | ⬜ pending |
 | 26-02-XX | 02 | 1 | RESEARCH-03 | unit | `npm test -- src/__tests__/research-permissions.test.ts` | ❌ W0 | ⬜ pending |
-| 26-03-XX | 03 | 2 | RESEARCH-05 | unit | `npm test -- src/__tests__/research-lifecycle.test.ts` | ❌ W0 | ⬜ pending |
-| 26-04-XX | 04 | 2 | RESEARCH-05 | unit | `npm test -- src/__tests__/research-service.test.ts` | ❌ W0 | ⬜ pending |
+| 26-03-XX | 03 | 1 | RESEARCH-01 (manifest union) | unit | `npm test -- --run src/db/schema/__tests__/milestones.test.ts` | ✓ existing | ⬜ pending |
+| 26-04a-XX | 04 | 2 | RESEARCH-05 | unit | `npm test -- src/__tests__/research-lifecycle.test.ts` | ❌ W0 | ⬜ pending |
+| 26-04b-XX | 04 | 2 | RESEARCH-05 | unit | `npm test -- src/__tests__/research-service.test.ts` | ❌ W0 | ⬜ pending |
 | 26-05-XX | 05 | 3 | RESEARCH-02, RESEARCH-04 | unit | `npm test -- src/__tests__/research-router.test.ts` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
