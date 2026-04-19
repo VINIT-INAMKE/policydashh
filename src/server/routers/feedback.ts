@@ -217,9 +217,25 @@ export const feedbackRouter = router({
       })
     }),
 
-  // List all feedback across documents (for workshop feedback picker)
-  listAll: requirePermission('workshop:manage')
+  // List all feedback across documents (for workshop feedback picker AND
+  // Phase 27 RESEARCH-08 research-item feedback link picker).
+  //
+  // Phase 27 widening: research_lead lacks 'workshop:manage' but needs to
+  // browse feedback to link it to research items. Switched to a
+  // protectedProcedure with internal permission OR-check covering both
+  // 'workshop:manage' (workshop link picker) and 'research:read_drafts'
+  // (research link picker — admin/policy_lead/research_lead).
+  // Anonymity enforcement and identity scoping are unchanged.
+  listAll: protectedProcedure
     .query(async ({ ctx }) => {
+      const canForWorkshop = can(ctx.user.role, 'workshop:manage')
+      const canForResearch = can(ctx.user.role, 'research:read_drafts')
+      if (!canForWorkshop && !canForResearch) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Missing permission: workshop:manage or research:read_drafts',
+        })
+      }
       const rows = await db
         .select({
           id: feedbackItems.id,
