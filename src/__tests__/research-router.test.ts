@@ -251,3 +251,27 @@ describe('anonymous-author filter edge cases (RESEARCH-04 — Pitfall 5)', () =>
   it.todo("getById with isAuthorAnonymous=true and status=published returns authors=null (public-facing filter)")
   it.todo("listPublic with mixed anonymous/named items nulls authors only on isAuthorAnonymous=true rows")
 })
+
+describe('Phase 27 router extensions (RESEARCH-06/07/08)', () => {
+  it('listTransitions is defined on _def.procedures (RESEARCH-06/07 — decision log data source)', () => {
+    expect(mod.researchRouter._def.procedures.listTransitions).toBeDefined()
+  })
+
+  it("appRouter registers research.listTransitions under the research.* namespace", () => {
+    const keys = Object.keys(appMod.appRouter._def.procedures)
+    expect(keys).toContain('research.listTransitions')
+  })
+
+  it('list procedure still defined after authorId filter extension (RESEARCH-06 SC-1 — research_lead scoping)', () => {
+    // Shape-check: the input schema accepts the new optional authorId without
+    // breaking the procedure surface. Caller-level zod parsing is exercised
+    // by the list page integration tests in Plan 27-02.
+    expect(mod.researchRouter._def.procedures.list).toBeDefined()
+    expect(mod.researchRouter._def.procedures.list._def).toBeDefined()
+  })
+
+  it('linkSection mutation still defined after onConflictDoUpdate upgrade (RESEARCH-08 D-07 — relevanceNote upsert)', () => {
+    expect(mod.researchRouter._def.procedures.linkSection).toBeDefined()
+    expect(mod.researchRouter._def.procedures.linkSection._def).toBeDefined()
+  })
+})
