@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 27-01-router-upload-wave0-PLAN.md
-last_updated: "2026-04-19T21:49:08.219Z"
+stopped_at: Completed 27-03-create-edit-pages-PLAN.md
+last_updated: "2026-04-19T22:26:04.572Z"
 progress:
   total_phases: 29
   completed_phases: 26
   total_plans: 104
-  completed_plans: 98
+  completed_plans: 100
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 27 (research-workspace-admin-ui) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 
 ## Performance Metrics
 
@@ -134,6 +134,7 @@ Plan: 2 of 6
 | Phase 26-research-module-data-server P04 | 9min | 2 tasks | 4 files |
 | Phase 26-research-module-data-server PP05 | 15min | 2 tasks | 4 files |
 | Phase 27-research-workspace-admin-ui P01 | 15min | 3 tasks | 10 files |
+| Phase 27-research-workspace-admin-ui P03 | 12min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -366,6 +367,10 @@ Recent decisions affecting current work:
 - [Phase 27-research-workspace-admin-ui]: Conditional upsert in linkSection: branch on input.relevanceNote !== undefined to choose onConflictDoUpdate vs onConflictDoNothing - one mutation, two semantics, preserves bulk-link idempotency while enabling D-07 inline edit on existing links
 - [Phase 27-research-workspace-admin-ui]: shouldHideAuthors as pure helper in src/lib/research-utils.ts - both server queries and client preview/detail pages import the same function, D-05 single source of truth (Pitfall 4)
 - [Phase 27-research-workspace-admin-ui]: Plan 27-01 Wave 0 backend gate pattern: one router-only plan that ships listTransitions + authorId filter + linkSection upsert + upload research category + shared helper + 4 RED Nyquist scaffolds, all in one plan, before any UI work begins
+- [Phase 27-research-workspace-admin-ui]: Single-write-boundary upload: client uploads via uploadFile (POST /api/upload presign + PUT R2), then submit mutation carries 4 metadata fields server-side; router INSERTs evidence_artifacts row inside the same mutation that creates research_items - keeps write boundary on server, no orphan rows on success
+- [Phase 27-research-workspace-admin-ui]: evidence_artifacts uses uploaderId (not uploadedBy) and has no r2_key column - artifactR2Key accepted in input schema for client-server contract symmetry but silently dropped server-side; matches workshop.attachArtifact precedent
+- [Phase 27-research-workspace-admin-ui]: Edit-mode artifact prefill shortcut: artifactFileName/Size left undefined because trpc.research.getById returns just research_items row (no join); user can upload fresh file to replace - follow-up plan can denormalize or extend getById
+- [Phase 27-research-workspace-admin-ui]: Shared ResearchItemForm with mode='create'|'edit' used by both /research-manage/new and /[id]/edit - single source of truth for 11-field metadata form, no duplication between surfaces
 
 ### Pending Todos
 
@@ -384,6 +389,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T21:49:08.207Z
-Stopped at: Completed 27-01-router-upload-wave0-PLAN.md
+Last session: 2026-04-19T22:26:04.562Z
+Stopped at: Completed 27-03-create-edit-pages-PLAN.md
 Resume file: None
