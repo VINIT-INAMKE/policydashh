@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, MessageSquareWarning } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -51,6 +51,11 @@ interface CRDetailProps {
 
 export function CRDetail({ crId, documentId }: CRDetailProps) {
   const crQuery = trpc.changeRequest.getById.useQuery({ id: crId })
+  // A7: pull the workflow-transition log so we can surface the most
+  // recent REQUEST_CHANGES rationale prominently when the CR is back in
+  // drafting — owners shouldn't have to scroll to the decision log to
+  // learn what they need to fix.
+  const transitionsQuery = trpc.changeRequest.listTransitions.useQuery({ crId })
   const meQuery = trpc.user.getMe.useQuery()
   const role = meQuery.data?.role
   const canManageCR = role === 'admin' || role === 'policy_lead'
@@ -70,6 +75,43 @@ export function CRDetail({ crId, documentId }: CRDetailProps) {
     return <CRDetailSkeleton />
   }
 
+  // A13: distinguish query errors from a clean "not found" miss. A transient
+  // network error used to render the same plain "Change request not found"
+  // message as a 404, leaving the user with no way to recover other than
+  // refreshing the page.
+  if (crQuery.isError) {
+    const code = crQuery.error.data?.code
+    if (code !== 'NOT_FOUND') {
+      return (
+        <div className="mx-auto flex max-w-[800px] flex-col items-center gap-4 py-12">
+          <AlertTriangle className="size-10 text-amber-500" aria-hidden="true" />
+          <div className="text-center">
+            <p className="text-sm font-semibold">Couldn&apos;t load this change request.</p>
+            <p className="mt-1 max-w-[400px] text-xs text-muted-foreground">
+              {crQuery.error.message ||
+                'Something went wrong while loading the change request. Check your connection and try again.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => crQuery.refetch()}
+              disabled={crQuery.isFetching}
+            >
+              {crQuery.isFetching ? 'Retrying…' : 'Retry'}
+            </Button>
+            <Link
+              href={`/policies/${documentId}/change-requests`}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              Back to Change Requests
+            </Link>
+          </div>
+        </div>
+      )
+    }
+  }
+
   const cr = crQuery.data
 
   if (!cr) {
@@ -79,6 +121,25 @@ export function CRDetail({ crId, documentId }: CRDetailProps) {
       </div>
     )
   }
+
+  // A7: find the most-recent REQUEST_CHANGES transition and surface its
+  // rationale at the top of the page whenever the CR is still open (i.e.
+  // not yet merged or closed). The XState machine routes REQUEST_CHANGES
+  // back to `in_review`, so the banner is primarily visible while the
+  // reviewer's notes are actionable. The same rationale also lives in
+  // the decision log below but owners missed it there.
+  const transitions = transitionsQuery.data ?? []
+  const latestRequestChanges = [...transitions]
+    .reverse()
+    .find((t) => {
+      const meta = t.metadata as Record<string, unknown> | null
+      return meta?.event === 'REQUEST_CHANGES'
+    })
+  const requestChangesRationale =
+    latestRequestChanges &&
+    ((latestRequestChanges.metadata as Record<string, unknown> | null)?.rationale as string | undefined)
+  const showRequestChangesBanner =
+    (cr.status === 'drafting' || cr.status === 'in_review') && requestChangesRationale
 
   return (
     <div className="mx-auto max-w-[800px] space-y-6 py-8">
@@ -104,6 +165,26 @@ export function CRDetail({ crId, documentId }: CRDetailProps) {
 
       {/* Status badge */}
       <CRStatusBadge status={cr.status as CRStatus} />
+
+      {/* A7: surface the reviewer's "Request Changes" rationale prominently
+          when the CR has been bounced back to drafting. The rationale also
+          lives in the decision log below but owners missed it there. */}
+      {showRequestChangesBanner && (
+        <div
+          role="status"
+          className="flex gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-950/40"
+        >
+          <MessageSquareWarning className="mt-0.5 size-5 flex-shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+          <div className="space-y-1">
+            <p className="text-[13px] font-semibold text-amber-900 dark:text-amber-100">
+              Changes requested
+            </p>
+            <p className="text-[14px] leading-[1.5] text-amber-900 dark:text-amber-100">
+              {requestChangesRationale}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Owner row */}
       <div className="flex items-center gap-2">

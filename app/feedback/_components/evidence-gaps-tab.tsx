@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle, Paperclip } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { AlertCircle, CheckCircle, Paperclip } from 'lucide-react'
 import { format } from 'date-fns'
 import { trpc } from '@/src/trpc/client'
 import { Button } from '@/components/ui/button'
@@ -46,10 +47,36 @@ const typeLabels: Record<string, string> = {
  * Role gating happens at the parent GlobalFeedbackTabs level
  * (admin + research_lead). This component assumes the viewer is allowed.
  */
+// R24: per-tab URL-sync keys. Namespaced (`documentId`, `sectionId`,
+// `feedbackType`) so they don't collide with the parent's `?tab=` or
+// other tab-specific params. Unknown / invalid values are ignored and
+// the server enum validation catches anything malformed.
+const EVIDENCE_GAPS_URL_KEYS = {
+  documentId:   'documentId',
+  sectionId:    'sectionId',
+  feedbackType: 'feedbackType',
+} as const
+
+const FEEDBACK_TYPE_SET = new Set<string>([
+  'issue', 'suggestion', 'endorsement', 'evidence', 'question',
+])
+
 export function EvidenceGapsTab() {
-  const [documentId, setDocumentId] = useState<string>('')
-  const [sectionId, setSectionId] = useState<string>('')
-  const [feedbackType, setFeedbackType] = useState<string>('')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // R24: seed initial state from URL so refresh / share preserve filters.
+  const initialDoc = searchParams.get(EVIDENCE_GAPS_URL_KEYS.documentId) || ''
+  const initialSec = initialDoc
+    ? (searchParams.get(EVIDENCE_GAPS_URL_KEYS.sectionId) || '')
+    : ''
+  const urlTypeRaw = searchParams.get(EVIDENCE_GAPS_URL_KEYS.feedbackType) || ''
+  const initialType = urlTypeRaw && FEEDBACK_TYPE_SET.has(urlTypeRaw) ? urlTypeRaw : ''
+
+  const [documentId, setDocumentIdState] = useState<string>(initialDoc)
+  const [sectionId, setSectionIdState] = useState<string>(initialSec)
+  const [feedbackType, setFeedbackTypeState] = useState<string>(initialType)
 
   // E17: pass filters through to the server so the procedure scopes the
   // query on Postgres instead of shipping every gap to the client and
@@ -76,20 +103,39 @@ export function EvidenceGapsTab() {
   const documents = documentsQuery.data ?? []
   const sections = sectionsQuery.data ?? []
 
+  // R24: write filter state back to URL. Preserves the `?tab=` param and
+  // any other page-level keys; only the three namespaced keys are touched.
+  const writeUrl = useCallback((doc: string, sec: string, type: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (doc)  params.set(EVIDENCE_GAPS_URL_KEYS.documentId, doc);  else params.delete(EVIDENCE_GAPS_URL_KEYS.documentId)
+    if (sec)  params.set(EVIDENCE_GAPS_URL_KEYS.sectionId, sec);   else params.delete(EVIDENCE_GAPS_URL_KEYS.sectionId)
+    if (type) params.set(EVIDENCE_GAPS_URL_KEYS.feedbackType, type); else params.delete(EVIDENCE_GAPS_URL_KEYS.feedbackType)
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [router, pathname, searchParams])
+
   function handleDocumentChange(value: string | null) {
-    setDocumentId(!value || value === '__all__' ? '' : value)
-    setSectionId('')
+    const nextDoc = !value || value === '__all__' ? '' : value
+    setDocumentIdState(nextDoc)
+    // Changing document clears the section dependency; URL must follow.
+    setSectionIdState('')
+    writeUrl(nextDoc, '', feedbackType)
   }
 
   function handleSectionChange(value: string | null) {
-    setSectionId(!value || value === '__all__' ? '' : value)
+    const nextSec = !value || value === '__all__' ? '' : value
+    setSectionIdState(nextSec)
+    writeUrl(documentId, nextSec, feedbackType)
   }
 
   function handleTypeChange(value: string | null) {
-    setFeedbackType(!value || value === '__all__' ? '' : value)
+    const nextType = !value || value === '__all__' ? '' : value
+    setFeedbackTypeState(nextType)
+    writeUrl(documentId, sectionId, nextType)
   }
 
   const isLoading = claimsQuery.isLoading
+  const isError = claimsQuery.isError
 
   return (
     <div className="flex flex-col gap-6 pt-4">
@@ -120,12 +166,22 @@ export function EvidenceGapsTab() {
         </div>
 
         <div className="w-48">
+          {/*
+            S23: the section filter is disabled until a document is chosen.
+            Previously there was no hint; users clicking the grayed control
+            got no context. We wrap the trigger in a title-carrying span so
+            both mouse hover AND screen-reader narration surface the reason,
+            and add a small helper paragraph below for non-tooltip contexts.
+          */}
           <Select
             value={sectionId || '__all__'}
             onValueChange={handleSectionChange}
             disabled={!documentId}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              title={!documentId ? 'Select a document first' : undefined}
+              aria-describedby={!documentId ? 'section-filter-help' : undefined}
+            >
               <SelectValue placeholder="All Sections" />
             </SelectTrigger>
             <SelectContent>
@@ -137,6 +193,14 @@ export function EvidenceGapsTab() {
               ))}
             </SelectContent>
           </Select>
+          {!documentId ? (
+            <p
+              id="section-filter-help"
+              className="mt-1 text-xs text-muted-foreground"
+            >
+              Select a document to filter by section.
+            </p>
+          ) : null}
         </div>
 
         <div className="w-48">
@@ -165,6 +229,31 @@ export function EvidenceGapsTab() {
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
+        </div>
+      ) : isError ? (
+        // S10: surface query errors explicitly instead of collapsing them
+        // into "No claims without evidence", which falsely implied the
+        // system was fully covered when it was actually failing to load.
+        <div
+          role="alert"
+          className="flex flex-col items-center justify-center py-16 text-center"
+        >
+          <AlertCircle className="size-10 text-destructive" />
+          <h2 className="mt-4 text-[20px] font-semibold leading-[1.2]">
+            Couldn&apos;t load evidence gaps
+          </h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            Something went wrong fetching the evidence-gap report. Check your
+            connection and try again.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => claimsQuery.refetch()}
+          >
+            Retry
+          </Button>
         </div>
       ) : filteredClaims.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16">

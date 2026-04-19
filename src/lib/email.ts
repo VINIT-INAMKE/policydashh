@@ -19,6 +19,15 @@ function getFromAddress(): string {
 }
 
 /**
+ * P11: return the address to which recipient replies should flow. Falls
+ * back to the from-address only if SUPPORT_EMAIL is unset — otherwise
+ * replies to noreply@ get silently dropped.
+ */
+function getReplyToAddress(): string {
+  return process.env.SUPPORT_EMAIL || getFromAddress()
+}
+
+/**
  * Send email notification when feedback is reviewed.
  * Fire-and-forget: caller does sendFeedbackReviewedEmail(...).catch(console.error)
  * Silently returns if no Resend key or no email (phone-only user).
@@ -32,6 +41,7 @@ export async function sendFeedbackReviewedEmail(
 
   await resend.emails.send({
     from: getFromAddress(),
+    replyTo: getReplyToAddress(),
     to,
     subject: `Your feedback ${data.feedbackReadableId} has been reviewed`,
     text: `Your feedback was ${data.decision}. Rationale: ${data.rationale}`,
@@ -51,6 +61,7 @@ export async function sendVersionPublishedEmail(
 
   await resend.emails.send({
     from: getFromAddress(),
+    replyTo: getReplyToAddress(),
     to,
     subject: `New version published: ${data.policyName} ${data.versionLabel}`,
     text: `A new version of "${data.policyName}" has been published: ${data.versionLabel}.`,
@@ -70,6 +81,7 @@ export async function sendSectionAssignedEmail(
 
   await resend.emails.send({
     from: getFromAddress(),
+    replyTo: getReplyToAddress(),
     to,
     subject: `You have been assigned to a section in ${data.policyName}`,
     text: `You have been assigned to the "${data.sectionName}" section in "${data.policyName}".`,
@@ -109,6 +121,7 @@ export async function sendWorkshopEvidenceNudgeEmail(
 
   await resend.emails.send({
     from: getFromAddress(),
+    replyTo: getReplyToAddress(),
     to,
     subject: `Evidence checklist reminder: ${data.workshopTitle}`,
     text:
@@ -160,6 +173,7 @@ export async function sendEvidencePackReadyEmail(
 
   await resend.emails.send({
     from: getFromAddress(),
+    replyTo: getReplyToAddress(),
     to,
     subject,
     text,
@@ -200,6 +214,7 @@ export async function sendWorkshopFeedbackInviteEmail(
 
   await resend.emails.send({
     from: getFromAddress(),
+    replyTo: getReplyToAddress(),
     to,
     subject: `Share your feedback on ${data.workshopTitle}`,
     html,

@@ -1,8 +1,12 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import {
+  newPendingUploadId,
+  registerPendingImageUpload,
+} from './pending-image-uploads'
 import {
   Tooltip,
   TooltipContent,
@@ -108,6 +112,12 @@ function getCurrentBlockType(editor: Editor): string {
 
 export function EditorToolbar({ editor, onLinkClick }: EditorToolbarProps) {
   const isDisabled = !editor || !editor.isEditable
+  // A16: hidden file picker so "Insert image" no longer drops a permanent
+  // `src: ""` node into the editor (which would autosave as a broken
+  // image and leak into published PDFs). Clicking the toolbar button now
+  // opens a real file picker, then the same pending-upload registry we
+  // use for drop/paste hands the File off to ImageBlockView.
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const setBlockType = useCallback(
     (type: BlockTypeItem) => {
@@ -256,8 +266,30 @@ export function EditorToolbar({ editor, onLinkClick }: EditorToolbarProps) {
           label="Insert image"
           isDisabled={isDisabled}
           onClick={() => {
-            // Image upload placeholder -- full functionality in Plan 03
-            editor?.chain().focus().setImage({ src: '' }).run()
+            imageInputRef.current?.click()
+          }}
+        />
+        {/* Hidden picker for the toolbar "Insert image" button. */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            // Reset so picking the same file twice in a row still fires
+            // onChange the second time.
+            e.target.value = ''
+            if (!file || !editor) return
+            if (!file.type.startsWith('image/')) return
+            const uploadId = newPendingUploadId()
+            registerPendingImageUpload(uploadId, file)
+            editor
+              .chain()
+              .focus()
+              .setImage({ src: '' })
+              .updateAttributes('image', { pendingUploadId: uploadId })
+              .run()
           }}
         />
       </div>

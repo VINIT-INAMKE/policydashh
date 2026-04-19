@@ -110,12 +110,27 @@ const notificationCreateSchema = z.object({
     'version_published',
     'section_assigned',
     'cr_status_changed',
+    // P24: dedicated enum value for Cardano anchor failures. Previously
+    // milestone/version anchor failures reused 'cr_status_changed' which
+    // showed the wrong icon in the notification panel.
+    'anchoring_failed',
   ]),
   title: z.string().min(1).max(200),
   body: z.string().max(1000).optional(),
   entityType: z.string().optional(),
   entityId: z.guid().optional(),
-  linkHref: z.string().optional(),
+  // P23: linkHref must be a deep link (`/path`) or an absolute URL. Relaxing
+  // to a catch-all `string()` previously allowed `javascript:` URIs and
+  // dangling path fragments. Internal links are the common case so we
+  // permit leading-slash paths in addition to fully-qualified URLs. Both
+  // shapes are safe for the notification panel renderer (A1 deep-link fix).
+  linkHref: z
+    .string()
+    .refine(
+      (v) => v.startsWith('/') || /^https?:\/\//i.test(v),
+      { message: 'linkHref must start with "/" or be an http(s) URL' },
+    )
+    .optional(),
   // NOTIF-06 idempotency key fields - caller supplies these so the
   // Inngest function can compute a deterministic per-action key and insert
   // with onConflictDoNothing() against the notifications_idempotency_key_unique
@@ -355,6 +370,29 @@ export async function sendWorkshopFeedbackInvite(
   await inngest.send(event)
 }
 
+/**
+ * P3: batch helper used by the cal.com MEETING_ENDED handler. A 50-person
+ * workshop previously fired 50 sequential `inngest.send()` calls inside the
+ * webhook body, saturating cal.com's retry window. We now collect all
+ * attendees and submit one Inngest batch.
+ *
+ * Each entry is validated against the same Zod schema as the single
+ * helper. Empty array short-circuits with no network call.
+ */
+export async function sendWorkshopFeedbackInvitesBatch(
+  items: WorkshopFeedbackInviteData[],
+): Promise<void> {
+  if (items.length === 0) return
+  const events = await Promise.all(
+    items.map(async (data) => {
+      const event = workshopFeedbackInviteEvent.create(data)
+      await event.validate()
+      return event
+    }),
+  )
+  await inngest.send(events)
+}
+
 // -- version.published ----------------------------------------------
 // Phase 21 LLM-05 - emitted by version.publish tRPC mutation after the
 // notification fan-out. Triggers consultationSummaryGenerateFn which
@@ -410,6 +448,43 @@ export async function sendConsultationSummaryRegen(
   data: ConsultationSummaryRegenData,
 ): Promise<void> {
   const event = consultationSummaryRegenEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
+
+// -- user.upserted -------------------------------------------------------
+// P2: Clerk webhook fan-out. The webhook handler does a fast Clerk-side
+// upsert and then fires this event so the heavy work (audit write +
+// workshop_registrations backfill) runs inside an Inngest function
+// without blocking the 200 response. Svix retries if the webhook takes
+// too long, so splitting the work here avoids double-firing side effects
+// under DB load.
+
+const userUpsertedSchema = z.object({
+  userId: z.guid(),
+  clerkEvent: z.enum(['user.created', 'user.updated']),
+  // Email, if any; nullable for phone-only users. Used to scope the
+  // workshop_registrations backfill.
+  email: z.string().email().nullable(),
+  // Role-delta audit payload — present when the prior role differed from
+  // the new role and the webhook carried a valid enum value. Caller is
+  // responsible for only setting this when an audit write is warranted.
+  roleDelta: z
+    .object({
+      priorRole: z.string(),
+      newRole: z.string(),
+    })
+    .nullable(),
+})
+
+export const userUpsertedEvent = eventType('user.upserted', {
+  schema: userUpsertedSchema,
+})
+
+export type UserUpsertedData = z.infer<typeof userUpsertedSchema>
+
+export async function sendUserUpserted(data: UserUpsertedData): Promise<void> {
+  const event = userUpsertedEvent.create(data)
   await event.validate()
   await inngest.send(event)
 }

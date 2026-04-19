@@ -17,6 +17,12 @@ import { StatusBadge, type FeedbackStatus } from './status-badge'
 
 interface FeedbackDetailSheetProps {
   feedbackId: string | null
+  // R7: optional documentId scope passed by the inbox so a crafted
+  // ?selected=<id from a different policy> returns NOT_FOUND instead of
+  // cross-leaking a feedback item across policies. When omitted the sheet
+  // falls back to the unscoped lookup for non-inbox callers (e.g. global
+  // feedback detail page).
+  documentId?: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -59,11 +65,15 @@ function SheetSkeleton() {
 
 export function FeedbackDetailSheet({
   feedbackId,
+  documentId,
   open,
   onOpenChange,
 }: FeedbackDetailSheetProps) {
+  // R7: scope the getById lookup by the calling page's documentId when
+  // provided. A crafted ?selected= pointing at another policy returns
+  // NOT_FOUND before the ownership / read_all branch is even reached.
   const feedbackQuery = trpc.feedback.getById.useQuery(
-    { id: feedbackId! },
+    { id: feedbackId!, documentId },
     { enabled: !!feedbackId },
   )
 
@@ -88,8 +98,11 @@ export function FeedbackDetailSheet({
   const feedback = feedbackQuery.data
   const transitions = transitionsQuery.data ?? []
 
-  // Map transitions to DecisionLog format
+  // Map transitions to DecisionLog format. R22: include the PK id so the
+  // DecisionLog can use it as the React key instead of the collision-
+  // prone `toState+timestamp` composite.
   const decisionLogTransitions = transitions.map((t) => ({
+    id: t.id,
     fromState: t.fromState,
     toState: t.toState,
     actorName: t.actorName,

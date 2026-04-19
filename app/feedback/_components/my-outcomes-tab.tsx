@@ -3,10 +3,17 @@
 import { useState, useMemo, useEffect } from 'react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { useSearchParams } from 'next/navigation'
-import { MessageSquare, FileText, ExternalLink, Paperclip } from 'lucide-react'
+import {
+  MessageSquare,
+  FileText,
+  ExternalLink,
+  Paperclip,
+  AlertCircle,
+} from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
   StatusBadge,
@@ -62,6 +69,36 @@ export function MyOutcomesTab() {
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
+      </div>
+    )
+  }
+
+  // S9: explicit error branch so a fetch failure is not misrepresented as
+  // "No feedback submitted yet". The generic empty-state previously caught
+  // both cases, which lied to submitters who actually had items but hit a
+  // transient network error.
+  if (feedbackQuery.isError) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center justify-center py-16 text-center"
+      >
+        <AlertCircle className="size-12 text-destructive" />
+        <h2 className="mt-4 text-[20px] font-semibold leading-[1.2]">
+          Couldn&apos;t load your feedback
+        </h2>
+        <p className="mt-2 max-w-md text-sm text-muted-foreground">
+          Something went wrong fetching your submissions. Check your connection
+          and try again.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => feedbackQuery.refetch()}
+        >
+          Retry
+        </Button>
       </div>
     )
   }
@@ -179,6 +216,21 @@ function OutcomeDetails({ feedbackId }: { feedbackId: string }) {
         </span>
         {transitionsQuery.isLoading ? (
           <Skeleton className="h-6 w-full" />
+        ) : transitionsQuery.isError ? (
+          <div
+            role="alert"
+            className="flex items-center gap-2 text-sm text-destructive"
+          >
+            <AlertCircle className="size-4 shrink-0" />
+            <span>Couldn&apos;t load decision log.</span>
+            <button
+              type="button"
+              onClick={() => transitionsQuery.refetch()}
+              className="underline underline-offset-2 hover:no-underline"
+            >
+              Retry
+            </button>
+          </div>
         ) : transitions.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No activity recorded yet.
@@ -217,7 +269,7 @@ function OutcomeDetails({ feedbackId }: { feedbackId: string }) {
       </div>
 
       {/* Evidence */}
-      {(evidence.length > 0 || evidenceQuery.isLoading) && (
+      {(evidence.length > 0 || evidenceQuery.isLoading || evidenceQuery.isError) && (
         <>
           <Separator className="my-3" />
           <div className="flex flex-col gap-2">
@@ -226,6 +278,21 @@ function OutcomeDetails({ feedbackId }: { feedbackId: string }) {
             </span>
             {evidenceQuery.isLoading ? (
               <Skeleton className="h-6 w-full" />
+            ) : evidenceQuery.isError ? (
+              <div
+                role="alert"
+                className="flex items-center gap-2 text-sm text-destructive"
+              >
+                <AlertCircle className="size-4 shrink-0" />
+                <span>Couldn&apos;t load linked evidence.</span>
+                <button
+                  type="button"
+                  onClick={() => evidenceQuery.refetch()}
+                  className="underline underline-offset-2 hover:no-underline"
+                >
+                  Retry
+                </button>
+              </div>
             ) : (
               <ul className="flex flex-col gap-1">
                 {evidence.map((e) => (

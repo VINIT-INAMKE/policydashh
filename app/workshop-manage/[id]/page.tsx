@@ -297,12 +297,18 @@ export default function WorkshopDetailPage() {
         </div>
       </div>
 
-      {/* Right content area - F18: Artifacts + Attendees + Checklist tabs */}
+      {/* Right content area - F18: Artifacts + Attendees + Checklist tabs.
+          D21: Attendees tab is admin/moderator-only. The tRPC guard on
+          workshop.listRegistrations (D1) rejects the fetch for other roles,
+          but we also gate the trigger + content here so a stakeholder who
+          knows the workshop UUID never even sees the tab. */}
       <div className="flex-1">
         <Tabs defaultValue="artifacts">
           <TabsList>
             <TabsTrigger value="artifacts">Artifacts</TabsTrigger>
-            <TabsTrigger value="attendees">Attendees</TabsTrigger>
+            {canManage && (
+              <TabsTrigger value="attendees">Attendees</TabsTrigger>
+            )}
             <TabsTrigger value="checklist">Checklist</TabsTrigger>
           </TabsList>
           <TabsContent value="artifacts" className="mt-4">
@@ -317,10 +323,12 @@ export default function WorkshopDetailPage() {
             </div>
             <ArtifactList workshopId={workshopId} canManage={canManage} />
           </TabsContent>
-          <TabsContent value="attendees" className="mt-4">
-            <h2 className="mb-4 text-xl font-semibold">Attendees</h2>
-            <AttendeeList workshopId={workshopId} />
-          </TabsContent>
+          {canManage && (
+            <TabsContent value="attendees" className="mt-4">
+              <h2 className="mb-4 text-xl font-semibold">Attendees</h2>
+              <AttendeeList workshopId={workshopId} />
+            </TabsContent>
+          )}
           <TabsContent value="checklist" className="mt-4">
             <EvidenceChecklist workshopId={workshopId} />
           </TabsContent>

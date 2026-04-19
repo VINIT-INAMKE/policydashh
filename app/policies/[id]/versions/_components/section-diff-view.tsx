@@ -1,6 +1,7 @@
 'use client'
 
 import { trpc } from '@/src/trpc/client'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface SectionDiffViewProps {
@@ -50,10 +51,23 @@ export function SectionDiffView({
   }
 
   if (diffQuery.error) {
+    // A15: re-selecting sections re-issues the same query with the same
+    // arguments and fails the same way. Give users an actual retry
+    // affordance for transient errors.
     return (
-      <p className="text-[14px] text-muted-foreground">
-        Couldn&apos;t load the diff. Try selecting the sections again.
-      </p>
+      <div className="flex flex-col items-start gap-2 rounded-md border border-dashed p-4">
+        <p className="text-[14px] text-muted-foreground">
+          Couldn&apos;t load the diff. {diffQuery.error.message || 'Try again in a moment.'}
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => diffQuery.refetch()}
+          disabled={diffQuery.isFetching}
+        >
+          {diffQuery.isFetching ? 'Retrying…' : 'Retry'}
+        </Button>
+      </div>
     )
   }
 

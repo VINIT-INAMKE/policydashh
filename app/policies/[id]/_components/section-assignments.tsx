@@ -113,17 +113,42 @@ export function SectionAssignments({ sectionId }: SectionAssignmentsProps) {
         </p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {assignedUsers.map((user: { id: string; name: string | null; email: string | null }) => (
-            <Badge key={user.id} variant="secondary" className="gap-1">
-              {user.name || user.email || user.id.slice(0, 8)}
-              <button
-                onClick={() => unassignMutation.mutate({ sectionId, userId: user.id })}
-                className="ml-0.5 hover:text-destructive"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
+          {assignedUsers.map((user: { id: string; name: string | null; email: string | null }) => {
+            const displayName =
+              user.name || user.email || user.id.slice(0, 8)
+            return (
+              <Badge key={user.id} variant="secondary" className="gap-1">
+                {displayName}
+                {/*
+                  S20: confirm before firing the destructive unassign and
+                  expose an accessible label so screen-reader users don't
+                  just hear "button" — they hear WHO they're about to
+                  remove. The visible X is aria-hidden so the SR only
+                  picks up the label.
+                */}
+                <button
+                  type="button"
+                  aria-label={`Remove ${displayName} from this section`}
+                  title={`Remove ${displayName}`}
+                  disabled={unassignMutation.isPending}
+                  onClick={() => {
+                    if (
+                      typeof window !== 'undefined' &&
+                      !window.confirm(
+                        `Remove ${displayName} from this section? They will no longer be able to submit feedback here.`,
+                      )
+                    ) {
+                      return
+                    }
+                    unassignMutation.mutate({ sectionId, userId: user.id })
+                  }}
+                  className="ml-0.5 hover:text-destructive disabled:opacity-50"
+                >
+                  <X className="h-3 w-3" aria-hidden="true" />
+                </button>
+              </Badge>
+            )
+          })}
         </div>
       )}
     </div>

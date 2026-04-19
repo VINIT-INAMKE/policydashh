@@ -74,7 +74,11 @@ export function RegisterForm({ workshopId, workshopTitle, disabled, prefillName,
         <p className="text-sm text-[var(--cl-on-surface-variant)]">
           Register as <span className="font-medium text-[var(--cl-on-surface)]">{prefillName}</span> ({prefillEmail})
         </p>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <p role="alert" aria-live="assertive" className="text-sm text-red-600">
+            {error}
+          </p>
+        ) : null}
         <Button
           onClick={handlePrefillSubmit}
           className="w-full h-11 font-semibold"
@@ -148,7 +152,9 @@ export function RegisterForm({ workshopId, workshopTitle, disabled, prefillName,
         className="h-10"
       />
       {error ? (
-        <p className="text-sm text-red-600">{error}</p>
+        <p role="alert" aria-live="assertive" className="text-sm text-red-600">
+          {error}
+        </p>
       ) : null}
       <div className="flex gap-2">
         <Button

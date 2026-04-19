@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Filter, MessageSquare } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,12 +17,87 @@ interface FeedbackInboxProps {
   documentId: string
 }
 
+// R11/R24: filter URL-sync helpers. The inbox encodes its FilterState as
+// comma-separated query params so a reviewer can share a filtered view
+// by copying the URL and a browser refresh preserves the selection.
+// Unknown values in the URL are ignored; the server-side enum validation
+// would reject them anyway.
+const FILTER_URL_KEYS = {
+  section:   'section',
+  statuses:  'statuses',
+  types:     'types',
+  priorities: 'priorities',
+  impacts:   'impacts',
+  orgTypes:  'orgTypes',
+} as const
+
+function parseFiltersFromParams(params: URLSearchParams): FilterState {
+  const pickList = (k: string) => {
+    const raw = params.get(k)
+    if (!raw) return []
+    return raw.split(',').map((v) => v.trim()).filter(Boolean)
+  }
+  return {
+    sectionId:  params.get(FILTER_URL_KEYS.section) || undefined,
+    statuses:   pickList(FILTER_URL_KEYS.statuses),
+    types:      pickList(FILTER_URL_KEYS.types),
+    priorities: pickList(FILTER_URL_KEYS.priorities),
+    impacts:    pickList(FILTER_URL_KEYS.impacts),
+    orgTypes:   pickList(FILTER_URL_KEYS.orgTypes),
+  }
+}
+
+function serializeFilters(filters: FilterState, base: URLSearchParams): URLSearchParams {
+  const next = new URLSearchParams(base)
+  const setOrDelete = (k: string, v?: string) => {
+    if (v && v.length > 0) next.set(k, v); else next.delete(k)
+  }
+  setOrDelete(FILTER_URL_KEYS.section, filters.sectionId)
+  setOrDelete(FILTER_URL_KEYS.statuses, filters.statuses.join(','))
+  setOrDelete(FILTER_URL_KEYS.types, filters.types.join(','))
+  setOrDelete(FILTER_URL_KEYS.priorities, filters.priorities.join(','))
+  setOrDelete(FILTER_URL_KEYS.impacts, filters.impacts.join(','))
+  setOrDelete(FILTER_URL_KEYS.orgTypes, filters.orgTypes.join(','))
+  return next
+}
+
 export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
+  const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
+
+  // Initial state is read from the URL so refresh preserves filters
+  // (R11) and the preselected item (?selected=, R25).
   const initialSelected = searchParams.get('selected')
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(initialSelected)
+  const initialFilters = useMemo(
+    () => parseFiltersFromParams(new URLSearchParams(searchParams.toString())),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+  const [filters, setFiltersState] = useState<FilterState>(initialFilters)
+  const [selectedFeedbackId, setSelectedFeedbackIdState] = useState<string | null>(initialSelected)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  // R11: sync filter state into the URL via router.replace so the URL
+  // always reflects the currently visible triage view.
+  const setFilters = useCallback((next: FilterState) => {
+    setFiltersState(next)
+    const base = new URLSearchParams(searchParams.toString())
+    const merged = serializeFilters(next, base)
+    const qs = merged.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [router, pathname, searchParams])
+
+  // R25: writing `?selected=` on card click lets a reviewer share a
+  // specific item, not just the filter view. Passing null clears the
+  // param instead of leaving a stale id behind.
+  const setSelectedFeedbackId = useCallback((nextId: string | null) => {
+    setSelectedFeedbackIdState(nextId)
+    const next = new URLSearchParams(searchParams.toString())
+    if (nextId) next.set('selected', nextId); else next.delete('selected')
+    const qs = next.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [router, pathname, searchParams])
 
   // E2: build query input using array filters so multi-select is always
   // server-side. The matching server-side route uses inArray() for each.
@@ -163,9 +238,12 @@ export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
         </div>
       </div>
 
-      {/* Feedback detail sheet */}
+      {/* Feedback detail sheet. R7: pass documentId so the tRPC lookup is
+          scoped to this policy -- a crafted ?selected=<id from another
+          policy> returns NOT_FOUND instead of cross-leaking the row. */}
       <FeedbackDetailSheet
         feedbackId={selectedFeedbackId}
+        documentId={documentId}
         open={!!selectedFeedbackId}
         onOpenChange={(o) => { if (!o) setSelectedFeedbackId(null) }}
       />

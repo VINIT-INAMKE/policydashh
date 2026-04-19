@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { router, protectedProcedure, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
-import { eq, count } from 'drizzle-orm'
+import { eq, count, and, isNull } from 'drizzle-orm'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS, ORG_TYPE_VALUES } from '@/src/lib/constants'
 import { TRPCError } from '@trpc/server'
@@ -59,11 +59,16 @@ export const userRouter = router({
   // Admin only: check whether an email already has a user row in our DB
   // (C3 pre-flight so the invite dialog can warn instead of hitting Clerk
   // and getting a vague already-exists error).
+  // D2: filter out soft-deleted rows so an admin inviting a previously-deleted
+  // email doesn't get a spurious "already exists" warning for an anonymized row.
   checkEmailExists: requirePermission('user:invite')
     .input(z.object({ email: z.string().email() }))
     .query(async ({ input }) => {
       const existing = await db.query.users.findFirst({
-        where: eq(users.email, input.email.toLowerCase()),
+        where: and(
+          eq(users.email, input.email.toLowerCase()),
+          isNull(users.deletedAt),
+        ),
         columns: { id: true, email: true, role: true, name: true },
       })
       return { exists: !!existing, user: existing ?? null }
@@ -164,10 +169,12 @@ export const userRouter = router({
         })
       }
 
+      // D6: distinct action so an auditor filtering by `user.invite_revoke`
+      // sees only revokes (previously collapsed into USER_INVITE).
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
-        action: ACTIONS.USER_INVITE,
+        action: ACTIONS.USER_INVITE_REVOKE,
         entityType: 'user_invitation',
         entityId: input.invitationId,
         payload: { revoked: true },
@@ -211,10 +218,12 @@ export const userRouter = router({
         })
       }
 
+      // D6: distinct action so an auditor filtering by `user.invite_resend`
+      // sees only resends (previously collapsed into USER_INVITE).
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
-        action: ACTIONS.USER_INVITE,
+        action: ACTIONS.USER_INVITE_RESEND,
         entityType: 'user_invitation',
         entityId: invitation.id,
         payload: { email: input.email, role: input.role, resent: true, previousInvitationId: input.invitationId },
@@ -249,11 +258,15 @@ export const userRouter = router({
       // B6: last-admin guard — if this change would drop the admin count to 0,
       // refuse. Applies whether the target is self (belt-and-braces) or another
       // admin being demoted.
+      // D2: exclude soft-deleted rows. A deleted admin still carries
+      // `role='admin'` after anonymization but must not count toward the
+      // "at least one admin must remain" invariant - otherwise the only
+      // real admin gets demoted because a deleted admin inflates the count.
       if (target.role === 'admin' && input.role !== 'admin') {
         const [adminCountRow] = await db
           .select({ cnt: count() })
           .from(users)
-          .where(eq(users.role, 'admin'))
+          .where(and(eq(users.role, 'admin'), isNull(users.deletedAt)))
         const adminCount = adminCountRow?.cnt ?? 0
         if (adminCount <= 1) {
           throw new TRPCError({
@@ -293,10 +306,26 @@ export const userRouter = router({
       return { success: true }
     }),
 
-  // Admin only: list all users
+  // Admin only: list all users.
+  // D2: exclude soft-deleted rows (Clerk-anonymized accounts still carry a
+  // sentinel clerkId but have deletedAt set). Those rows render as blank
+  // entries in the admin UI and confuse role-management operations.
+  // D17: explicit column projection - drop clerkId, phone, deletedAt,
+  // lastActivityAt, and lastVisitedAt from the wire payload. The admin UI
+  // only renders name/email/role/orgType/createdAt; sending the extra fields
+  // is dead weight and a latent PII-exposure surface.
   listUsers: requirePermission('user:list')
     .query(async () => {
       const allUsers = await db.query.users.findMany({
+        where: isNull(users.deletedAt),
+        columns: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          orgType: true,
+          createdAt: true,
+        },
         orderBy: (users, { desc }) => [desc(users.createdAt)],
       })
       return allUsers

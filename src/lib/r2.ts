@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
@@ -94,10 +95,17 @@ export function getPublicUrl(key: string) {
 
 /**
  * Generate a unique storage key for a file.
+ *
+ * P8: the previous implementation used `Math.random().toString(36).slice(2, 8)`
+ * which is ~31 bits of entropy (6 base-36 chars). Two concurrent uploads in
+ * the same millisecond with the same filename could collide and overwrite each
+ * other. Switched to `crypto.randomBytes(8).toString('hex')` (64 bits) so the
+ * collision probability becomes cryptographically negligible and keys are no
+ * longer guessable from the timestamp.
  */
 export function generateStorageKey(folder: string, fileName: string) {
   const timestamp = Date.now()
-  const random = Math.random().toString(36).slice(2, 8)
+  const random = crypto.randomBytes(8).toString('hex')
   const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
   return `${folder}/${timestamp}-${random}-${sanitized}`
 }

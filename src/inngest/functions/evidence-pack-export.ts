@@ -135,6 +135,17 @@ export const evidencePackExportFn = inngest.createFunction(
     id: 'evidence-pack-export',
     name: 'Evidence pack - async ZIP assembly + R2 upload + email',
     retries: 2,
+    // P13: bound concurrent ZIP assembly runs. `zipSync` is single-threaded
+    // and blocks the Node event loop, so an unbounded fan-out (e.g. every
+    // auditor requesting a pack before a board meeting) could pin every
+    // Inngest worker simultaneously. Three parallel runs is enough for
+    // interactive latency without exhausting worker capacity.
+    concurrency: { key: 'evidence-pack-export', limit: 3 },
+    // P13: idempotency key ensures a duplicate request for the same
+    // documentId + requestedBy short-circuits to the existing run instead
+    // of kicking off a second ZIP assembly + R2 upload. Inngest coalesces
+    // events sharing this key within the function's inflight window.
+    idempotency: 'event.data.documentId + "-" + event.data.requestedBy',
     // Inlined per src/inngest/README.md §90-94 (type widening footgun).
     triggers: [{ event: evidenceExportRequestedEvent }],
   },

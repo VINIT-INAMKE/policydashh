@@ -11,7 +11,7 @@ import { users } from '@/src/db/schema/users'
 import { policySections } from '@/src/db/schema/documents'
 import { sectionAssignments } from '@/src/db/schema/sectionAssignments'
 import { workflowTransitions } from '@/src/db/schema/workflow'
-import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm'
+import { eq, and, desc, asc, sql, inArray, isNull, or } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { sendFeedbackReviewed, sendNotificationCreate } from '@/src/inngest/events'
 
@@ -148,8 +148,22 @@ export const feedbackRouter = router({
       if (feedbackTypes.length > 0) conditions.push(inArray(feedbackItems.feedbackType, feedbackTypes))
       if (priorities.length > 0) conditions.push(inArray(feedbackItems.priority, priorities))
       if (impactCategories.length > 0) conditions.push(inArray(feedbackItems.impactCategory, impactCategories))
-      if (orgTypes.length > 0) conditions.push(inArray(users.orgType, orgTypes))
+      // R5: `inArray` alone drops users whose `orgType IS NULL` (nullable
+      // until the user finishes their profile). Without the `OR IS NULL`
+      // branch, applying even one org-type chip silently hides every item
+      // submitted by a user who has not yet set their org type. Keep
+      // NULL-orgType items visible under any active filter.
+      if (orgTypes.length > 0) {
+        conditions.push(
+          or(inArray(users.orgType, orgTypes), isNull(users.orgType))!,
+        )
+      }
 
+      // R9: left-join policySections so the inbox card can render the
+      // section title. Previously `sectionTitle` was never selected and
+      // FeedbackCard rendered `undefined`, leaving reviewers unable to
+      // tell which section a feedback item targeted without opening the
+      // detail sheet.
       const rows = await db
         .select({
           id: feedbackItems.id,
@@ -173,9 +187,11 @@ export const feedbackRouter = router({
           milestoneId: feedbackItems.milestoneId,
           submitterName: users.name,
           submitterOrgType: users.orgType,
+          sectionTitle: policySections.title,
         })
         .from(feedbackItems)
         .leftJoin(users, eq(feedbackItems.submitterId, users.id))
+        .leftJoin(policySections, eq(feedbackItems.sectionId, policySections.id))
         .where(and(...conditions))
         .orderBy(desc(feedbackItems.createdAt))
 
@@ -241,11 +257,35 @@ export const feedbackRouter = router({
       })
     }),
 
-  // List own feedback (stakeholder/research_lead/workshop_moderator/observer)
+  // List own feedback (stakeholder/research_lead/workshop_moderator/observer).
+  //
+  // S21: explicit column projection. The previous `db.select()` returned
+  //      every feedbackItems column, including `reviewedBy` (the reviewer's
+  //      user id, an internal identity leak). The projection below mirrors
+  //      the submitter-visible subset used by `feedback.listCrossPolicy`
+  //      and drops reviewedBy / reviewedAt (auditor-only) plus columns not
+  //      consumed by the "My Feedback" UI. `decisionRationale` stays so
+  //      submitters can see the reviewer's reasoning.
   listOwn: requirePermission('feedback:read_own')
     .query(async ({ ctx }) => {
       const rows = await db
-        .select()
+        .select({
+          id: feedbackItems.id,
+          readableId: feedbackItems.readableId,
+          sectionId: feedbackItems.sectionId,
+          documentId: feedbackItems.documentId,
+          feedbackType: feedbackItems.feedbackType,
+          priority: feedbackItems.priority,
+          impactCategory: feedbackItems.impactCategory,
+          title: feedbackItems.title,
+          body: feedbackItems.body,
+          suggestedChange: feedbackItems.suggestedChange,
+          status: feedbackItems.status,
+          isAnonymous: feedbackItems.isAnonymous,
+          decisionRationale: feedbackItems.decisionRationale,
+          createdAt: feedbackItems.createdAt,
+          updatedAt: feedbackItems.updatedAt,
+        })
         .from(feedbackItems)
         .where(eq(feedbackItems.submitterId, ctx.user.id))
         .orderBy(desc(feedbackItems.createdAt))
@@ -258,12 +298,21 @@ export const feedbackRouter = router({
   // NOTE: uses protectedProcedure with internal permission branching because
   // the two permissions (feedback:read_all and feedback:read_own) are disjoint
   // in the permission matrix - no single requirePermission() call covers both.
+  //
+  // R18: accept arrays for `statuses` / `feedbackTypes` / `priorities` so the
+  //      cross-policy tab can multi-select (matches the per-policy `feedback.list`
+  //      behavior updated in E2). The singular inputs remain for backward
+  //      compatibility with older callers; when both are passed the array
+  //      takes precedence, mirroring the merge pattern in `feedback.list`.
   listCrossPolicy: protectedProcedure
     .input(z.object({
       policyId: z.string().uuid().optional(),
       status: z.enum(STATUSES).optional(),
+      statuses: z.array(z.enum(STATUSES)).optional(),
       feedbackType: z.enum(FEEDBACK_TYPES).optional(),
+      feedbackTypes: z.array(z.enum(FEEDBACK_TYPES)).optional(),
       priority: z.enum(PRIORITIES).optional(),
+      priorities: z.array(z.enum(PRIORITIES)).optional(),
     }))
     .query(async ({ ctx, input }) => {
       const canReadAll = can(ctx.user.role, 'feedback:read_all')
@@ -278,9 +327,22 @@ export const feedbackRouter = router({
         conditions.push(eq(feedbackItems.submitterId, ctx.user.id))
       }
       if (input.policyId) conditions.push(eq(feedbackItems.documentId, input.policyId))
-      if (input.status) conditions.push(eq(feedbackItems.status, input.status))
-      if (input.feedbackType) conditions.push(eq(feedbackItems.feedbackType, input.feedbackType))
-      if (input.priority) conditions.push(eq(feedbackItems.priority, input.priority))
+
+      // R18: merge singular + array inputs and switch between eq / inArray
+      // based on cardinality.
+      const statuses = input.statuses && input.statuses.length > 0
+        ? input.statuses
+        : input.status ? [input.status] : []
+      const feedbackTypes = input.feedbackTypes && input.feedbackTypes.length > 0
+        ? input.feedbackTypes
+        : input.feedbackType ? [input.feedbackType] : []
+      const priorities = input.priorities && input.priorities.length > 0
+        ? input.priorities
+        : input.priority ? [input.priority] : []
+
+      if (statuses.length > 0) conditions.push(inArray(feedbackItems.status, statuses))
+      if (feedbackTypes.length > 0) conditions.push(inArray(feedbackItems.feedbackType, feedbackTypes))
+      if (priorities.length > 0) conditions.push(inArray(feedbackItems.priority, priorities))
 
       const rows = await db
         .select({
@@ -316,10 +378,26 @@ export const feedbackRouter = router({
       })
     }),
 
-  // Get single feedback by ID
+  // Get single feedback by ID.
+  //
+  // R7: accept an optional `documentId` so the caller can scope the lookup
+  // to the policy page it is rendering. Without this scope, a reviewer with
+  // `feedback:read_all` on Policy A could craft `?selected=<id from Policy B>`
+  // and open Policy B's feedback via the detail sheet -- body, rationale,
+  // suggested change and all -- with no cross-policy check. When documentId
+  // is passed, a row from a different document returns NOT_FOUND at the
+  // query level, short-circuiting the IDOR.
   getById: requirePermission('feedback:read_own')
-    .input(z.object({ id: z.string().uuid() }))
+    .input(z.object({
+      id: z.string().uuid(),
+      documentId: z.string().uuid().optional(),
+    }))
     .query(async ({ ctx, input }) => {
+      const whereConditions = [eq(feedbackItems.id, input.id)]
+      if (input.documentId) {
+        whereConditions.push(eq(feedbackItems.documentId, input.documentId))
+      }
+
       const [row] = await db
         .select({
           id: feedbackItems.id,
@@ -345,7 +423,7 @@ export const feedbackRouter = router({
         })
         .from(feedbackItems)
         .leftJoin(users, eq(feedbackItems.submitterId, users.id))
-        .where(eq(feedbackItems.id, input.id))
+        .where(and(...whereConditions))
         .limit(1)
 
       if (!row) {
@@ -389,12 +467,18 @@ export const feedbackRouter = router({
         ctx.user.id,
       )
 
+      // R8: include fromStatus/toStatus so the audit trail records the
+      // transition context without cross-referencing workflowTransitions.
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.FEEDBACK_START_REVIEW,
         entityType: 'feedback',
         entityId: input.id,
+        payload: {
+          fromStatus: updated.previousStatus,
+          toStatus:   updated.newStatus,
+        },
       }).catch(console.error)
 
       // NOTIF-04: route notification through notificationDispatchFn (Inngest)
@@ -485,12 +569,18 @@ export const feedbackRouter = router({
         ctx.user.id,
       )
 
+      // R8: include fromStatus/toStatus so the audit trail records the
+      // transition context without cross-referencing workflowTransitions.
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.FEEDBACK_CLOSE,
         entityType: 'feedback',
         entityId: input.id,
+        payload: {
+          fromStatus: updated.previousStatus,
+          toStatus:   updated.newStatus,
+        },
       }).catch(console.error)
 
       // NOTIF-04: route notification through notificationDispatchFn (Inngest).

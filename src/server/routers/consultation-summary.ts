@@ -271,6 +271,27 @@ export const consultationSummaryRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { current, documentId } = await loadSummary(input.versionId)
       const summary = requireSummary(current)
+      const targetSection = findSection(summary, input.sectionId)
+
+      // D19: dedupe rapid double-clicks on "Regenerate Section". Two events
+      // fired ~50ms apart would both trigger a full LLM run; the second
+      // overwrites the first's output in persist-summary and produces
+      // inconsistent state (especially when one run hits the guardrail and
+      // the other doesn't). If the section is ALREADY pending when we enter
+      // this mutation, an Inngest run is already in flight for it - skip
+      // the reset + send and return idempotently.
+      if (targetSection.status === 'pending') {
+        writeAuditLog({
+          actorId:    ctx.user.id,
+          actorRole:  ctx.user.role,
+          action:     ACTIONS.CONSULTATION_SUMMARY_REGENERATE,
+          entityType: 'document_version',
+          entityId:   input.versionId,
+          payload:    { sectionId: input.sectionId, deduped: true },
+        }).catch(console.error)
+        return { sectionId: input.sectionId, queued: false, alreadyPending: true }
+      }
+
       const sections = summary.sections.map((s) =>
         s.sectionId === input.sectionId
           ? {

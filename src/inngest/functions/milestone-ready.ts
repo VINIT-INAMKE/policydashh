@@ -9,6 +9,7 @@ import { documentVersions } from '@/src/db/schema/changeRequests'
 import { workshops } from '@/src/db/schema/workshops'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { evidenceArtifacts } from '@/src/db/schema/evidence'
+import { users } from '@/src/db/schema/users'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import {
@@ -23,6 +24,19 @@ import {
   checkExistingAnchorTx,
   isTxConfirmed,
 } from '@/src/lib/cardano'
+
+// D9: resolve the actor's role from users at audit-write time, mirroring
+// B15 / H5 in evidence-pack-export.ts. Previously every audit entry was
+// written with actorRole: 'admin' even when a policy_lead triggered the
+// anchor via markReady - the attribution in the Cardano audit trail was wrong.
+async function resolveActorRole(userId: string): Promise<string> {
+  const [row] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+  return row?.role ?? 'unknown'
+}
 
 /**
  * milestoneReadyFn -- 5-step Cardano anchor pipeline for milestones.
@@ -204,9 +218,13 @@ export const milestoneReadyFn = inngest.createFunction(
         })
         .where(eq(milestones.id, hashData.milestoneId))
 
+      // D9: resolve the triggering actor's real role (admin OR policy_lead)
+      // so the audit trail reflects who actually called markReady.
+      const actorRole = await resolveActorRole(event.data.triggeredBy)
+
       await writeAuditLog({
         actorId: event.data.triggeredBy,
-        actorRole: 'admin',
+        actorRole,
         action: ACTIONS.MILESTONE_ANCHOR_START,
         entityType: 'milestone',
         entityId: hashData.milestoneId,
@@ -256,6 +274,10 @@ export const milestoneReadyFn = inngest.createFunction(
 
     // ---- Step: finalize ----
     const result = await step.run('finalize', async () => {
+      // D9: same role-resolution pattern used in persist-hash so the
+      // complete/fail audit rows also carry the real role.
+      const actorRole = await resolveActorRole(event.data.triggeredBy)
+
       if (confirmed) {
         await db
           .update(milestones)
@@ -269,7 +291,7 @@ export const milestoneReadyFn = inngest.createFunction(
 
         await writeAuditLog({
           actorId: event.data.triggeredBy,
-          actorRole: 'admin',
+          actorRole,
           action: ACTIONS.MILESTONE_ANCHOR_COMPLETE,
           entityType: 'milestone',
           entityId: hashData.milestoneId,
@@ -283,7 +305,7 @@ export const milestoneReadyFn = inngest.createFunction(
       // D-14: Send admin notification via existing dispatch pipeline.
       await writeAuditLog({
         actorId: event.data.triggeredBy,
-        actorRole: 'admin',
+        actorRole,
         action: ACTIONS.MILESTONE_ANCHOR_FAIL,
         entityType: 'milestone',
         entityId: hashData.milestoneId,
@@ -292,7 +314,9 @@ export const milestoneReadyFn = inngest.createFunction(
 
       await sendNotificationCreate({
         userId: event.data.triggeredBy,
-        type: 'cr_status_changed',
+        // P24: dedicated notification type so the in-app panel renders the
+        // correct anchor-failure icon instead of a change-request badge.
+        type: 'anchoring_failed',
         title: 'Anchoring failed for milestone',
         body: 'Milestone anchoring timed out after 10 minutes. Use the Retry Anchor button on the milestone detail page.',
         entityType: 'milestone',

@@ -6,6 +6,9 @@ export const notifTypeEnum = pgEnum('notification_type', [
   'version_published',
   'section_assigned',
   'cr_status_changed',
+  // P24: added by migration 0024 so Cardano anchor-failure notifications
+  // stop being mislabeled as cr_status_changed.
+  'anchoring_failed',
 ])
 
 export const notifications = pgTable('notifications', {
@@ -24,4 +27,9 @@ export const notifications = pgTable('notifications', {
   // non-null values participate in uniqueness, so legacy createNotification
   // callsites (which leave this NULL) are unaffected during the transition.
   idempotencyKey: text('idempotency_key').unique(),
+  // P30: stamped by notificationDispatchFn's send-email step on successful
+  // delivery. On Inngest retry the step re-reads this column and skips the
+  // email send when it's already set, eliminating duplicate emails if the
+  // step fails after a successful Resend response but before returning.
+  emailSentAt: timestamp('email_sent_at', { withTimezone: true }),
 })

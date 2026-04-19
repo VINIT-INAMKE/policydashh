@@ -92,7 +92,13 @@ export async function POST(request: Request): Promise<Response> {
   const ip = getClientIp(request)
   const ipLimit = consume(`wf:ip:${ip}`, { max: 10, windowMs: 60_000 })
   if (!ipLimit.ok) {
-    return Response.json({ error: 'Too many requests' }, { status: 429 })
+    // P4: surface Retry-After so clients (and Inngest replay logic) back
+    // off for the exact remaining window instead of retrying immediately.
+    const retryAfter = Math.max(1, Math.ceil((ipLimit.resetAt - Date.now()) / 1000))
+    return Response.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    )
   }
 
   // 1. Parse + validate body.
@@ -108,7 +114,12 @@ export async function POST(request: Request): Promise<Response> {
     windowMs: 60_000,
   })
   if (!tokenLimit.ok) {
-    return Response.json({ error: 'Too many requests' }, { status: 429 })
+    // P4: Retry-After per the exact window remaining.
+    const retryAfter = Math.max(1, Math.ceil((tokenLimit.resetAt - Date.now()) / 1000))
+    return Response.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    )
   }
 
   // 2. Re-verify JWT on the server (never trust the client). Token binds to
@@ -118,14 +129,25 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // B13: burn-check. If this token has already been used, reject.
+  // S15 / B13: burn the token FIRST with INSERT ... ON CONFLICT DO NOTHING
+  // RETURNING. The previous SELECT-then-transaction pre-check was racy —
+  // five concurrent requests could all pass the pre-check and then produce
+  // five feedback rows before any of their nonce-writes collided. Because
+  // we run on `neon-http` (no true transactions), we rely on the UNIQUE
+  // constraint on `tokenHash` to serialize: only the request whose INSERT
+  // actually produces a returned row continues; every other concurrent
+  // request sees `[]` and aborts before the feedback write.
+  //
+  // If the downstream feedback insert fails after this point, the nonce
+  // stays burned — we treat that as acceptable since a retry should use a
+  // fresh link, and letting the nonce be re-used would reopen this race.
   const tokenHash = hashFeedbackToken(body.token)
-  const nonceHit = await db
-    .select({ tokenHash: workshopFeedbackTokenNonces.tokenHash })
-    .from(workshopFeedbackTokenNonces)
-    .where(eq(workshopFeedbackTokenNonces.tokenHash, tokenHash))
-    .limit(1)
-  if (nonceHit.length > 0) {
+  const claimed = await db
+    .insert(workshopFeedbackTokenNonces)
+    .values({ tokenHash, workshopId: body.workshopId })
+    .onConflictDoNothing({ target: workshopFeedbackTokenNonces.tokenHash })
+    .returning({ tokenHash: workshopFeedbackTokenNonces.tokenHash })
+  if (claimed.length === 0) {
     return Response.json({ error: 'Token already used' }, { status: 401 })
   }
 
@@ -245,16 +267,9 @@ export async function POST(request: Request): Promise<Response> {
       .values({ workshopId: body.workshopId, feedbackId: row.id })
       .onConflictDoNothing()
 
-    // B13: burn the token. `onConflictDoNothing` is deliberate — if two
-    // identical requests race, the second to insert loses the token-nonce
-    // write and would see a conflict; the row is already there from the
-    // first, so the second tx rolls back cleanly via the nonce check up top
-    // (the pre-check races, but the conflict here makes it idempotent at
-    // the storage layer).
-    await tx
-      .insert(workshopFeedbackTokenNonces)
-      .values({ tokenHash, workshopId: body.workshopId })
-      .onConflictDoNothing()
+    // S15 / B13: nonce burn now happens up-front (before the transaction)
+    // so concurrent requests can never both reach this block. The nonce
+    // table already has our row; nothing to write here.
 
     return row.id
   })

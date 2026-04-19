@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import { Turnstile } from '@marsidev/react-turnstile'
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -99,6 +99,11 @@ export function ParticipateForm() {
   const [topError, setTopError] = useState<string | null>(null)
   const successEmail = useRef<string>('')
   const successOrg = useRef<string>('')
+  // S25: ref to the Turnstile widget so we can call .reset() after the
+  // server rejects a token (403). A spent token will never re-verify, so
+  // we must tear it down and surface a fresh challenge instead of leaving
+  // the user stuck with a stale one.
+  const turnstileRef = useRef<TurnstileInstance | undefined>(undefined)
 
   const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setState((s) => ({ ...s, [key]: value }))
@@ -142,8 +147,14 @@ export function ParticipateForm() {
 
         // Error paths
         if (res.status === 403) {
-          const msg = 'Security verification failed. Please refresh the page and try again.'
+          // S25: the server rejected the token (already-used, invalid
+          // signature, or siteverify failure). Spent tokens can't re-verify,
+          // so clear local state AND reset the widget so the user can solve
+          // a fresh challenge without reloading the page.
+          const msg = 'Security verification failed. Please complete the security check again.'
           setTopError(msg)
+          setTurnstileToken(null)
+          turnstileRef.current?.reset()
           toast.error(msg)
         } else if (res.status === 429) {
           const msg = 'Too many requests from this email address. Please wait 15 minutes before trying again.'
@@ -231,6 +242,8 @@ export function ParticipateForm() {
             onValueChange={(v) => update('role', v as OrgType)}
             className="grid grid-cols-1 gap-2 sm:grid-cols-2"
             aria-label="Your role"
+            aria-invalid={!!errors.role}
+            aria-describedby={errors.role ? 'role-error' : undefined}
           >
             {ROLE_OPTIONS.map((opt) => (
               <div key={opt.value} className="flex items-center gap-2 rounded-md border border-border/60 px-3 py-3">
@@ -239,7 +252,11 @@ export function ParticipateForm() {
               </div>
             ))}
           </RadioGroup>
-          {errors.role ? <p className="text-sm text-destructive">{errors.role}</p> : null}
+          {errors.role ? (
+            <p id="role-error" className="text-sm text-destructive">
+              {errors.role}
+            </p>
+          ) : null}
         </section>
 
         <Separator />
@@ -250,7 +267,11 @@ export function ParticipateForm() {
           <div className="flex flex-col gap-2">
             <Label htmlFor="orgType">Organization type</Label>
             <Select value={state.orgType || null} onValueChange={(v) => update('orgType', (v ?? '') as OrgType | '')}>
-              <SelectTrigger id="orgType" aria-invalid={!!errors.orgType}>
+              <SelectTrigger
+                id="orgType"
+                aria-invalid={!!errors.orgType}
+                aria-describedby={errors.orgType ? 'orgType-error' : undefined}
+              >
                 <SelectValue placeholder="Select organization type" />
               </SelectTrigger>
               <SelectContent>
@@ -259,7 +280,11 @@ export function ParticipateForm() {
                 ))}
               </SelectContent>
             </Select>
-            {errors.orgType ? <p className="text-sm text-destructive">{errors.orgType}</p> : null}
+            {errors.orgType ? (
+              <p id="orgType-error" className="text-sm text-destructive">
+                {errors.orgType}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="orgName">Organization name</Label>
@@ -321,6 +346,7 @@ export function ParticipateForm() {
           <span className="text-sm font-medium">Security check</span>
           {siteKey ? (
             <Turnstile
+              ref={turnstileRef}
               siteKey={siteKey}
               options={{ theme: 'light', size: 'normal' }}
               onSuccess={(token: string) => setTurnstileToken(token)}
@@ -331,7 +357,18 @@ export function ParticipateForm() {
               }}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">Security widget unavailable in this environment.</p>
+            // S16: user-facing copy when the site key is missing (production
+            // misconfiguration). The previous dev-facing copy + permanently
+            // disabled button left the user stuck with no guidance; this
+            // version tells them the service is temporarily unavailable
+            // and how to get help.
+            <p
+              role="alert"
+              className="text-sm text-destructive"
+            >
+              Service temporarily unavailable. Please try again later, or
+              contact us if the problem persists.
+            </p>
           )}
         </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { trpc } from '@/src/trpc/client'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
@@ -27,13 +27,31 @@ interface PublicDraftToggleProps {
 export function PublicDraftToggle({ documentId, isPublicDraft }: PublicDraftToggleProps) {
   const utils = trpc.useUtils()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  // A6: mirror the parent prop in local state so the switch updates
+  // immediately on click rather than waiting for the mutation round-trip
+  // + cache invalidation to finish (used to flicker for ~200ms). On
+  // error we roll back to the last known server value.
+  const [localValue, setLocalValue] = useState(isPublicDraft)
+
+  // Keep local state in sync when the parent query refetches — e.g. after
+  // the mutation succeeds or a sibling component invalidates the cache.
+  useEffect(() => {
+    setLocalValue(isPublicDraft)
+  }, [isPublicDraft])
 
   const setPublicDraftMutation = trpc.document.setPublicDraft.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       toast.success('Public draft flag updated')
+      // Anchor optimistic state to the confirmed server value before the
+      // invalidate round-trip lands.
+      setLocalValue(variables.isPublicDraft)
       utils.document.getById.invalidate({ id: documentId })
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => {
+      // A6: roll back the optimistic flip if the server rejected it.
+      setLocalValue(isPublicDraft)
+      toast.error(error.message)
+    },
   })
 
   function handleChange(checked: boolean) {
@@ -41,11 +59,14 @@ export function PublicDraftToggle({ documentId, isPublicDraft }: PublicDraftTogg
       setConfirmOpen(true)
       return
     }
+    // Optimistic flip — roll back in onError if the server rejects.
+    setLocalValue(checked)
     setPublicDraftMutation.mutate({ id: documentId, isPublicDraft: checked })
   }
 
   function confirmEnable() {
     setConfirmOpen(false)
+    setLocalValue(true)
     setPublicDraftMutation.mutate({ id: documentId, isPublicDraft: true })
   }
 
@@ -59,7 +80,7 @@ export function PublicDraftToggle({ documentId, isPublicDraft }: PublicDraftTogg
           </p>
         </div>
         <Switch
-          checked={isPublicDraft}
+          checked={localValue}
           onCheckedChange={handleChange}
           disabled={setPublicDraftMutation.isPending}
         />

@@ -88,6 +88,28 @@ export async function transitionFeedback(
     }
     newState = eventToStateMap[event.type] ?? row.status
 
+    // R1: Static valid-transitions table mirroring the XState machine so the
+    // fallback path enforces the same guards. Without this, a reviewer could
+    // CLOSE from `submitted` if the snapshot JSONB is ever corrupted -- the
+    // only check in the fallback used to be `newState !== previousState`,
+    // which passes for `submitted -> closed`. Keep this in lockstep with
+    // src/server/machines/feedback.machine.ts state definitions.
+    const VALID_TRANSITIONS: Record<string, string[]> = {
+      submitted:           ['under_review'],
+      under_review:        ['accepted', 'partially_accepted', 'rejected'],
+      accepted:            ['closed'],
+      partially_accepted:  ['closed'],
+      rejected:            ['closed'],
+      closed:              [],
+    }
+    const allowedTargets = VALID_TRANSITIONS[previousState] ?? []
+    if (!allowedTargets.includes(newState)) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Invalid transition: cannot apply ${event.type} in state ${previousState}`,
+      })
+    }
+
     if (newState === previousState) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
@@ -114,14 +136,18 @@ export async function transitionFeedback(
     updateData.reviewedBy = (event as { reviewerId: string }).reviewerId
   }
 
-  // 8. Update the feedback row
-  const [updated] = await db
-    .update(feedbackItems)
-    .set(updateData)
-    .where(eq(feedbackItems.id, feedbackId))
-    .returning()
-
-  // 9. Log the transition to workflow_transitions
+  // R6: Drizzle + neon-http has no `db.transaction()` support, so we cannot
+  // commit the status UPDATE and the workflowTransitions INSERT atomically.
+  // Instead we INSERT the audit row FIRST: if the status UPDATE later fails,
+  // the transition log survives and a retry can re-apply the status without
+  // losing auditability. If the INSERT itself fails, the feedback status is
+  // left untouched and the caller sees the error -- no silent divergence.
+  //
+  // The reverse order (UPDATE first, then INSERT) was the previous behavior:
+  // a transient INSERT failure left the feedback permanently in the new
+  // status with no audit record, and because XState guards prevent re-
+  // running the same event from the target state, the audit entry could
+  // never be recovered.
   await db.insert(workflowTransitions).values({
     entityType: 'feedback',
     entityId: feedbackId,
@@ -134,6 +160,24 @@ export async function transitionFeedback(
     },
   })
 
-  // 10. Return updated row
-  return updated
+  // 8. Update the feedback row. If this fails the audit row above stands as
+  // a durable record of the intended transition; the caller may retry the
+  // mutation to re-apply the status.
+  const [updated] = await db
+    .update(feedbackItems)
+    .set(updateData)
+    .where(eq(feedbackItems.id, feedbackId))
+    .returning()
+
+  // 9. Return updated row augmented with the before/after states. R8:
+  // callers (feedback.startReview / feedback.close router procs) want to
+  // log `fromStatus` / `toStatus` in the audit payload without re-reading
+  // the previous row. We attach the strings as non-enumerable properties
+  // but also expose them as regular fields so the caller can forward them
+  // to writeAuditLog -- anything relying on the exact shape of the
+  // returned row (JSON fan-out, types) still sees the feedback columns.
+  return Object.assign(updated, {
+    previousStatus: previousState,
+    newStatus:      newState,
+  })
 }

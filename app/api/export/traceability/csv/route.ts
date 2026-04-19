@@ -45,7 +45,11 @@ export async function GET(request: NextRequest) {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  const user = await db.query.users.findFirst({ where: eq(users.clerkId, userId) })
+  // D3: exclude soft-deleted users so a Clerk session that survives
+  // an anonymization webhook cannot keep exporting traceability.
+  const user = await db.query.users.findFirst({
+    where: and(eq(users.clerkId, userId), isNull(users.deletedAt)),
+  })
   if (!user) {
     return new Response('User not found', { status: 401 })
   }
@@ -88,8 +92,13 @@ export async function GET(request: NextRequest) {
   if (decisionOutcomes.length > 0) {
     conditions.push(inArray(feedbackItems.status, decisionOutcomes))
   }
+  // R5: `inArray` alone drops users with NULL orgType. Wrap with IS NULL
+  // so NULL-orgType rows stay visible under an active filter, matching
+  // the feedback.list / traceability.matrix behaviour.
   if (orgTypes.length > 0) {
-    conditions.push(inArray(users.orgType, orgTypes))
+    conditions.push(
+      or(inArray(users.orgType, orgTypes), isNull(users.orgType))!,
+    )
   }
 
   // Version range filter — D6: apply as `(col >= X) OR col IS NULL` so
@@ -147,9 +156,19 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Execute the matrix query
+  // Execute the matrix query.
+  //
+  // R10: `selectDistinct` collapses (feedback,CR,section,version) fan-out
+  //      so a CR linked to multiple sections does not inflate the row
+  //      count with duplicate feedback identity.
+  // R16: hard cap at 5000 rows. tRPC's `matrix` proc caps at 500, but the
+  //      CSV route previously materialised the entire result set into
+  //      memory before serializing, inviting OOM / timeout on policies
+  //      with thousands of items. Callers who hit the cap are warned via
+  //      an `X-Truncated` response header below.
+  const EXPORT_ROW_LIMIT = 5000
   const rows = await db
-    .select({
+    .selectDistinct({
       feedbackReadableId: feedbackItems.readableId,
       feedbackTitle: feedbackItems.title,
       feedbackStatus: feedbackItems.status,
@@ -173,15 +192,29 @@ export async function GET(request: NextRequest) {
     .leftJoin(policySections, eq(crSectionLinks.sectionId, policySections.id))
     .where(and(...conditions))
     .orderBy(desc(feedbackItems.createdAt))
+    .limit(EXPORT_ROW_LIMIT + 1)
 
-  // Anonymity enforcement
-  const canSeeIdentity = user.role === 'admin' || user.role === 'policy_lead'
+  const truncated = rows.length > EXPORT_ROW_LIMIT
+  const boundedRows = truncated ? rows.slice(0, EXPORT_ROW_LIMIT) : rows
 
-  const csvData = rows.map((row) => ({
+  // Anonymity enforcement. R4: tighten to `admin` only -- the tRPC
+  // traceability.matrix procedure restricts identity visibility to admin
+  // (E5 anonymity promise), but the CSV exporter used to also reveal
+  // `orgType` to policy_lead, which would let a policy_lead download the
+  // CSV and see the org type of anonymous feedback rows that they cannot
+  // see in the matrix UI. Match the tRPC gate exactly.
+  const canSeeIdentity = user.role === 'admin'
+
+  // R13: include `Submitter Name` alongside `Org Type` so the CSV column
+  // set matches what a reviewer sees for non-anonymous rows. The column
+  // is always present; `--` shows for anonymous rows or when identity is
+  // restricted.
+  const csvData = boundedRows.map((row) => ({
     'Feedback ID': row.feedbackReadableId,
     'Feedback Title': row.feedbackTitle,
     'Status': row.feedbackStatus,
     'Decision Rationale': row.feedbackDecisionRationale ?? '--',
+    'Submitter Name': (row.feedbackIsAnonymous && !canSeeIdentity) ? '--' : (row.submitterName ?? '--'),
     'Org Type': (row.feedbackIsAnonymous && !canSeeIdentity) ? '--' : (row.submitterOrgType ?? '--'),
     'CR ID': row.crReadableId ?? '--',
     'CR Title': row.crTitle ?? '--',
@@ -203,10 +236,18 @@ export async function GET(request: NextRequest) {
     payload: { format: 'csv' },
   }).catch(console.error)
 
-  return new Response(csv, {
-    headers: {
-      'Content-Type': 'text/csv',
-      'Content-Disposition': `attachment; filename="traceability-${documentId}.csv"`,
-    },
-  })
+  // R16: signal truncation via a response header so callers can surface
+  // a "export capped at N rows" warning. Browsers ignore unknown headers
+  // when downloading a file; integration tests or script callers can
+  // check it explicitly.
+  const responseHeaders: Record<string, string> = {
+    'Content-Type': 'text/csv',
+    'Content-Disposition': `attachment; filename="traceability-${documentId}.csv"`,
+  }
+  if (truncated) {
+    responseHeaders['X-Truncated'] = 'true'
+    responseHeaders['X-Row-Limit'] = String(EXPORT_ROW_LIMIT)
+  }
+
+  return new Response(csv, { headers: responseHeaders })
 }

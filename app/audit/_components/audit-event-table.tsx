@@ -43,6 +43,11 @@ interface AuditEvent {
 
 interface AuditEventTableProps {
   events: AuditEvent[]
+  // D7: server-reported total across the filter set. Used to compute
+  // hasNextPage so an exact-pageSize final page doesn't show "Next" as
+  // enabled (previously disabled only when events.length < pageSize, which
+  // flipped wrong at exact page boundaries).
+  totalCount: number
   isLoading: boolean
   page: number
   pageSize: number
@@ -58,6 +63,7 @@ function truncateJson(payload: Record<string, unknown>, maxLen = 40): string {
 
 export function AuditEventTable({
   events,
+  totalCount,
   isLoading,
   page,
   pageSize,
@@ -117,6 +123,12 @@ export function AuditEventTable({
 
   const start = page * pageSize + 1
   const end = page * pageSize + events.length
+  // D7: Next is enabled iff there are more rows past this page according to
+  // the server-reported total. Previously disabled on events.length<pageSize,
+  // which incorrectly flipped when the last page was exactly `pageSize` rows
+  // (showed "Next" enabled into an empty page) or inflated the count to
+  // mislead the auditor into thinking more data existed.
+  const hasNextPage = totalCount > page * pageSize + events.length
 
   return (
     <div className="space-y-4">
@@ -188,7 +200,7 @@ export function AuditEventTable({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {start}&#8211;{end} events
+          Showing {start}&#8211;{end} of {totalCount} events
         </p>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -219,7 +231,7 @@ export function AuditEventTable({
             <Button
               variant="outline"
               size="sm"
-              disabled={events.length < pageSize}
+              disabled={!hasNextPage}
               onClick={() => onPageChange(page + 1)}
             >
               Next

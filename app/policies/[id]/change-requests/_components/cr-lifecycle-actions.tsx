@@ -43,8 +43,12 @@ export function CRLifecycleActions({
       toast.success('Change request submitted for review.')
       onStatusChange()
     },
-    onError: () => {
-      toast.error("Couldn't update the change request status. Your changes were not saved.")
+    onError: (err) => {
+      // A11: surface the server-provided reason. Static "changes were not
+      // saved" copy previously masked FORBIDDEN (self-approval), BAD_REQUEST
+      // (invalid XState transition), and network errors behind the same
+      // generic message.
+      toast.error(err.message || "Couldn't update the change request status.")
     },
   })
 
@@ -53,8 +57,11 @@ export function CRLifecycleActions({
       toast.success('Change request approved.')
       onStatusChange()
     },
-    onError: () => {
-      toast.error("Couldn't update the change request status. Your changes were not saved.")
+    onError: (err) => {
+      // A11: same reasoning as submitForReviewMutation above — the server
+      // messages (e.g. "Cannot approve your own change request CR-007")
+      // are more useful than the generic fallback copy.
+      toast.error(err.message || "Couldn't update the change request status.")
     },
   })
 

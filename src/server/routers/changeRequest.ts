@@ -494,7 +494,12 @@ export const changeRequestRouter = router({
       return updated
     }),
 
-  // Add a section link to a CR (only in drafting state)
+  // Add a section link to a CR (only in drafting state).
+  //
+  // A20: require the caller to be the CR owner. `cr:manage` (admin /
+  // policy_lead) alone is not enough — the owner-check mirrors the
+  // self-approval/self-merge guards elsewhere in this router and matches
+  // the "only the owner can modify their own draft" contract.
   addSection: requirePermission('cr:manage')
     .input(z.object({
       crId: z.string().uuid(),
@@ -503,13 +508,24 @@ export const changeRequestRouter = router({
     .mutation(async ({ ctx, input }) => {
       // Verify CR is in drafting state
       const [cr] = await db
-        .select({ status: changeRequests.status, readableId: changeRequests.readableId })
+        .select({
+          status: changeRequests.status,
+          readableId: changeRequests.readableId,
+          ownerId: changeRequests.ownerId,
+        })
         .from(changeRequests)
         .where(eq(changeRequests.id, input.crId))
         .limit(1)
 
       if (!cr) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Change request not found' })
+      }
+
+      if (cr.ownerId !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: `Only the owner of ${cr.readableId} can modify its sections`,
+        })
       }
 
       if (cr.status !== 'drafting') {
@@ -535,7 +551,10 @@ export const changeRequestRouter = router({
       return { success: true }
     }),
 
-  // Remove a section link from a CR (only in drafting state)
+  // Remove a section link from a CR (only in drafting state).
+  //
+  // A20: same owner-check as addSection above — only the CR owner may
+  // restructure a draft CR's affected sections.
   removeSection: requirePermission('cr:manage')
     .input(z.object({
       crId: z.string().uuid(),
@@ -544,13 +563,24 @@ export const changeRequestRouter = router({
     .mutation(async ({ ctx, input }) => {
       // Verify CR is in drafting state
       const [cr] = await db
-        .select({ status: changeRequests.status, readableId: changeRequests.readableId })
+        .select({
+          status: changeRequests.status,
+          readableId: changeRequests.readableId,
+          ownerId: changeRequests.ownerId,
+        })
         .from(changeRequests)
         .where(eq(changeRequests.id, input.crId))
         .limit(1)
 
       if (!cr) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Change request not found' })
+      }
+
+      if (cr.ownerId !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: `Only the owner of ${cr.readableId} can modify its sections`,
+        })
       }
 
       if (cr.status !== 'drafting') {

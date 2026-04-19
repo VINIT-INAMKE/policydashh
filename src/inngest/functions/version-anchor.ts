@@ -4,6 +4,7 @@ import { inngest } from '../client'
 import { versionPublishedEvent, sendNotificationCreate } from '../events'
 import { db } from '@/src/db'
 import { documentVersions } from '@/src/db/schema/changeRequests'
+import { users } from '@/src/db/schema/users'
 import { hashPolicyVersion } from '@/src/lib/hashing'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
@@ -130,19 +131,32 @@ export const versionAnchorFn = inngest.createFunction(
       // I2: permanent failure -- tx not confirmed after MAX_ATTEMPTS * 30s = 10m.
       //
       // Write audit event so the admin audit UI and evidence pack export can
-      // surface the failure. We reuse MILESTONE_ANCHOR_FAIL as the action
-      // constant because `document_version` anchor failures follow the same
-      // operator-response pattern (retry-from-published). If a
-      // dedicated VERSION_ANCHOR_FAIL constant is added later, switch here.
+      // surface the failure.
+      //
+      // D20: use the dedicated VERSION_ANCHOR_FAIL action. Previously this
+      // reused MILESTONE_ANCHOR_FAIL, which collapsed version + milestone
+      // anchor timeouts under a single action name and broke action-scoped
+      // alert rules.
+      //
+      // D9: resolve the actual role of the user who published the version
+      // (admin OR policy_lead) from the users table at audit-write time,
+      // rather than hardcoding 'admin'. Mirrors the B15 pattern.
       //
       // documentVersions today has no anchor-status column -- txHash stays
       // NULL so a subsequent run can retry cleanly. If a follow-up migration
       // adds `documentVersions.anchorStatus` (enum: pending|anchored|failed),
       // set it to 'failed' inside this step.
+      const [actorRow] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, hashData.createdBy))
+        .limit(1)
+      const actorRole = actorRow?.role ?? 'unknown'
+
       await writeAuditLog({
         actorId: hashData.createdBy,
-        actorRole: 'admin',
-        action: ACTIONS.MILESTONE_ANCHOR_FAIL,
+        actorRole,
+        action: ACTIONS.VERSION_ANCHOR_FAIL,
         entityType: 'document_version',
         entityId: hashData.versionId,
         payload: {
@@ -158,13 +172,15 @@ export const versionAnchorFn = inngest.createFunction(
       // pattern, which uses the triggering admin as the notification recipient.
       await sendNotificationCreate({
         userId: hashData.createdBy,
-        type: 'cr_status_changed',
+        // P24: dedicated notification type so the in-app panel renders the
+        // correct anchor-failure icon instead of a change-request badge.
+        type: 'anchoring_failed',
         title: 'Anchoring failed for version',
         body: 'Version anchoring timed out after 10 minutes. Retry from the version detail page.',
         entityType: 'document_version',
         entityId: hashData.versionId,
         createdBy: hashData.createdBy,
-        action: ACTIONS.MILESTONE_ANCHOR_FAIL,
+        action: ACTIONS.VERSION_ANCHOR_FAIL,
       })
     })
 

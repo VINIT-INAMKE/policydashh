@@ -36,9 +36,12 @@ export async function POST(req: Request): Promise<Response> {
   const ip = getClientIp(req)
   const ipLimit = consume(`workshop-register:ip:${ip}`, { max: 20, windowMs: 5 * 60_000 })
   if (!ipLimit.ok) {
+    // P4: surface Retry-After so clients back off precisely until the
+    // current window resets instead of hammering immediately.
+    const retryAfter = Math.max(1, Math.ceil((ipLimit.resetAt - Date.now()) / 1000))
     return Response.json(
       { error: 'Too many requests. Try again later.' },
-      { status: 429 },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
     )
   }
 
@@ -86,9 +89,11 @@ export async function POST(req: Request): Promise<Response> {
     windowMs: 10 * 60_000,
   })
   if (!emailLimit.ok) {
+    // P4: Retry-After from the consumed window's resetAt.
+    const retryAfter = Math.max(1, Math.ceil((emailLimit.resetAt - Date.now()) / 1000))
     return Response.json(
       { error: 'Too many attempts for this email. Try again later.' },
-      { status: 429 },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
     )
   }
 

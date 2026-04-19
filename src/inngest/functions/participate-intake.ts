@@ -3,6 +3,7 @@ import { clerkClient } from '@clerk/nextjs/server'
 import { isClerkAPIResponseError } from '@clerk/shared/error'
 import { inngest } from '../client'
 import { writeAuditLog } from '@/src/lib/audit'
+import { ACTIONS } from '@/src/lib/constants'
 
 /**
  * participateIntakeFn - async worker for the public /participate intake form.
@@ -121,7 +122,11 @@ export const participateIntakeFn = inngest.createFunction(
       await writeAuditLog({
         actorId: SYSTEM_ACTOR_ID,
         actorRole: 'system',
-        action: 'PARTICIPATE_INTAKE',
+        // D8: use the ACTIONS.PARTICIPATE_INTAKE constant rather than a raw
+        // 'PARTICIPATE_INTAKE' literal so the /audit filter dropdown picks
+        // the value up via `Object.entries(ACTIONS)` and downstream searches
+        // for ACTIONS.PARTICIPATE_INTAKE resolve to this emit site.
+        action: ACTIONS.PARTICIPATE_INTAKE,
         entityType: 'participate_intake',
         entityId: event.data.emailHash,
         payload: {

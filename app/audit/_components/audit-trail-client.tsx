@@ -39,7 +39,9 @@ export function AuditTrailClient() {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(50)
 
-  const { data: events, isLoading } = trpc.audit.list.useQuery({
+  // D7: audit.list now returns `{ events, totalCount }` so the table can
+  // compute a correct `hasNextPage` at exact-pageSize boundaries.
+  const { data, isLoading } = trpc.audit.list.useQuery({
     limit: pageSize,
     offset: page * pageSize,
     action: filters.action || undefined,
@@ -67,7 +69,8 @@ export function AuditTrailClient() {
     <div className="space-y-4">
       <AuditFilterPanel filters={filters} onFilterChange={handleFilterChange} />
       <AuditEventTable
-        events={events ?? []}
+        events={data?.events ?? []}
+        totalCount={data?.totalCount ?? 0}
         isLoading={isLoading}
         page={page}
         pageSize={pageSize}

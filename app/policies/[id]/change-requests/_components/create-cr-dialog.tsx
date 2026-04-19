@@ -35,15 +35,16 @@ export function CreateCRDialog({ documentId }: CreateCRDialogProps) {
 
   const utils = trpc.useUtils()
 
-  // Get accepted/partially accepted feedback for this document
+  // S14: scope the fetch to accepted/partially_accepted on the server so we
+  // don't ship hundreds of submitted/rejected rows to the client just to
+  // filter them out in JS. `feedback.list` accepts an array-form `statuses`
+  // input that compiles to an `inArray` condition on the server.
   const feedbackQuery = trpc.feedback.list.useQuery({
     documentId,
-    status: undefined, // We'll filter client-side for accepted + partially_accepted
+    statuses: ['accepted', 'partially_accepted'],
   })
 
-  const eligibleFeedback = (feedbackQuery.data ?? []).filter(
-    (fb: { status: string }) => fb.status === 'accepted' || fb.status === 'partially_accepted'
-  )
+  const eligibleFeedback = feedbackQuery.data ?? []
 
   const createMutation = trpc.changeRequest.create.useMutation({
     onSuccess: () => {

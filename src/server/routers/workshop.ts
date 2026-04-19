@@ -107,7 +107,7 @@ export const workshopRouter = router({
   // (or 100 when uncapped) so multiple attendees can book the same slot.
   reprovisionCalSeats: requirePermission('workshop:manage')
     .input(z.object({ workshopId: z.string().uuid() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const [workshop] = await db
         .select({
           id: workshops.id,
@@ -128,11 +128,30 @@ export const workshopRouter = router({
         })
       }
 
+      const newSeats = workshop.maxSeats ?? 100
       await updateCalEventTypeSeats(
         parseInt(workshop.calcomEventTypeId, 10),
-        workshop.maxSeats ?? 100,
+        newSeats,
       )
-      return { ok: true, seatsPerTimeSlot: workshop.maxSeats ?? 100 }
+
+      // D4: reprovisioning changes cal.com seat capacity externally -- every
+      // other workshop mutation writes an audit entry so evidence packs can
+      // reconstruct the capacity timeline. Reuse WORKSHOP_UPDATE with a
+      // payload flag distinguishing this from a DB-only update.
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_UPDATE,
+        entityType: 'workshop',
+        entityId: input.workshopId,
+        payload: {
+          stage: 'reprovision_cal_seats',
+          seatsPerTimeSlot: newSeats,
+          calcomEventTypeId: workshop.calcomEventTypeId,
+        },
+      }).catch(console.error)
+
+      return { ok: true, seatsPerTimeSlot: newSeats }
     }),
 
   // List workshops with upcoming/past/all filter
@@ -272,11 +291,19 @@ export const workshopRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       // Fetch workshop for ownership check + existing cal.com id for F10.
+      // D13: pull every mutable field so we can capture a proper before/after
+      // diff in the audit payload below.
       const [existing] = await db
         .select({
           createdBy: workshops.createdBy,
           calcomEventTypeId: workshops.calcomEventTypeId,
+          title: workshops.title,
+          description: workshops.description,
+          scheduledAt: workshops.scheduledAt,
+          durationMinutes: workshops.durationMinutes,
+          registrationLink: workshops.registrationLink,
           maxSeats: workshops.maxSeats,
+          timezone: workshops.timezone,
         })
         .from(workshops)
         .where(eq(workshops.id, input.workshopId))
@@ -350,13 +377,50 @@ export const workshopRouter = router({
         }
       }
 
+      // D13: capture the full before/after diff of every mutable field, not
+      // just title. Evidence-pack reviewers rely on this log to reconstruct
+      // the workshop's change history (scheduledAt, timezone, maxSeats, etc).
+      const before: Record<string, unknown> = {}
+      const after: Record<string, unknown> = {}
+      const existingScheduledAtIso = existing.scheduledAt instanceof Date
+        ? existing.scheduledAt.toISOString()
+        : (existing.scheduledAt as unknown as string | null)
+      if (input.title !== undefined) {
+        before.title = existing.title
+        after.title = updated.title
+      }
+      if (input.description !== undefined) {
+        before.description = existing.description
+        after.description = updated.description
+      }
+      if (input.scheduledAt !== undefined) {
+        before.scheduledAt = existingScheduledAtIso
+        after.scheduledAt = input.scheduledAt
+      }
+      if (input.durationMinutes !== undefined) {
+        before.durationMinutes = existing.durationMinutes
+        after.durationMinutes = updated.durationMinutes
+      }
+      if (input.registrationLink !== undefined) {
+        before.registrationLink = existing.registrationLink
+        after.registrationLink = updated.registrationLink
+      }
+      if (input.maxSeats !== undefined) {
+        before.maxSeats = existing.maxSeats
+        after.maxSeats = updated.maxSeats
+      }
+      if (input.timezone !== undefined) {
+        before.timezone = existing.timezone
+        after.timezone = updated.timezone
+      }
+
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
         action: ACTIONS.WORKSHOP_UPDATE,
         entityType: 'workshop',
         entityId: input.workshopId,
-        payload: { title: updated.title },
+        payload: { before, after },
       }).catch(console.error)
 
       return updated
@@ -389,6 +453,9 @@ export const workshopRouter = router({
       }
 
       // F12: active-registration guard.
+      // D12: the client parses `activeCount` from the error message so the
+      // DeleteWorkshopDialog can render a force-confirm with the exact count.
+      // Keep the "ACTIVE_REGISTRATIONS:<n>:" prefix stable - the UI greps for it.
       if (!input.force) {
         const [activeCount] = await db
           .select({ n: count() })
@@ -403,7 +470,7 @@ export const workshopRouter = router({
         if (activeN > 0) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: `Workshop has ${activeN} active registration(s). Cancel them first, or pass force: true to delete anyway.`,
+            message: `ACTIVE_REGISTRATIONS:${activeN}:Workshop has ${activeN} active registration(s). Cancel them first, or pass force: true to delete anyway.`,
           })
         }
       }
@@ -720,9 +787,13 @@ export const workshopRouter = router({
       }).catch(console.error)
 
       if (input.toStatus === 'completed') {
+        // D5: dispatch the evidence-nudge to the ACTING user (ctx.user.id),
+        // not existing.createdBy. If an admin completes a workshop for a
+        // creator who has since left or been anonymized, the nudge email
+        // still reaches someone responsible for the next-step artifacts.
         await sendWorkshopCompleted({
           workshopId: input.workshopId,
-          moderatorId: existing.createdBy,
+          moderatorId: ctx.user.id,
         })
       }
 
@@ -760,10 +831,12 @@ export const workshopRouter = router({
 
   // F18: attendee list for a workshop. Used by the manage detail page's
   // Attendees tab. Returns email/name/status/registration time/attendance so
-  // moderators can verify who's coming + who actually showed up. Scoped to
-  // workshop:read (same gate as getById) because the attendee PII is
-  // admin-grade.
-  listRegistrations: requirePermission('workshop:read')
+  // moderators can verify who's coming + who actually showed up.
+  // D1: gated on `workshop:read_attendees` (admin + workshop_moderator only).
+  // `workshop:read` would also admit stakeholder/observer/auditor/research_lead,
+  // who must not enumerate registrant PII by workshop UUID. Keep `workshop:read`
+  // on list/getById for the public-facing detail views.
+  listRegistrations: requirePermission('workshop:read_attendees')
     .input(z.object({ workshopId: z.string().uuid() }))
     .query(async ({ input }) => {
       const rows = await db

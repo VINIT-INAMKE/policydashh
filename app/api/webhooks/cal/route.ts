@@ -7,7 +7,7 @@ import { workflowTransitions } from '@/src/db/schema/workflow'
 import { verifyCalSignature } from '@/src/lib/cal-signature'
 import {
   sendWorkshopRegistrationReceived,
-  sendWorkshopFeedbackInvite,
+  sendWorkshopFeedbackInvitesBatch,
   sendWorkshopCompleted,
 } from '@/src/inngest/events'
 
@@ -145,7 +145,7 @@ export async function POST(req: Request): Promise<Response> {
 
         // F5: bust the per-workshop spots cache so the public listing
         // reflects the new registration within the next SSR revalidation.
-        revalidateTag(spotsTag(workshopId), { expire: 0 })
+        revalidateTag(spotsTag(workshopId), 'max')
 
         return new Response('OK', { status: 200 })
       }
@@ -163,7 +163,7 @@ export async function POST(req: Request): Promise<Response> {
           .returning({ workshopId: workshopRegistrations.workshopId })
         // F5: bust spots cache for the affected workshop.
         for (const row of cancelled) {
-          if (row.workshopId) revalidateTag(spotsTag(row.workshopId), { expire: 0 })
+          if (row.workshopId) revalidateTag(spotsTag(row.workshopId), 'max')
         }
         return new Response('OK', { status: 200 })
       }
@@ -212,7 +212,7 @@ export async function POST(req: Request): Promise<Response> {
                 status: 'rescheduled',
               })
               .onConflictDoNothing({ target: workshopRegistrations.bookingUid })
-            revalidateTag(spotsTag(workshopId), { expire: 0 })
+            revalidateTag(spotsTag(workshopId), 'max')
           } else {
             console.error(
               '[cal-webhook] BOOKING_RESCHEDULED matched 0 rows AND could not resolve workshopId/email',
@@ -221,7 +221,7 @@ export async function POST(req: Request): Promise<Response> {
           }
         } else {
           for (const row of updated) {
-            if (row.workshopId) revalidateTag(spotsTag(row.workshopId), { expire: 0 })
+            if (row.workshopId) revalidateTag(spotsTag(row.workshopId), 'max')
           }
         }
         return new Response('OK', { status: 200 })
@@ -237,6 +237,19 @@ export async function POST(req: Request): Promise<Response> {
           .where(eq(workshops.id, workshopId))
           .limit(1)
         if (!workshop) return new Response('OK', { status: 200 })
+
+        // S5: archived workshops are no longer soliciting feedback. Skip
+        // BOTH the status transition AND the attendee loop so we don't
+        // email feedback invites on a workshop that was intentionally
+        // retired. The guard below already excludes `archived` from the
+        // status flip, but the loop ran unconditionally after it.
+        if (workshop.status === 'archived') {
+          console.warn(
+            '[cal-webhook] MEETING_ENDED ignored for archived workshop',
+            { workshopId },
+          )
+          return new Response('OK (archived)', { status: 200 })
+        }
 
         // Idempotency: short-circuit if already completed (D-15).
         if (
@@ -272,7 +285,19 @@ export async function POST(req: Request): Promise<Response> {
         }
 
         // Backfill attendance + handle walk-ins.
+        //
+        // P3: we collect feedback-invite payloads into `feedbackInvites` and
+        // emit a single batch `inngest.send([...])` at the end of the loop,
+        // replacing the prior N sequential sends. A 50-person workshop used
+        // to saturate cal.com's retry window; now it's one network hop.
         const attendees = bookingData.attendees ?? []
+        const feedbackInvites: Array<{
+          workshopId: string
+          email: string
+          name: string
+          attendeeUserId: null
+        }> = []
+
         for (const a of attendees) {
           if (!a.email) continue
           const emailHash = emailHashOf(a.email)
@@ -339,16 +364,19 @@ export async function POST(req: Request): Promise<Response> {
             })
           }
 
-          // Emit one feedback invite per attendee.
-          await sendWorkshopFeedbackInvite({
+          // P3: queue the feedback invite for a batch send below.
+          feedbackInvites.push({
             workshopId,
             email: a.email,
             name: a.name ?? '',
             attendeeUserId: null,
-          }).catch((err) => {
-            console.error('[cal-webhook] sendWorkshopFeedbackInvite failed', err)
           })
         }
+
+        // P3: single batch send for all feedback invites.
+        await sendWorkshopFeedbackInvitesBatch(feedbackInvites).catch((err) => {
+          console.error('[cal-webhook] sendWorkshopFeedbackInvitesBatch failed', err)
+        })
 
         return new Response('OK', { status: 200 })
       }

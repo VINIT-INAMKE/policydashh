@@ -17,6 +17,7 @@ import 'server-only'
  * env-var checks from firing during Next.js module graph analysis.
  */
 
+import { NonRetriableError } from 'inngest'
 import { BlockfrostProvider, MeshTxBuilder } from '@meshsdk/core'
 import { MeshCardanoHeadlessWallet, AddressType } from '@meshsdk/wallet'
 import { BlockFrostAPI } from '@blockfrost/blockfrost-js'
@@ -54,7 +55,17 @@ function requireEnv(name: string): string {
 // ---------------------------------------------------------------------------
 
 let _provider: BlockfrostProvider | null = null
+// P25: single BlockFrostAPI instance shared across the module instead of
+// being constructed per-call in `checkExistingAnchorTx`. Each fresh
+// instantiation created a new HTTP connection pool AND re-validated
+// BLOCKFROST_PROJECT_ID; the singleton fixes both.
+let _blockfrostApi: BlockFrostAPI | null = null
 let _wallet: MeshCardanoHeadlessWallet | null = null
+// P5: promise-lock for wallet init so concurrent `getWallet()` awaits in
+// the same process share one in-flight initialisation. Without this,
+// `step.run('confirm-poll-N')` and a sibling step could both race into
+// `MeshCardanoHeadlessWallet.fromMnemonic` on a cold module.
+let _walletInitPromise: Promise<MeshCardanoHeadlessWallet> | null = null
 
 function getProvider(): BlockfrostProvider {
   if (_provider) return _provider
@@ -69,23 +80,65 @@ function getProvider(): BlockfrostProvider {
 }
 
 /**
+ * P25: singleton `BlockFrostAPI` instance. Reuses the underlying HTTP
+ * connection pool across calls. Created lazily on first use.
+ */
+function getBlockfrostApi(): BlockFrostAPI {
+  if (_blockfrostApi) return _blockfrostApi
+  const projectId = requireEnv('BLOCKFROST_PROJECT_ID')
+  if (!projectId.startsWith('preview')) {
+    throw new Error(
+      'BLOCKFROST_PROJECT_ID must start with "preview" for preview-net anchoring',
+    )
+  }
+  _blockfrostApi = new BlockFrostAPI({ projectId })
+  return _blockfrostApi
+}
+
+/**
  * Initialize the headless wallet from a 24-word mnemonic.
  *
  * IMPORTANT: This function is async -- NEVER call at module load time.
  * Always invoke inside an Inngest step.run() callback.
+ *
+ * P5: promise-locked so concurrent awaits reuse one in-flight init. On
+ * init failure the cached promise is cleared so a subsequent call can
+ * retry cleanly.
  */
 export async function getWallet(): Promise<MeshCardanoHeadlessWallet> {
   if (_wallet) return _wallet
-  const provider = getProvider()
-  const mnemonic = requireEnv('CARDANO_WALLET_MNEMONIC').split(' ')
-  _wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
-    networkId: 0,
-    walletAddressType: AddressType.Base,
-    fetcher: provider,
-    submitter: provider,
-    mnemonic,
+  if (_walletInitPromise) return _walletInitPromise
+
+  _walletInitPromise = (async () => {
+    const provider = getProvider()
+    const mnemonic = requireEnv('CARDANO_WALLET_MNEMONIC').split(' ')
+    const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+      networkId: 0,
+      walletAddressType: AddressType.Base,
+      fetcher: provider,
+      submitter: provider,
+      mnemonic,
+    })
+    _wallet = wallet
+    return wallet
+  })().catch((err) => {
+    // Clear the cached promise on failure so the next caller can retry.
+    _walletInitPromise = null
+    throw err
   })
-  return _wallet
+
+  return _walletInitPromise
+}
+
+/**
+ * P5 / test leakage: reset the in-memory singletons. Exported for the
+ * test harness; production callers never touch this.
+ */
+export function _resetCardanoSingletonsForTests(): void {
+  _provider = null
+  _blockfrostApi = null
+  _wallet = null
+  _walletInitPromise = null
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +164,17 @@ export async function buildAndSubmitAnchorTx(
   const walletAddress = await wallet.getChangeAddress()
   const utxos = await wallet.getUtxos()
 
+  // P7: pre-check wallet balance. Mesh's `txBuilder.complete()` throws an
+  // opaque coin-selection error deep in the SDK when no UTxOs are available;
+  // Inngest then retries 4 times before giving up (10+ minutes wasted on a
+  // failure that's immediately diagnosable). NonRetriableError surfaces the
+  // funding requirement to the admin immediately.
+  if (!utxos || utxos.length === 0) {
+    throw new NonRetriableError(
+      `Cardano wallet has no UTxOs — fund the wallet at ${walletAddress} before retrying anchoring.`,
+    )
+  }
+
   const txBuilder = new MeshTxBuilder({ fetcher: provider })
 
   const unsignedTx = await txBuilder
@@ -133,16 +197,26 @@ export async function buildAndSubmitAnchorTx(
  * Paginates through CIP-10 label 674 metadata entries in descending order,
  * looking for a matching { hash, project: 'civilization-lab' } payload.
  *
+ * P6: capped at MAX_PAGES (50 pages × 100 entries = 5000 metadata items).
+ * Beyond that we surface a warning and return null so the caller proceeds
+ * with a submit-and-rely-on-DB-unique idempotency check. Without the cap
+ * this walks every entry on a high-throughput label, burning Blockfrost
+ * quota on every anchor step.
+ *
+ * P25: reuses the singleton BlockFrostAPI instance from `getBlockfrostApi()`
+ * instead of constructing a fresh one on every call.
+ *
  * @returns The txHash if found, null otherwise.
  */
+const ANCHOR_SCAN_MAX_PAGES = 50
+
 export async function checkExistingAnchorTx(
   contentHash: string,
 ): Promise<string | null> {
-  const projectId = requireEnv('BLOCKFROST_PROJECT_ID')
-  const api = new BlockFrostAPI({ projectId })
+  const api = getBlockfrostApi()
 
   let page = 1
-  while (true) {
+  while (page <= ANCHOR_SCAN_MAX_PAGES) {
     const results = await api.metadataTxsLabel('674', {
       page,
       count: 100,
@@ -161,10 +235,16 @@ export async function checkExistingAnchorTx(
       }
     }
 
-    if (results.length < 100) break
+    if (results.length < 100) return null
     page++
   }
 
+  // P6: cap reached. Log once and return null so callers proceed with the
+  // DB-unique idempotency check. Raise ANCHOR_SCAN_MAX_PAGES deliberately
+  // if this fires in production telemetry.
+  console.warn(
+    `[cardano.checkExistingAnchorTx] reached MAX_PAGES=${ANCHOR_SCAN_MAX_PAGES}; assuming no prior anchor for hash=${contentHash.slice(0, 12)}…`,
+  )
   return null
 }
 

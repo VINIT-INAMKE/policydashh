@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { NonRetriableError } from 'inngest'
 import { eq } from 'drizzle-orm'
 import { inngest } from '../client'
@@ -80,21 +81,38 @@ export const feedbackReviewedFn = inngest.createFunction(
     })
 
     // Step 4: insert the in-app notification.
+    //
+    // R2: idempotency guard. `retries: 3` on this function means a step-run
+    // that ACKs after the INSERT but before Inngest records success will
+    // re-enter this step on the next attempt, inserting a duplicate
+    // "Your feedback has been reviewed" notification each time (up to 4
+    // copies per decide call). We compute a deterministic key from
+    // (feedbackId + ':reviewed:' + decision) and rely on the partial unique
+    // index `notifications_idempotency_key_unique` (migration 0009) with
+    // `.onConflictDoNothing()` to no-op the duplicate. Mirrors the pattern
+    // in notification-dispatch.ts:74-94.
     await step.run('insert-notification', async () => {
       const copy = buildFeedbackReviewedCopy({
         decision,
         sectionName,
         rationale,
       })
-      await db.insert(notifications).values({
-        userId:     feedback.submitterId,
-        type:       'feedback_status_changed',
-        title:      copy.title,
-        body:       copy.body,
-        entityType: 'feedback',
-        entityId:   feedback.id,
-        linkHref:   `/feedback/${feedback.id}`,
-      })
+      const idempotencyKey = createHash('sha256')
+        .update(`${feedback.id}:reviewed:${decision}`)
+        .digest('hex')
+      await db
+        .insert(notifications)
+        .values({
+          userId:     feedback.submitterId,
+          type:       'feedback_status_changed',
+          title:      copy.title,
+          body:       copy.body,
+          entityType: 'feedback',
+          entityId:   feedback.id,
+          linkHref:   `/feedback/${feedback.id}`,
+          idempotencyKey,
+        })
+        .onConflictDoNothing()
     })
 
     // Step 5: send the email (skip if no address).

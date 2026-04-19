@@ -88,9 +88,12 @@ export async function POST(request: NextRequest) {
     windowMs: 60_000,
   })
   if (!limit.ok) {
+    // P4: surface Retry-After so well-behaved clients (and Inngest replay
+    // logic) back off for the precise window remaining.
+    const retryAfter = Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000))
     return NextResponse.json(
       { error: 'Too many upload requests. Please wait a moment and try again.' },
-      { status: 429 },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
     )
   }
 
@@ -146,6 +149,50 @@ export async function POST(request: NextRequest) {
   // Validate content type
   if (!allowedTypes.includes(contentType)) {
     return NextResponse.json({ error: `File type ${contentType} not allowed for ${category}` }, { status: 400 })
+  }
+
+  // P9: cross-check the fileName extension against the declared contentType.
+  // The presigned PUT passes `ContentType` to R2 as a metadata hint only;
+  // R2 does not re-validate the actual uploaded bytes against it. A client
+  // claiming `image/png` with `evil.html` bytes would land a file that a
+  // proxy stripping ContentDisposition could serve inline. We block the
+  // obvious script/HTML extensions plus any extension that disagrees with
+  // the declared MIME's typical family.
+  const ext = (fileName.match(/\.([^.]+)$/)?.[1] ?? '').toLowerCase()
+  const BANNED_EXTENSIONS = new Set([
+    'js', 'mjs', 'cjs',
+    'html', 'htm', 'xhtml',
+    'svg',           // SECURITY: inline XSS vector
+    'php', 'phtml', 'phar',
+    'sh', 'bash', 'zsh',
+    'exe', 'dll', 'bat', 'cmd',
+    'asp', 'aspx', 'jsp',
+  ])
+  if (ext && BANNED_EXTENSIONS.has(ext)) {
+    return NextResponse.json(
+      { error: `File extension .${ext} is not permitted` },
+      { status: 400 },
+    )
+  }
+
+  // Lightweight MIME/extension family check. We only compare the top-level
+  // type (image/*, application/*, audio/*, video/*) because the upload
+  // allowlist is MIME-keyed and the fileName is purely for display; the
+  // key is to catch e.g. `.html` with `image/png` declared.
+  const mimeFamily = contentType.split('/')[0]
+  const EXT_TO_FAMILY: Record<string, string> = {
+    png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
+    pdf: 'application', doc: 'application', docx: 'application',
+    mp3: 'audio', wav: 'audio', ogg: 'audio', flac: 'audio', m4a: 'audio',
+    mp4: 'video', webm: 'video',
+  }
+  if (ext && EXT_TO_FAMILY[ext] && EXT_TO_FAMILY[ext] !== mimeFamily) {
+    return NextResponse.json(
+      {
+        error: `File extension .${ext} does not match declared content type ${contentType}`,
+      },
+      { status: 400 },
+    )
   }
 
   const key = generateStorageKey(category, fileName)

@@ -21,6 +21,10 @@ import { EditorToolbar } from './editor-toolbar'
 import { FloatingLinkEditor } from './floating-link-editor'
 import { SlashCommandMenu, type SlashCommandMenuRef } from './slash-command-menu'
 import { markSectionPending, markSectionFlushed } from './section-autosave-pending'
+import {
+  newPendingUploadId,
+  registerPendingImageUpload,
+} from './pending-image-uploads'
 import type { Editor } from '@tiptap/core'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import type { SlashCommandItem } from '@/src/lib/tiptap-extensions/slash-command-extension'
@@ -46,6 +50,56 @@ const LinkPreviewWithView = LinkPreview.extend({
   },
 })
 
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
+/**
+ * A16: walks the Tiptap JSON tree and removes image nodes whose `src`
+ * attribute is an empty string. Those are placeholder nodes produced by
+ * the toolbar's "Insert image" button (and the drop/paste handlers)
+ * before the upload completes — if the user navigates away or "Done
+ * editing"s before uploading, we DON'T want to persist a dead image
+ * placeholder that renders as `<img src="#">` in exports.
+ */
+function stripEmptyImageNodes(node: unknown): Record<string, unknown> {
+  const clone = (n: unknown): unknown => {
+    if (!n || typeof n !== 'object') return n
+    const src = n as {
+      type?: string
+      attrs?: Record<string, unknown>
+      content?: unknown[]
+    }
+    if (Array.isArray(src.content)) {
+      const kept: unknown[] = []
+      for (const child of src.content) {
+        if (
+          child &&
+          typeof child === 'object' &&
+          (child as { type?: string }).type === 'image'
+        ) {
+          const attrs = (child as { attrs?: Record<string, unknown> }).attrs
+          const srcAttr = attrs?.src
+          if (typeof srcAttr !== 'string' || srcAttr.length === 0) {
+            continue
+          }
+        }
+        kept.push(clone(child))
+      }
+      return { ...src, content: kept }
+    }
+    return src
+  }
+  return clone(node) as Record<string, unknown>
+}
+
+export interface BlockEditorFlushHandle {
+  /**
+   * Synchronously fires any pending debounced save and waits for the
+   * server round-trip to complete. Safe to call multiple times; returns
+   * immediately when nothing is dirty.
+   */
+  flush: () => Promise<void>
+}
+
 interface BlockEditorProps {
   section: {
     id: string
@@ -55,11 +109,16 @@ interface BlockEditorProps {
     updatedAt: string
   }
   onSaveStateChange?: (state: SaveState) => void
+  /**
+   * A10: give the parent (`SectionContentView`) a handle so the
+   * "Done editing" button can flush any in-flight debounce BEFORE
+   * unmounting the editor. Without this the last ~1.5 s of edits were
+   * silently lost if the user typed then immediately exited edit mode.
+   */
+  flushRef?: React.MutableRefObject<BlockEditorFlushHandle | null>
 }
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
-
-export default function BlockEditor({ section, onSaveStateChange }: BlockEditorProps) {
+export default function BlockEditor({ section, onSaveStateChange, flushRef }: BlockEditorProps) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const isDirtyRef = useRef(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -107,13 +166,56 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
     1500,
   )
 
+  // A10: expose a flush handle to the parent. Flushing in-flight debounces
+  // and then awaiting the currently-running mutation guarantees the parent
+  // can't unmount the editor before the last save has landed.
+  // We track "something still unsaved" through isDirtyRef (flipped in
+  // onSuccess) rather than `mutation.isPending`, so the flush can outlive
+  // any single useMutation render snapshot.
+  const mutationRef = useRef(mutation)
+  useEffect(() => {
+    mutationRef.current = mutation
+  }, [mutation])
+  useEffect(() => {
+    if (!flushRef) return
+    flushRef.current = {
+      flush: async () => {
+        if (isDirtyRef.current) {
+          debouncedSave.flush()
+        }
+        // Poll until the dirty flag clears (onSuccess flips it false) or
+        // we hit a hard 5s cap — enough to let the network round-trip
+        // finish but short enough that a stuck request won't freeze the
+        // "Done editing" click forever.
+        let ticks = 0
+        while (
+          (isDirtyRef.current || mutationRef.current.isPending) &&
+          ticks < 200
+        ) {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 25))
+          ticks += 1
+        }
+      },
+    }
+    return () => {
+      if (flushRef.current) flushRef.current = null
+    }
+  }, [flushRef, debouncedSave])
+
   const handleUpdate = useCallback(
     ({ editor }: { editor: Editor }) => {
       isDirtyRef.current = true
       // D14: mark pending immediately so a freshly typed character is
       // visible to any watchers before the debounced write fires.
       markSectionPending(section.id)
-      debouncedSave(editor.getJSON() as Record<string, unknown>)
+      // A16: strip image nodes with an empty src BEFORE autosaving so a
+      // half-inserted placeholder (toolbar click without upload, upload
+      // error, etc.) never persists to the DB. Ghost `<img src="#">`
+      // elements otherwise leak into published PDFs.
+      const rawJson = editor.getJSON() as Record<string, unknown>
+      const sanitized = stripEmptyImageNodes(rawJson)
+      debouncedSave(sanitized)
     },
     [debouncedSave, section.id],
   )
@@ -169,9 +271,29 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
     if (ext.name === 'callout') return CalloutWithView
     if (ext.name === 'fileAttachment') return FileAttachmentWithView
     if (ext.name === 'linkPreview') return LinkPreviewWithView
-    // Add React NodeView to Image extension
+    // Add React NodeView to Image extension + declare a transient
+    // `pendingUploadId` attribute that the drop/paste handlers use to tell
+    // ImageBlockView which File to auto-upload. The attribute is not
+    // rendered into HTML (parseHTML/renderHTML return undefined) so it
+    // never persists to the saved Tiptap JSON — it only lives on the node
+    // instance while the upload is in flight.
     if (ext.name === 'image') {
       return ext.extend({
+        addAttributes() {
+          const parentFn = (this as unknown as { parent?: () => Record<string, unknown> }).parent
+          const parentAttrs = parentFn?.() ?? {}
+          return {
+            ...parentAttrs,
+            pendingUploadId: {
+              default: null,
+              // Don't round-trip through HTML. This attribute is only used
+              // to hand a freshly-dropped File from the drop/paste handler
+              // to the React NodeView; it should never be serialized.
+              rendered: false,
+              keepOnSplit: false,
+            },
+          }
+        },
         addNodeView() {
           return ReactNodeViewRenderer(ImageBlockView)
         },
@@ -196,13 +318,16 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
         onDrop: (currentEditor: Editor, files: File[], pos: number) => {
           for (const file of files) {
             if (file.type.startsWith('image/')) {
-              // Insert empty image node, then upload fills it
+              // A1: stash the File in a shared registry and tag the inserted
+              // node with the id so ImageBlockView can pick it up on mount
+              // and auto-start the upload. Previously the File was silently
+              // dropped on the floor and the user saw an empty placeholder.
+              const uploadId = newPendingUploadId()
+              registerPendingImageUpload(uploadId, file)
               currentEditor.chain().focus().insertContentAt(pos, {
                 type: 'image',
-                attrs: { src: '' },
+                attrs: { src: '', pendingUploadId: uploadId },
               }).run()
-              // The ImageBlockView NodeView will handle showing upload state
-              // via its idle -> uploading flow when src is empty
             } else {
               currentEditor.chain().focus().insertContentAt(pos, {
                 type: 'fileAttachment',
@@ -214,9 +339,12 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
         onPaste: (currentEditor: Editor, files: File[]) => {
           for (const file of files) {
             if (file.type.startsWith('image/')) {
+              // A1: same registry hand-off as onDrop above.
+              const uploadId = newPendingUploadId()
+              registerPendingImageUpload(uploadId, file)
               currentEditor.chain().focus().insertContent({
                 type: 'image',
-                attrs: { src: '' },
+                attrs: { src: '', pendingUploadId: uploadId },
               }).run()
             } else {
               currentEditor.chain().focus().insertContent({
@@ -263,13 +391,19 @@ export default function BlockEditor({ section, onSaveStateChange }: BlockEditorP
 
   // Cleanup timeouts + clear pending flag when the editor unmounts so a
   // left-behind marker doesn't block future "Create Version" clicks.
+  //
+  // A2: ALSO cancel any pending debounced save. Without this, switching
+  // sections mid-debounce would fire the save for the *old* section's
+  // content after the new section had already mounted, silently writing
+  // cross-wire edits through `document.updateSectionContent`.
   useEffect(() => {
     const sectionId = section.id
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      debouncedSave.cancel()
       markSectionFlushed(sectionId)
     }
-  }, [section.id])
+  }, [section.id, debouncedSave])
 
   if (!editor) {
     return (

@@ -258,6 +258,15 @@ export function SubmitFeedbackForm({
         <Button
           type="submit"
           disabled={disabled || !isValid || submitMutation.isPending}
+          // S12: explain WHY the button is disabled to keyboard/mouse users
+          // who skipped past the informational alert above the form.
+          title={
+            disabled
+              ? "You're not assigned to this section."
+              : !isValid
+                ? 'Fill in all required fields to submit.'
+                : undefined
+          }
         >
           {submitMutation.isPending && (
             <Loader2 className="mr-1 size-4 animate-spin" />

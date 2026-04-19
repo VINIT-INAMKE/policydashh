@@ -1,12 +1,12 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
-import { and, eq, isNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
-import { workshopRegistrations } from '@/src/db/schema/workshops'
 import type { Role } from '@/src/lib/constants'
 import { ACTIONS, ROLE_VALUES } from '@/src/lib/constants'
 import { writeAuditLog } from '@/src/lib/audit'
+import { sendUserUpserted } from '@/src/inngest/events'
 
 interface ClerkWebhookEvent {
   type: string
@@ -67,13 +67,17 @@ export async function POST(req: Request) {
     const email = email_addresses?.[0]?.email_address ?? null
     const name = [first_name, last_name].filter(Boolean).join(' ') || null
 
-    // B8: capture the prior role so we can audit role deltas from user.updated.
+    // P2: capture the prior role BEFORE the upsert so we can decide whether
+    // the downstream Inngest function should emit a role-delta audit event.
+    // The SELECT + UPSERT pair is the critical path for Clerk's Svix retry
+    // window, so we keep them inline; the heavier work (audit write + bulk
+    // workshop_registrations backfill) moves to Inngest so the webhook
+    // returns 200 fast regardless of DB pressure.
     const prior = await db.query.users.findFirst({
       where: eq(users.clerkId, id),
       columns: { id: true, role: true },
     })
 
-    // Upsert: insert if new, update if exists (handles both events + missed webhooks)
     const [upserted] = await db.insert(users).values({
       clerkId: id,
       phone,
@@ -97,41 +101,29 @@ export async function POST(req: Request) {
 
     const newUserId = upserted?.id ?? null
 
-    // B8: emit an audit event when the role actually changed. We intentionally
-    // only log role deltas (not every profile tick) to keep the audit log
-    // signal-to-noise high.
-    if (newUserId && metadataRoleIsValid && prior && prior.role !== role) {
-      writeAuditLog({
-        actorId: newUserId,
-        actorRole: role,
-        action: ACTIONS.USER_ROLE_ASSIGN,
-        entityType: 'user',
-        entityId: newUserId,
-        payload: {
-          before: { role: prior.role },
-          after: { role },
-          source: 'clerk_webhook',
-          clerkEvent: event.type,
-        },
-      }).catch((err) => {
-        console.error('[clerk-webhook] audit log failed', err)
-      })
-    }
+    // P2: fan-out the audit write + workshop_registrations backfill onto
+    // Inngest. `roleDelta` is null unless the role really changed AND the
+    // webhook carried a valid enum value (same guard as before); the
+    // Inngest function tolerates a null delta so it can still run the
+    // backfill on pure profile updates.
+    if (newUserId) {
+      const roleDelta =
+        metadataRoleIsValid && prior && prior.role !== role
+          ? { priorRole: prior.role as string, newRole: role as string }
+          : null
 
-    // Phase 20 (WS-10, D-11): backfill workshop_registrations.userId for any
-    // pre-existing rows matching this email - happens when cal.com booked the
-    // workshop before the Clerk invite round-trip completed. Fire-and-forget;
-    // must never block the webhook ack.
-    if (email && newUserId) {
-      await db.update(workshopRegistrations)
-        .set({ userId: newUserId })
-        .where(and(
-          eq(workshopRegistrations.email, email),
-          isNull(workshopRegistrations.userId),
-        ))
-        .catch((err) => {
-          console.error('[clerk-webhook] workshopRegistrations userId backfill failed', err)
-        })
+      await sendUserUpserted({
+        userId: newUserId,
+        clerkEvent: event.type,
+        email,
+        roleDelta,
+      }).catch((err) => {
+        // Non-fatal: if Inngest is down we still return 200 to Clerk so Svix
+        // doesn't retry the whole webhook. Worst case: audit write + backfill
+        // are skipped for this event, which is the same failure mode the
+        // prior .catch() blocks guarded.
+        console.error('[clerk-webhook] sendUserUpserted failed', err)
+      })
     }
   }
 

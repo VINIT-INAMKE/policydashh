@@ -5,6 +5,13 @@ import { Separator } from '@/components/ui/separator'
 import { ArrowRight } from 'lucide-react'
 
 interface Transition {
+  // R22: include the workflowTransitions row id so React keys are unique
+  // even when two transitions of the same feedback item land in the same
+  // second with the same toState (possible with backfilled data or
+  // sub-second precision). The previous key `${toState}-${timestamp}`
+  // triggered React's duplicate-key warning and could render one row
+  // twice or skip one. id is already returned by listTransitions.
+  id: string
   fromState: string | null
   toState: string
   actorName: string | null
@@ -46,7 +53,7 @@ export function DecisionLog({ transitions }: { transitions: Transition[] }) {
       ) : (
         <div className="space-y-0">
           {transitions.map((transition, index) => (
-            <div key={`${transition.toState}-${transition.timestamp}`}>
+            <div key={transition.id}>
               {index > 0 && <Separator className="my-3" />}
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">

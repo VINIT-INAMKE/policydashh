@@ -558,13 +558,24 @@ export const documentRouter = router({
       return { success: true }
     }),
 
-  // Reorder sections within a document
+  // Reorder sections within a document. B4 / A3: blocked once any version
+  // is published — reordering rewrites the canonical section order, which
+  // would break the immutability contract of published snapshots. If a
+  // lead wants to reorder after publish they have to raise a change
+  // request just like for rename / content edits.
   reorderSections: requirePermission('section:manage')
     .input(z.object({
       documentId: z.string().uuid(),
       orderedSectionIds: z.array(z.string().uuid()),
     }))
     .mutation(async ({ ctx, input }) => {
+      if (await hasPublishedVersion(input.documentId)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'This policy has a published version; reorder sections through a change request.',
+        })
+      }
+
       // KNOWN LIMITATION: Sequential updates without a transaction.
       // The Neon HTTP driver does not support db.transaction(), so concurrent
       // reorder requests could interleave and produce inconsistent orderIndex values.

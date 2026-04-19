@@ -3,7 +3,7 @@ import { router, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
 import { notifications } from '@/src/db/schema/notifications'
 import { eq, and, desc, sql, lt } from 'drizzle-orm'
-import { writeAuditLog, ipFromHeaders } from '@/src/lib/audit'
+import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 
 export const notificationRouter = router({
@@ -88,7 +88,7 @@ export const notificationRouter = router({
         action:     ACTIONS.NOTIFICATION_READ,
         entityType: 'notification',
         entityId:   input.id,
-        ipAddress:  ipFromHeaders(ctx.headers),
+        ipAddress:  ctx.requestMeta.ipAddress,
       }).catch(console.error)
 
       return { success: true }
@@ -115,7 +115,7 @@ export const notificationRouter = router({
         entityType: 'user',
         entityId:   ctx.user.id,
         payload:    { scope: 'all' },
-        ipAddress:  ipFromHeaders(ctx.headers),
+        ipAddress:  ctx.requestMeta.ipAddress,
       }).catch(console.error)
 
       return { success: true }

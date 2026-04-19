@@ -59,13 +59,17 @@ export default async function WorkshopsPage() {
         .digest('hex')
       const workshopIds = all.map((w) => w.id)
       if (workshopIds.length > 0) {
+        // S2: treat both 'registered' and 'rescheduled' as active so a
+        // rescheduled booking still shows the "You're registered" card
+        // instead of re-offering the register form (which would 409 on
+        // double-submit with a confusing "already registered" error).
         const regs = await db
           .select({ workshopId: workshopRegistrations.workshopId })
           .from(workshopRegistrations)
           .where(
             and(
               eq(workshopRegistrations.emailHash, emailHash),
-              eq(workshopRegistrations.status, 'registered'),
+              inArray(workshopRegistrations.status, ['registered', 'rescheduled']),
               inArray(workshopRegistrations.workshopId, workshopIds),
             ),
           )

@@ -11,6 +11,7 @@ import { workshopFeedbackInviteFn } from './workshop-feedback-invite'
 import { consultationSummaryGenerateFn } from './consultation-summary-generate'
 import { milestoneReadyFn } from './milestone-ready'
 import { versionAnchorFn } from './version-anchor'
+import { userUpsertedFn } from './user-upserted'
 
 /**
  * The array of Inngest functions mounted at /api/inngest.
@@ -38,4 +39,5 @@ export const functions = [
   consultationSummaryGenerateFn, // Phase 21 LLM-04/05/06/08 - per-section consultation summary via llama-3.3-70b-versatile
   milestoneReadyFn,     // Phase 23 VERIFY-06 - milestoneReady 5-step Cardano anchor
   versionAnchorFn,      // Phase 23 VERIFY-07 - per-version Cardano anchor on version.published
+  userUpsertedFn,       // P2 - Clerk webhook fan-out (audit + workshop reg backfill)
 ]

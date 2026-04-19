@@ -28,21 +28,18 @@ interface VersionComparisonSelectorProps {
   currentVersionId: string
 }
 
+interface DiffSectionRow {
+  sectionId: string
+  titleA: string | null
+  titleB: string | null
+  status: 'added' | 'removed' | 'modified' | 'unchanged'
+}
+
 export function VersionComparisonSelector({
   versions,
-  documentId,
+  documentId: _documentId,
   currentVersionId,
 }: VersionComparisonSelectorProps) {
-  const sectionsQuery = trpc.document.getSections.useQuery({ documentId })
-  const sections = useMemo(
-    () =>
-      sectionsQuery.data?.map((s: { id: string; title: string }) => ({
-        id: s.id,
-        title: s.title,
-      })) ?? [],
-    [sectionsQuery.data],
-  )
-
   // Default selections
   const currentIndex = versions.findIndex((v) => v.id === currentVersionId)
   const defaultBaseId =
@@ -56,12 +53,38 @@ export function VersionComparisonSelector({
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [showDiff, setShowDiff] = useState(false)
 
-  // D15: auto-select first section via useEffect (side-effect) rather than
-  // useMemo. Using useMemo for state setters is an anti-pattern — the
-  // computation was being run during render, which React 19 flags in
-  // strict mode.
+  // A9: derive the section dropdown from the UNION of section ids in both
+  // snapshots — not the live policy sections. If a section was deleted
+  // after the compared versions were created it should still appear here
+  // (and will render as "removed"); if a section was created after both
+  // versions, it shouldn't appear at all.
+  const diffQuery = trpc.version.diff.useQuery(
+    { versionAId: baseVersionId ?? '', versionBId: targetVersionId ?? '' },
+    {
+      enabled:
+        !!baseVersionId &&
+        !!targetVersionId &&
+        baseVersionId !== targetVersionId,
+    },
+  )
+
+  const sections = useMemo(() => {
+    const rows = (diffQuery.data?.diff ?? []) as DiffSectionRow[]
+    return rows.map((d) => ({
+      id: d.sectionId,
+      // Prefer the target snapshot's title (most recent), fall back to base.
+      title: d.titleB ?? d.titleA ?? 'Unnamed section',
+    }))
+  }, [diffQuery.data])
+
+  // Auto-pick the first section once the diff arrives. Re-run whenever the
+  // compared versions change (and thus the section list changes).
   useEffect(() => {
-    if (sections.length > 0 && !selectedSectionId) {
+    if (sections.length === 0) {
+      if (selectedSectionId !== null) setSelectedSectionId(null)
+      return
+    }
+    if (!selectedSectionId || !sections.some((s) => s.id === selectedSectionId)) {
       setSelectedSectionId(sections[0].id)
     }
   }, [sections, selectedSectionId])

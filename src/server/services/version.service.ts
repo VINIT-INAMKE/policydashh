@@ -47,6 +47,45 @@ export interface SectionDiffResult {
 // ── Pure functions (no DB dependency) ──────────────────────────────────────
 
 /**
+ * A5: walks a Tiptap JSON tree and returns the concatenated plain text
+ * from all descendant `text` nodes, joined by spaces on block
+ * boundaries. Used to produce human-readable diffs instead of leaking
+ * `{"type":"paragraph","content":[{"type":"text",…}]}` noise into the
+ * UI.
+ */
+function extractPlainText(node: unknown): string {
+  if (!node || typeof node !== 'object') return ''
+  const n = node as { type?: string; text?: string; content?: unknown[] }
+  if (n.type === 'text' && typeof n.text === 'string') {
+    return n.text
+  }
+  if (!Array.isArray(n.content)) return ''
+  const parts = n.content.map(extractPlainText).filter((s) => s.length > 0)
+  // Block-level nodes (paragraph, heading, list item, …) separate with a
+  // newline so the diff doesn't glue distinct paragraphs together into
+  // one giant run. Inline nodes (marks etc.) fall through with no extra
+  // whitespace so "bold-in-middle-of-sentence" still reads naturally.
+  const BLOCK_TYPES = new Set([
+    'paragraph',
+    'heading',
+    'blockquote',
+    'bulletList',
+    'orderedList',
+    'listItem',
+    'codeBlock',
+    'doc',
+    'tableRow',
+    'table',
+    'callout',
+    'details',
+    'detailsSummary',
+    'detailsContent',
+  ])
+  const separator = n.type && BLOCK_TYPES.has(n.type) ? '\n' : ''
+  return parts.join(separator)
+}
+
+/**
  * Computes the diff between two section snapshots.
  * Returns an array of diff results per section with status and word-level diff.
  */
@@ -85,11 +124,15 @@ export function computeSectionDiff(
         diff: null,
       })
     } else if (a && b) {
-      // Exists in both - compare content
-      const contentA = JSON.stringify(a.content)
-      const contentB = JSON.stringify(b.content)
+      // A5: diff human-readable plain text, not raw Tiptap JSON. Comparing
+      // JSON strings produced diffs full of `{"type":"paragraph"…` junk
+      // which authors couldn't read. We still detect "unchanged" on the
+      // full JSON (preserves mark-only changes as "modified"), but feed
+      // diffWords a clean text extract.
+      const rawA = JSON.stringify(a.content)
+      const rawB = JSON.stringify(b.content)
 
-      if (contentA === contentB) {
+      if (rawA === rawB) {
         results.push({
           sectionId,
           titleA: a.title,
@@ -98,7 +141,9 @@ export function computeSectionDiff(
           diff: null,
         })
       } else {
-        const wordDiff = diffWords(contentA, contentB)
+        const textA = extractPlainText(a.content)
+        const textB = extractPlainText(b.content)
+        const wordDiff = diffWords(textA, textB)
         results.push({
           sectionId,
           titleA: a.title,
@@ -267,7 +312,13 @@ export async function createManualVersion(
   }]
 
   // SECURITY: Retry loop to handle race condition when two concurrent merges
-  // generate the same version label (unique constraint violation)
+  // generate the same version label (unique constraint violation).
+  //
+  // A19: ONLY retry on 23505 (unique_violation). Any other Postgres error
+  // (FK violation, check constraint, serialization, etc.) used to get
+  // swallowed by this loop for up to `maxRetries - 1` iterations before
+  // surfacing on the final attempt, masking real bugs. Re-throw anything
+  // that isn't a unique-constraint collision immediately.
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const versionLabel = await getNextVersionLabel(db, documentId)
 
@@ -288,8 +339,11 @@ export async function createManualVersion(
       return version
     } catch (error: unknown) {
       const pgError = error as { code?: string }
-      // 23505 = unique_violation -- retry with incremented label
-      if (pgError.code === '23505' && attempt < maxRetries - 1) {
+      if (pgError.code !== '23505') {
+        // Not a duplicate-key collision — surface immediately.
+        throw error
+      }
+      if (attempt < maxRetries - 1) {
         continue
       }
       throw error

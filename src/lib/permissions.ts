@@ -69,6 +69,13 @@ export const PERMISSIONS = {
   // Workshops (Phase 10)
   'workshop:manage':           [ROLES.ADMIN, ROLES.WORKSHOP_MODERATOR] as readonly Role[],
   'workshop:read':             [ROLES.ADMIN, ROLES.POLICY_LEAD, ROLES.RESEARCH_LEAD, ROLES.WORKSHOP_MODERATOR, ROLES.STAKEHOLDER, ROLES.OBSERVER, ROLES.AUDITOR] as readonly Role[],
+  // D1: attendee PII (email, name, booking UIDs) gated to admin + moderator
+  // only. The router comment previously acknowledged "attendee PII is
+  // admin-grade" but the actual gate was `workshop:read`, which lets
+  // stakeholder/observer/research_lead/auditor enumerate registrants by
+  // workshop UUID. This permission tightens `listRegistrations` without
+  // changing the wider `workshop:read` matrix that list/get use.
+  'workshop:read_attendees':   [ROLES.ADMIN, ROLES.WORKSHOP_MODERATOR] as readonly Role[],
 
   // Milestones (Phase 22) - CONTEXT.md Claude's Discretion
   // "admin and moderator" maps to [ADMIN, POLICY_LEAD] following the

@@ -49,8 +49,14 @@ export const traceabilityRouter = router({
       if (input.decisionOutcomes && input.decisionOutcomes.length > 0) {
         conditions.push(inArray(feedbackItems.status, input.decisionOutcomes))
       }
+      // R5: `inArray` alone drops users whose `orgType IS NULL` (nullable
+      // column until the user completes their profile). Wrap with IS NULL
+      // so NULL-orgType rows remain visible under an active filter,
+      // matching the feedback.list fix.
       if (input.orgTypes && input.orgTypes.length > 0) {
-        conditions.push(inArray(users.orgType, input.orgTypes))
+        conditions.push(
+          or(inArray(users.orgType, input.orgTypes), isNull(users.orgType))!,
+        )
       }
 
       // Version range filter: resolve label strings to version IDs via subquery.
@@ -112,8 +118,16 @@ export const traceabilityRouter = router({
         )
       }
 
+      // R10: when a CR links to multiple sections the join fan-out
+      // produces one row per (feedback, CR, section) triple, duplicating
+      // feedback identity across the matrix. `selectDistinct` tells
+      // Postgres to dedupe the full row tuple. Feedback items linked to
+      // more than one section via different CRs still produce multiple
+      // rows (different CRs = different rows, which is correct); only
+      // identical (feedback,CR,section,version) tuples are collapsed,
+      // which is exactly the fan-out we want to suppress.
       const rows = await db
-        .select({
+        .selectDistinct({
           feedbackId: feedbackItems.id,
           feedbackReadableId: feedbackItems.readableId,
           feedbackTitle: feedbackItems.title,

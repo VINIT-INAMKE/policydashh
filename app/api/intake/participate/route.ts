@@ -18,6 +18,7 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { sendParticipateIntake } from '@/src/inngest/events'
+import { consume, getClientIp } from '@/src/lib/rate-limit'
 
 const bodySchema = z.object({
   name: z.string().min(2).max(120),
@@ -83,22 +84,66 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Payload too large' }, { status: 413 })
   }
 
+  // S1 / P22: per-IP rate limit before any parsing or Turnstile verify.
+  // 20 req / 5 min mirrors the workshop-register ceiling. Defuses burst
+  // abuse at the transport layer before we touch Turnstile quota, Clerk
+  // invite APIs, or the Inngest rate-limit step inside participateIntakeFn.
+  const ip = getClientIp(request)
+  const ipLimit = consume(`participate-intake:ip:${ip}`, {
+    max: 20,
+    windowMs: 5 * 60_000,
+  })
+  if (!ipLimit.ok) {
+    return Response.json(
+      { error: 'Too many requests. Try again later.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': Math.max(
+            1,
+            Math.ceil((ipLimit.resetAt - Date.now()) / 1000),
+          ).toString(),
+        },
+      },
+    )
+  }
+
   const parsed = await parseBody(request)
   if (!parsed.ok) {
     return Response.json({ error: 'Invalid input' }, { status: 400 })
   }
   const { data } = parsed
 
+  // S1: per-email rate limit (5 req / 10 min) keyed on email-hash so an
+  // attacker rotating IPs cannot still spam the same inbox through the
+  // Inngest pipeline. Matches the workshop-register/email pattern.
+  const emailHash = createHash('sha256')
+    .update(data.email.toLowerCase().trim())
+    .digest('hex')
+  const emailLimit = consume(`participate-intake:email:${emailHash}`, {
+    max: 5,
+    windowMs: 10 * 60_000,
+  })
+  if (!emailLimit.ok) {
+    return Response.json(
+      { error: 'Too many attempts for this email. Try again later.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': Math.max(
+            1,
+            Math.ceil((emailLimit.resetAt - Date.now()) / 1000),
+          ).toString(),
+        },
+      },
+    )
+  }
+
   // Step 1: Verify Turnstile BEFORE any Clerk / DB work. INTAKE-02 + Pitfall 2.
   const ts = await verifyTurnstile(data.turnstileToken, request)
   if (!ts.success) {
     return Response.json({ error: 'Security check failed' }, { status: 403 })
   }
-
-  // Step 2: SHA-256 hash of lowercased + trimmed email → stable rate-limit key.
-  const emailHash = createHash('sha256')
-    .update(data.email.toLowerCase().trim())
-    .digest('hex')
 
   // Step 3: Fire Inngest event. Rate limit + Clerk + welcome email all run
   // inside participateIntakeFn (src/inngest/functions/participate-intake.ts).

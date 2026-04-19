@@ -2,23 +2,54 @@ import { initTRPC, TRPCError } from '@trpc/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { cache } from 'react'
 import { z } from 'zod'
 import { can, type Permission } from '@/src/lib/permissions'
 import type { Role } from '@/src/lib/constants'
 
+/**
+ * P14: extract only the fields procedures actually need from the request
+ * headers, instead of forwarding the raw `Headers` object. The raw object
+ * carries cookies, Authorization tokens, and anything else the client
+ * sent; a `console.log(ctx)` anywhere downstream would dump session
+ * credentials to logs. This helper keeps IP extraction logic co-located
+ * with context creation so callers never reach for headers directly.
+ */
+function extractRequestMeta(headers: Headers): { ipAddress: string | null } {
+  const xff = headers.get('x-forwarded-for')
+  if (xff) {
+    const first = xff.split(',')[0]?.trim()
+    if (first) return { ipAddress: first }
+  }
+  const realIp = headers.get('x-real-ip')
+  if (realIp) return { ipAddress: realIp.trim() }
+  return { ipAddress: null }
+}
+
 export const createTRPCContext = cache(async (opts: { headers: Headers }) => {
   const { userId } = await auth()
 
+  // D3: exclude soft-deleted users. When Clerk fires user.deleted the webhook
+  // anonymizes the row and sets deletedAt; without this filter the Clerk
+  // session (still valid for ~1h until its JWT expires) keeps authenticating
+  // the caller against the anonymized row. Any admin mutation they fire would
+  // continue to succeed under their old role. Returning null here forces a
+  // UNAUTHORIZED on the next protected procedure call.
   const user = userId
-    ? await db.query.users.findFirst({ where: eq(users.clerkId, userId) })
+    ? await db.query.users.findFirst({
+        where: and(eq(users.clerkId, userId), isNull(users.deletedAt)),
+      })
     : null
 
+  // P14: strip raw headers from the returned context. Only the extracted
+  // fields cross the tRPC boundary.
+  const requestMeta = extractRequestMeta(opts.headers)
+
   return {
-    headers: opts.headers,
     userId,
     user,
+    requestMeta,
   }
 })
 

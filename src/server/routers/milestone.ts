@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq, and, count } from 'drizzle-orm'
+import { eq, and, count, desc } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { router, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
@@ -205,6 +205,11 @@ export const milestoneRouter = router({
     }),
 
   // ---- list (query) ----
+  // A8: order by createdAt DESC so the newest milestone is always at the
+  // top. Without an explicit ORDER BY Postgres returns rows in whatever
+  // order the page vacuum / heap scan produces, which flipped between
+  // page loads and was confusing when users created milestones in quick
+  // succession.
   list: requirePermission('milestone:read')
     .input(z.object({ documentId: z.string().uuid() }))
     .query(async ({ input }) => {
@@ -212,6 +217,7 @@ export const milestoneRouter = router({
         .select()
         .from(milestones)
         .where(eq(milestones.documentId, input.documentId))
+        .orderBy(desc(milestones.createdAt))
       return rows
     }),
 

@@ -1,15 +1,16 @@
 import { z } from 'zod'
 import { router, requirePermission } from '@/src/trpc/init'
-import { writeAuditLog, ipFromHeaders } from '@/src/lib/audit'
+import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'
 import { evidenceArtifacts, feedbackEvidence, sectionEvidence } from '@/src/db/schema/evidence'
 import { users } from '@/src/db/schema/users'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { policySections, policyDocuments } from '@/src/db/schema/documents'
-import { eq, and, isNull, desc } from 'drizzle-orm'
+import { eq, and, isNull, desc, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { sendEvidenceExportRequested } from '@/src/inngest/events'
+import { consume } from '@/src/lib/rate-limit'
 
 export const evidenceRouter = router({
   // Attach evidence artifact (file or link) to a feedback item or section
@@ -71,7 +72,7 @@ export const evidenceRouter = router({
           feedbackId: input.feedbackId,
           sectionId: input.sectionId,
         },
-        ipAddress: ipFromHeaders(ctx.headers),
+        ipAddress: ctx.requestMeta.ipAddress,
       }).catch(console.error)
 
       return artifact
@@ -215,21 +216,44 @@ export const evidenceRouter = router({
         action: ACTIONS.EVIDENCE_REMOVE,
         entityType: 'evidence',
         entityId: input.artifactId,
-        ipAddress: ipFromHeaders(ctx.headers),
+        ipAddress: ctx.requestMeta.ipAddress,
       }).catch(console.error)
 
       return { success: true }
     }),
 
-  // EV-03: Feedback items that have no evidence artifacts attached
+  // EV-03: Feedback items that have no evidence artifacts attached.
+  //
+  // R12: restrict to actionable statuses. `rejected` and `closed` items
+  //      will never need supporting evidence; leaving them in inflates the
+  //      gap count and sends research leads chasing work that is already
+  //      decided. The statuses filter is overridable via input so future
+  //      callers (e.g. audit tooling) can opt into a wider view.
+  // R23: use `isNull(feedbackEvidence.feedbackId)` rather than
+  //      `feedbackEvidence.artifactId`. Both produce the same SQL today
+  //      thanks to the LEFT JOIN null-padding, but the join-key null is
+  //      the intent-carrying expression: it literally means "no matching
+  //      feedbackEvidence row". If artifactId ever becomes nullable (e.g.
+  //      soft-delete), the old expression would silently change meaning.
   claimsWithoutEvidence: requirePermission('evidence:read')
     .input(z.object({
       documentId: z.string().uuid().optional(),
       sectionId: z.string().uuid().optional(),
       feedbackType: z.enum(['issue', 'suggestion', 'endorsement', 'evidence', 'question']).optional(),
+      statuses: z
+        .array(z.enum(['submitted', 'under_review', 'accepted', 'partially_accepted', 'rejected', 'closed']))
+        .optional(),
     }))
     .query(async ({ input }) => {
-      const conditions = [isNull(feedbackEvidence.artifactId)]
+      const conditions = [isNull(feedbackEvidence.feedbackId)]
+
+      // R12 defaults: actionable statuses only. Callers may pass an
+      // explicit `statuses` array (even empty -> no status filter) if
+      // they genuinely want to include decided items.
+      const statusFilter = input.statuses ?? ['submitted', 'under_review', 'accepted', 'partially_accepted']
+      if (statusFilter.length > 0) {
+        conditions.push(inArray(feedbackItems.status, statusFilter))
+      }
 
       if (input.documentId) {
         conditions.push(eq(policySections.documentId, input.documentId))
@@ -284,6 +308,28 @@ export const evidenceRouter = router({
       }).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // D18: per-user rate limit. Each evidence-pack export fans out DB
+      // queries, R2 GET/PUT operations, and ZIP assembly inside an Inngest
+      // function. A user who loops on the Request Export button (manual
+      // or scripted) can trivially exhaust Inngest concurrency budget and
+      // R2 bandwidth for the whole org. Limit each user to 3 export
+      // requests per hour (tunable; a legitimate admin re-exporting to
+      // tweak section filters will still fit well under this).
+      const rl = consume(`evidence-pack-export:user:${ctx.user.id}`, {
+        max: 3,
+        windowMs: 60 * 60 * 1000,
+      })
+      if (!rl.ok) {
+        const retryAfterSec = Math.max(
+          1,
+          Math.ceil((rl.resetAt - Date.now()) / 1000),
+        )
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: `Export rate limit reached (3 per hour). Retry in ${retryAfterSec} seconds.`,
+        })
+      }
+
       // Pre-fetch user email at trigger time so the Inngest function doesn't
       // need a DB lookup for the requester's address. Mirrors the Phase 17
       // moderatorId-at-trigger-time pattern for workshop.completed.
@@ -306,7 +352,7 @@ export const evidenceRouter = router({
         entityType: 'document',
         entityId:   input.documentId,
         payload:    { async: true, stage: 'requested', sections: input.sections },
-        ipAddress:  ipFromHeaders(ctx.headers),
+        ipAddress:  ctx.requestMeta.ipAddress,
       }).catch(console.error)
 
       return { status: 'queued' as const }

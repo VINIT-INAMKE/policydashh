@@ -30,6 +30,12 @@ export const ACTIONS = {
   USER_CREATE: 'user.create',
   USER_ROLE_ASSIGN: 'user.role_assign',
   USER_INVITE: 'user.invite',
+  // D6: distinct audit actions for the three invite lifecycle moments so an
+  // auditor filtering by action can see "invite sent" vs "invite revoked" vs
+  // "invite resent" separately. Previously all three wrote USER_INVITE and
+  // collapsed in the log.
+  USER_INVITE_REVOKE: 'user.invite_revoke',
+  USER_INVITE_RESEND: 'user.invite_resend',
   USER_ORG_TYPE_SET: 'user.org_type_set',
   USER_UPDATE: 'user.update',
   DOCUMENT_CREATE: 'document.create',
@@ -89,6 +95,14 @@ export const ACTIONS = {
   MILESTONE_ANCHOR_START:    'milestone.anchor_start',
   MILESTONE_ANCHOR_COMPLETE: 'milestone.anchor_complete',
   MILESTONE_ANCHOR_FAIL:     'milestone.anchor_fail',
+  // D20: dedicated action for document_version anchor failures so auditors
+  // and alert rules can separate version anchor timeouts from milestone
+  // anchor timeouts (versionAnchorFn previously reused MILESTONE_ANCHOR_FAIL).
+  VERSION_ANCHOR_FAIL:       'version.anchor_fail',
+  // D8: audit action for public /participate form submissions. participateIntakeFn
+  // previously wrote the raw literal 'PARTICIPATE_INTAKE' which bypassed the
+  // ACTIONS constant and never surfaced in the filter dropdown.
+  PARTICIPATE_INTAKE:        'participate_intake',
 } as const
 
 export type Action = typeof ACTIONS[keyof typeof ACTIONS]

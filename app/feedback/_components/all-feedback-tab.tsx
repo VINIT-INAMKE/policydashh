@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
-import { MessageSquare } from 'lucide-react'
+import { AlertCircle, MessageSquare } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import {
   Select,
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 type FeedbackStatus =
   | 'submitted'
@@ -43,9 +45,35 @@ const STATUS_LABELS: Record<FeedbackStatus, string> = {
  * Role gating for tab visibility happens at the parent GlobalFeedbackTabs level.
  * This component only handles the UI - filter bar + results list.
  */
+// R24: URL-sync keys for the AllFeedbackTab filters. The parent
+// GlobalFeedbackTabs already owns `?tab=`, so we namespace the per-tab
+// filter keys (`policyId`, `status`) at the page level and only touch
+// them here. Status values that aren't in the enum are dropped silently
+// -- the server-side Zod enum would reject a bad value anyway.
+const ALL_FEEDBACK_URL_KEYS = {
+  policyId: 'policyId',
+  status:   'status',
+} as const
+
+const STATUS_SET = new Set<FeedbackStatus>([
+  'submitted', 'under_review', 'accepted', 'partially_accepted', 'rejected', 'closed',
+])
+
 export function AllFeedbackTab() {
-  const [policyId, setPolicyId] = useState<string | undefined>(undefined)
-  const [status, setStatus] = useState<FeedbackStatus | undefined>(undefined)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // R24: seed initial state from the URL so refresh / share preserve the
+  // filter. Invalid status values default to undefined.
+  const urlPolicyId = searchParams.get(ALL_FEEDBACK_URL_KEYS.policyId) || undefined
+  const urlStatusRaw = searchParams.get(ALL_FEEDBACK_URL_KEYS.status) || undefined
+  const urlStatus = urlStatusRaw && STATUS_SET.has(urlStatusRaw as FeedbackStatus)
+    ? (urlStatusRaw as FeedbackStatus)
+    : undefined
+
+  const [policyId, setPolicyIdState] = useState<string | undefined>(urlPolicyId)
+  const [status, setStatusState] = useState<FeedbackStatus | undefined>(urlStatus)
 
   const documentsQuery = trpc.document.list.useQuery()
   const feedbackQuery = trpc.feedback.listCrossPolicy.useQuery({
@@ -53,14 +81,27 @@ export function AllFeedbackTab() {
     status,
   })
 
+  // R24: write filter changes back to the URL via router.replace so the
+  // current view is bookmarkable / shareable. The `?tab=` param is
+  // preserved untouched.
+  const writeUrl = useCallback((nextPolicyId?: string, nextStatus?: FeedbackStatus) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (nextPolicyId) params.set(ALL_FEEDBACK_URL_KEYS.policyId, nextPolicyId); else params.delete(ALL_FEEDBACK_URL_KEYS.policyId)
+    if (nextStatus)   params.set(ALL_FEEDBACK_URL_KEYS.status, nextStatus);   else params.delete(ALL_FEEDBACK_URL_KEYS.status)
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [router, pathname, searchParams])
+
   function handlePolicyChange(value: string | null) {
-    setPolicyId(!value || value === '__all__' ? undefined : value)
+    const next = !value || value === '__all__' ? undefined : value
+    setPolicyIdState(next)
+    writeUrl(next, status)
   }
 
   function handleStatusChange(value: string | null) {
-    setStatus(
-      !value || value === '__all__' ? undefined : (value as FeedbackStatus),
-    )
+    const next = !value || value === '__all__' ? undefined : (value as FeedbackStatus)
+    setStatusState(next)
+    writeUrl(policyId, next)
   }
 
   const rows = feedbackQuery.data ?? []
@@ -114,6 +155,29 @@ export function AllFeedbackTab() {
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
           ))}
+        </div>
+      ) : feedbackQuery.isError ? (
+        // S10: surface a real error instead of the generic empty-state.
+        <div
+          role="alert"
+          className="flex flex-col items-center justify-center rounded-md border p-12 text-center"
+        >
+          <AlertCircle className="size-10 text-destructive" />
+          <h3 className="mt-4 text-[20px] font-semibold leading-[1.2]">
+            Couldn&apos;t load feedback
+          </h3>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            Something went wrong fetching cross-policy feedback. Check your
+            connection and try again.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => feedbackQuery.refetch()}
+          >
+            Retry
+          </Button>
         </div>
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-md border p-12 text-center">

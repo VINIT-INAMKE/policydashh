@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
 import { SectionAssignments } from './section-assignments'
+import type { BlockEditorFlushHandle } from './block-editor'
 
 // Dynamic import with SSR disabled -- DragHandle causes hydration issues
 const BlockEditor = dynamic(() => import('./block-editor'), { ssr: false })
@@ -41,6 +42,10 @@ export function SectionContentView({
 }: SectionContentViewProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [isFlushing, setIsFlushing] = useState(false)
+  // A10: ref the parent uses to tell BlockEditor to flush its pending
+  // debounced save before we unmount it.
+  const flushRef = useRef<BlockEditorFlushHandle | null>(null)
 
   const router = useRouter()
   const meQuery = trpc.user.getMe.useQuery()
@@ -55,6 +60,23 @@ export function SectionContentView({
 
   const handleSaveStateChange = useCallback((state: SaveState) => {
     setSaveState(state)
+  }, [])
+
+  // A10 + A12: before unmounting the editor, flush any pending debounced
+  // save and wait for the mutation to settle. The old "Save changes"
+  // button was a pure unmount — any edit made in the 1.5s window before
+  // clicking it was silently lost because the debounce timer was cleared
+  // at unmount without firing.
+  const handleDoneEditing = useCallback(async () => {
+    try {
+      setIsFlushing(true)
+      if (flushRef.current) {
+        await flushRef.current.flush()
+      }
+    } finally {
+      setIsFlushing(false)
+      setIsEditing(false)
+    }
   }, [])
 
   const isEmpty =
@@ -99,9 +121,17 @@ export function SectionContentView({
             </Button>
           )}
           {canEdit && isEditing && (
-            <Button size="sm" onClick={() => setIsEditing(false)}>
-              <Check className="mr-1 size-3.5" />
-              Save changes
+            // A12: the editor autosaves on the debounce — there's no
+            // manual save to hit. Rename "Save changes" to "Done editing"
+            // and wire the click to flush the pending debounce first so
+            // no last-keystroke edits are lost.
+            <Button size="sm" onClick={handleDoneEditing} disabled={isFlushing}>
+              {isFlushing ? (
+                <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Check className="mr-1 size-3.5" aria-hidden="true" />
+              )}
+              {isFlushing ? 'Saving…' : 'Done editing'}
             </Button>
           )}
         </div>
@@ -120,6 +150,7 @@ export function SectionContentView({
           <BlockEditor
             section={{ ...section, documentId }}
             onSaveStateChange={handleSaveStateChange}
+            flushRef={flushRef}
           />
         </div>
       ) : (

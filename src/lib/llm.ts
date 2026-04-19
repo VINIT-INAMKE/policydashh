@@ -90,12 +90,20 @@ export async function chatComplete(opts: {
   temperature?: number
 }): Promise<string> {
   const client = getClient()
-  const completion = await client.chat.completions.create({
-    model: opts.model,
-    messages: opts.messages,
-    max_completion_tokens: opts.maxTokens,
-    temperature: opts.temperature ?? 0.3,
-  })
+  // P12: cap each Groq call at 120s. A hung connection used to stall the
+  // Inngest step indefinitely (until Inngest's 2-hour default timeout fired).
+  // With `retries: 2` on the calling functions that was 6+ hours of wasted
+  // Inngest capacity per unlucky event. AbortSignal.timeout surfaces the
+  // hang as a plain Error so Inngest retry budget kicks in immediately.
+  const completion = await client.chat.completions.create(
+    {
+      model: opts.model,
+      messages: opts.messages,
+      max_completion_tokens: opts.maxTokens,
+      temperature: opts.temperature ?? 0.3,
+    },
+    { signal: AbortSignal.timeout(120_000) },
+  )
   return completion.choices[0]?.message?.content ?? ''
 }
 
@@ -117,11 +125,16 @@ export async function transcribeAudio(
 ): Promise<string> {
   const client = getClient()
   const file = await toFile(audioBuffer, fileName, { type: 'audio/mpeg' })
-  const result = await client.audio.transcriptions.create({
-    model: 'whisper-large-v3-turbo',
-    file,
-    response_format: 'text',
-  })
+  // P12: 120s timeout so a hung Groq connection doesn't block Inngest's
+  // step execution window. See chatComplete above for rationale.
+  const result = await client.audio.transcriptions.create(
+    {
+      model: 'whisper-large-v3-turbo',
+      file,
+      response_format: 'text',
+    },
+    { signal: AbortSignal.timeout(120_000) },
+  )
   return result as unknown as string
 }
 
@@ -137,11 +150,32 @@ export async function transcribeAudio(
  * {discussionPoints: [raw], decisions: [], actionItems: []} so downstream
  * code always sees the expected shape.
  */
+// P29: bound the transcript input to the summarizer. 12,000 characters is
+// roughly 3,000 tokens which keeps the user message well under the model's
+// 128K context and puts a ceiling on per-call cost regardless of how long
+// the workshop recording was. When truncation happens we log a warning so
+// telemetry can raise the cap if moderators routinely clip the summary.
+const SUMMARIZER_TRANSCRIPT_CHAR_LIMIT = 12_000
+
 export async function summarizeTranscript(transcript: string): Promise<{
   discussionPoints: string[]
   decisions: string[]
   actionItems: string[]
 }> {
+  // P29: truncate up-front. We keep the head of the transcript because
+  // discussion points typically frontload the agenda review; decisions and
+  // action items land toward the end of a workshop, but 12K chars covers
+  // most sub-2-hour recordings without clipping.
+  let boundedTranscript = transcript
+  if (transcript.length > SUMMARIZER_TRANSCRIPT_CHAR_LIMIT) {
+    console.warn(
+      `[llm.summarizeTranscript] truncating transcript from ${transcript.length} to ${SUMMARIZER_TRANSCRIPT_CHAR_LIMIT} chars`,
+    )
+    boundedTranscript =
+      transcript.slice(0, SUMMARIZER_TRANSCRIPT_CHAR_LIMIT) +
+      '\n[transcript truncated]'
+  }
+
   const raw = await chatComplete({
     model: 'llama-3.1-8b-instant',
     maxTokens: 1024,
@@ -158,7 +192,7 @@ export async function summarizeTranscript(transcript: string): Promise<{
         content:
           `Summarize this workshop transcript into JSON with keys: ` +
           `discussionPoints (array), decisions (array), actionItems (array).\n\n` +
-          `Transcript:\n${transcript}`,
+          `Transcript:\n${boundedTranscript}`,
       },
     ],
   })
