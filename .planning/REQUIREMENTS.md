@@ -223,6 +223,14 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [x] **VERIFY-08**: Cardano anchor fn is idempotent (DB unique constraint on hash + Blockfrost metadata-label pre-check + `concurrency: { key: 'cardano-wallet', limit: 1 }`)
 - [x] **VERIFY-09**: Public `/portal` displays Verified State badges with Cardanoscan preview-net explorer links on anchored versions and milestones
 
+### Research Module
+
+- [ ] **RESEARCH-01**: `research_items` table + three link tables (`research_item_section_links`, `research_item_version_links`, `research_item_feedback_links`) exist; migration 0025 applied; nullable `milestoneId` FK (SQL-only) on `research_items`; `isAuthorAnonymous` boolean (default false) filters `authors` field from public queries
+- [ ] **RESEARCH-02**: `readableId` column populated via `nextval('research_item_id_seq')` producing `RI-001`, `RI-002`, … — collision-safe under concurrent writes (pattern mirrors `feedback_id_seq`)
+- [ ] **RESEARCH-03**: Seven new RBAC permissions added to `src/lib/permissions.ts` (`research:create`, `research:manage_own`, `research:submit_review`, `research:publish`, `research:retract`, `research:read_drafts`, `research:read_published`) with role grants per `.planning/research/research-module/INTEGRATION.md` §8
+- [ ] **RESEARCH-04**: tRPC `research` router registered in `src/server/routers/_app.ts` exposing 15 procedures (list, listPublic, getById, create, update, submitForReview, approve, reject, retract, linkSection, unlinkSection, linkVersion, unlinkVersion, linkFeedback, unlinkFeedback) — each with correct `requirePermission` guard, Zod input validation using `z.guid()` for UUIDs, and fire-and-forget `writeAuditLog`
+- [ ] **RESEARCH-05**: State machine (`draft → pending_review → {published | draft}`; `published → retracted`) enforced in `src/server/services/research.service.ts` via `VALID_TRANSITIONS` table in `research.lifecycle.ts`; `workflowTransitions` INSERT happens BEFORE `researchItems` UPDATE (R6 invariant mirroring `feedback.service.ts` lines 139–162)
+
 ### Cross-Phase Integration
 
 - [x] **INTEGRATION-01**: End-to-end smoke test walks the full chain: `/participate` submit → Clerk invite → workshop register → 48h + 2h reminders fire → `MEETING_ENDED` webhook → workshop completed + attendance populated → moderator nudge → feedback submit → feedback.decide → notification Inngest → CR → merge → version published → per-version Cardano anchor → milestone ready → milestone hash → milestone Cardano anchor → Verified State badge visible on public portal
@@ -416,12 +424,17 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | UX-10 | Phase 24 | Complete |
 | UX-11 | Phase 24 | Complete |
 | INTEGRATION-01 | Phase 25 | Complete |
+| RESEARCH-01 | Phase 26 | Pending |
+| RESEARCH-02 | Phase 26 | Pending |
+| RESEARCH-03 | Phase 26 | Pending |
+| RESEARCH-04 | Phase 26 | Pending |
+| RESEARCH-05 | Phase 26 | Pending |
 
 **Coverage:**
 - v1 requirements: 87 total — 87 mapped, 87 complete
-- v0.2 requirements: 55 total — 55 mapped, 0 complete
-- Total: 142 requirements — 142 mapped, 87 complete, 55 pending, 0 unmapped
+- v0.2 requirements: 60 total — 60 mapped, 0 complete
+- Total: 147 requirements — 147 mapped, 87 complete, 60 pending, 0 unmapped
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-04-13 after milestone v0.2 definition (55 new requirements added across 9 categories + collab rollback; 5 v0.1 pending flipped to Complete; 3 v0.1 editor reqs annotated as rolled back in v0.2 Phase 14)*
+*Last updated: 2026-04-19 — Phase 26 added RESEARCH-01..05 (5 backend-only requirements)*
