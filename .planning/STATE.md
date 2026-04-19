@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 26-01-schema-migration-PLAN.md
-last_updated: "2026-04-19T16:47:42.775Z"
+stopped_at: Completed 26-04-lifecycle-service-PLAN.md
+last_updated: "2026-04-19T17:03:48.490Z"
 progress:
   total_phases: 29
   completed_phases: 25
   total_plans: 98
-  completed_plans: 95
+  completed_plans: 96
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 26 (research-module-data-server) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 
 ## Performance Metrics
 
@@ -131,6 +131,7 @@ Plan: 5 of 6
 | Phase 26-research-module-data-server P03 | 4min | 1 tasks | 2 files |
 | Phase 26-research-module-data-server P02 | 5min | 2 tasks | 3 files |
 | Phase 26-research-module-data-server P01 | 7min | 2 tasks | 6 files |
+| Phase 26-research-module-data-server P04 | 9min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -350,6 +351,11 @@ Recent decisions affecting current work:
 - [Phase 26-research-module-data-server]: Plan 26-01: Feedback FK uses REFERENCES feedback(id) not feedback_items(id) — feedbackItems Drizzle export maps to pgTable('feedback',...) at schema/feedback.ts:26
 - [Phase 26-research-module-data-server]: Plan 26-01: research_item_id_seq CREATE SEQUENCE IF NOT EXISTS with START 1 — idempotent, re-run safe, matches feedback_id_seq precedent since Phase 4
 - [Phase 26-research-module-data-server]: Plan 26-01: Parallel-wave git-commit race — Task 1 commit 00117fd bundled Plan 26-02's research-permissions.test.ts + permissions.ts research grants alongside 26-01's intended files; same pattern documented for Phase 21 commit 2cb6b7e, no history rewrite, content attribution via this SUMMARY
+- [Phase 26-research-module-data-server]: Plan 26-04: No XState — pure VALID_TRANSITIONS const map (workshop Phase 17 precedent) because the 4-state research machine doesn't justify the snapshot-corruption fallback complexity in feedback.service.ts
+- [Phase 26-research-module-data-server]: Plan 26-04: R6 invariant verified both statically (insert(workflowTransitions) line 59 < update(researchItems) line 86 in research.service.ts) and dynamically (vi.hoisted callOrder spy asserts insertIdx < updateIdx)
+- [Phase 26-research-module-data-server]: Plan 26-04: Q3 moderation gate encoded in data (VALID_TRANSITIONS.draft=['pending_review'] forbids draft->published by shape) AND code (Plan 26-02 RBAC excludes research_lead from research:publish/retract) — defense in depth
+- [Phase 26-research-module-data-server]: Plan 26-04: Rule 2 deviation — added INTERNAL_SERVER_ERROR guard on empty updated[] array in transitionResearch to defend against UPDATE-touches-zero-rows after successful audit INSERT (Object.assign(undefined) TypeError would be worse than typed TRPCError)
+- [Phase 26-research-module-data-server]: Plan 26-04: vi.hoisted() shared state + table-reference identity check in vi.mock('@/src/db') factory (table === workflowTransitions ? 'insert:workflowTransitions' : 'insert:unknown') — robust call-order tracking pattern surviving future INSERT/UPDATE target additions
 
 ### Pending Todos
 
@@ -368,6 +374,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T16:47:42.766Z
-Stopped at: Completed 26-01-schema-migration-PLAN.md
+Last session: 2026-04-19T17:03:15.353Z
+Stopped at: Completed 26-04-lifecycle-service-PLAN.md
 Resume file: None
