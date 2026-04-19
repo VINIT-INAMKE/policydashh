@@ -610,7 +610,7 @@ Plans:
 **Requirements:** RESEARCH-06, RESEARCH-07, RESEARCH-08 (UI-bearing)
 **Success Criteria** (what must be TRUE):
   1. `/research-manage` lists research items visible to current user (drafts scope by role: research_lead sees own; admin/policy_lead sees all), with filter panel (document, type, status) and sortable columns
-  2. Create and edit drafts via a two-step dialog: metadata (title, type, description, authors, publishedDate, DOI, journal, peer-reviewed flag, external URL, anonymous-author toggle) → file upload (reuses `app/api/upload/route.ts` R2 flow) or URL-only; save creates or updates with audit log
+  2. Create and edit drafts via dedicated pages at `/research-manage/new` and `/research-manage/[id]/edit` (per Phase 27 D-01): metadata (title, type, description, authors, publishedDate, DOI, journal, peer-reviewed flag, external URL, anonymous-author toggle) → file upload (reuses `app/api/upload/route.ts` R2 flow) or URL-only; save creates or updates with audit log
   3. Draft detail page exposes Submit-for-Review button for research_lead; admin/policy_lead detail shows Approve, Reject-with-rationale, Retract-with-reason actions wired to tRPC; every transition writes `workflow_transitions` entry with before/after status
   4. Link-picker dialog on the detail page lets authorized users attach the research item to one or more sections, versions, and feedback items; link tables round-trip without duplicates; per-section `relevanceNote` editable inline
   5. Dashboard widgets: research_lead sees "My drafts" + "Pending review count"; admin/policy_lead sees "Research awaiting review" count linked to review queue

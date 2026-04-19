@@ -267,7 +267,7 @@ From UI-SPEC §"Component Inventory":
     Do NOT `'use client'` directive is required — this is a client component.
   </action>
   <verify>
-    <automated>npx tsc --noEmit && npx next build app/research-manage 2>&1 | grep -E "error|Error" | head -5 || true</automated>
+    <automated>npx tsc --noEmit</automated>
   </verify>
   <acceptance_criteria>
     - `ls app/research-manage/page.tsx` returns success

@@ -3,7 +3,7 @@ phase: 27-research-workspace-admin-ui
 plan: 04
 type: execute
 wave: 2
-depends_on: ["27-01", "27-02"]
+depends_on: ["27-01", "27-02", "27-03"]
 files_modified:
   - app/research-manage/[id]/page.tsx
   - app/research-manage/[id]/_components/research-decision-log.tsx
@@ -22,6 +22,7 @@ must_haves:
     - "Retract action: Alert-Dialog with required retractionReason textarea"
     - "Every lifecycle mutation invalidates utils.research.getById AND utils.research.listTransitions on success"
     - "AnonymousPreviewCard data — detail page uses shouldHideAuthors(item) to render public-facing author lines identically to the form preview (D-05)"
+    - "Items with artifactId render 'Attachment on file' placeholder (presigned-GET download deferred to Phase 28 public listing)"
   artifacts:
     - path: "app/research-manage/[id]/page.tsx"
       provides: "Detail page (client component)"
