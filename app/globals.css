@@ -114,6 +114,18 @@
   --status-priority-medium-bg: oklch(0.92 0.07 85);
   --status-priority-medium-text: oklch(0.5 0.1 85);
 
+  /* Phase 27 research status semantic colors — mirrors feedback/CR pattern.
+     Draft: muted gray. Pending: amber (like priority-medium).
+     Published: green (like status-accepted). Retracted: red-tint (like status-rejected). */
+  --research-status-draft-bg: var(--muted);
+  --research-status-draft-fg: var(--muted-foreground);
+  --research-status-pending-bg: oklch(0.92 0.07 85);
+  --research-status-pending-fg: oklch(0.5 0.1 85);
+  --research-status-published-bg: oklch(0.9 0.08 145);
+  --research-status-published-fg: oklch(0.4 0.12 145);
+  --research-status-retracted-bg: oklch(0.95 0.04 27);
+  --research-status-retracted-fg: oklch(0.45 0.12 27);
+
   /* CR status semantic colors */
   --status-cr-approved-bg: oklch(0.9 0.08 145);
   --status-cr-approved-text: oklch(0.4 0.12 145);
@@ -213,6 +225,17 @@
   --status-priority-high-bg: oklch(0.95 0.04 27);
   --status-priority-medium-bg: oklch(0.92 0.07 85);
   --status-priority-medium-text: oklch(0.5 0.1 85);
+
+  /* Phase 27 research status semantic colors — kept identical to :root per
+     existing feedback/CR pattern. oklch values render correctly in both modes. */
+  --research-status-draft-bg: var(--muted);
+  --research-status-draft-fg: var(--muted-foreground);
+  --research-status-pending-bg: oklch(0.92 0.07 85);
+  --research-status-pending-fg: oklch(0.5 0.1 85);
+  --research-status-published-bg: oklch(0.9 0.08 145);
+  --research-status-published-fg: oklch(0.4 0.12 145);
+  --research-status-retracted-bg: oklch(0.95 0.04 27);
+  --research-status-retracted-fg: oklch(0.45 0.12 27);
 
   /* CR status semantic colors */
   --status-cr-approved-bg: oklch(0.9 0.08 145);
