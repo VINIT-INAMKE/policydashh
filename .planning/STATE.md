@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 27-03-create-edit-pages-PLAN.md
-last_updated: "2026-04-19T22:26:04.572Z"
+stopped_at: Completed 27-04-detail-page-lifecycle-PLAN.md
+last_updated: "2026-04-19T22:58:45.141Z"
 progress:
   total_phases: 29
   completed_phases: 26
   total_plans: 104
-  completed_plans: 100
+  completed_plans: 101
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 27 (research-workspace-admin-ui) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 
 ## Performance Metrics
 
@@ -135,6 +135,7 @@ Plan: 3 of 6
 | Phase 26-research-module-data-server PP05 | 15min | 2 tasks | 4 files |
 | Phase 27-research-workspace-admin-ui P01 | 15min | 3 tasks | 10 files |
 | Phase 27-research-workspace-admin-ui P03 | 12min | 3 tasks | 6 files |
+| Phase 27-research-workspace-admin-ui P04 | 10min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -371,6 +372,10 @@ Recent decisions affecting current work:
 - [Phase 27-research-workspace-admin-ui]: evidence_artifacts uses uploaderId (not uploadedBy) and has no r2_key column - artifactR2Key accepted in input schema for client-server contract symmetry but silently dropped server-side; matches workshop.attachArtifact precedent
 - [Phase 27-research-workspace-admin-ui]: Edit-mode artifact prefill shortcut: artifactFileName/Size left undefined because trpc.research.getById returns just research_items row (no join); user can upload fresh file to replace - follow-up plan can denormalize or extend getById
 - [Phase 27-research-workspace-admin-ui]: Shared ResearchItemForm with mode='create'|'edit' used by both /research-manage/new and /[id]/edit - single source of truth for 11-field metadata form, no duplication between surfaces
+- [Phase 27-research-workspace-admin-ui]: Plan 27-04: AlertDialog open/onOpenChange controlled-by-default API confirmed via @base-ui/react/alert-dialog Root - 5 existing call sites use the same pattern, no prop adaptation needed
+- [Phase 27-research-workspace-admin-ui]: Plan 27-04: Dual-invalidate pattern on every lifecycle mutation - utils.research.getById.invalidate + utils.research.listTransitions.invalidate so metadata header AND decision log re-fetch in same render pass after a transition
+- [Phase 27-research-workspace-admin-ui]: Plan 27-04: ArtifactDownloadLink as documented placeholder ('Attachment on file' + 8-char artifactId) - research.getById doesn't JOIN evidence_artifacts; presigned-GET deferred to Phase 28 OR a follow-up plan that extends getById to JOIN
+- [Phase 27-research-workspace-admin-ui]: Plan 27-04: Visibility matrix uses (isOwner || isAdminRole) for showSubmit/showEdit - mirrors Phase 26 assertOwnershipOrBypass pattern; admin/policy_lead bypass ownership entirely, research_lead gated to own items, defense in depth between client UX visibility and server authorization
 
 ### Pending Todos
 
@@ -389,6 +394,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T22:26:04.562Z
-Stopped at: Completed 27-03-create-edit-pages-PLAN.md
+Last session: 2026-04-19T22:58:19.105Z
+Stopped at: Completed 27-04-detail-page-lifecycle-PLAN.md
 Resume file: None
