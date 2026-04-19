@@ -25,3 +25,15 @@ Items discovered during Phase 26 execution that are **out of scope** for this ph
 - **Root cause:** `src/db/schema/milestones.ts` `ManifestEntry.entityType` already includes `'research_item'` (added by Plan 26-03's concurrent work or Plan 26-00), but `src/lib/hashing.ts`'s local `ManifestEntry` union still lacks `'research_item'`.
 - **Why deferred (NOT a Plan 26-02 deviation):** Plan 26-02 only touches `src/lib/permissions.ts` and `src/lib/constants.ts` — neither references `ManifestEntry`. This mismatch is directly in Plan 26-03's (manifest-entry-extension) scope and will be resolved when 26-03 extends `hashing.ts`'s `ManifestEntry` union.
 - **Disposition:** Expected GREEN after Plan 26-03 completes; no Plan 26-02 action required.
+
+## Pre-existing Suite Failures Confirmed Before Plan 26-05
+
+### 17 test files / 69 tests failing on master (baseline)
+
+- **Files:** 17 test files across `src/server/routers/__tests__/evidence-request-export.test.ts`, `app/portal/[policyId]/_components/__tests__/section-summary-block.test.tsx`, and 15 others
+- **Discovered in:** Plan 26-05 execution (verified pre-existing via `git stash` + re-run on clean master at 2026-04-19T22:51Z)
+- **Baseline count:** 17 failed files, 69 failed tests, 532 passed, 73 todo
+- **With Plan 26-05 changes:** 17 failed files, 69 failed tests, 551 passed (+19), 54 todo (-19)
+- **Root cause:** Unrelated to research module — pre-existing fixture drift, missing module paths (e.g., `@/app/(public)/portal/[policyId]/_components/section-summary-block`), and contract assertions against unshipped adjacent features.
+- **Why deferred:** Plan 26-05 only creates `src/server/routers/research.ts` and edits `src/server/routers/_app.ts` + `src/__tests__/research-router.test.ts`. None of the 17 failing files import from these paths.
+- **Disposition:** Pre-existing test-infra debt; to be triaged separately (likely during milestone v0.2 smoke-walk pass).
