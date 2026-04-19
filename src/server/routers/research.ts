@@ -15,6 +15,9 @@ import { eq, and, desc, asc, sql } from 'drizzle-orm'
 import { workflowTransitions } from '@/src/db/schema/workflow'
 import { users } from '@/src/db/schema/users'
 import { evidenceArtifacts } from '@/src/db/schema/evidence'
+import { policySections, policyDocuments } from '@/src/db/schema/documents'
+import { documentVersions } from '@/src/db/schema/changeRequests'
+import { feedbackItems } from '@/src/db/schema/feedback'
 import { TRPCError } from '@trpc/server'
 
 /**
@@ -226,6 +229,14 @@ export const researchRouter = router({
   // Anonymous-author filter fires ONLY when status === 'published'; draft
   // and pending_review items are internal, so the author stays visible to
   // the privileged roles that can see them.
+  //
+  // Phase 27 RESEARCH-08: extended to include three linked-entity arrays
+  // (sections, versions, feedback) with joined display metadata. The detail
+  // page renders the linked lists from these arrays so picker mounts and
+  // unlink buttons can operate without separate client queries. Each
+  // linked-entity fetch runs in parallel via Promise.all to keep the
+  // request count flat (1 outer + 3 inner = 4 parallel queries on a single
+  // round-trip from the client).
   getById: requirePermission('research:read_drafts')
     .input(z.object({ id: z.guid() }))
     .query(async ({ input }) => {
@@ -240,10 +251,59 @@ export const researchRouter = router({
       }
 
       // Pitfall 5: anonymous-author filter applies only to PUBLISHED items
-      if (row.isAuthorAnonymous && row.status === 'published') {
-        return { ...row, authors: null }
+      const scoped = row.isAuthorAnonymous && row.status === 'published'
+        ? { ...row, authors: null }
+        : row
+
+      // Phase 27 RESEARCH-08: fetch linked entities in parallel for the
+      // detail page. Each linked entity is returned with its display
+      // metadata (title, readableId) so the UI renders without extra
+      // client queries.
+      const [linkedSections, linkedVersions, linkedFeedback] = await Promise.all([
+        db
+          .select({
+            sectionId:     researchItemSectionLinks.sectionId,
+            relevanceNote: researchItemSectionLinks.relevanceNote,
+            sectionTitle:  policySections.title,
+            documentId:    policySections.documentId,
+            documentTitle: policyDocuments.title,
+          })
+          .from(researchItemSectionLinks)
+          .innerJoin(policySections, eq(researchItemSectionLinks.sectionId, policySections.id))
+          .innerJoin(policyDocuments, eq(policySections.documentId, policyDocuments.id))
+          .where(eq(researchItemSectionLinks.researchItemId, input.id)),
+
+        db
+          .select({
+            versionId:     researchItemVersionLinks.versionId,
+            versionLabel:  documentVersions.versionLabel,
+            documentId:    documentVersions.documentId,
+            documentTitle: policyDocuments.title,
+            isPublished:   documentVersions.isPublished,
+          })
+          .from(researchItemVersionLinks)
+          .innerJoin(documentVersions, eq(researchItemVersionLinks.versionId, documentVersions.id))
+          .innerJoin(policyDocuments, eq(documentVersions.documentId, policyDocuments.id))
+          .where(eq(researchItemVersionLinks.researchItemId, input.id)),
+
+        db
+          .select({
+            feedbackId: researchItemFeedbackLinks.feedbackId,
+            readableId: feedbackItems.readableId,
+            title:      feedbackItems.title,
+            documentId: feedbackItems.documentId,
+          })
+          .from(researchItemFeedbackLinks)
+          .innerJoin(feedbackItems, eq(researchItemFeedbackLinks.feedbackId, feedbackItems.id))
+          .where(eq(researchItemFeedbackLinks.researchItemId, input.id)),
+      ])
+
+      return {
+        ...scoped,
+        linkedSections,
+        linkedVersions,
+        linkedFeedback,
       }
-      return row
     }),
 
   // RESEARCH-06/07: decision-log data source. Returns all workflow

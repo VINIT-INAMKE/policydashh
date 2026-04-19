@@ -285,3 +285,9 @@ describe('Phase 27 Plan 03 create/update artifact metadata extension (RESEARCH-0
     expect(mod.researchRouter._def.procedures.update).toBeDefined()
   })
 })
+
+describe('Phase 27 getById linked-entity extension (RESEARCH-08)', () => {
+  it('getById is still defined after linked-entity join extension', () => {
+    expect(mod.researchRouter._def.procedures.getById).toBeDefined()
+  })
+})
