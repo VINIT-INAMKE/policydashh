@@ -6,9 +6,10 @@ import {
   documentVersions,
   feedbackItems,
 } from '@/src/db/schema'
+import { researchItems } from '@/src/db/schema/research'
 import { workshopRegistrations } from '@/src/db/schema/workshops'
 import { eq, and, inArray, isNotNull, count, sql } from 'drizzle-orm'
-import { Users, FileText, BookOpen, MessageSquare } from 'lucide-react'
+import { Users, FileText, BookOpen, MessageSquare, Microscope } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -51,6 +52,7 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
     versionsReadyToPublish,
     usersByRole,
     usersWithEngagement,
+    [researchAwaitingResult],
   ] = await Promise.all([
     db.select({ count: count() }).from(users),
 
@@ -97,21 +99,36 @@ export async function AdminDashboard({ userId }: AdminDashboardProps) {
       .leftJoin(feedbackCounts, eq(users.id, feedbackCounts.submitterId))
       .leftJoin(attendanceCounts, eq(users.id, attendanceCounts.userId))
       .orderBy(users.createdAt),
+
+    // Phase 27 D-11: admin dashboard research review queue count
+    db
+      .select({ count: count() })
+      .from(researchItems)
+      .where(eq(researchItems.status, 'pending_review')),
   ])
 
   const totalUsers = totalUsersResult?.count ?? 0
   const activePolicies = activePoliciesResult?.count ?? 0
   const openFeedback = openFeedbackResult?.count ?? 0
   const versionsCount = versionsReadyToPublish.length
+  const researchAwaiting = researchAwaitingResult?.count ?? 0
 
   return (
     <div className="space-y-4">
       {/* Stat row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard icon={<Users className="size-5" />} value={totalUsers} label="Total Users" />
         <StatCard icon={<FileText className="size-5" />} value={activePolicies} label="Active Policies" />
         <StatCard icon={<BookOpen className="size-5" />} value={versionsCount} label="Versions Ready to Publish" />
         <StatCard icon={<MessageSquare className="size-5" />} value={openFeedback} label="Open Feedback" />
+        {/* Phase 27 D-11: research review queue */}
+        <Link href="/research-manage?status=pending_review">
+          <StatCard
+            icon={<Microscope className="size-5" />}
+            value={researchAwaiting}
+            label="Research Awaiting Review"
+          />
+        </Link>
       </div>
 
       {/* Inactive Users Widget (UX-09, D-03) */}
