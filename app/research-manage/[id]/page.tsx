@@ -1,20 +1,33 @@
 'use client'
 
+import { useState } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { Download, ExternalLink } from 'lucide-react'
+import { Download, ExternalLink, Plus, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { trpc } from '@/src/trpc/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { ResearchStatusBadge } from '../_components/research-status-badge'
 import { ResearchDecisionLog } from './_components/research-decision-log'
 import { ResearchLifecycleActions } from './_components/lifecycle-actions'
+import { SectionLinkPicker } from './_components/section-link-picker'
+import { VersionLinkPicker } from './_components/version-link-picker'
+import { FeedbackLinkPicker } from './_components/feedback-link-picker'
+import { LinkedSectionRow } from './_components/linked-section-row'
 import { formatAuthorsForDisplay } from '@/src/lib/research-utils'
+import { can } from '@/src/lib/permissions'
 import type { Role } from '@/src/lib/constants'
 
 /**
- * /research-manage/[id] — Phase 27 Plan 04 (RESEARCH-07).
+ * /research-manage/[id] — Phase 27 Plan 04 (RESEARCH-07) + Plan 27-05 (RESEARCH-08).
  *
  * Two-column detail page that mounts:
  *   1. Metadata header (title, status badge, readableId chip, type)
@@ -23,13 +36,22 @@ import type { Role } from '@/src/lib/constants'
  *   3. Description prose
  *   4. Artifact link OR external URL
  *   5. ResearchDecisionLog (workflow_transitions via tRPC, Plan 04 Task 1)
- *   6. Linked Entities placeholder — Plan 05 replaces with picker triggers
+ *   6. Linked Sections list with inline relevanceNote editor (Plan 27-05)
+ *   7. Linked Versions list with unlink button (Plan 27-05)
+ *   8. Linked Feedback list with unlink button (Plan 27-05)
+ *   9. Three picker dialog mounts (mounted at page root, controlled by
+ *      sectionPickerOpen / versionPickerOpen / feedbackPickerOpen)
  *
  * Right sidebar mounts ResearchLifecycleActions (Plan 04 Task 2) which
  * derives the visible button set from currentUserRole + status + ownership.
  *
  * Author display uses formatAuthorsForDisplay (D-05 single source of truth)
  * so the page renders identically to the AnonymousPreviewCard on the form.
+ *
+ * Edit-permission gate (canEdit && isOwnerOrAdmin) controls picker triggers,
+ * unlink buttons, and inline-relevanceNote-editor visibility. Mirrors the
+ * Plan 26-05 assertOwnershipOrBypass pattern: research_lead is gated to own
+ * items; admin/policy_lead bypass ownership entirely.
  *
  * Artifact download is intentionally a "Attachment on file" placeholder
  * (presigned-GET plumbing deferred to Phase 28 public listing — see also
@@ -46,6 +68,26 @@ export default function ResearchItemDetailPage() {
 
   const meQuery = trpc.user.getMe.useQuery()
   const itemQuery = trpc.research.getById.useQuery({ id })
+  const utils = trpc.useUtils()
+
+  const [sectionPickerOpen, setSectionPickerOpen] = useState(false)
+  const [versionPickerOpen, setVersionPickerOpen] = useState(false)
+  const [feedbackPickerOpen, setFeedbackPickerOpen] = useState(false)
+
+  const unlinkVersionMutation = trpc.research.unlinkVersion.useMutation({
+    onSuccess: () => {
+      toast.success('Version unlinked.')
+      utils.research.getById.invalidate({ id })
+    },
+    onError: () => toast.error("Couldn't unlink. Try again."),
+  })
+  const unlinkFeedbackMutation = trpc.research.unlinkFeedback.useMutation({
+    onSuccess: () => {
+      toast.success('Feedback unlinked.')
+      utils.research.getById.invalidate({ id })
+    },
+    onError: () => toast.error("Couldn't unlink. Try again."),
+  })
 
   if (itemQuery.isLoading || meQuery.isLoading) {
     return (
@@ -70,6 +112,12 @@ export default function ResearchItemDetailPage() {
     isAuthorAnonymous: item.isAuthorAnonymous,
     authors: item.authors ?? null,
   })
+
+  const role = (me.role ?? null) as Role | null
+  const canEdit = role !== null && can(role, 'research:manage_own')
+  const isOwnerOrAdmin =
+    item.createdBy === me.id || role === 'admin' || role === 'policy_lead'
+  const canManageLinks = canEdit && isOwnerOrAdmin
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -164,15 +212,177 @@ export default function ResearchItemDetailPage() {
         {/* Decision Log */}
         <ResearchDecisionLog researchItemId={item.id} />
 
-        {/* Linked entities placeholder — Plan 05 replaces this block */}
         <Separator />
+
+        {/* Linked Sections */}
         <div className="space-y-2">
-          <h2 className="text-xs font-normal uppercase tracking-wide text-muted-foreground">
-            Linked Entities
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Link pickers ship in Plan 05.
-          </p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-normal uppercase tracking-wide text-muted-foreground">
+              Linked Sections
+            </h2>
+            {canManageLinks && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSectionPickerOpen(true)}
+              >
+                <Plus className="size-3.5" />
+                Link Sections
+              </Button>
+            )}
+          </div>
+          {item.linkedSections.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{'No sections linked yet.'}</p>
+          ) : (
+            <div className="space-y-2">
+              {item.linkedSections.map((s) => (
+                <LinkedSectionRow
+                  key={s.sectionId}
+                  researchItemId={item.id}
+                  sectionId={s.sectionId}
+                  sectionTitle={s.sectionTitle}
+                  documentId={s.documentId}
+                  documentTitle={s.documentTitle}
+                  relevanceNote={s.relevanceNote}
+                  canEdit={canManageLinks}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Linked Versions */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-normal uppercase tracking-wide text-muted-foreground">
+              Linked Versions
+            </h2>
+            {canManageLinks && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setVersionPickerOpen(true)}
+              >
+                <Plus className="size-3.5" />
+                Link Versions
+              </Button>
+            )}
+          </div>
+          {item.linkedVersions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{'No versions linked yet.'}</p>
+          ) : (
+            <div className="space-y-1">
+              {item.linkedVersions.map((v) => (
+                <div
+                  key={v.versionId}
+                  className="flex items-center justify-between gap-2 rounded-md border p-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="font-mono text-sm">v{v.versionLabel}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {v.documentTitle}
+                    </span>
+                    {v.isPublished && (
+                      <Badge variant="secondary" className="ml-2 text-[10px]">
+                        Published
+                      </Badge>
+                    )}
+                  </div>
+                  {canManageLinks && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={(props) => (
+                          <Button
+                            {...props}
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label="Remove link"
+                            onClick={() =>
+                              unlinkVersionMutation.mutate({
+                                researchItemId: item.id,
+                                versionId: v.versionId,
+                              })
+                            }
+                          >
+                            <X className="size-3" />
+                          </Button>
+                        )}
+                      />
+                      <TooltipContent>Remove link</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Linked Feedback */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-normal uppercase tracking-wide text-muted-foreground">
+              Linked Feedback
+            </h2>
+            {canManageLinks && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFeedbackPickerOpen(true)}
+              >
+                <Plus className="size-3.5" />
+                Link Feedback
+              </Button>
+            )}
+          </div>
+          {item.linkedFeedback.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{'No feedback linked yet.'}</p>
+          ) : (
+            <div className="space-y-1">
+              {item.linkedFeedback.map((f) => (
+                <div
+                  key={f.feedbackId}
+                  className="flex items-center justify-between gap-2 rounded-md border p-2"
+                >
+                  <Link
+                    href={`/policies/${f.documentId}/feedback`}
+                    className="block min-w-0 flex-1 hover:underline"
+                  >
+                    <span className="mr-2 font-mono text-xs text-muted-foreground">
+                      {f.readableId}
+                    </span>
+                    <span className="truncate text-sm">{f.title}</span>
+                  </Link>
+                  {canManageLinks && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={(props) => (
+                          <Button
+                            {...props}
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label="Remove link"
+                            onClick={() =>
+                              unlinkFeedbackMutation.mutate({
+                                researchItemId: item.id,
+                                feedbackId: f.feedbackId,
+                              })
+                            }
+                          >
+                            <X className="size-3" />
+                          </Button>
+                        )}
+                      />
+                      <TooltipContent>Remove link</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -184,10 +394,30 @@ export default function ResearchItemDetailPage() {
             status={item.status}
             createdBy={item.createdBy}
             currentUserId={me.id}
-            currentUserRole={(me.role ?? null) as Role | null}
+            currentUserRole={role}
           />
         </div>
       </aside>
+
+      {/* Picker dialog mounts (page-root level so portals render correctly) */}
+      <SectionLinkPicker
+        researchItemId={item.id}
+        linkedSectionIds={item.linkedSections.map((s) => s.sectionId)}
+        open={sectionPickerOpen}
+        onOpenChange={setSectionPickerOpen}
+      />
+      <VersionLinkPicker
+        researchItemId={item.id}
+        linkedVersionIds={item.linkedVersions.map((v) => v.versionId)}
+        open={versionPickerOpen}
+        onOpenChange={setVersionPickerOpen}
+      />
+      <FeedbackLinkPicker
+        researchItemId={item.id}
+        linkedFeedbackIds={item.linkedFeedback.map((f) => f.feedbackId)}
+        open={feedbackPickerOpen}
+        onOpenChange={setFeedbackPickerOpen}
+      />
     </div>
   )
 }
