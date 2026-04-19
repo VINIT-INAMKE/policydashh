@@ -6,8 +6,9 @@ import {
   evidenceArtifacts,
   policySections,
 } from '@/src/db/schema'
-import { eq, isNull, count, sql, desc } from 'drizzle-orm'
-import { AlertCircle, FileSearch, CheckCircle } from 'lucide-react'
+import { researchItems } from '@/src/db/schema/research'
+import { eq, isNull, count, sql, desc, and } from 'drizzle-orm'
+import { AlertCircle, FileSearch, CheckCircle, FileText, Clock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,13 @@ const typeColors: Record<string, string> = {
 }
 
 export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardProps) {
-  const [feedbackWithoutEvidence, [totalEvidenceResult], [totalFeedbackResult]] = await Promise.all([
+  const [
+    feedbackWithoutEvidence,
+    [totalEvidenceResult],
+    [totalFeedbackResult],
+    [myDraftsResult],
+    [myPendingReviewResult],
+  ] = await Promise.all([
     db
       .select({
         id: feedbackItems.id,
@@ -46,6 +53,24 @@ export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardPro
     db.select({ count: count() }).from(evidenceArtifacts),
 
     db.select({ count: count() }).from(feedbackItems),
+
+    // Phase 27 D-10: research_lead dashboard stat — own drafts
+    db
+      .select({ count: count() })
+      .from(researchItems)
+      .where(and(
+        eq(researchItems.createdBy, userId),
+        eq(researchItems.status, 'draft'),
+      )),
+
+    // Phase 27 D-10: research_lead dashboard stat — own pending review
+    db
+      .select({ count: count() })
+      .from(researchItems)
+      .where(and(
+        eq(researchItems.createdBy, userId),
+        eq(researchItems.status, 'pending_review'),
+      )),
   ])
 
   // Get count of all feedback without evidence (for stats)
@@ -63,6 +88,24 @@ export async function ResearchLeadDashboard({ userId }: ResearchLeadDashboardPro
 
   return (
     <div className="space-y-4">
+      {/* Phase 27 D-10: Research stats — prepended above existing stat row per UI-SPEC */}
+      <div className="grid grid-cols-2 gap-4">
+        <Link href="/research-manage?author=me&status=draft">
+          <StatCard
+            icon={<FileText className="size-5" />}
+            value={myDraftsResult?.count ?? 0}
+            label="My Drafts"
+          />
+        </Link>
+        <Link href="/research-manage?author=me&status=pending_review">
+          <StatCard
+            icon={<Clock className="size-5" />}
+            value={myPendingReviewResult?.count ?? 0}
+            label="Pending Review"
+          />
+        </Link>
+      </div>
+
       {/* Stat row */}
       <div className="grid grid-cols-2 gap-4">
         <StatCard icon={<AlertCircle className="size-5" />} value={noEvidenceCount} label="Feedback Without Evidence" />
