@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { db } from '@/src/db'
 import { feedbackItems, policySections, policyDocuments, changeRequests, documentVersions } from '@/src/db/schema'
+import { researchItems } from '@/src/db/schema/research'
 import { eq, inArray, notInArray, count, desc, sql, and, gt } from 'drizzle-orm'
-import { MessageSquare, GitPullRequest, FileText, BookOpen, BarChart2 } from 'lucide-react'
+import { MessageSquare, GitPullRequest, FileText, BookOpen, BarChart2, Microscope } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,7 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
     recentFeedback,
     activeCRs,
     sections,
+    [researchAwaitingResult],
   ] = await Promise.all([
     db.select({ count: count() }).from(feedbackItems)
       .where(inArray(feedbackItems.status, ['submitted', 'under_review'])),
@@ -82,6 +84,12 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
       title: policySections.title,
       documentId: policySections.documentId,
     }).from(policySections),
+
+    // Phase 27 D-11: policy_lead dashboard research review queue count
+    db
+      .select({ count: count() })
+      .from(researchItems)
+      .where(eq(researchItems.status, 'pending_review')),
   ])
 
   const openFeedbackCount = openFeedbackResult?.count ?? 0
@@ -172,11 +180,19 @@ export async function PolicyLeadDashboard({ userId, lastVisitedAt }: PolicyLeadD
       )}
 
       {/* Stat row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard icon={<MessageSquare className="size-5" />} value={openFeedbackCount} label="Open Feedback" />
         <StatCard icon={<GitPullRequest className="size-5" />} value={activeCRCount} label="Active CRs" />
         <StatCard icon={<FileText className="size-5" />} value={policiesCount} label="Policies" />
         <StatCard icon={<BookOpen className="size-5" />} value={publishedVersionsCount} label="Published Versions" />
+        {/* Phase 27 D-11: research review queue */}
+        <Link href="/research-manage?status=pending_review">
+          <StatCard
+            icon={<Microscope className="size-5" />}
+            value={researchAwaitingResult?.count ?? 0}
+            label="Research Awaiting Review"
+          />
+        </Link>
       </div>
 
       {/* Two-column layout */}
