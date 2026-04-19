@@ -62,6 +62,17 @@ export function AdaptiveHeaderClient({ userId, userRole }: AdaptiveHeaderClientP
       items.push({ href: '/workshop-manage', label: 'Workshop Manage' })
     }
 
+    // Phase 27 D-12: Research workspace — admin, policy_lead, research_lead.
+    // No per-policy tab (research is cross-policy); no stakeholder/observer
+    // access in workspace chrome (they get Phase 28 public surface).
+    if (
+      userRole === 'admin' ||
+      userRole === 'policy_lead' ||
+      userRole === 'research_lead'
+    ) {
+      items.push({ href: '/research-manage', label: 'Research' })
+    }
+
     // C1: /users is admin-only on the server (permissions.ts `user:list` and
     // the server guards in app/users/page.tsx). Keep the nav link in sync to
     // avoid policy_lead clicking through to an immediate redirect.
