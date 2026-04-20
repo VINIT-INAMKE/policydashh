@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { keepPreviousData } from '@tanstack/react-query'
@@ -112,6 +112,38 @@ function activeFilterCount(filters: ResearchFilters): number {
 }
 
 export default function ResearchManagePage() {
+  // Next.js 16 prerender requires useSearchParams to be inside a Suspense
+  // boundary. The inner component reads searchParams; this wrapper provides
+  // the boundary so the page builds statically without bailing out.
+  return (
+    <Suspense fallback={<ResearchManageFallback />}>
+      <ResearchManagePageInner />
+    </Suspense>
+  )
+}
+
+function ResearchManageFallback() {
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Research Items</h1>
+      </div>
+      <div className="flex flex-col gap-4 md:flex-row">
+        <aside className="hidden md:block">
+          <Skeleton className="h-96 w-60" />
+        </aside>
+        <section className="flex-1">
+          <Skeleton className="h-10 mb-2" />
+          <Skeleton className="h-10 mb-2" />
+          <Skeleton className="h-10 mb-2" />
+          <Skeleton className="h-10" />
+        </section>
+      </div>
+    </div>
+  )
+}
+
+function ResearchManagePageInner() {
   const searchParams = useSearchParams()
   const meQuery = trpc.user.getMe.useQuery()
 
