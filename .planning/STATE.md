@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 28-01-PLAN.md
-last_updated: "2026-04-20T12:53:37.971Z"
+stopped_at: Completed 28-00-wave0-red-test-stubs-PLAN.md
+last_updated: "2026-04-20T12:53:43.504Z"
 progress:
   total_phases: 29
   completed_phases: 27
@@ -408,6 +408,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T12:51:56.121Z
-Stopped at: Completed 28-01-PLAN.md
+Last session: 2026-04-20T12:53:43.495Z
+Stopped at: Completed 28-00-wave0-red-test-stubs-PLAN.md
 Resume file: None
