@@ -118,7 +118,7 @@ export const notificationDispatchFn = inngest.createFunction(
     // emitting one event per subscriber) doesn't flood Resend with parallel
     // sends. 10 parallel runs keeps throughput high while giving Resend room
     // to rate-limit cleanly.
-    concurrency: { key: 'notification-dispatch:email', limit: 10 },
+    concurrency: { key: 'notification-dispatch-email', limit: 10 },
     // Inlined trigger array per src/inngest/README.md §90-94: extracting to a
     // `const triggers = [...]` widens the type and collapses `event.data` to
     // `any` inside the handler. Inngest v4 type-inference footgun.
