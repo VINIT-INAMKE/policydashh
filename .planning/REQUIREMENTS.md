@@ -233,6 +233,8 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 - [x] **RESEARCH-06**: `/research-manage` workspace surface with role-scoped list (research_lead sees own drafts; admin/policy_lead sees all), filter panel (document, type, status, author), sortable columns, and two-step create/edit flow (metadata → file upload via `app/api/upload/route.ts` R2 reuse, or URL-only) with anonymous-author toggle preview and audit-logged saves
 - [x] **RESEARCH-07**: Research item detail page with lifecycle actions (research_lead Submit-for-Review; admin/policy_lead Approve, Reject-with-rationale, Retract-with-reason) wired to tRPC `research.{submitForReview|approve|reject|retract}` — every transition writes `workflow_transitions` row with before/after status and rationale
 - [x] **RESEARCH-08**: Link-picker dialogs on the detail page attach research items to sections, versions, and feedback items (no duplicate rows; per-section `relevanceNote` editable inline); dashboard widgets surface "My drafts" + "Pending review count" for research_lead and "Research awaiting review" for admin/policy_lead
+- [x] **RESEARCH-09**: Public `/research/items` listing page (`app/research/items/page.tsx`) renders all items with `status = 'published'`; supports query-param filters `?document=`, `?type=`, `?from=`, `?to=`, `?sort=newest|oldest`; defaults to newest-first; offset pagination (40 items/page); card layout with title, type badge, authors (or "Source: Confidential" when `isAuthorAnonymous`), publishedDate, Download-or-View-Source CTA; existing `/research` static page gains a "Browse published research" CTA linking to `/research/items` without prose changes.
+- [x] **RESEARCH-10**: Public `/research/items/[id]` detail page (`app/research/items/[id]/page.tsx`) renders full metadata, formatted abstract (whitespace-preserved), DOI as `https://doi.org/{doi}` hyperlink, presigned R2 download via `app/api/research/[id]/download/route.ts` (24h TTL, per-IP rate limit 10/60s); links to policy sections as `/framework/[docId]#section-{sectionId}` and to policy versions as `/portal/[docId]?v=<label>` (filtered to published versions); NO feedback IDs, stakeholder names, `createdBy`/`reviewedBy`, or internal audit columns leak to the public surface; `proxy.ts` whitelists `/api/research(.*)` for unauthenticated download access.
 
 ### Cross-Phase Integration
 
@@ -435,12 +437,14 @@ Added 2026-04-13 for milestone v0.2 Verifiable Policy OS — Public Consultation
 | RESEARCH-06 | Phase 27 | Complete |
 | RESEARCH-07 | Phase 27 | Complete |
 | RESEARCH-08 | Phase 27 | Complete |
+| RESEARCH-09 | Phase 28 | Complete |
+| RESEARCH-10 | Phase 28 | Complete |
 
 **Coverage:**
 - v1 requirements: 87 total — 87 mapped, 87 complete
-- v0.2 requirements: 63 total — 63 mapped, 0 complete
-- Total: 150 requirements — 150 mapped, 87 complete, 63 pending, 0 unmapped
+- v0.2 requirements: 65 total — 65 mapped, 2 complete (RESEARCH-09, RESEARCH-10)
+- Total: 152 requirements — 152 mapped, 89 complete, 63 pending, 0 unmapped
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-04-20 — Phase 27 added RESEARCH-06..08 (3 UI-bearing requirements)*
+*Last updated: 2026-04-20 — Phase 28 added RESEARCH-09 and RESEARCH-10 (2 public-surface requirements)*
