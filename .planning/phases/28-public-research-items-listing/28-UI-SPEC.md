@@ -1,10 +1,11 @@
 ---
 phase: 28
 slug: public-research-items-listing
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-04-20
+reviewed_at: 2026-04-20T00:00:00Z
 ---
 
 # Phase 28 — UI Design Contract
