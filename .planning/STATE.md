@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to plan
-stopped_at: Completed 27-06-dashboard-widgets-PLAN.md
-last_updated: "2026-04-20T01:10:34.872Z"
+status: Ready to execute
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-04-20T12:53:37.971Z"
 progress:
   total_phases: 29
   completed_phases: 27
-  total_plans: 104
-  completed_plans: 103
+  total_plans: 109
+  completed_plans: 105
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Every piece of stakeholder feedback is traceable from submission through to the policy version it influenced -- or recorded with rationale for why it wasn't adopted.
-**Current focus:** Phase 27 — research-workspace-admin-ui
+**Current focus:** Phase 28 — public-research-items-listing
 
 ## Current Position
 
-Phase: 28
-Plan: Not started
+Phase: 28 (public-research-items-listing) — EXECUTING
+Plan: 3 of 5
 
 ## Performance Metrics
 
@@ -137,6 +137,8 @@ Plan: Not started
 | Phase 27-research-workspace-admin-ui P03 | 12min | 3 tasks | 6 files |
 | Phase 27-research-workspace-admin-ui P04 | 10min | 3 tasks | 3 files |
 | Phase 27-research-workspace-admin-ui P06 | 8min | 3 tasks | 3 files |
+| Phase 28-public-research-items-listing P01 | 5min | 2 tasks | 2 files |
+| Phase 28-public-research-items-listing P00 | 5min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -380,6 +382,14 @@ Recent decisions affecting current work:
 - [Phase 27-research-workspace-admin-ui]: Plan 27-06: Dashboard widgets pattern — Link-wrapped StatCard + pre-applied URL query params landing on existing list page (D-09 single-source-of-truth for queue surface). research_lead sees own scope (createdBy=userId AND status), admin/policy_lead see all-author moderation queue (status=pending_review only). Same widget label, different scope, encoded in URL params.
 - [Phase 27-research-workspace-admin-ui]: Plan 27-06: All 3 new dashboard count queries ride existing Promise.all blocks (research_lead 3→5, admin 6→7, policy_lead 7→8) — zero additional DB round-trips. Dashboard load latency unchanged.
 - [Phase 27-research-workspace-admin-ui]: Plan 27-06: Grid widening pattern (lg:grid-cols-4 → lg:grid-cols-5) chosen over 'own row' option for admin + policy_lead fifth StatCard — keeps dashboard chrome compact. UI-SPEC D-11 permitted either approach; spare-column path chosen for visual density.
+- [Phase 28-public-research-items-listing]: Plan 28-01: unstable_cache (deprecated but functional in Next.js 16) chosen over 'use cache' because next.config.ts does NOT enable cacheComponents — same pattern workshops-public.ts uses since Phase 20
+- [Phase 28-public-research-items-listing]: Plan 28-01: PUBLIC_COLUMNS const projection in research-public.ts is the single source of truth for the 17 safe columns crossing the public boundary; createdBy/reviewedBy/contentHash/txHash/anchoredAt/milestoneId/reviewedAt are STRIPPED at every query
+- [Phase 28-public-research-items-listing]: Plan 28-01: Pitfall 2 R2 key derivation pattern - strip R2_PUBLIC_URL prefix from artifact.url, fail-closed (404) on prefix mismatch instead of generating an invalid presigned URL; reusable for any future presigned-GET route consuming evidence_artifacts.url
+- [Phase 28-public-research-items-listing]: Plan 28-01: Per-IP namespaced rate-limit key research-download:ip:IP (max 10/60s) for unauthenticated public download; tighter cap than upload route per-user 20/60s because public surface faces wider attack surface
+- [Phase 28-public-research-items-listing]: Plan 28-01: OQ2 resolution - listLinkedVersionsForResearchItem filters documentVersions.isPublished=true at query level so the public detail page never offers a /portal deep-link that would 404; trades all-linked-versions visibility for no-dead-links on public surface
+- [Phase 28-public-research-items-listing]: Plan 28-01: Task 3 (Wave 0 it.todo to GREEN conversion) deferred per parallel-execution wave1_coordination directive; 28-00 owns those test files in this wave, conversion will land via 28-00 itself or a Wave 2 follow-up
+- [Phase 28-public-research-items-listing]: Plan 28-00 Wave 0 mixed-RED gate pattern: 8 test files in 3 commits (4 backend + 4 UI + VALIDATION flip), 2 authentically-RED files (proxy-public-routes + research-cta) lock Plan 28-04 work, 6 it.todo files with try/catch + null sentinel around variable-path dynamic import (extends Phase 20.5 bare-await pattern to handle modules genuinely absent at Wave 0 time)
+- [Phase 28-public-research-items-listing]: 28-VALIDATION.md per-task map encodes 8 task IDs (T1-T8) with explicit (todo) vs (RED) Status column — gives the verifier a single grep to confirm Nyquist coverage and distinguishes intentional contract-locking RED from todo Wave 1+ targets
 
 ### Pending Todos
 
@@ -398,6 +408,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T23:13:58.305Z
-Stopped at: Completed 27-06-dashboard-widgets-PLAN.md
+Last session: 2026-04-20T12:51:56.121Z
+Stopped at: Completed 28-01-PLAN.md
 Resume file: None
