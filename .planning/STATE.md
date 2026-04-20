@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 28-02-listing-page-components-PLAN.md
-last_updated: "2026-04-20T13:06:40.215Z"
+stopped_at: Completed 28-03-detail-page-download-button-PLAN.md
+last_updated: "2026-04-20T13:21:34.268Z"
 progress:
   total_phases: 29
   completed_phases: 27
   total_plans: 109
-  completed_plans: 106
+  completed_plans: 107
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 28 (public-research-items-listing) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 ## Performance Metrics
 
@@ -140,6 +140,7 @@ Plan: 4 of 5
 | Phase 28-public-research-items-listing P01 | 5min | 2 tasks | 2 files |
 | Phase 28-public-research-items-listing P00 | 5min | 3 tasks | 9 files |
 | Phase 28-public-research-items-listing P02 | 6min | 3 tasks | 6 files |
+| Phase 28-public-research-items-listing P03 | 8min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -395,6 +396,9 @@ Recent decisions affecting current work:
 - [Phase 28-public-research-items-listing]: Plan 28-02: OQ1 single-value DB filter + multi-value URL persistence - parseType() takes FIRST valid CSV value for listPublishedResearchItems({ itemType }) call while paginationParams.set('type', rawType) preserves the full CSV in pagination URLs so checkbox UI selection survives across page navigation; trade-off keeps Plan 28-01 helper signature unchanged (single ResearchItemType param)
 - [Phase 28-public-research-items-listing]: Plan 28-02: Hybrid filter panel pattern - <form method='get'> for Document/Dates/Sort (zero client JS, server-rendered) + targeted 'use client' island only for Type checkboxes (router.replace reactive URL sync). Avoids forcing the whole panel + its db.select policyDocuments query into a client bundle
 - [Phase 28-public-research-items-listing]: Plan 28-02: Empty-state branching on hasAnyFilter distinguishes corpus-empty ('No published research yet' / 'will appear here once published by the policy team') from filter-too-narrow ('No research items match these filters' / 'Try adjusting the type, date range, or document filter'); pagination only renders when total > 0 so the empty state owns the entire main column
+- [Phase 28-public-research-items-listing]: Plan 28-03: React.cache around fetchPublishedItem with embedded UUID validation - generateMetadata + Page share ONE DB fetch via Next.js 16 React.cache pattern; UUID guard inside the cache wrapper means an invalid id resolves to null in both pathways without spurious DB queries OR uncaught Postgres errors
+- [Phase 28-public-research-items-listing]: Plan 28-03: DownloadButton client island uses window.location.href (not fetch) - lets browser follow route handler HTTP 302 to presigned R2 GET URL natively, no CORS concern, no need to read response body; defensive try/catch + sonner toast covers the rare synchronous-throw case
+- [Phase 28-public-research-items-listing]: Plan 28-03: Render-components-directly accessibility test pattern - Plan 28-02 had to mock async ResearchFilterPanel inside listing-page wrapper because React 19 sync renderer bails on nested async server components; Plan 28-03 took the inverse approach (render the panel directly via await + renderToStaticMarkup) so SC-7 contract actually exercises panel HTML rather than mocking it away
 
 ### Pending Todos
 
@@ -413,6 +417,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T13:06:13.367Z
-Stopped at: Completed 28-02-listing-page-components-PLAN.md
+Last session: 2026-04-20T13:21:11.786Z
+Stopped at: Completed 28-03-detail-page-download-button-PLAN.md
 Resume file: None
