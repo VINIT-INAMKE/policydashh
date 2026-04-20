@@ -16,6 +16,8 @@ const isPublicRoute = createRouteMatcher([
   // Phase 20.5 - public research + framework content pages (PUB-06, PUB-07, PUB-08)
   '/research(.*)',
   '/framework(.*)',
+  // Phase 28 - public research items download endpoint (RESEARCH-10 presigned GET)
+  '/api/research(.*)',
 ])
 
 export default clerkMiddleware(async (auth, request) => {
