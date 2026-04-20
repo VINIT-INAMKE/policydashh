@@ -165,5 +165,39 @@ describe('public research detail — leak prevention RESEARCH-10', () => {
     expect(html).not.toMatch(/feedbackLinks|researchItemFeedbackLinks/)
   })
 
-  it.todo('listing-page card HTML does NOT contain abstract, doi, linked sections count (CONTEXT.md Q9)')
+  it('listing-page card HTML does NOT contain abstract/description, doi, or linked sections count (CONTEXT.md Q9)', async () => {
+    // ResearchCard is a pure-server component taking a PublicResearchItem prop.
+    // Import directly and renderToStaticMarkup with a fixture that includes
+    // description + doi + would-be-linked-sections values — assert HTML omits them.
+    const { ResearchCard } = await import('@/app/research/items/_components/research-card')
+    const { renderToStaticMarkup } = await import('react-dom/server')
+    const React = await import('react')
+
+    const html = renderToStaticMarkup(
+      React.createElement(ResearchCard, {
+        item: {
+          id: 'r1',
+          readableId: 'RI-001',
+          documentId: 'd1',
+          title: 'AI Policy',
+          itemType: 'report',
+          description: 'This abstract must NOT appear on the card.',
+          externalUrl: null,
+          artifactId: 'art-1',
+          doi: '10.1234/secret-doi-value',
+          authors: ['J. Doe'],
+          publishedDate: '2026-02-01',
+          peerReviewed: false,
+          journalOrSource: null,
+          versionLabel: null,
+          previousVersionId: null,
+          isAuthorAnonymous: false,
+          retractionReason: null,
+        },
+      }),
+    )
+    expect(html).not.toContain('This abstract must NOT appear on the card.')
+    expect(html).not.toContain('10.1234/secret-doi-value')
+    expect(html).not.toMatch(/linked sections|Informs These Sections/i)
+  })
 })
