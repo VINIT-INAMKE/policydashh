@@ -85,6 +85,16 @@ export default function ResearchPage() {
               <Button variant="default">Join Consultation</Button>
             </Link>
           </section>
+          <hr className="border-border my-12" />
+          <section id="browse-research">
+            <h2 className="text-[20px] font-semibold leading-[1.2] mb-4">Published Research</h2>
+            <p className="text-[16px] font-normal leading-[1.8] mb-6">
+              Browse the citable research items that inform the policy framework under consultation.
+            </p>
+            <Link href="/research/items">
+              <Button variant="outline">Browse published research</Button>
+            </Link>
+          </section>
         </main>
       </div>
     </div>
