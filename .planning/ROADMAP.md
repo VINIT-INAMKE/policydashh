@@ -637,7 +637,7 @@ Plans:
   3. Existing `/research` static page gains a prominent "Browse published research" CTA linking to `/research/items` without modifying prose
   4. `/research/items/[id]` detail page shows full metadata, formatted abstract, DOI rendered as `https://doi.org/{doi}` link, download button using presigned R2 GET (24h TTL) for file-backed items OR `externalUrl` for link-only types
   5. Detail page lists sections this item informs (via `research_item_section_links`) as internal links to `/framework/[documentId]#section-{sectionId}`; lists versions via `research_item_version_links` as links to `/portal/[documentId]?v=<label>`; no feedback IDs or stakeholder names leak to the public surface
-  6. `proxy.ts` requires no new matchers — existing `/research(.*)` wildcard covers the new routes
+  6. `proxy.ts` whitelists `/api/research(.*)` for the presigned download route (the existing `/research(.*)` matcher does NOT cover `/api/research/[id]/download`, per Phase 28 RESEARCH.md §Presigned Download Strategy)
   7. Accessibility: filter controls keyboard-navigable, pagination announced via `aria-live`, card download CTA has descriptive `aria-label`; Lighthouse ≥90 on public detail page
 **Plans:** 5 plans
 

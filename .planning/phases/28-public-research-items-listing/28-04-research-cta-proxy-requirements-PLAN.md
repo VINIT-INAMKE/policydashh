@@ -5,10 +5,14 @@ type: execute
 wave: 4
 depends_on:
   - 28-00
+  - 28-01
+  - 28-02
+  - 28-03
 files_modified:
   - app/research/page.tsx
   - proxy.ts
   - .planning/REQUIREMENTS.md
+  - tests/phase-28/no-leak.test.ts
 autonomous: true
 requirements:
   - RESEARCH-09

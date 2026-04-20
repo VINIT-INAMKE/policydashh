@@ -155,7 +155,7 @@ include: ['src/**/*.test.ts(x)', 'tests/**/*.test.ts(x)', 'app/**/*.test.ts(x)']
     - Test 8 (download-route.test.ts): R2 key is derived from `artifact.url` by stripping `process.env.R2_PUBLIC_URL + '/'`; presigned URL generated with expiresIn=86400.
     - Test 9 (no-leak.test.ts): listing query result objects do NOT contain keys: `createdBy`, `reviewedBy`, `contentHash`, `txHash`, `anchoredAt`.
     - Test 10 (no-leak.test.ts): detail-page server component output HTML does NOT contain any of: `FB-`, `createdBy`, `reviewedBy`, feedback UUIDs — even when the fixture has linked feedback items.
-    - Test 11 (proxy-public-routes.test.ts): proxy.ts file contents include literal string `'/api/research(.*)'` (locks Plan 28-04 Task 3 work).
+    - Test 11 (proxy-public-routes.test.ts): proxy.ts file contents include literal string `'/api/research(.*)'` (locks Plan 28-04 Task 2 work).
     - Test 12 (proxy-public-routes.test.ts): proxy.ts file contents include a Phase 28 comment header naming `RESEARCH-10` (append-at-end + comment header convention from STATE.md Phase 19).
   </behavior>
   <read_first>
@@ -302,7 +302,7 @@ import path from 'node:path'
 /**
  * Phase 28 Wave 0 — RED contract for proxy.ts /api/research(.*) matcher.
  *
- * Plan 28-04 Task 3 must append '/api/research(.*)' to createRouteMatcher
+ * Plan 28-04 Task 2 must append '/api/research(.*)' to createRouteMatcher
  * with a Phase 28 comment header naming RESEARCH-10.
  *
  * Static string-match test; does NOT execute proxy.ts (Phase 20.5 pattern).
@@ -628,7 +628,7 @@ Edit 28-VALIDATION.md in place. Preserve existing structure, update only the spe
 Commit message: "docs(28-00): flip VALIDATION gate flags — Wave 0 complete"
   </action>
   <verify>
-    <automated>grep -E "nyquist_compliant: true|wave_0_complete: true|status: approved" D:/aditee/policydash/.planning/phases/28-public-research-items-listing/28-VALIDATION.md | wc -l</automated>
+    <automated>grep -q "nyquist_compliant: true" .planning/phases/28-public-research-items-listing/28-VALIDATION.md && grep -q "wave_0_complete: true" .planning/phases/28-public-research-items-listing/28-VALIDATION.md && grep -q "status: approved" .planning/phases/28-public-research-items-listing/28-VALIDATION.md</automated>
   </verify>
   <acceptance_criteria>
     - `grep "nyquist_compliant: true" .planning/phases/28-public-research-items-listing/28-VALIDATION.md` returns a match

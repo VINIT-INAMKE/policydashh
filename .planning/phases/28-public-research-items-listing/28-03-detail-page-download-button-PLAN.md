@@ -6,6 +6,7 @@ wave: 3
 depends_on:
   - 28-00
   - 28-01
+  - 28-02
 files_modified:
   - app/research/items/[id]/page.tsx
   - app/research/items/[id]/_components/download-button.tsx
