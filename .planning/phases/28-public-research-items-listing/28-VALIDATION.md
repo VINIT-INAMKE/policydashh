@@ -1,10 +1,11 @@
 ---
 phase: 28
 slug: public-research-items-listing
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-20
+approved_at: 2026-04-20
 ---
 
 # Phase 28 — Validation Strategy
@@ -37,11 +38,18 @@ created: 2026-04-20
 
 ## Per-Task Verification Map
 
-*Planner fills this in from RESEARCH.md §"Validation Architecture". One row per task. Each row maps a task to its automated verification command.*
+*One row per Wave 0 test file. Each row maps a task to its automated verification command.*
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 28-00-XX | 00 (wave 0) | 0 | RESEARCH-09/10 | unit/component | `npx vitest run tests/phase-28/<file>.test.tsx` | ❌ W0 | ⬜ pending |
+| 28-00-T1 | 00 | 0 | RESEARCH-09 | unit | `npx vitest run tests/phase-28/research-public-query.test.ts` | ✅ (todo) | ⬜ pending |
+| 28-00-T2 | 00 | 0 | RESEARCH-10 | unit | `npx vitest run tests/phase-28/download-route.test.ts` | ✅ (todo) | ⬜ pending |
+| 28-00-T3 | 00 | 0 | RESEARCH-10 | unit | `npx vitest run tests/phase-28/no-leak.test.ts` | ✅ (todo) | ⬜ pending |
+| 28-00-T4 | 00 | 0 | RESEARCH-10 | unit | `npx vitest run tests/phase-28/proxy-public-routes.test.ts` | ✅ (RED) | ❌ red |
+| 28-00-T5 | 00 | 0 | RESEARCH-09 | component | `npx vitest run tests/phase-28/listing-page.test.tsx` | ✅ (todo) | ⬜ pending |
+| 28-00-T6 | 00 | 0 | RESEARCH-10 | component | `npx vitest run tests/phase-28/detail-page.test.tsx` | ✅ (todo) | ⬜ pending |
+| 28-00-T7 | 00 | 0 | SC-3 (CTA) | component | `npx vitest run tests/phase-28/research-cta.test.tsx` | ✅ (RED) | ❌ red |
+| 28-00-T8 | 00 | 0 | SC-7 (a11y) | component | `npx vitest run tests/phase-28/accessibility.test.tsx` | ✅ (todo) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -49,17 +57,16 @@ created: 2026-04-20
 
 ## Wave 0 Requirements
 
-Planner must create failing test stubs in Wave 0 before implementation waves. Expected files (derived from RESEARCH.md):
+Wave 0 RED test stubs shipped 2026-04-20 in commits 340bca2 + 5022f94 (Plan 28-00 Tasks 1+2):
 
-- [ ] `tests/phase-28/research-public-query.test.ts` — `listPublished`, `getPublishedById`, filter & leak-prevention assertions
-- [ ] `tests/phase-28/listing-page.test.tsx` — server-component renders published-only cards, filter URL-sync, pagination ≥40/page, default newest-first
-- [ ] `tests/phase-28/detail-page.test.tsx` — full metadata render, DOI link, anonymous-author label, linked sections/versions, no feedback/stakeholder leak
-- [ ] `tests/phase-28/download-route.test.ts` — presigned URL 24h TTL, `isPublished` enforcement, rate-limit 429, external-link branch
-- [ ] `tests/phase-28/research-cta.test.tsx` — existing `/research` page gains Browse CTA without prose change
-- [ ] `tests/phase-28/accessibility.test.tsx` — filter keyboard-nav, pagination `aria-live`, download CTA `aria-label`
-- [ ] `tests/phase-28/proxy-public-routes.test.ts` — verify `/research/items`, `/research/items/[id]`, `/api/research/[id]/download` resolve without auth redirect
-
-*Planner: enumerate exact files per plan breakdown. Each test file must exist & fail before implementation begins.*
+- [x] `tests/phase-28/research-public-query.test.ts` — listPublishedResearchItems + getPublishedResearchItem (RESEARCH-09/10 query layer)
+- [x] `tests/phase-28/listing-page.test.tsx` — server-component renders published-only cards, filter URL-sync, pagination (RESEARCH-09)
+- [x] `tests/phase-28/detail-page.test.tsx` — full metadata render, DOI link, anonymous-author, linked sections/versions (RESEARCH-10)
+- [x] `tests/phase-28/download-route.test.ts` — 302 redirect, 404, 429, 24h TTL, key-derivation (RESEARCH-10)
+- [x] `tests/phase-28/no-leak.test.ts` — feedback/createdBy/reviewedBy/contentHash never leak to public surface (RESEARCH-10)
+- [x] `tests/phase-28/research-cta.test.tsx` — /research page Browse CTA addition (CONTEXT.md SC-3)
+- [x] `tests/phase-28/proxy-public-routes.test.ts` — /api/research(.*) public matcher in proxy.ts (RESEARCH-10)
+- [x] `tests/phase-28/accessibility.test.tsx` — filter keyboard-nav, aria-live pagination, aria-label download CTA (SC-7)
 
 ---
 
@@ -75,11 +82,11 @@ Planner must create failing test stubs in Wave 0 before implementation waves. Ex
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references above
-- [ ] No watch-mode flags (all commands use `vitest run`, never `vitest` alone)
-- [ ] Feedback latency < 30s for phase-28 suite
-- [ ] `nyquist_compliant: true` set in frontmatter once planner finalizes per-task map
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references above
+- [x] No watch-mode flags (all commands use `vitest run`, never `vitest` alone)
+- [ ] Feedback latency < 30s for phase-28 suite  (measured on first green Wave 1)
+- [x] `nyquist_compliant: true` set in frontmatter once planner finalizes per-task map
 
-**Approval:** pending
+**Approval:** approved 2026-04-20
