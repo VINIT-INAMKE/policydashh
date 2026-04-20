@@ -632,11 +632,18 @@ Plans:
 **Depends on:** Phase 26 (schema + public query), Phase 27 (ensures published items exist for manual verification)
 **Requirements:** RESEARCH-09, RESEARCH-10 (public-surface)
 **Success Criteria** (what must be TRUE):
-  1. `/research/items` server component at `app/(public)/research/items/page.tsx` renders all `status = 'published'` items; supports query-param-driven filters (`?document=`, `?type=`, `?from=`, `?to=`, `?sort=`); defaults to newest-first
+  1. `/research/items` server component at `app/research/items/page.tsx` renders all `status = 'published'` items; supports query-param-driven filters (`?document=`, `?type=`, `?from=`, `?to=`, `?sort=`); defaults to newest-first
   2. Card layout per UI-SPEC: title, type badge, authors (or "Source: Confidential" when `isAuthorAnonymous`), publishedDate, download-or-external-link CTA; ≥40 cards/page with simple pagination
   3. Existing `/research` static page gains a prominent "Browse published research" CTA linking to `/research/items` without modifying prose
   4. `/research/items/[id]` detail page shows full metadata, formatted abstract, DOI rendered as `https://doi.org/{doi}` link, download button using presigned R2 GET (24h TTL) for file-backed items OR `externalUrl` for link-only types
   5. Detail page lists sections this item informs (via `research_item_section_links`) as internal links to `/framework/[documentId]#section-{sectionId}`; lists versions via `research_item_version_links` as links to `/portal/[documentId]?v=<label>`; no feedback IDs or stakeholder names leak to the public surface
   6. `proxy.ts` requires no new matchers — existing `/research(.*)` wildcard covers the new routes
   7. Accessibility: filter controls keyboard-navigable, pagination announced via `aria-live`, card download CTA has descriptive `aria-label`; Lighthouse ≥90 on public detail page
-**Plans:** TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 28-00-wave0-red-test-stubs-PLAN.md — Wave 0 TDD gate: 8 RED/todo test stubs under tests/phase-28/ + flip 28-VALIDATION.md nyquist_compliant flag
+- [ ] 28-01-backend-query-download-route-PLAN.md — Wave 1: src/server/queries/research-public.ts (4 helpers) + app/api/research/[id]/download/route.ts presigned GET
+- [ ] 28-02-listing-page-components-PLAN.md — Wave 2: app/research/items/page.tsx + 4 _components (card, filter-panel, pagination, type-checkboxes)
+- [ ] 28-03-detail-page-download-button-PLAN.md — Wave 3: app/research/items/[id]/page.tsx + 3 _components (download-button client island, linked-section-entry, linked-version-entry)
+- [ ] 28-04-research-cta-proxy-requirements-PLAN.md — Wave 4: /research Browse CTA + proxy.ts /api/research(.*) whitelist + REQUIREMENTS.md RESEARCH-09/10 registration
