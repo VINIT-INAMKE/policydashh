@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
 status: Ready to execute
-stopped_at: Completed 28-00-wave0-red-test-stubs-PLAN.md
-last_updated: "2026-04-20T12:53:43.504Z"
+stopped_at: Completed 28-02-listing-page-components-PLAN.md
+last_updated: "2026-04-20T13:06:40.215Z"
 progress:
   total_phases: 29
   completed_phases: 27
   total_plans: 109
-  completed_plans: 105
+  completed_plans: 106
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 28 (public-research-items-listing) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 
 ## Performance Metrics
 
@@ -139,6 +139,7 @@ Plan: 3 of 5
 | Phase 27-research-workspace-admin-ui P06 | 8min | 3 tasks | 3 files |
 | Phase 28-public-research-items-listing P01 | 5min | 2 tasks | 2 files |
 | Phase 28-public-research-items-listing P00 | 5min | 3 tasks | 9 files |
+| Phase 28-public-research-items-listing P02 | 6min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -390,6 +391,10 @@ Recent decisions affecting current work:
 - [Phase 28-public-research-items-listing]: Plan 28-01: Task 3 (Wave 0 it.todo to GREEN conversion) deferred per parallel-execution wave1_coordination directive; 28-00 owns those test files in this wave, conversion will land via 28-00 itself or a Wave 2 follow-up
 - [Phase 28-public-research-items-listing]: Plan 28-00 Wave 0 mixed-RED gate pattern: 8 test files in 3 commits (4 backend + 4 UI + VALIDATION flip), 2 authentically-RED files (proxy-public-routes + research-cta) lock Plan 28-04 work, 6 it.todo files with try/catch + null sentinel around variable-path dynamic import (extends Phase 20.5 bare-await pattern to handle modules genuinely absent at Wave 0 time)
 - [Phase 28-public-research-items-listing]: 28-VALIDATION.md per-task map encodes 8 task IDs (T1-T8) with explicit (todo) vs (RED) Status column — gives the verifier a single grep to confirm Nyquist coverage and distinguishes intentional contract-locking RED from todo Wave 1+ targets
+- [Phase 28-public-research-items-listing]: Plan 28-02: Mock async-server-component children (ResearchFilterPanel) at module level in listing-page test - renderToStaticMarkup is sync and bails on nested async server components with 'A component suspended' React 19 error; mocking the panel to () => null preserves page-level composition contract while sidestepping Suspense
+- [Phase 28-public-research-items-listing]: Plan 28-02: OQ1 single-value DB filter + multi-value URL persistence - parseType() takes FIRST valid CSV value for listPublishedResearchItems({ itemType }) call while paginationParams.set('type', rawType) preserves the full CSV in pagination URLs so checkbox UI selection survives across page navigation; trade-off keeps Plan 28-01 helper signature unchanged (single ResearchItemType param)
+- [Phase 28-public-research-items-listing]: Plan 28-02: Hybrid filter panel pattern - <form method='get'> for Document/Dates/Sort (zero client JS, server-rendered) + targeted 'use client' island only for Type checkboxes (router.replace reactive URL sync). Avoids forcing the whole panel + its db.select policyDocuments query into a client bundle
+- [Phase 28-public-research-items-listing]: Plan 28-02: Empty-state branching on hasAnyFilter distinguishes corpus-empty ('No published research yet' / 'will appear here once published by the policy team') from filter-too-narrow ('No research items match these filters' / 'Try adjusting the type, date range, or document filter'); pagination only renders when total > 0 so the empty state owns the entire main column
 
 ### Pending Todos
 
@@ -408,6 +413,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T12:53:43.495Z
-Stopped at: Completed 28-00-wave0-red-test-stubs-PLAN.md
+Last session: 2026-04-20T13:06:13.367Z
+Stopped at: Completed 28-02-listing-page-components-PLAN.md
 Resume file: None
