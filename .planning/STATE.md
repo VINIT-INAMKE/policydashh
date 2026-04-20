@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Verifiable Policy OS — Public Consultation & On-Chain Anchoring
-status: Ready to execute
-stopped_at: Completed 28-03-detail-page-download-button-PLAN.md
-last_updated: "2026-04-20T13:21:34.268Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 28-04-research-cta-proxy-requirements-PLAN.md
+last_updated: "2026-04-20T13:44:13.011Z"
 progress:
   total_phases: 29
-  completed_phases: 27
+  completed_phases: 28
   total_plans: 109
-  completed_plans: 107
+  completed_plans: 108
 ---
 
 # Project State
@@ -141,6 +141,7 @@ Plan: 5 of 5
 | Phase 28-public-research-items-listing P00 | 5min | 3 tasks | 9 files |
 | Phase 28-public-research-items-listing P02 | 6min | 3 tasks | 6 files |
 | Phase 28-public-research-items-listing P03 | 8min | 3 tasks | 7 files |
+| Phase 28-public-research-items-listing P04 | 16min | 4 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -399,6 +400,9 @@ Recent decisions affecting current work:
 - [Phase 28-public-research-items-listing]: Plan 28-03: React.cache around fetchPublishedItem with embedded UUID validation - generateMetadata + Page share ONE DB fetch via Next.js 16 React.cache pattern; UUID guard inside the cache wrapper means an invalid id resolves to null in both pathways without spurious DB queries OR uncaught Postgres errors
 - [Phase 28-public-research-items-listing]: Plan 28-03: DownloadButton client island uses window.location.href (not fetch) - lets browser follow route handler HTTP 302 to presigned R2 GET URL natively, no CORS concern, no need to read response body; defensive try/catch + sonner toast covers the rare synchronous-throw case
 - [Phase 28-public-research-items-listing]: Plan 28-03: Render-components-directly accessibility test pattern - Plan 28-02 had to mock async ResearchFilterPanel inside listing-page wrapper because React 19 sync renderer bails on nested async server components; Plan 28-03 took the inverse approach (render the panel directly via await + renderToStaticMarkup) so SC-7 contract actually exercises panel HTML rather than mocking it away
+- [Phase 28-public-research-items-listing]: Plan 28-04: Auto-flipped 19 deferred Wave 0 it.todo entries (download-route + research-public-query) to GREEN beyond the 1 listing-card entry named in the plan — orchestrator success criterion 'All tests/phase-28/* GREEN, 0 todo' is a phase-level invariant inherited by closeout plan; production code shipped Plan 28-01 fully exercised. vi.hoisted() bundle pattern + schema-column-sentinel mocks ('col:researchItems.id' strings) — canonical Phase 16+ pattern for query-helper unit tests without DB-layer instantiation.
+- [Phase 28-public-research-items-listing]: Plan 28-04: Append-at-end + comment-header pattern for proxy.ts createRouteMatcher additions extended to Phase 28 — '/api/research(.*)' inserted after '/framework(.*)' with '// Phase 28 - public research items download endpoint (RESEARCH-10 presigned GET)' comment. Phase 19 → 20 → 20.5 → 28 progression preserves git blame and makes audits scriptable. Comment names RESEARCH-10 only because the matcher is exclusively for the download API route — RESEARCH-09 listing/detail PAGES are already covered by the Phase 20.5 '/research(.*)' entry.
+- [Phase 28-public-research-items-listing]: Plan 28-04: REQUIREMENTS.md Coverage footer +2 increment claims only the 2 requirements this plan ships (RESEARCH-09 + RESEARCH-10), not a full v0.2 recount — earlier v0.2 phases (14–27) ticked many requirements as [x] in the body without bubbling counts to the footer. Last updated stamp refreshed to 'Phase 28 added RESEARCH-09 and RESEARCH-10 (2 public-surface requirements)'. Future plan can do full v0.2 recount when convenient.
 
 ### Pending Todos
 
@@ -417,6 +421,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T13:21:11.786Z
-Stopped at: Completed 28-03-detail-page-download-button-PLAN.md
+Last session: 2026-04-20T13:44:12.997Z
+Stopped at: Completed 28-04-research-cta-proxy-requirements-PLAN.md
 Resume file: None

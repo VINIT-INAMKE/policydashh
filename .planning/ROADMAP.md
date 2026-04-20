@@ -55,7 +55,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 25: Cross-Phase Integration Smoke** - Full E2E walk: /participate → workshop register → reminders → MEETING_ENDED → feedback → CR → merge → version → milestone → SHA256 → Cardano tx → Verified State badge
 - [x] **Phase 26: Research Module — Data & Server** - `research_items` schema + three linking tables, RBAC permissions, tRPC router, readableId sequence (RI-NNN), milestone manifest entityType extension (completed 2026-04-19)
 - [x] **Phase 27: Research Workspace Admin UI** - research_lead + admin surface: create/edit drafts, R2 file upload via existing endpoint, submit for review, admin approve/reject/retract, section/version/feedback link-picker (completed 2026-04-20)
-- [ ] **Phase 28: Public /research/items Listing & Detail** - Public dynamic listing at `/research/items` with document/type/date filters, `/research/items/[id]` detail page with presigned downloads and linked sections; existing static `/research` gets a Browse-Research CTA
+- [x] **Phase 28: Public /research/items Listing & Detail** - Public dynamic listing at `/research/items` with document/type/date filters, `/research/items/[id]` detail page with presigned downloads and linked sections; existing static `/research` gets a Browse-Research CTA (completed 2026-04-20)
 
 ## Phase Details
 
@@ -639,11 +639,11 @@ Plans:
   5. Detail page lists sections this item informs (via `research_item_section_links`) as internal links to `/framework/[documentId]#section-{sectionId}`; lists versions via `research_item_version_links` as links to `/portal/[documentId]?v=<label>`; no feedback IDs or stakeholder names leak to the public surface
   6. `proxy.ts` whitelists `/api/research(.*)` for the presigned download route (the existing `/research(.*)` matcher does NOT cover `/api/research/[id]/download`, per Phase 28 RESEARCH.md §Presigned Download Strategy)
   7. Accessibility: filter controls keyboard-navigable, pagination announced via `aria-live`, card download CTA has descriptive `aria-label`; Lighthouse ≥90 on public detail page
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 28-00-wave0-red-test-stubs-PLAN.md — Wave 0 TDD gate: 8 RED/todo test stubs under tests/phase-28/ + flip 28-VALIDATION.md nyquist_compliant flag
 - [x] 28-01-backend-query-download-route-PLAN.md — Wave 1: src/server/queries/research-public.ts (4 helpers) + app/api/research/[id]/download/route.ts presigned GET
 - [x] 28-02-listing-page-components-PLAN.md — Wave 2: app/research/items/page.tsx + 4 _components (card, filter-panel, pagination, type-checkboxes)
 - [x] 28-03-detail-page-download-button-PLAN.md — Wave 3: app/research/items/[id]/page.tsx + 3 _components (download-button client island, linked-section-entry, linked-version-entry)
-- [ ] 28-04-research-cta-proxy-requirements-PLAN.md — Wave 4: /research Browse CTA + proxy.ts /api/research(.*) whitelist + REQUIREMENTS.md RESEARCH-09/10 registration
+- [x] 28-04-research-cta-proxy-requirements-PLAN.md — Wave 4: /research Browse CTA + proxy.ts /api/research(.*) whitelist + REQUIREMENTS.md RESEARCH-09/10 registration
