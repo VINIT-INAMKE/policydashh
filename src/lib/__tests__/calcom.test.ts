@@ -125,4 +125,29 @@ describe('createCalBooking', () => {
     expect(result.uid).toBe('root-no-meet')
     expect(result.meetingUrl).toBeNull()
   })
+
+  it('prefers data.meetingUrl over data.location when both are present', async () => {
+    // Locks in the precedence contract workshopCreatedFn depends on — if a
+    // future refactor flips the ternary, this catches it.
+    const { createCalBooking } = await import('@/src/lib/calcom')
+    mockFetchOnce({
+      ok: true,
+      body: {
+        data: {
+          uid: 'root-both',
+          meetingUrl: 'https://meet.google.com/new-xxxx-yyy',
+          location:   'https://meet.google.com/old-xxxx-yyy',
+        },
+      },
+    })
+
+    const result = await createCalBooking({
+      eventTypeId: 42,
+      name: 'Vinay',
+      email: 'vinay@konma.io',
+      startTime: '2026-05-01T10:00:00.000Z',
+    })
+
+    expect(result.meetingUrl).toBe('https://meet.google.com/new-xxxx-yyy')
+  })
 })
