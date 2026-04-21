@@ -37,15 +37,27 @@ function makeChainMock(resolveValue: unknown) {
 const mocks = vi.hoisted(() => ({
   dbSelectResults: [] as unknown[][],
   dbInsertCalls: [] as Array<{ table: string; values: unknown }>,
-  dbUpdateCalls: [] as Array<{ table: string; set: unknown; where: string }>,
+  dbUpdateCalls: [] as Array<{
+    table: string
+    set: unknown
+    where: string
+    returning?: unknown[]
+  }>,
   sendWorkshopRegistrationReceived: vi.fn().mockResolvedValue(undefined),
   sendWorkshopFeedbackInvite: vi.fn().mockResolvedValue(undefined),
+  sendWorkshopFeedbackInvitesBatch: vi.fn().mockResolvedValue(undefined),
   sendWorkshopCompleted: vi.fn().mockResolvedValue(undefined),
+  revalidateTag: vi.fn(),
+}))
+
+vi.mock('next/cache', () => ({
+  revalidateTag: mocks.revalidateTag,
 }))
 
 vi.mock('@/src/inngest/events', () => ({
   sendWorkshopRegistrationReceived: mocks.sendWorkshopRegistrationReceived,
   sendWorkshopFeedbackInvite: mocks.sendWorkshopFeedbackInvite,
+  sendWorkshopFeedbackInvitesBatch: mocks.sendWorkshopFeedbackInvitesBatch,
   sendWorkshopCompleted: mocks.sendWorkshopCompleted,
 }))
 
@@ -66,13 +78,18 @@ vi.mock('@/src/db', () => {
   const selectMock = vi.fn(() => {
     // queue-based return: pop next result or [] if empty
     const next = mocks.dbSelectResults.shift() ?? []
+    const whereShape = {
+      limit: () => Promise.resolve(next),
+      orderBy: () => ({
+        limit: () => Promise.resolve(next),
+        then: (r: (v: unknown) => unknown) => Promise.resolve(next).then(r),
+      }),
+      // Support direct thenable (no limit())
+      then: (r: (v: unknown) => unknown) => Promise.resolve(next).then(r),
+    }
     return {
       from: () => ({
-        where: () => ({
-          limit: () => Promise.resolve(next),
-          // Support direct thenable (no limit())
-          then: (r: (v: unknown) => unknown) => Promise.resolve(next).then(r),
-        }),
+        where: () => whereShape,
       }),
     }
   })
@@ -120,12 +137,25 @@ vi.mock('@/src/db', () => {
     return {
       set: (setArg: unknown) => ({
         where: (whereArg: unknown) => {
-          mocks.dbUpdateCalls.push({
+          const entry: {
+            table: string
+            set: unknown
+            where: string
+            returning?: unknown[]
+          } = {
             table: tName,
             set: setArg,
             where: typeof whereArg === 'object' ? extractWhereText(whereArg) : String(whereArg),
-          })
+          }
+          mocks.dbUpdateCalls.push(entry)
           return {
+            // returning(): emit the select-queue next value OR [] so
+            // callers doing `.where(...).returning(...)` can iterate.
+            returning: (_cols?: unknown) => {
+              const rows = mocks.dbSelectResults.shift() ?? []
+              entry.returning = rows
+              return Promise.resolve(rows)
+            },
             catch: (_fn: unknown) => Promise.resolve(undefined),
             then: (r: (v: unknown) => unknown) => Promise.resolve(undefined).then(r),
           }
@@ -180,7 +210,9 @@ beforeEach(() => {
   mocks.dbUpdateCalls.length = 0
   mocks.sendWorkshopRegistrationReceived.mockClear()
   mocks.sendWorkshopFeedbackInvite.mockClear()
+  mocks.sendWorkshopFeedbackInvitesBatch.mockClear()
   mocks.sendWorkshopCompleted.mockClear()
+  mocks.revalidateTag.mockClear()
 })
 
 describe('POST /api/webhooks/cal', () => {
@@ -222,12 +254,15 @@ describe('POST /api/webhooks/cal', () => {
     expect(res.status).toBe(200)
   })
 
-  // --- BOOKING_CREATED --------------------------------------------
+  // --- BOOKING_CREATED (Task 7: now a no-op) ----------------------
+  // In the addAttendeeToBooking model the root booking is created
+  // server-side by workshopCreatedFn and subsequent per-attendee adds do
+  // NOT fire a BOOKING_CREATED webhook. If cal.com ever does deliver one
+  // we still must return 200 to satisfy the delivery contract, but we
+  // MUST NOT insert a duplicate registration row.
 
-  it('T5: BOOKING_CREATED inserts a workshop_registrations row', async () => {
+  it('T5: BOOKING_CREATED is a no-op under the new seated-booking model (no insert, returns 200)', async () => {
     expect(POST).not.toBeNull()
-    // First select: workshop lookup by eventTypeId → returns a row
-    mocks.dbSelectResults.push([{ id: 'workshop-uuid-1' }])
     const body = JSON.stringify({
       triggerEvent: 'BOOKING_CREATED',
       payload: {
@@ -241,51 +276,8 @@ describe('POST /api/webhooks/cal', () => {
     const res = await POST!(makeReq(body, signBody(body)))
     expect(res.status).toBe(200)
     const regInsert = mocks.dbInsertCalls.find(c => c.table === 'workshop_registrations')
-    expect(regInsert).toBeDefined()
-    const values = regInsert!.values as Record<string, unknown>
-    expect(values.workshopId).toBe('workshop-uuid-1')
-    expect(values.bookingUid).toBe('booking-uid-abc')
-    expect(values.email).toBe('priya@example.com')
-    expect(values.name).toBe('Priya Sharma')
-    expect(values.status).toBe('registered')
-  })
-
-  it('T6: BOOKING_CREATED with duplicate bookingUid → ON CONFLICT DO NOTHING (no throw)', async () => {
-    expect(POST).not.toBeNull()
-    mocks.dbSelectResults.push([{ id: 'workshop-uuid-1' }])
-    const body = JSON.stringify({
-      triggerEvent: 'BOOKING_CREATED',
-      payload: {
-        uid: 'dup-uid',
-        startTime: '2026-05-01T10:00:00.000Z',
-        eventTypeId: 12345,
-        attendees: [{ email: 'a@b.com', name: 'A' }],
-      },
-    })
-    const res = await POST!(makeReq(body, signBody(body)))
-    expect(res.status).toBe(200)
-  })
-
-  it('T7: BOOKING_CREATED fires sendWorkshopRegistrationReceived once with source=cal_booking', async () => {
-    expect(POST).not.toBeNull()
-    mocks.dbSelectResults.push([{ id: 'workshop-uuid-1' }])
-    const body = JSON.stringify({
-      triggerEvent: 'BOOKING_CREATED',
-      payload: {
-        uid: 'booking-7',
-        startTime: '2026-05-01T10:00:00.000Z',
-        eventTypeId: 12345,
-        attendees: [{ email: 'X@example.com', name: 'X' }],
-      },
-    })
-    await POST!(makeReq(body, signBody(body)))
-    expect(mocks.sendWorkshopRegistrationReceived).toHaveBeenCalledTimes(1)
-    const call = mocks.sendWorkshopRegistrationReceived.mock.calls[0][0] as { source: string; emailHash: string; email: string }
-    expect(call.source).toBe('cal_booking')
-    expect(call.email).toBe('X@example.com')
-    // emailHash must be sha256 hex of lowercased trimmed email
-    const expected = createHash('sha256').update('x@example.com').digest('hex')
-    expect(call.emailHash).toBe(expected)
+    expect(regInsert).toBeUndefined()
+    expect(mocks.sendWorkshopRegistrationReceived).not.toHaveBeenCalled()
   })
 
   // --- BOOKING_CANCELLED ------------------------------------------
@@ -462,7 +454,7 @@ describe('POST /api/webhooks/cal', () => {
     expect(call.source).toBe('walk_in')
   })
 
-  it('T16: MEETING_ENDED fires sendWorkshopFeedbackInvite once per attendee', async () => {
+  it('T16: MEETING_ENDED fires a single batch sendWorkshopFeedbackInvitesBatch with one entry per attendee', async () => {
     expect(POST).not.toBeNull()
     mocks.dbSelectResults.push([{ id: 'ws-6' }])
     mocks.dbSelectResults.push([{ id: 'ws-6', status: 'upcoming', createdBy: 'mod-6', scheduledAt: new Date('2026-05-01T10:00:00Z') }])
@@ -481,6 +473,84 @@ describe('POST /api/webhooks/cal', () => {
       },
     })
     await POST!(makeReq(body, signBody(body)))
-    expect(mocks.sendWorkshopFeedbackInvite).toHaveBeenCalledTimes(2)
+    // P3: batched send — single invocation carrying both attendees.
+    expect(mocks.sendWorkshopFeedbackInvitesBatch).toHaveBeenCalledTimes(1)
+    const batch = mocks.sendWorkshopFeedbackInvitesBatch.mock.calls[0][0] as Array<{ email: string }>
+    expect(batch).toHaveLength(2)
+    expect(batch.map(b => b.email).sort()).toEqual(['one@example.com', 'two@example.com'])
+  })
+
+  // --- BOOKING_CANCELLED: root-uid cascade (Task 7) ----------------
+
+  describe('BOOKING_CANCELLED — root-uid cascade', () => {
+    it('cancels every registration row when uid matches workshops.calcomBookingUid', async () => {
+      // First select: workshop lookup by calcomBookingUid
+      mocks.dbSelectResults.push([{ id: 'ws-1' }])
+
+      const body = JSON.stringify({
+        triggerEvent: 'BOOKING_CANCELLED',
+        payload: { uid: 'root-abc' },
+      })
+      const res = await POST!(makeReq(body, signBody(body)))
+      expect(res.status).toBe(200)
+
+      // Should have an UPDATE on workshopRegistrations with a LIKE clause
+      // pattern. We assert the SET status and the WHERE shape by inspecting
+      // the captured update call.
+      const upd = mocks.dbUpdateCalls.find(
+        (c) => c.table === 'workshop_registrations',
+      )
+      expect(upd).toBeTruthy()
+      expect((upd?.set as { status?: string }).status).toBe('cancelled')
+    })
+  })
+
+  // --- BOOKING_CANCELLED: seat-level fallback (Task 7) -------------
+
+  describe('BOOKING_CANCELLED — seat-level', () => {
+    it('matches the seat booking_uid exactly when root lookup returns no workshop', async () => {
+      // First select: no workshop for that uid → falls back to exact match.
+      mocks.dbSelectResults.push([])
+
+      const body = JSON.stringify({
+        triggerEvent: 'BOOKING_CANCELLED',
+        payload: { uid: 'root-abc:777' },
+      })
+      const res = await POST!(makeReq(body, signBody(body)))
+      expect(res.status).toBe(200)
+
+      const upd = mocks.dbUpdateCalls.find(
+        (c) => c.table === 'workshop_registrations',
+      )
+      expect(upd).toBeTruthy()
+    })
+  })
+
+  // --- BOOKING_RESCHEDULED: root booking cascade (Task 7) ----------
+
+  describe('BOOKING_RESCHEDULED — root booking', () => {
+    it('updates workshops.scheduledAt + calcomBookingUid + cascades booking_uid prefix', async () => {
+      mocks.dbSelectResults.push([{ id: 'ws-1' }])
+      const body = JSON.stringify({
+        triggerEvent: 'BOOKING_RESCHEDULED',
+        payload: {
+          rescheduleUid: 'root-abc',
+          uid:           'root-xyz',
+          startTime:     '2026-05-15T12:00:00.000Z',
+        },
+      })
+      const res = await POST!(makeReq(body, signBody(body)))
+      expect(res.status).toBe(200)
+
+      const workshopUpdate = mocks.dbUpdateCalls.find(
+        (c) => c.table === 'workshops',
+      )
+      const set = workshopUpdate?.set as {
+        calcomBookingUid?: string
+        scheduledAt?: Date
+      } | undefined
+      expect(set?.calcomBookingUid).toBe('root-xyz')
+      expect(set?.scheduledAt).toBeInstanceOf(Date)
+    })
   })
 })

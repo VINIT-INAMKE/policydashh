@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { revalidateTag } from 'next/cache'
-import { and, eq, inArray, desc } from 'drizzle-orm'
+import { and, eq, inArray, desc, like } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
 import { workflowTransitions } from '@/src/db/schema/workflow'
@@ -85,6 +85,18 @@ async function findWorkshopByCalEventTypeId(
   return row?.id ?? null
 }
 
+async function findWorkshopByRootBookingUid(
+  bookingUid: string | undefined,
+): Promise<string | null> {
+  if (!bookingUid) return null
+  const [row] = await db
+    .select({ id: workshops.id })
+    .from(workshops)
+    .where(eq(workshops.calcomBookingUid, bookingUid))
+    .limit(1)
+  return row?.id ?? null
+}
+
 export async function POST(req: Request): Promise<Response> {
   const secret = process.env.CAL_WEBHOOK_SECRET
   if (!secret) return new Response('Misconfigured', { status: 500 })
@@ -111,118 +123,128 @@ export async function POST(req: Request): Promise<Response> {
   try {
     switch (body.triggerEvent) {
       case 'BOOKING_CREATED': {
-        const workshopId = await findWorkshopByCalEventTypeId(bookingData.eventTypeId)
-        if (!workshopId) return new Response('OK (no workshop)', { status: 200 })
-
-        const attendee = bookingData.attendees?.[0]
-        if (!attendee?.email || !bookingData.uid || !bookingData.startTime) {
-          return new Response('OK (missing fields)', { status: 200 })
-        }
-
-        const emailHash = emailHashOf(attendee.email)
-
-        await db
-          .insert(workshopRegistrations)
-          .values({
-            workshopId,
-            bookingUid: bookingData.uid,
-            email: attendee.email,
-            emailHash,
-            name: attendee.name ?? null,
-            bookingStartTime: new Date(bookingData.startTime),
-            status: 'registered',
-          })
-          .onConflictDoNothing({ target: workshopRegistrations.bookingUid })
-
-        await sendWorkshopRegistrationReceived({
-          workshopId,
-          email: attendee.email,
-          emailHash,
-          name: attendee.name ?? '',
-          bookingUid: bookingData.uid,
-          source: 'cal_booking',
-        })
-
-        // F5: bust the per-workshop spots cache so the public listing
-        // reflects the new registration within the next SSR revalidation.
-        revalidateTag(spotsTag(workshopId), 'max')
-
-        return new Response('OK', { status: 200 })
+        // No-op: the root seated booking is created server-side by
+        // workshopCreatedFn, and subsequent attendee-adds do NOT fire this
+        // webhook. Return 200 to satisfy cal.com's delivery contract in
+        // case any future shape does fire it.
+        return new Response('OK (ignored in new model)', { status: 200 })
       }
 
       case 'BOOKING_CANCELLED': {
         if (!bookingData.uid) return new Response('OK', { status: 200 })
-        const cancelled = await db
-          .update(workshopRegistrations)
-          .set({
-            status: 'cancelled',
-            cancelledAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(workshopRegistrations.bookingUid, bookingData.uid))
-          .returning({ workshopId: workshopRegistrations.workshopId })
-        // F5: bust spots cache for the affected workshop.
-        for (const row of cancelled) {
-          if (row.workshopId) revalidateTag(spotsTag(row.workshopId), 'max')
+
+        // SAFETY: cal.com uids are documented as alphanumeric, but we
+        // defend against LIKE-wildcard injection if the format ever
+        // widens. Reject anything that is not [A-Za-z0-9_-]. If the uid
+        // fails the guard, fall through to exact match only.
+        const UID_SAFE = /^[A-Za-z0-9_-]+$/
+        const uidIsSafeForLike = UID_SAFE.test(bookingData.uid)
+
+        // If this uid is a workshop's root booking, cascade-cancel every
+        // registration for that workshop. Otherwise treat uid as an
+        // individual seat's booking_uid (attendee-self-cancel or legacy
+        // per-seat cancel shape) and update only that row.
+        const workshopIdForRoot = uidIsSafeForLike
+          ? await findWorkshopByRootBookingUid(bookingData.uid)
+          : null
+
+        if (workshopIdForRoot) {
+          await db
+            .update(workshopRegistrations)
+            .set({
+              status:      'cancelled',
+              cancelledAt: new Date(),
+              updatedAt:   new Date(),
+            })
+            .where(like(workshopRegistrations.bookingUid, `${bookingData.uid}:%`))
+          revalidateTag(spotsTag(workshopIdForRoot), 'max')
+        } else {
+          const cancelled = await db
+            .update(workshopRegistrations)
+            .set({
+              status:      'cancelled',
+              cancelledAt: new Date(),
+              updatedAt:   new Date(),
+            })
+            .where(eq(workshopRegistrations.bookingUid, bookingData.uid))
+            .returning({ workshopId: workshopRegistrations.workshopId })
+          for (const row of cancelled) {
+            if (row.workshopId) revalidateTag(spotsTag(row.workshopId), 'max')
+          }
         }
+
         return new Response('OK', { status: 200 })
       }
 
       case 'BOOKING_RESCHEDULED': {
-        // RESEARCH CORRECTION (20-RESEARCH.md Pitfall 1): match on the ORIGINAL
-        // uid (rescheduleUid), update booking_uid to the NEW uid.
         const origUid = bookingData.rescheduleUid
-        const newUid = bookingData.uid
+        const newUid  = bookingData.uid
         if (!origUid || !newUid || !bookingData.startTime) {
           return new Response('OK', { status: 200 })
         }
+        const newStart = new Date(bookingData.startTime)
+
+        // SAFETY: same wildcard guard as BOOKING_CANCELLED — only match via
+        // LIKE when origUid is format-safe.
+        const UID_SAFE = /^[A-Za-z0-9_-]+$/
+        const origIsSafe = UID_SAFE.test(origUid)
+
+        const workshopIdForRoot = origIsSafe
+          ? await findWorkshopByRootBookingUid(origUid)
+          : null
+
+        if (workshopIdForRoot) {
+          // Workshop-level reschedule: update the workshop row AND every
+          // registration's booking_uid prefix + bookingStartTime.
+          await db
+            .update(workshops)
+            .set({
+              calcomBookingUid: newUid,
+              scheduledAt:      newStart,
+              updatedAt:        new Date(),
+            })
+            .where(eq(workshops.id, workshopIdForRoot))
+
+          // Rewrite each child registration's composite booking_uid prefix.
+          // We cannot express the prefix-swap purely in SQL with drizzle's
+          // query builder, so fetch + update in a loop. Ranges are small
+          // (≤ maxSeats) so this is fine.
+          const rows = await db
+            .select({ id: workshopRegistrations.id, bookingUid: workshopRegistrations.bookingUid })
+            .from(workshopRegistrations)
+            .where(like(workshopRegistrations.bookingUid, `${origUid}:%`))
+
+          for (const row of rows) {
+            const suffix = row.bookingUid.slice(origUid.length + 1)
+            await db
+              .update(workshopRegistrations)
+              .set({
+                bookingUid:       `${newUid}:${suffix}`,
+                bookingStartTime: newStart,
+                status:           'rescheduled',
+                updatedAt:        new Date(),
+              })
+              .where(eq(workshopRegistrations.id, row.id))
+          }
+
+          revalidateTag(spotsTag(workshopIdForRoot), 'max')
+          return new Response('OK', { status: 200 })
+        }
+
+        // Fall back to seat-level reschedule (exact bookingUid match).
         const updated = await db
           .update(workshopRegistrations)
           .set({
-            bookingUid: newUid,
-            bookingStartTime: new Date(bookingData.startTime),
-            status: 'rescheduled',
-            updatedAt: new Date(),
+            bookingUid:       newUid,
+            bookingStartTime: newStart,
+            status:           'rescheduled',
+            updatedAt:        new Date(),
           })
           .where(eq(workshopRegistrations.bookingUid, origUid))
           .returning({ workshopId: workshopRegistrations.workshopId })
 
-        // F6: if zero rows matched, the original booking never landed (missed
-        // BOOKING_CREATED webhook, race, or stale uid). Synthesize an INSERT
-        // using the attendee email + workshop resolved from the event type id,
-        // so the reschedule is still reflected in our registrations table.
-        if (updated.length === 0) {
-          const workshopId = await findWorkshopByCalEventTypeId(bookingData.eventTypeId)
-          const attendee = bookingData.attendees?.[0]
-          if (workshopId && attendee?.email) {
-            console.warn(
-              '[cal-webhook] BOOKING_RESCHEDULED matched 0 rows, inserting fallback',
-              { origUid, newUid, workshopId },
-            )
-            const emailHash = emailHashOf(attendee.email)
-            await db
-              .insert(workshopRegistrations)
-              .values({
-                workshopId,
-                bookingUid: newUid,
-                email: attendee.email,
-                emailHash,
-                name: attendee.name ?? null,
-                bookingStartTime: new Date(bookingData.startTime),
-                status: 'rescheduled',
-              })
-              .onConflictDoNothing({ target: workshopRegistrations.bookingUid })
-            revalidateTag(spotsTag(workshopId), 'max')
-          } else {
-            console.error(
-              '[cal-webhook] BOOKING_RESCHEDULED matched 0 rows AND could not resolve workshopId/email',
-              { origUid, newUid },
-            )
-          }
-        } else {
-          for (const row of updated) {
-            if (row.workshopId) revalidateTag(spotsTag(row.workshopId), 'max')
-          }
+        for (const row of updated) {
+          if (row.workshopId) revalidateTag(spotsTag(row.workshopId), 'max')
         }
         return new Response('OK', { status: 200 })
       }
