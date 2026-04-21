@@ -41,6 +41,11 @@ export const workshops = pgTable('workshops', {
   registrationLink:    text('registration_link'),
   status:              workshopStatusEnum('status').notNull().default('upcoming'),
   calcomEventTypeId:   text('calcom_event_type_id'),
+  // Root seated booking + shared Google Meet link, backfilled by workshopCreatedFn
+  // after cal.com provisioning completes. Nullable because creation is async
+  // (mirrors the calcomEventTypeId null-until-backfilled pattern).
+  calcomBookingUid:    text('calcom_booking_uid'),
+  meetingUrl:          text('meeting_url'),
   maxSeats:            integer('max_seats'),
   // F9: per-workshop timezone used when creating cal.com bookings (attendee
   // `timeZone`) and when rendering absolute-time emails. IANA tz string -

@@ -79,6 +79,13 @@ const requiredServerEnvSchema = z.object({
   // --- cal.com --------------------------------------------------------
   CAL_API_KEY: z.string().min(1, 'CAL_API_KEY is required'),
   CAL_WEBHOOK_SECRET: z.string().min(1, 'CAL_WEBHOOK_SECRET is required'),
+  CAL_PRIMARY_ATTENDEE_EMAIL: z
+    .string()
+    .email('CAL_PRIMARY_ATTENDEE_EMAIL must be a valid email')
+    .min(1, 'CAL_PRIMARY_ATTENDEE_EMAIL is required'),
+  CAL_PRIMARY_ATTENDEE_NAME: z
+    .string()
+    .min(1, 'CAL_PRIMARY_ATTENDEE_NAME is required'),
 })
 
 // Public `NEXT_PUBLIC_*` vars baked into the client bundle. Validated but
