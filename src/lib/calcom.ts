@@ -99,8 +99,15 @@ export async function createCalEventType(
         // Research OQ2 - pass both field names to cover the doc discrepancy.
         lengthInMinutes: input.durationMinutes,
         length:          input.durationMinutes,
-        // D-02: Cal Video as the default meeting location.
-        locations: [{ type: 'integration', integration: 'cal-video' }],
+        // Google Meet is provisioned through the cal.com account's connected
+        // Google Calendar OAuth (account: vinit@konma.io). Cal.com docs
+        // disagree on the exact slug — sending both candidate shapes is
+        // safe; whichever the backend accepts wins, the other is ignored.
+        // Same tolerance pattern as `length`/`lengthInMinutes` above.
+        locations: [
+          { type: 'integration', integration: 'google-meet' },
+          { type: 'integrations:google:meet' },
+        ],
         // Workshops are multi-attendee. Without seats, cal.com treats the
         // event type as 1-on-1 and rejects every booking after the first on
         // the same slot. See commit adding this for context.
