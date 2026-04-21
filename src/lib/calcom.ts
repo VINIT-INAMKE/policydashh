@@ -7,9 +7,11 @@ import 'server-only'
  *   - D-01: workshop create is async via Inngest; this module is called from
  *           `workshopCreatedFn` inside a `step.run` boundary so Inngest
  *           captures the network hop for retries.
- *   - D-02: default event-type location is Cal Video (built-in, zero ops
- *           dependency, MEETING_ENDED webhook fires reliably). No per-workshop
- *           location selector in Phase 20.
+ *   - D-02 (SUPERSEDED 2026-04-21): default event-type location was originally
+ *           Cal Video; switched to Google Meet as part of the workshop
+ *           meetings redesign (docs/superpowers/specs/2026-04-21-...). Meet
+ *           link is provisioned through the shared org account's connected
+ *           Google Calendar OAuth. No per-workshop location selector.
  *   - D-04: single shared cal.com org account. One API key in env
  *           `CAL_API_KEY`. Per-admin OAuth is explicitly out of scope.
  *
