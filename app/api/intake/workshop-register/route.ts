@@ -144,10 +144,11 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!workshop.calcomBookingUid) {
     // Workshop row exists but workshopCreatedFn has not yet backfilled the
-    // root booking. Client retries after a short delay.
+    // root booking. Client retries after a short delay — Retry-After hints
+    // 5s which covers the p50 of the two-step Inngest provisioning function.
     return Response.json(
       { error: 'Workshop is still being set up. Please try again in a moment.' },
-      { status: 503 },
+      { status: 503, headers: { 'Retry-After': '5' } },
     )
   }
 
