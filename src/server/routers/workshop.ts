@@ -22,7 +22,7 @@ import {
   sendWorkshopRecordingUploaded,
   sendWorkshopCreated,
 } from '@/src/inngest/events'
-import { updateCalEventTypeSeats, updateCalEventType } from '@/src/lib/calcom'
+import { updateCalEventType } from '@/src/lib/calcom'
 import { eq, gte, lt, desc, and, count, ne } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
@@ -100,58 +100,6 @@ export const workshopRouter = router({
       }
 
       return workshop
-    }),
-
-  // One-shot repair for workshops whose cal.com event type was provisioned
-  // before seats config was added. Patches seatsPerTimeSlot to maxSeats
-  // (or 100 when uncapped) so multiple attendees can book the same slot.
-  reprovisionCalSeats: requirePermission('workshop:manage')
-    .input(z.object({ workshopId: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      const [workshop] = await db
-        .select({
-          id: workshops.id,
-          calcomEventTypeId: workshops.calcomEventTypeId,
-          maxSeats: workshops.maxSeats,
-        })
-        .from(workshops)
-        .where(eq(workshops.id, input.workshopId))
-        .limit(1)
-
-      if (!workshop) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Workshop not found' })
-      }
-      if (!workshop.calcomEventTypeId || !/^\d+$/.test(workshop.calcomEventTypeId)) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Workshop has no numeric cal.com event type id',
-        })
-      }
-
-      const newSeats = workshop.maxSeats ?? 100
-      await updateCalEventTypeSeats(
-        parseInt(workshop.calcomEventTypeId, 10),
-        newSeats,
-      )
-
-      // D4: reprovisioning changes cal.com seat capacity externally -- every
-      // other workshop mutation writes an audit entry so evidence packs can
-      // reconstruct the capacity timeline. Reuse WORKSHOP_UPDATE with a
-      // payload flag distinguishing this from a DB-only update.
-      writeAuditLog({
-        actorId: ctx.user.id,
-        actorRole: ctx.user.role,
-        action: ACTIONS.WORKSHOP_UPDATE,
-        entityType: 'workshop',
-        entityId: input.workshopId,
-        payload: {
-          stage: 'reprovision_cal_seats',
-          seatsPerTimeSlot: newSeats,
-          calcomEventTypeId: workshop.calcomEventTypeId,
-        },
-      }).catch(console.error)
-
-      return { ok: true, seatsPerTimeSlot: newSeats }
     }),
 
   // List workshops with upcoming/past/all filter
@@ -281,8 +229,8 @@ export const workshopRouter = router({
       durationMinutes: z.number().int().positive().nullable().optional(),
       registrationLink: z.string().url().nullable().optional(),
       // F11: expose maxSeats on the update path so admins can bump capacity
-      // after launch. A subsequent reprovisionCalSeats call (F15) pushes the
-      // new seat count to cal.com.
+      // after launch. Seat count is set at creation time via workshopCreatedFn;
+      // updating maxSeats here adjusts the DB row only.
       maxSeats: z.number().int().min(1).max(10000).nullable().optional(),
       // F9: per-workshop timezone. Changing this does NOT retro-apply to
       // existing cal.com bookings - it only affects future bookings + email
@@ -336,8 +284,8 @@ export const workshopRouter = router({
       // per-booking (not per-event-type) so cal.com has no direct endpoint
       // for rescheduling an event type's default time - attendees rebook
       // through the embed. We document this limitation and skip schedule
-      // propagation here. Seats propagation is handled separately via
-      // `reprovisionCalSeats`.
+      // propagation here. Seat count is set once at creation time via
+      // workshopCreatedFn and does not need an update-path propagation.
       const calId = existing.calcomEventTypeId
       const calNumericId =
         calId && /^\d+$/.test(calId) ? parseInt(calId, 10) : null
@@ -354,24 +302,6 @@ export const workshopRouter = router({
           // admin sees their changes persisted even if cal.com is down.
           console.error(
             '[workshop.update] cal.com PATCH failed (DB update succeeded):',
-            err,
-          )
-        }
-      }
-
-      // F11: if maxSeats changed, push the new seat count to cal.com as
-      // well. Same best-effort policy - DB wins if cal.com is down.
-      if (
-        calNumericId !== null &&
-        input.maxSeats !== undefined &&
-        input.maxSeats !== null &&
-        input.maxSeats !== existing.maxSeats
-      ) {
-        try {
-          await updateCalEventTypeSeats(calNumericId, input.maxSeats)
-        } catch (err) {
-          console.error(
-            '[workshop.update] cal.com seats PATCH failed (DB update succeeded):',
             err,
           )
         }

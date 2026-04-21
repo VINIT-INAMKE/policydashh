@@ -40,7 +40,6 @@ vi.mock('server-only', () => ({}))
 // side-effects (reading env vars, building SDK clients) don't blow up when
 // the module executes in the test environment.
 vi.mock('@/src/lib/calcom', () => ({
-  updateCalEventTypeSeats: vi.fn().mockResolvedValue(undefined),
   updateCalEventType: vi.fn().mockResolvedValue(undefined),
 }))
 

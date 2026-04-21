@@ -157,53 +157,6 @@ export async function createCalEventType(
 }
 
 /**
- * Patch an existing cal.com event type to enable multi-attendee seats.
- *
- * Use when a workshop's event type was provisioned before the seats config
- * was added to createCalEventType. Without this, only the first attendee
- * can book; subsequent bookings fail with "User already has booking at this
- * time or is not available" (400).
- */
-export async function updateCalEventTypeSeats(
-  eventTypeId: number,
-  seatsPerTimeSlot: number,
-): Promise<void> {
-  const apiKey = process.env.CAL_API_KEY
-  if (!apiKey) {
-    throw new CalApiError(400, 'CAL_API_KEY not set')
-  }
-
-  let res: Response
-  try {
-    res = await fetch(`https://api.cal.com/v2/event-types/${eventTypeId}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization':    `Bearer ${apiKey}`,
-        'Content-Type':     'application/json',
-        'cal-api-version':  '2024-06-14',
-      },
-      body: JSON.stringify({
-        seats: {
-          seatsPerTimeSlot,
-          showAttendeeInfo: false,
-          showAvailabilityCount: true,
-        },
-      }),
-    })
-  } catch (err) {
-    throw new CalApiError(
-      500,
-      `cal.com PATCH network failure: ${err instanceof Error ? err.message : String(err)}`,
-    )
-  }
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '<no body>')
-    throw new CalApiError(res.status, `cal.com PATCH ${res.status}: ${text}`)
-  }
-}
-
-/**
  * Generic PATCH for cal.com event-types used by F10 workshop-edit propagation.
  *
  * Only the fields actually provided on the input are sent in the PATCH body -

@@ -27,7 +27,6 @@ import { FeedbackLinkPicker } from './_components/feedback-link-picker'
 import { StatusTransitionButtons } from './_components/status-transition-buttons'
 import { EvidenceChecklist } from './_components/evidence-checklist'
 import { AttendeeList } from './_components/attendee-list'
-import { ReprovisionCalButton } from './_components/reprovision-cal-button'
 
 export default function WorkshopDetailPage() {
   const params = useParams<{ id: string }>()
@@ -168,16 +167,6 @@ export default function WorkshopDetailPage() {
             <Pencil className="size-3.5" />
             Edit
           </Button>
-        )}
-
-        {/* F15: admin-only reprovision seats button. Inner component
-            renders null unless the workshop has a numeric cal event type id. */}
-        {canManage && (
-          <ReprovisionCalButton
-            workshopId={workshopId}
-            calcomEventTypeId={workshop.calcomEventTypeId}
-            maxSeats={workshop.maxSeats}
-          />
         )}
 
         {workshop.description && (
