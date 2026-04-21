@@ -57,3 +57,72 @@ describe('createCalEventType', () => {
     expect(serialized).not.toMatch(/cal-video/)
   })
 })
+
+describe('createCalBooking', () => {
+  it('captures the Google Meet URL from data.meetingUrl', async () => {
+    const { createCalBooking } = await import('@/src/lib/calcom')
+    mockFetchOnce({
+      ok: true,
+      body: {
+        data: {
+          uid: 'root-abc',
+          meetingUrl: 'https://meet.google.com/abc-defg-hij',
+        },
+      },
+    })
+
+    const result = await createCalBooking({
+      eventTypeId: 42,
+      name: 'Vinay',
+      email: 'vinay@konma.io',
+      startTime: '2026-05-01T10:00:00.000Z',
+      timeZone: 'Asia/Kolkata',
+    })
+
+    expect(result).toEqual({
+      uid: 'root-abc',
+      meetingUrl: 'https://meet.google.com/abc-defg-hij',
+    })
+  })
+
+  it('falls back to data.location when meetingUrl is absent', async () => {
+    const { createCalBooking } = await import('@/src/lib/calcom')
+    mockFetchOnce({
+      ok: true,
+      body: {
+        data: {
+          uid: 'root-xyz',
+          location: 'https://meet.google.com/xyz-1234-kl',
+        },
+      },
+    })
+
+    const result = await createCalBooking({
+      eventTypeId: 42,
+      name: 'Vinay',
+      email: 'vinay@konma.io',
+      startTime: '2026-05-01T10:00:00.000Z',
+    })
+
+    expect(result.uid).toBe('root-xyz')
+    expect(result.meetingUrl).toBe('https://meet.google.com/xyz-1234-kl')
+  })
+
+  it('returns null meetingUrl when neither field is present', async () => {
+    const { createCalBooking } = await import('@/src/lib/calcom')
+    mockFetchOnce({
+      ok: true,
+      body: { data: { uid: 'root-no-meet' } },
+    })
+
+    const result = await createCalBooking({
+      eventTypeId: 42,
+      name: 'Vinay',
+      email: 'vinay@konma.io',
+      startTime: '2026-05-01T10:00:00.000Z',
+    })
+
+    expect(result.uid).toBe('root-no-meet')
+    expect(result.meetingUrl).toBeNull()
+  })
+})

@@ -270,6 +270,13 @@ export interface CalBookingInput {
 
 export interface CalBookingResult {
   uid: string
+  /**
+   * Shared meeting URL from cal.com's response. For Google-Meet-located
+   * event types this is the Meet link attendees click into. `null` if
+   * cal.com did not populate either `data.meetingUrl` or `data.location`
+   * — the workshopCreatedFn caller treats null as "backfill skipped".
+   */
+  meetingUrl: string | null
 }
 
 export async function createCalBooking(
@@ -317,9 +324,15 @@ export async function createCalBooking(
     throw new CalApiError(res.status, `cal.com booking API ${res.status}: ${text}`)
   }
 
-  let body: { data?: { uid?: string } }
+  let body: {
+    data?: {
+      uid?: string
+      meetingUrl?: string
+      location?: string
+    }
+  }
   try {
-    body = (await res.json()) as { data?: { uid?: string } }
+    body = (await res.json()) as typeof body
   } catch (err) {
     throw new CalApiError(
       500,
@@ -332,5 +345,17 @@ export async function createCalBooking(
     throw new CalApiError(500, `cal.com booking response missing uid: ${JSON.stringify(body)}`)
   }
 
-  return { uid }
+  // Cal.com's response shape for the meeting URL is inconsistent between
+  // provider integrations (Cal Video vs Google Meet vs Zoom) and has shifted
+  // across API versions. Try `meetingUrl` first (what newer Google-Meet
+  // bookings return), fall back to `location` (older shape), else null.
+  // Smoke test #1 records the exact field during implementation.
+  const meetingUrl =
+    typeof body.data?.meetingUrl === 'string'
+      ? body.data.meetingUrl
+      : typeof body.data?.location === 'string'
+        ? body.data.location
+        : null
+
+  return { uid, meetingUrl }
 }
