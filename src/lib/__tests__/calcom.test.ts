@@ -151,3 +151,108 @@ describe('createCalBooking', () => {
     expect(result.meetingUrl).toBe('https://meet.google.com/new-xxxx-yyy')
   })
 })
+
+describe('addAttendeeToBooking', () => {
+  it('POSTs to /v2/bookings/{uid}/attendees with cal-api-version 2024-08-13', async () => {
+    const { addAttendeeToBooking } = await import('@/src/lib/calcom')
+    mockFetchOnce({
+      ok: true,
+      body: {
+        data: {
+          id: 777,
+          bookingId: 12,
+          email: 'stakeholder@example.com',
+          name: 'Stakeholder',
+        },
+      },
+    })
+
+    const result = await addAttendeeToBooking('root-abc', {
+      name: 'Stakeholder',
+      email: 'stakeholder@example.com',
+      timeZone: 'Asia/Kolkata',
+    })
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.cal.com/v2/bookings/root-abc/attendees')
+    expect(init.method).toBe('POST')
+    const headers = init.headers as Record<string, string>
+    expect(headers['cal-api-version']).toBe('2024-08-13')
+    expect(headers['Authorization']).toBe('Bearer test-key')
+    expect(JSON.parse(init.body as string)).toEqual({
+      name: 'Stakeholder',
+      email: 'stakeholder@example.com',
+      timeZone: 'Asia/Kolkata',
+    })
+    expect(result).toEqual({ id: 777, bookingId: 12 })
+  })
+
+  it('throws CalApiError with status >= 500 on cal.com 5xx', async () => {
+    const { addAttendeeToBooking, CalApiError } = await import('@/src/lib/calcom')
+    mockFetchOnce({ ok: false, status: 503, body: { error: 'boom' } })
+
+    const err = await addAttendeeToBooking('root-abc', {
+      name: 'X',
+      email: 'x@example.com',
+      timeZone: 'UTC',
+    }).catch((e) => e)
+
+    expect(err).toBeInstanceOf(CalApiError)
+    expect(err.status).toBe(503)
+  })
+
+  it('throws CalApiError with status < 500 on cal.com 4xx', async () => {
+    const { addAttendeeToBooking } = await import('@/src/lib/calcom')
+    mockFetchOnce({ ok: false, status: 409, body: { error: 'full' } })
+
+    await expect(
+      addAttendeeToBooking('root-abc', {
+        name: 'X',
+        email: 'x@example.com',
+        timeZone: 'UTC',
+      }),
+    ).rejects.toMatchObject({ name: 'CalApiError', status: 409 })
+  })
+
+  it('throws CalApiError(400) when CAL_API_KEY is missing', async () => {
+    vi.stubEnv('CAL_API_KEY', '')
+    const { addAttendeeToBooking } = await import('@/src/lib/calcom')
+
+    await expect(
+      addAttendeeToBooking('root-abc', {
+        name: 'X',
+        email: 'x@example.com',
+        timeZone: 'UTC',
+      }),
+    ).rejects.toMatchObject({ name: 'CalApiError', status: 400 })
+  })
+
+  it('wraps network failure as CalApiError(500) so Inngest retries', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('ECONNRESET')
+    }) as unknown as typeof fetch
+    const { addAttendeeToBooking } = await import('@/src/lib/calcom')
+
+    await expect(
+      addAttendeeToBooking('root-abc', {
+        name: 'X',
+        email: 'x@example.com',
+        timeZone: 'UTC',
+      }),
+    ).rejects.toMatchObject({ name: 'CalApiError', status: 500 })
+  })
+
+  it('throws CalApiError(500) when response is missing data.id', async () => {
+    const { addAttendeeToBooking } = await import('@/src/lib/calcom')
+    mockFetchOnce({ ok: true, body: { data: {} } })
+
+    await expect(
+      addAttendeeToBooking('root-abc', {
+        name: 'X',
+        email: 'x@example.com',
+        timeZone: 'UTC',
+      }),
+    ).rejects.toMatchObject({ name: 'CalApiError', status: 500 })
+  })
+})

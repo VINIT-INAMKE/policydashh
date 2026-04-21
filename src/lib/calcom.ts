@@ -359,3 +359,94 @@ export async function createCalBooking(
 
   return { uid, meetingUrl }
 }
+
+export interface CalAddAttendeeInput {
+  /** Attendee full name. Cal.com displays this on the booking + in emails. */
+  name: string
+  /** Attendee email. Cal.com sends them the booking-confirmation email. */
+  email: string
+  /** IANA timezone used for the attendee's calendar invite rendering. */
+  timeZone: string
+}
+
+export interface CalAddAttendeeResult {
+  /** Numeric attendee id; unique per (booking, attendee). */
+  id: number
+  /** Numeric booking id the attendee was added to. */
+  bookingId: number
+}
+
+/**
+ * Add an attendee to an existing cal.com booking (seat add).
+ *
+ * Used by the public workshop-register intake route: the first booking for a
+ * workshop is created server-side by workshopCreatedFn with vinay@konma.io as
+ * primary attendee; every public registrant is added as a seat on top via
+ * this endpoint. All attendees share the same root uid + the same Google
+ * Meet link.
+ *
+ * Requires `cal-api-version: 2024-08-13` — older versions 404.
+ *
+ * Error contract matches createCalEventType:
+ *   - 5xx / network failure → CalApiError(>=500) → caller retries via Inngest
+ *   - 4xx                   → CalApiError(<500)  → caller maps to NonRetriable
+ *   - Missing CAL_API_KEY   → CalApiError(400)
+ *   - Malformed response    → CalApiError(500) (conservative retry)
+ */
+export async function addAttendeeToBooking(
+  bookingUid: string,
+  input: CalAddAttendeeInput,
+): Promise<CalAddAttendeeResult> {
+  const apiKey = process.env.CAL_API_KEY
+  if (!apiKey) {
+    throw new CalApiError(400, 'CAL_API_KEY not set')
+  }
+
+  let res: Response
+  try {
+    res = await fetch(`https://api.cal.com/v2/bookings/${bookingUid}/attendees`, {
+      method: 'POST',
+      headers: {
+        'Authorization':   `Bearer ${apiKey}`,
+        'Content-Type':    'application/json',
+        'cal-api-version': '2024-08-13',
+      },
+      body: JSON.stringify({
+        name:     input.name,
+        email:    input.email,
+        timeZone: input.timeZone,
+      }),
+    })
+  } catch (err) {
+    throw new CalApiError(
+      500,
+      `cal.com add-attendee network failure: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '<no body>')
+    throw new CalApiError(res.status, `cal.com add-attendee ${res.status}: ${text}`)
+  }
+
+  let body: { data?: { id?: number; bookingId?: number } }
+  try {
+    body = (await res.json()) as typeof body
+  } catch (err) {
+    throw new CalApiError(
+      500,
+      `cal.com add-attendee response parse failed: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+
+  const id = body.data?.id
+  const bookingId = body.data?.bookingId
+  if (typeof id !== 'number' || typeof bookingId !== 'number') {
+    throw new CalApiError(
+      500,
+      `cal.com add-attendee response missing numeric id/bookingId: ${JSON.stringify(body)}`,
+    )
+  }
+
+  return { id, bookingId }
+}
