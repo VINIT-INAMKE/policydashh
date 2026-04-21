@@ -27,6 +27,15 @@ One cal.com booking per workshop. All attendees attached as seats via the `atten
 
 ## Architecture
 
+### Accounts
+
+Two separate email identities, do not conflate:
+
+- **Cal.com organizer account:** `vinit@konma.io`. Owns the cal.com workspace behind `CAL_API_KEY`. Event types and bookings are created under this account. Google Calendar OAuth (with Google Meet integration) is connected here — this is what generates the shared Meet link per booking. The organizer's calendar is where cal.com writes the authoritative calendar event.
+- **Primary attendee on every workshop booking:** `vinay@konma.io`. Always the first attendee on the root seated booking. Receives cal.com's booking-confirmation email with the Meet link and appears as a guest on the organizer's calendar event; also gets a calendar invite of their own via cal.com's attendee sync.
+
+Public registrants are added as additional seats on top of Vinay. Vinit is not an attendee — they are the account owner only.
+
 ### Cal.com primitives in use
 
 | Endpoint | cal-api-version | Purpose |
@@ -175,7 +184,7 @@ Smoke (manual, post-deploy):
 - **Cal.com `attendees` endpoint behaviour on seated event types is not explicitly documented.** Mitigation: smoke-test #2 above before declaring the feature shipped. Fallback path: if cal.com rejects the attendee-add on seated event types, fall back to `POST /v2/bookings/{uid}/guests` (hard cap 30/booking — acceptable for Phase-20 seat counts) and reconsider for high-capacity workshops.
 - **Cal.com rate limit on `attendees`** — docs mention "5 requests per minute" for some endpoints. Our per-IP / per-email rate limits already cap well below that in practice, but under a burst (e.g. a promoted workshop) we may trip it. Mitigation: if observed, queue the attendee-add through Inngest with backoff instead of calling from the request path.
 - **Cal.com seat-cancel webhook payload shape** — may use `uid` or `seatUid`. Mitigation: handler tolerates both in the exact-match fallback; we verify in smoke-test #3 and adjust once.
-- **`vinay@konma.io` receives every workshop's calendar invite.** Expected and desired — Vinay is the PolicyDash team contact who needs to be in every workshop by default.
+- **`vinay@konma.io` receives every workshop's calendar invite.** Expected and desired — Vinay is the PolicyDash team contact who needs to be in every workshop by default. Not to be confused with the organizer account `vinit@konma.io`, which never appears as an attendee.
 
 ## Rollout
 
