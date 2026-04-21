@@ -4,7 +4,7 @@ import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
 import { and, eq, ne, count } from 'drizzle-orm'
 import { sendWorkshopRegistrationReceived } from '@/src/inngest/events'
-import { createCalBooking } from '@/src/lib/calcom'
+import { addAttendeeToBooking } from '@/src/lib/calcom'
 import { consume, getClientIp } from '@/src/lib/rate-limit'
 
 // B10: body-size cap on public intake. Anything beyond this is a fat-finger
@@ -68,6 +68,7 @@ export async function POST(req: Request): Promise<Response> {
       scheduledAt: workshops.scheduledAt,
       maxSeats: workshops.maxSeats,
       calcomEventTypeId: workshops.calcomEventTypeId,
+      calcomBookingUid: workshops.calcomBookingUid,
       timezone: workshops.timezone,
     })
     .from(workshops)
@@ -141,70 +142,50 @@ export async function POST(req: Request): Promise<Response> {
     }
   }
 
+  if (!workshop.calcomBookingUid) {
+    // Workshop row exists but workshopCreatedFn has not yet backfilled the
+    // root booking. Client retries after a short delay.
+    return Response.json(
+      { error: 'Workshop is still being set up. Please try again in a moment.' },
+      { status: 503 },
+    )
+  }
+
   try {
-    let bookingUid = `direct:${workshopId}:${emailHash}`
-    // F14: when we fall back to the direct-register UID pattern (cal.com
-    // booking failed or skipped), mark the row so a reconciliation job can
-    // identify rows that need their bookingUid rewritten once cal.com comes
-    // back online. Kept as a bookingUid prefix because adding a dedicated
-    // column would require a second migration this phase.
-    let needsCalComReconcile = false
+    const attendee = await addAttendeeToBooking(workshop.calcomBookingUid, {
+      name:     cleanName || 'Guest',
+      email:    cleanEmail,
+      timeZone: workshop.timezone,
+    })
 
-    // Cal.com booking is best-effort. Only attempt it when the stored
-    // calcomEventTypeId is a pure numeric string — older workshops (created
-    // before commit 569d3e5) stored a slug, which parseInt turns into NaN → 0
-    // and cal.com rejects with a confusing class-validator error.
-    const calEventTypeId = workshop.calcomEventTypeId
-    const numericEventTypeId =
-      calEventTypeId && /^\d+$/.test(calEventTypeId) ? parseInt(calEventTypeId, 10) : null
-
-    if (numericEventTypeId !== null && process.env.CAL_API_KEY) {
-      try {
-        const result = await createCalBooking({
-          eventTypeId: numericEventTypeId,
-          name: cleanName || 'Guest',
-          email: cleanEmail,
-          startTime: workshop.scheduledAt.toISOString(),
-          // F9: honor the workshop's configured timezone, not a hardcoded
-          // Asia/Kolkata. Attendees booking a UTC-4 workshop should see the
-          // UTC-4 time on their cal.com confirmation.
-          timeZone: workshop.timezone,
-        })
-        bookingUid = result.uid
-      } catch (err) {
-        console.error('[workshop-register] cal.com booking failed, falling back to direct:', err)
-        needsCalComReconcile = true
-      }
-    } else if (calEventTypeId) {
-      console.warn('[workshop-register] skipping cal.com — non-numeric eventTypeId stored:', calEventTypeId)
-      needsCalComReconcile = true
-    }
+    const compositeBookingUid = `${workshop.calcomBookingUid}:${attendee.id}`
 
     await db
       .insert(workshopRegistrations)
       .values({
         workshopId,
-        bookingUid,
-        email: cleanEmail,
+        bookingUid:       compositeBookingUid,
+        email:            cleanEmail,
         emailHash,
-        name: cleanName || null,
+        name:             cleanName || null,
         bookingStartTime: workshop.scheduledAt,
-        status: 'registered',
+        status:           'registered',
       })
       .onConflictDoNothing()
 
     await sendWorkshopRegistrationReceived({
       workshopId,
-      email: cleanEmail,
+      email:      cleanEmail,
       emailHash,
-      name: cleanName,
-      bookingUid,
-      source: 'direct_register',
+      name:       cleanName,
+      bookingUid: compositeBookingUid,
+      source:     'direct_register',
     })
-    console.log('[workshop-register] sent inngest event workshop.registration.received', {
+
+    console.log('[workshop-register] attendee added to root booking', {
       workshopId,
-      emailHash: emailHash.slice(0, 8),
-      needsCalComReconcile,
+      rootBookingUid: workshop.calcomBookingUid,
+      attendeeId:     attendee.id,
     })
   } catch (err) {
     console.error('[workshop-register] error:', err)
