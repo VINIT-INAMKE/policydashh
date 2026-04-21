@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => {
   const updateMock = vi.fn().mockReturnValue({ set: setMock })
 
   const createCalEventTypeMock = vi.fn()
+  const createCalBookingMock = vi.fn()
 
   return {
     limitMock,
@@ -40,6 +41,7 @@ const mocks = vi.hoisted(() => {
     updateWhereMock,
     updateMock,
     createCalEventTypeMock,
+    createCalBookingMock,
   }
 })
 
@@ -68,6 +70,7 @@ vi.mock('@/src/lib/calcom', () => {
   return {
     CalApiError,
     createCalEventType: mocks.createCalEventTypeMock,
+    createCalBooking:   mocks.createCalBookingMock,
   }
 })
 
@@ -141,13 +144,23 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
   it('T1: backfills calcomEventTypeId on successful cal.com response', async () => {
     mocks.limitMock.mockResolvedValueOnce([
       {
-        id:               '00000000-0000-0000-0000-000000000001',
-        title:            'Policy Roundtable',
-        durationMinutes:  60,
+        id:                '00000000-0000-0000-0000-000000000001',
+        title:             'Policy Roundtable',
+        durationMinutes:   60,
         calcomEventTypeId: null,
+        calcomBookingUid:  null,
+        scheduledAt:       new Date('2026-05-01T10:00:00.000Z'),
+        timezone:          'Asia/Kolkata',
+        maxSeats:          50,
       },
     ])
     mocks.createCalEventTypeMock.mockResolvedValueOnce({ id: 12345 })
+    mocks.createCalBookingMock.mockResolvedValueOnce({
+      uid: 'root-uid-abc',
+      meetingUrl: 'https://meet.google.com/abc-defg-hij',
+    })
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_EMAIL', 'vinay@konma.io')
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_NAME', 'Vinay (PolicyDash)')
 
     const { step } = makeStep()
     const result = await invoke(makeEvent(), step)
@@ -163,6 +176,26 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
     const setArg = mocks.setMock.mock.calls[0]?.[0] as { calcomEventTypeId?: string } | undefined
     expect(setArg?.calcomEventTypeId).toBe('12345')
     expect(result).toMatchObject({ ok: true, eventTypeId: 12345 })
+
+    expect(mocks.createCalBookingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventTypeId: 12345,
+        email:       'vinay@konma.io',
+        name:        'Vinay (PolicyDash)',
+        timeZone:    'Asia/Kolkata',
+      }),
+    )
+    const bookingCall = mocks.createCalBookingMock.mock.calls[0]?.[0] as { startTime?: string } | undefined
+    expect(bookingCall?.startTime).toBe('2026-05-01T10:00:00.000Z')
+
+    const backfillSet = mocks.setMock.mock.calls[0]?.[0] as {
+      calcomEventTypeId?: string
+      calcomBookingUid?: string
+      meetingUrl?: string
+    } | undefined
+    expect(backfillSet?.calcomEventTypeId).toBe('12345')
+    expect(backfillSet?.calcomBookingUid).toBe('root-uid-abc')
+    expect(backfillSet?.meetingUrl).toBe('https://meet.google.com/abc-defg-hij')
   })
 
   it('T2: NonRetriableError when workshop row is missing', async () => {
@@ -177,7 +210,12 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
 
   it('T3: 5xx bubbles a plain Error (retry path - NOT NonRetriableError)', async () => {
     mocks.limitMock.mockResolvedValueOnce([
-      { id: 'w', title: 'x', durationMinutes: 60, calcomEventTypeId: null },
+      {
+        id: 'w', title: 'x', durationMinutes: 60,
+        calcomEventTypeId: null, calcomBookingUid: null,
+        scheduledAt: new Date('2026-05-01T10:00:00.000Z'),
+        timezone: 'Asia/Kolkata', maxSeats: 50,
+      },
     ])
     if (!CalApiErrorCtor) throw new Error('CalApiError ctor not resolved - calcom module missing')
     mocks.createCalEventTypeMock.mockRejectedValueOnce(new CalApiErrorCtor(500, 'cal.com API 500: boom'))
@@ -199,7 +237,12 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
 
   it('T4: 4xx wraps to NonRetriableError (no retry)', async () => {
     mocks.limitMock.mockResolvedValueOnce([
-      { id: 'w', title: 'x', durationMinutes: 60, calcomEventTypeId: null },
+      {
+        id: 'w', title: 'x', durationMinutes: 60,
+        calcomEventTypeId: null, calcomBookingUid: null,
+        scheduledAt: new Date('2026-05-01T10:00:00.000Z'),
+        timezone: 'Asia/Kolkata', maxSeats: 50,
+      },
     ])
     if (!CalApiErrorCtor) throw new Error('CalApiError ctor not resolved')
     mocks.createCalEventTypeMock.mockRejectedValueOnce(new CalApiErrorCtor(400, 'cal.com API 400: bad slug'))
@@ -218,7 +261,12 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
 
   it('T5: missing CAL_API_KEY surfaces as NonRetriableError', async () => {
     mocks.limitMock.mockResolvedValueOnce([
-      { id: 'w', title: 'x', durationMinutes: 60, calcomEventTypeId: null },
+      {
+        id: 'w', title: 'x', durationMinutes: 60,
+        calcomEventTypeId: null, calcomBookingUid: null,
+        scheduledAt: new Date('2026-05-01T10:00:00.000Z'),
+        timezone: 'Asia/Kolkata', maxSeats: 50,
+      },
     ])
     if (!CalApiErrorCtor) throw new Error('CalApiError ctor not resolved')
     // A missing env surfaces from the real createCalEventType as CalApiError(400, ...).
@@ -240,7 +288,14 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
 
   it('short-circuits when calcomEventTypeId is already set', async () => {
     mocks.limitMock.mockResolvedValueOnce([
-      { id: 'w', title: 'x', durationMinutes: 60, calcomEventTypeId: 'already-set-9999' },
+      {
+        id: 'w', title: 'x', durationMinutes: 60,
+        calcomEventTypeId: 'already-set-9999',
+        calcomBookingUid:  'already-booked-uid',
+        scheduledAt:       new Date('2026-05-01T10:00:00.000Z'),
+        timezone:          'Asia/Kolkata',
+        maxSeats:          50,
+      },
     ])
 
     const { step } = makeStep()
@@ -249,5 +304,29 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
     expect(mocks.createCalEventTypeMock).not.toHaveBeenCalled()
     expect(mocks.updateMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({ skipped: 'already-provisioned' })
+  })
+
+  it('T6: cal.com 5xx on root-booking step bubbles a plain Error (retry path)', async () => {
+    mocks.limitMock.mockResolvedValueOnce([
+      {
+        id:                'w', title: 'x', durationMinutes: 60,
+        calcomEventTypeId: null, calcomBookingUid: null,
+        scheduledAt:       new Date('2026-05-01T10:00:00.000Z'),
+        timezone:          'Asia/Kolkata', maxSeats: 50,
+      },
+    ])
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_EMAIL', 'vinay@konma.io')
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_NAME', 'Vinay (PolicyDash)')
+    mocks.createCalEventTypeMock.mockResolvedValueOnce({ id: 7777 })
+    if (!CalApiErrorCtor) throw new Error('CalApiError ctor not resolved')
+    mocks.createCalBookingMock.mockRejectedValueOnce(new CalApiErrorCtor(500, 'cal.com 500'))
+
+    const { step } = makeStep()
+    const { NonRetriableError } = await import('inngest')
+    const thrown = await invoke(makeEvent(), step).catch((e) => e)
+    expect(thrown).toBeInstanceOf(Error)
+    expect(thrown).not.toBeInstanceOf(NonRetriableError)
+    // Backfill must not have run because booking failed.
+    expect(mocks.updateMock).not.toHaveBeenCalled()
   })
 })

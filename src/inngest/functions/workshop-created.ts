@@ -3,14 +3,16 @@ import { eq } from 'drizzle-orm'
 import { inngest } from '../client'
 import { db } from '@/src/db'
 import { workshops } from '@/src/db/schema/workshops'
-import { createCalEventType, CalApiError } from '@/src/lib/calcom'
+import { createCalEventType, createCalBooking, CalApiError } from '@/src/lib/calcom'
 
 /**
  * workshopCreatedFn - async cal.com event-type provisioning for WS-07.
  *
  * Triggered by the `workshop.created` event emitted from the admin create
  * mutation in `src/server/routers/workshop.ts`. Calls cal.com v2 API to
- * provision an event type, then backfills `workshops.calcomEventTypeId`.
+ * provision an event type, creates the root seated booking for the primary
+ * attendee (vinay@konma.io), then backfills `workshops.calcomEventTypeId`,
+ * `calcomBookingUid`, and `meetingUrl` atomically.
  *
  * Why async (D-01):
  *   - Admin create mutation stays fast (no external API hop).
@@ -65,64 +67,117 @@ export const workshopCreatedFn = inngest.createFunction(
       throw new NonRetriableError(`workshop ${workshopId} not found`)
     }
 
-    // Idempotency: if a prior run already backfilled the id, short-circuit.
-    // Cheap insurance against Inngest replays and against re-emits from the
-    // admin mutation if we ever add a retry button there.
-    if (workshop.calcomEventTypeId) {
+    // Idempotency: both fields must be backfilled for the workshop to be
+    // fully provisioned. If a prior run backfilled event-type but died
+    // before creating the root booking, we re-enter here and finish the
+    // booking half without re-provisioning the event type.
+    if (workshop.calcomEventTypeId && workshop.calcomBookingUid) {
       return { workshopId, skipped: 'already-provisioned' as const }
     }
 
-    // Step 2: call cal.com. Error mapping happens inside the step so Inngest's
-    // step-level retry semantics wrap it cleanly. A thrown plain Error here
-    // consumes a retry; NonRetriableError skips straight to failure.
-    const eventTypeId = await step.run('create-cal-event-type', async () => {
-      try {
-        // Deterministic slug per workshop id - guarantees uniqueness inside
-        // the shared cal.com org (D-04) and lets us reason about idempotency:
-        // a retry of this step produces the same slug and cal.com 4xx's us
-        // (duplicate slug), which the outer fn correctly maps to NonRetriable.
-        // The admin can then manually retry after fixing whatever was wrong.
-        const slug = `workshop-${workshop.id}`
-        const result = await createCalEventType({
-          title:           workshop.title,
-          slug,
-          durationMinutes: workshop.durationMinutes ?? 60,
-          // Workshops are multi-attendee broadcasts. Honor the admin-specified
-          // maxSeats, fallback to 100 for uncapped workshops.
-          seatsPerTimeSlot: workshop.maxSeats ?? 100,
+    // Step 2: call cal.com to provision the event type. Error mapping happens
+    // inside the step so Inngest's step-level retry semantics wrap it cleanly.
+    // A thrown plain Error here consumes a retry; NonRetriableError skips
+    // straight to failure. If event type is already present from a prior
+    // partial run, reuse it.
+    const eventTypeId = workshop.calcomEventTypeId
+      ? parseInt(workshop.calcomEventTypeId, 10)
+      : await step.run('create-cal-event-type', async () => {
+          try {
+            // Deterministic slug per workshop id - guarantees uniqueness
+            // inside the shared cal.com org (D-04) and lets us reason about
+            // idempotency: a retry of this step produces the same slug and
+            // cal.com 4xx's us (duplicate slug), which the outer fn correctly
+            // maps to NonRetriable. The admin can then manually retry after
+            // fixing whatever was wrong.
+            const slug = `workshop-${workshop.id}`
+            const result = await createCalEventType({
+              title:            workshop.title,
+              slug,
+              durationMinutes:  workshop.durationMinutes ?? 60,
+              // Workshops are multi-attendee broadcasts. Honor the admin-
+              // specified maxSeats, fallback to 100 for uncapped workshops.
+              seatsPerTimeSlot: workshop.maxSeats ?? 100,
+            })
+            return result.id
+          } catch (err) {
+            if (err instanceof CalApiError) {
+              if (err.status >= 500) {
+                // Transient - bubble so Inngest consumes retry budget.
+                throw err
+              }
+              // 4xx - permanent (bad API key, duplicate slug, bad field).
+              throw new NonRetriableError(err.message)
+            }
+            // Unknown error surface - safest default is permanent failure
+            // until observed in production, mirroring Phase 19.
+            throw new NonRetriableError(
+              err instanceof Error ? err.message : String(err),
+            )
+          }
         })
-        return result.id
+
+    // Step 3: create the root seated booking at the workshop's scheduled time.
+    // The primary attendee (vinay@konma.io) holds the Google Meet link so
+    // every participant registration reuses the SAME meeting room via
+    // addAttendeeToBooking (Plan 20-02). The booking uid and meetingUrl land
+    // on the workshop row in Step 4 and drive the public participation UX.
+    const rootBooking = await step.run('create-root-booking', async () => {
+      const primaryEmail = process.env.CAL_PRIMARY_ATTENDEE_EMAIL
+      const primaryName  = process.env.CAL_PRIMARY_ATTENDEE_NAME
+      if (!primaryEmail || !primaryName) {
+        throw new NonRetriableError(
+          'CAL_PRIMARY_ATTENDEE_EMAIL / CAL_PRIMARY_ATTENDEE_NAME not set',
+        )
+      }
+      try {
+        return await createCalBooking({
+          eventTypeId,
+          name:      primaryName,
+          email:     primaryEmail,
+          // workshop.scheduledAt round-trips through step.run's JSON
+          // serialization, so the static type is string (ISO) even though
+          // the raw DB value is Date. new Date(...).toISOString() normalizes
+          // either shape back to the canonical ISO form cal.com expects.
+          startTime: new Date(workshop.scheduledAt).toISOString(),
+          timeZone:  workshop.timezone,
+        })
       } catch (err) {
         if (err instanceof CalApiError) {
           if (err.status >= 500) {
             // Transient - bubble so Inngest consumes retry budget.
             throw err
           }
-          // 4xx - permanent (bad API key, duplicate slug, bad field).
+          // 4xx - permanent.
           throw new NonRetriableError(err.message)
         }
-        // Unknown error surface - safest default is permanent failure until
-        // observed in production, mirroring Phase 19 participateIntakeFn.
         throw new NonRetriableError(
           err instanceof Error ? err.message : String(err),
         )
       }
     })
 
-    // Step 3: backfill the workshop row with the numeric cal.com event type ID.
-    // The slug (for embed calLink) is computed at render time as
-    // ${CAL_USERNAME}/workshop-${workshop.id} - deterministic and matches
-    // what was created in step 2.
-    await step.run('backfill-calcom-event-type-id', async () => {
+    // Step 4: atomic backfill of all three cal.com-sourced fields. The
+    // idempotency guard above requires both calcomEventTypeId AND
+    // calcomBookingUid to be populated for short-circuit, so writing them
+    // together prevents a half-provisioned row from looking "done".
+    await step.run('backfill-cal-ids', async () => {
       await db
         .update(workshops)
         .set({
           calcomEventTypeId: String(eventTypeId),
+          calcomBookingUid:  rootBooking.uid,
+          meetingUrl:        rootBooking.meetingUrl,
           updatedAt:         new Date(),
         })
         .where(eq(workshops.id, workshopId))
     })
 
-    return { workshopId, eventTypeId, ok: true as const }
+    return {
+      workshopId,
+      eventTypeId,
+      bookingUid: rootBooking.uid,
+      ok: true as const,
+    }
   },
 )
