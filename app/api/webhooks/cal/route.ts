@@ -73,6 +73,13 @@ function walkinBookingUid(workshopId: string, email: string): string {
   return `walkin:${workshopId}:${emailHashOf(email)}`
 }
 
+// Defensive guard before interpolating a cal.com uid into a SQL LIKE pattern.
+// Cal.com documents uids as alphanumeric today; this regex is the authoritative
+// format assertion. If the uid fails, cascade paths fall through to exact-match
+// only — a malformed uid won't cascade but also can't corrupt data via
+// injected `%` / `_` / `\` wildcards.
+const UID_SAFE = /^[A-Za-z0-9_-]+$/
+
 async function findWorkshopByCalEventTypeId(
   eventTypeId: number | string | undefined,
 ): Promise<string | null> {
@@ -133,11 +140,9 @@ export async function POST(req: Request): Promise<Response> {
       case 'BOOKING_CANCELLED': {
         if (!bookingData.uid) return new Response('OK', { status: 200 })
 
-        // SAFETY: cal.com uids are documented as alphanumeric, but we
-        // defend against LIKE-wildcard injection if the format ever
-        // widens. Reject anything that is not [A-Za-z0-9_-]. If the uid
-        // fails the guard, fall through to exact match only.
-        const UID_SAFE = /^[A-Za-z0-9_-]+$/
+        // SAFETY: fall through to exact match when the uid fails UID_SAFE —
+        // prevents SQL LIKE wildcard injection if cal.com's uid format ever
+        // widens. Guard is declared at module scope.
         const uidIsSafeForLike = UID_SAFE.test(bookingData.uid)
 
         // If this uid is a workshop's root booking, cascade-cancel every
@@ -185,8 +190,7 @@ export async function POST(req: Request): Promise<Response> {
         const newStart = new Date(bookingData.startTime)
 
         // SAFETY: same wildcard guard as BOOKING_CANCELLED — only match via
-        // LIKE when origUid is format-safe.
-        const UID_SAFE = /^[A-Za-z0-9_-]+$/
+        // LIKE when origUid is format-safe. Module-scope UID_SAFE.
         const origIsSafe = UID_SAFE.test(origUid)
 
         const workshopIdForRoot = origIsSafe
