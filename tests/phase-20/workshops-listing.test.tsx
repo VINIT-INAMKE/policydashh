@@ -24,10 +24,33 @@ import React from 'react'
 
 // --- Mocks -----------------------------------------------------------------
 
-const mockListPublicWorkshops = vi.fn()
+// server-only is pulled in transitively (clerk auth, db, etc.). Defang it so
+// the test environment can import the page.
+vi.mock('server-only', () => ({}))
+
+const hoisted = vi.hoisted(() => ({
+  listPublicWorkshops: vi.fn(),
+  auth: vi.fn().mockResolvedValue({ userId: null }),
+}))
+const mockListPublicWorkshops = hoisted.listPublicWorkshops
 
 vi.mock('@/src/server/queries/workshops-public', () => ({
-  listPublicWorkshops: (...args: unknown[]) => mockListPublicWorkshops(...args),
+  listPublicWorkshops: hoisted.listPublicWorkshops,
+}))
+
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: hoisted.auth,
+}))
+
+// WorkshopCard imports heavy client-only deps (RegisterForm → react-hook-form,
+// Turnstile widget, etc). Replace with a lightweight stub so we only assert
+// on the page-level headings + empty state.
+vi.mock('@/app/workshops/_components/workshop-card', () => ({
+  WorkshopCard: (props: { workshop: { id: string; title: string } }) => (
+    <div data-testid={`workshop-card-${props.workshop.id}`}>
+      {props.workshop.title}
+    </div>
+  ),
 }))
 
 // Import the page AFTER mocks are declared.

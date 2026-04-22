@@ -16,10 +16,18 @@ import { render } from '@testing-library/react'
  *   T5 - valid token, missing ws → ExpiredLinkCard (no info leak)
  */
 
+// Defang server-only (pulled in by the clerk auth chain + downstream modules).
+vi.mock('server-only', () => ({}))
+
 const mocks = vi.hoisted(() => ({
   verifyFeedbackToken: vi.fn(),
   workshopSelect: vi.fn(),
   sectionSelect: vi.fn(),
+  clerkAuth: vi.fn().mockResolvedValue({ userId: null }),
+}))
+
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: mocks.clerkAuth,
 }))
 
 vi.mock('@/src/lib/feedback-token', () => ({
@@ -107,13 +115,14 @@ describe('/participate mode switch (Plan 20-06)', () => {
     expect(mocks.verifyFeedbackToken).not.toHaveBeenCalled()
   })
 
-  it('T2: workshopId but no token → ExpiredLinkCard', async () => {
+  it('T2: workshopId but no token → ExpiredLinkCard (missing variant, E12)', async () => {
     const element = await ParticipatePage({
       searchParams: Promise.resolve({ workshopId: 'ws-123' }),
     })
     const { getByRole, queryByTestId } = render(element)
     const alert = getByRole('alert')
-    expect(alert.textContent).toContain('This link has expired')
+    // E12: ExpiredLinkCard variant='missing' copy differs from 'expired'.
+    expect(alert.textContent).toContain('This feedback link is incomplete')
     expect(queryByTestId('feedback-form')).toBeNull()
     expect(queryByTestId('intake-form')).toBeNull()
     expect(mocks.verifyFeedbackToken).not.toHaveBeenCalled()

@@ -1,21 +1,24 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 
 /**
- * Plan 20-06 Task 2 - POST /api/intake/workshop-feedback contract.
+ * Plan 20-06 Task 2 - POST /api/intake/workshop-feedback contract (updated
+ * for post-E8/S15/B13/B14 route).
  *
- * Route handler shape (D-18, WS-15):
+ * Route behaviour (current production):
  *   - validates body via zod, rejects 400 on bad payload
  *   - re-verifies JWT server-side (verifyFeedbackToken), rejects 401 on null
  *   - does NOT invoke Turnstile (JWT is the proof of legitimacy)
- *   - inserts feedbackItems (source='workshop') + workshopFeedbackLinks
- *     atomically in a single db.transaction
- *   - resolves submitterId by JWT email → users lookup; falls back to
- *     workshops.createdBy when no users row exists
- *
- * Mock strategy mirrors tests/phase-20/cal-webhook-route.test.ts:
- * drizzle chain via thenable Proxy, each db.select() call consumes the next
- * queued fixture from `dbSelectResults`.
+ *   - burns a single-use nonce via workshopFeedbackTokenNonces before any
+ *     downstream work (S15/B13); on conflict responds 401
+ *   - resolves submitterId by JWT email → users lookup; returns 409 with a
+ *     clear error if no users row exists (E8: no fallback to workshop.createdBy)
+ *   - generates a sequential FB-### readable id via `feedback_id_seq` (B14)
+ *   - inserts feedbackItems + workshopFeedbackLinks atomically in a single
+ *     db.transaction
  */
+
+// rate-limit.ts imports 'server-only' which throws in tests.
+vi.mock('server-only', () => ({}))
 
 function makeChainMock(resolveValue: unknown) {
   const chain: Record<string, unknown> = {}
@@ -37,22 +40,26 @@ function makeChainMock(resolveValue: unknown) {
 
 const mocks = vi.hoisted(() => ({
   verifyFeedbackToken: vi.fn(),
+  hashFeedbackToken: vi.fn((t: string) => `hashed:${t}`),
   selectQueue: [] as unknown[][],
   insertCalls: [] as Array<{ table: string; values: unknown }>,
+  // Default: nonce insert returns 1 row (success). Tests can override to []
+  // to simulate "token already used".
+  nonceInsertReturn: [{ tokenHash: 'hashed:good.jwt.sig' }] as Array<{
+    tokenHash: string
+  }>,
   transactionInvocations: 0,
   feedbackInsertReturn: [{ id: 'feedback-new-id' }] as Array<{ id: string }>,
+  dbExecuteResult: { rows: [{ seq: 1 }] } as { rows: Array<Record<string, unknown>> },
 }))
 
 vi.mock('@/src/lib/feedback-token', () => ({
   verifyFeedbackToken: mocks.verifyFeedbackToken,
+  hashFeedbackToken: mocks.hashFeedbackToken,
 }))
 
-// Tag the inserted table so test assertions can distinguish feedback vs
-// workshopFeedbackLinks inserts without depending on drizzle internals.
 function tableName(arg: unknown): string {
   if (!arg || typeof arg !== 'object') return 'unknown'
-  // drizzle exposes the symbol-keyed entity config; we stamp our own _tag via
-  // the mock factory below to keep things simple.
   const tagged = arg as { __mockTable?: string }
   return tagged.__mockTable ?? 'unknown'
 }
@@ -60,6 +67,10 @@ function tableName(arg: unknown): string {
 vi.mock('@/src/db/schema/feedback', () => ({
   feedbackItems: { __mockTable: 'feedback' },
   feedbackSourceEnum: { enumValues: ['intake', 'workshop'] },
+  workshopFeedbackTokenNonces: {
+    __mockTable: 'workshop_feedback_token_nonces',
+    tokenHash: 'nonce.tokenHash',
+  },
 }))
 
 vi.mock('@/src/db/schema/workshops', () => ({
@@ -98,6 +109,9 @@ vi.mock('@/src/db/schema/users', () => ({
 
 vi.mock('drizzle-orm', () => ({
   eq: (_a: unknown, _b: unknown) => ({ __mockOp: 'eq' }),
+  sql: (strings: TemplateStringsArray, ..._values: unknown[]) => ({
+    __mockSql: strings.join(''),
+  }),
 }))
 
 vi.mock('@/src/db', () => ({
@@ -106,6 +120,23 @@ vi.mock('@/src/db', () => ({
       const next = mocks.selectQueue.shift() ?? []
       return makeChainMock(next)
     },
+    insert: (table: unknown) => ({
+      values: (values: unknown) => {
+        mocks.insertCalls.push({ table: tableName(table), values })
+        const chain = {
+          onConflictDoNothing: (_target?: unknown) => ({
+            returning: (_cols?: unknown) =>
+              Promise.resolve(mocks.nonceInsertReturn),
+          }),
+          returning: (_cols?: unknown) =>
+            Promise.resolve(mocks.feedbackInsertReturn),
+          then: (onFulfilled: (v: unknown) => unknown) =>
+            Promise.resolve(undefined).then(onFulfilled),
+        }
+        return chain
+      },
+    }),
+    execute: (_sql: unknown) => Promise.resolve(mocks.dbExecuteResult),
     transaction: async (fn: (tx: unknown) => Promise<unknown>) => {
       mocks.transactionInvocations += 1
       const tx = {
@@ -142,10 +173,13 @@ beforeAll(async () => {
 
 beforeEach(() => {
   mocks.verifyFeedbackToken.mockReset()
+  mocks.hashFeedbackToken.mockImplementation((t: string) => `hashed:${t}`)
   mocks.selectQueue = []
   mocks.insertCalls = []
   mocks.transactionInvocations = 0
   mocks.feedbackInsertReturn = [{ id: 'feedback-new-id' }]
+  mocks.nonceInsertReturn = [{ tokenHash: 'hashed:good.jwt.sig' }]
+  mocks.dbExecuteResult = { rows: [{ seq: 1 }] }
 })
 
 const validBody = {
@@ -219,10 +253,10 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
       exp: Math.floor(Date.now() / 1000) + 1000,
       iat: Math.floor(Date.now() / 1000),
     })
-    // select() calls in route order: workshop, policy section (sectionId
+    // Post-nonce-burn select sequence: workshops, policy_sections (sectionId
     // provided → skip workshopSectionLinks fallback), users lookup.
     mocks.selectQueue = [
-      [{ id: validBody.workshopId, createdBy: 'moderator-uuid' }], // workshops
+      [{ id: validBody.workshopId }], // workshops (route no longer selects createdBy — E8)
       [{ id: validBody.sectionId, documentId: 'doc-1' }], // policy_sections
       [{ id: 'alice-user-id' }], // users
     ]
@@ -235,10 +269,11 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
 
     expect(mocks.transactionInvocations).toBe(1)
     const tables = mocks.insertCalls.map((c) => c.table)
+    // Nonce burn happens BEFORE the transaction (S15/B13 race fix).
+    expect(tables).toContain('workshop_feedback_token_nonces')
     expect(tables).toContain('feedback')
     expect(tables).toContain('workshop_feedback_links')
 
-    // submitterId should be the users.id (alice-user-id), NOT the moderator
     const feedbackInsert = mocks.insertCalls.find((c) => c.table === 'feedback')!
     const values = feedbackInsert.values as Record<string, unknown>
     expect(values.submitterId).toBe('alice-user-id')
@@ -247,7 +282,7 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
     expect(values.body).toBe(validBody.comment)
   })
 
-  it('T7: unknown email → submitterId falls back to workshops.createdBy', async () => {
+  it('T7: unknown email → 409 (E8: no fallback to workshops.createdBy)', async () => {
     expect(POST).not.toBeNull()
     mocks.verifyFeedbackToken.mockReturnValue({
       workshopId: validBody.workshopId,
@@ -256,17 +291,16 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
       iat: Math.floor(Date.now() / 1000),
     })
     mocks.selectQueue = [
-      [{ id: validBody.workshopId, createdBy: 'moderator-uuid' }],
-      [{ id: validBody.sectionId, documentId: 'doc-1' }],
-      [], // users lookup returns empty - triggers fallback
+      [{ id: validBody.workshopId }], // workshops
+      [{ id: validBody.sectionId, documentId: 'doc-1' }], // policy_sections
+      [], // users lookup returns empty - should now 409
     ]
 
     const res = await POST!(makeRequest(validBody))
-    expect(res.status).toBe(200)
-
-    const feedbackInsert = mocks.insertCalls.find((c) => c.table === 'feedback')!
-    const values = feedbackInsert.values as Record<string, unknown>
-    expect(values.submitterId).toBe('moderator-uuid')
+    expect(res.status).toBe(409)
+    // No feedback row should be inserted when the submitter can't be resolved.
+    const feedbackInsert = mocks.insertCalls.find((c) => c.table === 'feedback')
+    expect(feedbackInsert).toBeUndefined()
   })
 
   it('T8: missing sectionId → falls back to first linked section', async () => {
@@ -280,7 +314,7 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
     const { sectionId: _s, ...bodyWithoutSection } = validBody
     void _s
     mocks.selectQueue = [
-      [{ id: validBody.workshopId, createdBy: 'moderator-uuid' }], // workshops
+      [{ id: validBody.workshopId }], // workshops
       [{ sectionId: 'linked-section-uuid' }], // workshop_section_links (fallback)
       [{ id: 'linked-section-uuid', documentId: 'doc-1' }], // policy_sections
       [{ id: 'alice-user-id' }], // users
@@ -292,8 +326,6 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
   })
 
   it('T9: no Turnstile reference in route handler source', async () => {
-    // Static source check - JWT is the legitimacy proof, Turnstile MUST NOT
-    // appear anywhere in the workshop-feedback route.
     const { readFileSync } = await import('node:fs')
     const { join } = await import('node:path')
     const source = readFileSync(
@@ -301,5 +333,24 @@ describe('POST /api/intake/workshop-feedback (Plan 20-06)', () => {
       'utf8',
     )
     expect(source.toLowerCase()).not.toContain('turnstile')
+  })
+
+  it('T10: nonce conflict (token already used) → 401', async () => {
+    // S15/B13: concurrent double-submit is caught by the unique constraint on
+    // workshopFeedbackTokenNonces.tokenHash. When the INSERT ... ON CONFLICT
+    // DO NOTHING RETURNING returns an empty array, the route short-circuits.
+    expect(POST).not.toBeNull()
+    mocks.verifyFeedbackToken.mockReturnValue({
+      workshopId: validBody.workshopId,
+      email: 'alice@example.com',
+      exp: Math.floor(Date.now() / 1000) + 1000,
+      iat: Math.floor(Date.now() / 1000),
+    })
+    mocks.nonceInsertReturn = [] // simulate conflict
+    const res = await POST!(makeRequest(validBody))
+    expect(res.status).toBe(401)
+    // Downstream work must not have fired.
+    const feedbackInsert = mocks.insertCalls.find((c) => c.table === 'feedback')
+    expect(feedbackInsert).toBeUndefined()
   })
 })
