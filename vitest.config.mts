@@ -16,6 +16,11 @@ export default defineConfig({
       'app/**/*.test.ts',
       'app/**/*.test.tsx',
     ],
+    // Populate process.env with placeholders for every env var checked by
+    // src/lib/env.ts + any module-load `requireEnv()` call. Keeps tests
+    // that don't mock `@/src/db` from throwing during dynamic imports.
+    // See tests/setup.ts.
+    setupFiles: ['./tests/setup.ts'],
     passWithNoTests: true,
   },
 })
