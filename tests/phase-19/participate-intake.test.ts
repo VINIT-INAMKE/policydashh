@@ -1,20 +1,21 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 
 /**
- * Wave 0 RED contract for Plan 19-03:
+ * Wave 0 RED contract for Plan 19-03 (updated post-a425676):
  * `participateIntakeFn` Inngest function must
  *   - be declared with id 'participate-intake'
  *   - declare rateLimit { key: 'event.data.emailHash', limit: 1, period: '15m' }
  *   - call clerkClient().invitations.createInvitation with ignoreExisting:true
- *     and publicMetadata:{ role:'stakeholder', orgType }
- *   - then call sendWelcomeEmail(email, { email, orgType, name })
+ *     and publicMetadata:{ role:'stakeholder', orgType, ... }
  *   - retry on Clerk 5xx (plain Error)
  *   - NonRetriableError on Clerk 4xx
- *   - still send welcome email on ignoreExisting success (INTAKE-06)
+ *   - write an audit log entry after successful Clerk invitation
  *
- * Strategy: vi.hoisted mocks shared across the factory hoist boundary +
- * variable-path dynamic import so Vite's static analyzer does not crash on
- * the missing `src/inngest/functions/participate-intake.ts`.
+ * Historical note: an earlier draft of this contract required a follow-up
+ * `sendWelcomeEmail` call. That behaviour was intentionally removed in
+ * commit a425676 ("drop duplicate welcome/confirmation emails") because
+ * users were getting two back-to-back emails (Clerk invite + Resend
+ * welcome). Clerk's invitation template now carries the welcome copy.
  */
 
 const mocks = vi.hoisted(() => {
@@ -25,7 +26,7 @@ const mocks = vi.hoisted(() => {
   return {
     createInvitationMock,
     clerkClientMock,
-    sendWelcomeEmailMock: vi.fn().mockResolvedValue(undefined),
+    writeAuditLogMock: vi.fn().mockResolvedValue(undefined),
     isClerkAPIResponseErrorMock: vi.fn(),
   }
 })
@@ -38,8 +39,8 @@ vi.mock('@clerk/shared/error', () => ({
   isClerkAPIResponseError: mocks.isClerkAPIResponseErrorMock,
 }))
 
-vi.mock('@/src/lib/email', () => ({
-  sendWelcomeEmail: mocks.sendWelcomeEmailMock,
+vi.mock('@/src/lib/audit', () => ({
+  writeAuditLog: mocks.writeAuditLogMock,
 }))
 
 let mod: Record<string, unknown> | null = null
@@ -57,7 +58,7 @@ beforeAll(async () => {
 beforeEach(() => {
   mocks.createInvitationMock.mockClear()
   mocks.createInvitationMock.mockResolvedValue({ id: 'inv_test' })
-  mocks.sendWelcomeEmailMock.mockClear()
+  mocks.writeAuditLogMock.mockClear()
   mocks.isClerkAPIResponseErrorMock.mockReset()
 })
 
@@ -119,17 +120,20 @@ describe('participateIntakeFn', () => {
     })
   })
 
-  it('Test 2.4: after Clerk step, sendWelcomeEmail called with {email, orgType, name}', async () => {
+  it('Test 2.4: after successful Clerk invite, writes an audit log entry', async () => {
     expect(mod).not.toBeNull()
     const fn = mod!.participateIntakeFn as { fn: (ctx: unknown) => Promise<unknown> }
     await fn.fn({ event: fakeEvent, step: fakeStep })
-    expect(mocks.sendWelcomeEmailMock).toHaveBeenCalledTimes(1)
-    const [to, data] = mocks.sendWelcomeEmailMock.mock.calls[0]
-    expect(to).toBe('alice@test.org')
-    expect(data).toMatchObject({
+    expect(mocks.writeAuditLogMock).toHaveBeenCalledTimes(1)
+    const audit = mocks.writeAuditLogMock.mock.calls[0][0]
+    expect(audit).toMatchObject({
+      entityType: 'participate_intake',
+      entityId: 'a'.repeat(64),
+    })
+    expect(audit.payload).toMatchObject({
+      email: 'alice@test.org',
       name: 'Alice Example',
       orgType: 'academia',
-      email: 'alice@test.org',
     })
   })
 
@@ -152,11 +156,11 @@ describe('participateIntakeFn', () => {
     )
   })
 
-  it('Test 2.7: still sends welcome email on ignoreExisting success (INTAKE-06)', async () => {
+  it('Test 2.7: still writes audit log on ignoreExisting success (INTAKE-06)', async () => {
     expect(mod).not.toBeNull()
     mocks.createInvitationMock.mockResolvedValueOnce({ id: 'inv_existing' })
     const fn = mod!.participateIntakeFn as { fn: (ctx: unknown) => Promise<unknown> }
     await fn.fn({ event: fakeEvent, step: fakeStep })
-    expect(mocks.sendWelcomeEmailMock).toHaveBeenCalledTimes(1)
+    expect(mocks.writeAuditLogMock).toHaveBeenCalledTimes(1)
   })
 })

@@ -12,6 +12,9 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
  * bypass Vite's static import-analysis walker (module does not exist yet).
  */
 
+// src/lib/rate-limit.ts imports 'server-only' which throws in tests.
+vi.mock('server-only', () => ({}))
+
 const mocks = vi.hoisted(() => ({
   sendParticipateIntake: vi.fn().mockResolvedValue(undefined),
   verifyTurnstile: vi.fn(),
