@@ -92,7 +92,7 @@ beforeEach(() => {
 })
 
 describe('EvidencePackDialog - async flow (EV-07)', () => {
-  it('fires trpc.evidence.requestExport.mutate with { documentId } on Export click', async () => {
+  it('fires trpc.evidence.requestExport.mutate with { documentId, sections } on Export click', async () => {
     expect(EvidencePackDialog).toBeDefined()
     render(React.createElement(EvidencePackDialog))
     // Open the dialog via the trigger button.
@@ -104,7 +104,15 @@ describe('EvidencePackDialog - async flow (EV-07)', () => {
     })
     fireEvent.click(exportBtn)
     await waitFor(() => {
-      expect(mutateMock).toHaveBeenCalledWith({ documentId: 'doc-1' })
+      // H1: mutation now includes a sections filter map. Use objectContaining
+      // so we only assert the wire-contract invariants (documentId + a
+      // sections object) and tolerate future checkbox additions.
+      expect(mutateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentId: 'doc-1',
+          sections: expect.any(Object),
+        }),
+      )
     })
   })
 

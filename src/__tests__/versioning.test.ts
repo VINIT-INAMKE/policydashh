@@ -49,11 +49,41 @@ describe('computeSectionDiff', () => {
 
   describe('modified sections', () => {
     it('returns status "modified" with diff array when section content differs', () => {
+      // A5: computeSectionDiff now extracts plain text from the Tiptap JSON
+      // tree (walks content[].text nodes) before running diffWords. Flat
+      // `{ type: 'doc', text: '...' }` shapes (no content[] array) produce
+      // empty text extractions, so use the proper Tiptap paragraph shape.
       const snapshotA: SectionSnapshot[] = [
-        { sectionId: 's1', title: 'Introduction', orderIndex: 0, content: { type: 'doc', text: 'Hello world' } },
+        {
+          sectionId: 's1',
+          title: 'Introduction',
+          orderIndex: 0,
+          content: {
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'Hello world' }],
+              },
+            ],
+          },
+        },
       ]
       const snapshotB: SectionSnapshot[] = [
-        { sectionId: 's1', title: 'Introduction', orderIndex: 0, content: { type: 'doc', text: 'Hello universe' } },
+        {
+          sectionId: 's1',
+          title: 'Introduction',
+          orderIndex: 0,
+          content: {
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'Hello universe' }],
+              },
+            ],
+          },
+        },
       ]
 
       const result = computeSectionDiff(snapshotA, snapshotB)

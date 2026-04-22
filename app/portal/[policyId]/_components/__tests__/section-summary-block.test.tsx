@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest'
 
 async function loadBlock() {
-  const segs = ['@', 'app', '(public)', 'portal', '[policyId]', '_components', 'section-summary-block']
+  // Component lives at app/portal/[policyId]/_components (no (public) route
+  // group in this repo). The path was drafted against a proposed layout that
+  // never landed; align with the actual module location.
+  const segs = ['@', 'app', 'portal', '[policyId]', '_components', 'section-summary-block']
   const path = segs.join('/')
   return await import(/* @vite-ignore */ path)
 }
