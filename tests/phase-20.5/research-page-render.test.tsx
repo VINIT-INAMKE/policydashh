@@ -17,7 +17,9 @@ import React from 'react'
 
 let ResearchPage: any
 beforeAll(async () => {
-  const segs = ['@', 'app', '(public)', 'research', 'page']
+  // Page lives at app/research/page.tsx - the (public) route group was
+  // proposed in the Wave 0 plan but never shipped.
+  const segs = ['@', 'app', 'research', 'page']
   const mod = await import(/* @vite-ignore */ segs.join('/'))
   ResearchPage = mod.default
 })
@@ -36,12 +38,15 @@ describe('/research page - PUB-06', () => {
     expect(html).toContain('id="join-consultation"')
   })
 
-  it('renders PDF download anchor with download attribute', async () => {
+  it('renders the "Coming soon" notice for the full research report', async () => {
+    // The inline PDF download anchor that shipped in an early draft was
+    // removed when the full report was put under review. The page now shows
+    // a "Coming soon" notice under the Research Outputs section. Lock that
+    // copy so the test goes RED if the notice gets dropped without the
+    // download link being reinstated.
     const html = renderToStaticMarkup(React.createElement(ResearchPage))
-    expect(html).toContain('href="/research/consultation-research-report.pdf"')
-    expect(html).toMatch(
-      /href="\/research\/consultation-research-report\.pdf"[^>]*download/,
-    )
+    expect(html).toContain('Coming soon')
+    expect(html).toContain('research report is being finalised')
   })
 
   it('renders Join Consultation CTA linking to /participate', async () => {

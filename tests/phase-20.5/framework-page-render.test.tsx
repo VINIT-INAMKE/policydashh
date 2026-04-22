@@ -27,7 +27,9 @@ vi.mock('@/src/db', () => ({ db: dbMock }))
 
 let FrameworkPage: any
 beforeAll(async () => {
-  const segs = ['@', 'app', '(public)', 'framework', 'page']
+  // Page lives at app/framework/page.tsx - the (public) route group was
+  // proposed in the Wave 0 plan but never shipped.
+  const segs = ['@', 'app', 'framework', 'page']
   const mod = await import(/* @vite-ignore */ segs.join('/'))
   FrameworkPage = mod.default
 })
