@@ -25,19 +25,31 @@ const mocks = vi.hoisted(() => {
   })
   const insertMock = vi.fn().mockReturnValue({ values: valuesMock })
 
-  // db.select(...).from(...).where(...).limit(1) chain for the user lookup
-  const userLookupLimitMock = vi.fn()
-  const userLookupWhereMock = vi.fn().mockReturnValue({ limit: userLookupLimitMock })
-  const userLookupFromMock = vi.fn().mockReturnValue({ where: userLookupWhereMock })
-  const selectMock = vi.fn().mockReturnValue({ from: userLookupFromMock })
+  // db.select(...).from(...).where(...).limit(1) chain. Used for both the
+  // user-email lookup AND the P30 idempotency check on notifications.
+  // `selectLimitMock` is a vi.fn() whose per-test resolved value is queued
+  // with mockResolvedValueOnce in the order the route performs selects:
+  //   1. users.email  2. notifications.emailSentAt (P30 idempotency)
+  const selectLimitMock = vi.fn().mockResolvedValue([])
+  const selectWhereMock = vi.fn().mockReturnValue({ limit: selectLimitMock })
+  const selectFromMock = vi.fn().mockReturnValue({ where: selectWhereMock })
+  const selectMock = vi.fn().mockReturnValue({ from: selectFromMock })
+
+  // db.update(...).set(...).where(...) chain (P30 emailSentAt write-back)
+  const updateWhereMock = vi.fn().mockResolvedValue(undefined)
+  const updateSetMock = vi.fn().mockReturnValue({ where: updateWhereMock })
+  const updateMock = vi.fn().mockReturnValue({ set: updateSetMock })
 
   return {
     insertMock,
     valuesMock,
     onConflictDoNothingMock,
     selectMock,
-    userLookupLimitMock,
-    sendFeedbackReviewedEmailMock: vi.fn().mockResolvedValue(undefined),
+    selectLimitMock,
+    updateMock,
+    updateWhereMock,
+    sendVersionPublishedEmailMock: vi.fn().mockResolvedValue(undefined),
+    sendSectionAssignedEmailMock: vi.fn().mockResolvedValue(undefined),
   }
 })
 
@@ -45,11 +57,13 @@ vi.mock('@/src/db', () => ({
   db: {
     insert: mocks.insertMock,
     select: mocks.selectMock,
+    update: mocks.updateMock,
   },
 }))
 
 vi.mock('@/src/lib/email', () => ({
-  sendFeedbackReviewedEmail: mocks.sendFeedbackReviewedEmailMock,
+  sendVersionPublishedEmail: mocks.sendVersionPublishedEmailMock,
+  sendSectionAssignedEmail: mocks.sendSectionAssignedEmailMock,
 }))
 
 /**
@@ -163,8 +177,11 @@ describe('notificationDispatchFn', () => {
     mocks.valuesMock.mockClear()
     mocks.onConflictDoNothingMock.mockClear()
     mocks.selectMock.mockClear()
-    mocks.userLookupLimitMock.mockReset()
-    mocks.sendFeedbackReviewedEmailMock.mockClear()
+    mocks.selectLimitMock.mockReset()
+    mocks.updateMock.mockClear()
+    mocks.updateWhereMock.mockClear()
+    mocks.sendVersionPublishedEmailMock.mockClear()
+    mocks.sendSectionAssignedEmailMock.mockClear()
   })
 
   // Inngest v4 does not expose options on the function instance in a stable
@@ -174,9 +191,11 @@ describe('notificationDispatchFn', () => {
   it.todo('has options.id === "notification-dispatch" and options.retries === 3')
 
   it('calls step.run("insert-notification", ...) exactly once and uses onConflictDoNothing', async () => {
-    // User has an email → send-email step will also run, but we only assert
-    // on the insert-notification step in this test.
-    mocks.userLookupLimitMock.mockResolvedValueOnce([{ email: 'user@example.org' }])
+    // Select call 1: user-email lookup returns a user with email.
+    // Select call 2: P30 idempotency check — no existing row yet.
+    mocks.selectLimitMock
+      .mockResolvedValueOnce([{ email: 'user@example.org' }])
+      .mockResolvedValueOnce([])
 
     const { step, callLog } = makeStep()
     const handler = getHandler(notificationDispatchFn)
@@ -188,35 +207,53 @@ describe('notificationDispatchFn', () => {
     expect(mocks.onConflictDoNothingMock).toHaveBeenCalledTimes(1)
   })
 
-  it('calls step.run("send-email", ...) exactly once when the user has an email', async () => {
-    mocks.userLookupLimitMock.mockResolvedValueOnce([{ email: 'user@example.org' }])
+  it('calls step.run("send-email", ...) exactly once for an email-capable type (version_published)', async () => {
+    // R3: `feedback_status_changed` is now in SKIP_EMAIL_TYPES — Flow 5 owns
+    // those emails via feedbackReviewedFn. We use version_published here
+    // because it's one of the two types the dispatcher still emails.
+    mocks.selectLimitMock
+      .mockResolvedValueOnce([{ email: 'user@example.org' }])
+      .mockResolvedValueOnce([]) // no existing notification row → proceed
 
     const { step, callLog } = makeStep()
     const handler = getHandler(notificationDispatchFn)
     await handler({
-      event: makeEvent({ type: 'feedback_status_changed' }),
+      event: makeEvent({
+        type: 'version_published',
+        title: 'Policy X|v1.0',
+        body: 'Preview',
+      }),
       step,
     })
 
     const emailSteps = callLog.filter((c) => c.id === 'send-email')
     expect(emailSteps).toHaveLength(1)
-    expect(mocks.sendFeedbackReviewedEmailMock).toHaveBeenCalledTimes(1)
+    expect(mocks.sendVersionPublishedEmailMock).toHaveBeenCalledTimes(1)
   })
 
   it('does NOT call the send-email step when the looked-up user has email: null (phone-only user)', async () => {
-    mocks.userLookupLimitMock.mockResolvedValueOnce([{ email: null }])
+    // For null-email users, the second select (P30 idempotency) is never
+    // reached because the `if (recipientEmail && ...)` guard short-circuits.
+    mocks.selectLimitMock.mockResolvedValueOnce([{ email: null }])
 
     const { step, callLog } = makeStep()
     const handler = getHandler(notificationDispatchFn)
-    await handler({ event: makeEvent(), step })
+    // Use an email-capable type so the only reason send-email is skipped is
+    // the null email, not SKIP_EMAIL_TYPES.
+    await handler({
+      event: makeEvent({ type: 'version_published', title: 'Policy X|v1.0' }),
+      step,
+    })
 
     const emailSteps = callLog.filter((c) => c.id === 'send-email')
     expect(emailSteps).toHaveLength(0)
-    expect(mocks.sendFeedbackReviewedEmailMock).not.toHaveBeenCalled()
+    expect(mocks.sendVersionPublishedEmailMock).not.toHaveBeenCalled()
   })
 
   it('on duplicate dispatch (same idempotency key), the insert step resolves without error via onConflictDoNothing (NOTIF-06)', async () => {
-    mocks.userLookupLimitMock.mockResolvedValueOnce([{ email: 'user@example.org' }])
+    mocks.selectLimitMock
+      .mockResolvedValueOnce([{ email: 'user@example.org' }])
+      .mockResolvedValueOnce([])
     // Simulate the onConflictDoNothing path: no error thrown, resolves void.
     mocks.onConflictDoNothingMock.mockResolvedValueOnce(undefined)
 

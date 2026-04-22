@@ -189,28 +189,59 @@ beforeEach(() => {
     'stakeholders.csv': new TextEncoder().encode('name,role\n'),
   })
 
-  // Default: dbSelect chain returns one file artifact + one link artifact.
-  mocks.dbSelect.mockImplementation(() => ({
-    from: () => ({
-      innerJoin: () => ({
-        where: () =>
-          Promise.resolve([
-            {
-              id: 'art-1',
-              type: 'file',
-              title: 'Recording',
-              url: 'https://r2.example.com/evidence/rec.mp3',
-            },
-            {
-              id: 'art-2',
-              type: 'link',
-              title: 'External',
-              url: 'https://example.com/ext',
-            },
-          ]),
-      }),
-    }),
-  }))
+  // Default: per-call routing. First two selects are list-binary-artifacts
+  // (feedback + section variants, each .from().innerJoin().where()). The
+  // third is the audit-log's users lookup (.from().where().limit()).
+  let dbSelectCallIndex = 0
+  mocks.dbSelect.mockImplementation(() => {
+    const idx = dbSelectCallIndex++
+    // A thenable proxy: every property access returns a callable that returns
+    // the same proxy, and `.then` triggers the configured resolver. This
+    // absorbs any drizzle chain shape the implementation chooses.
+    const makeThenable = (resolver: () => Promise<unknown>) => {
+      const chain: Record<string, unknown> = {}
+      const handler: ProxyHandler<Record<string, unknown>> = {
+        get(_target, prop: string) {
+          if (prop === 'then') {
+            return (onFulfilled: (v: unknown) => unknown) =>
+              resolver().then(onFulfilled)
+          }
+          if (prop === 'catch') {
+            return (onRejected: (e: unknown) => unknown) =>
+              resolver().catch(onRejected)
+          }
+          return (..._args: unknown[]) => new Proxy(chain, handler)
+        },
+      }
+      return new Proxy(chain, handler)
+    }
+
+    if (idx === 0) {
+      // feedback-attached artifacts
+      return makeThenable(async () => [
+        {
+          id: 'art-1',
+          type: 'file',
+          title: 'Recording',
+          url: 'https://r2.example.com/evidence/rec.mp3',
+          fileName: 'rec.mp3',
+        },
+        {
+          id: 'art-2',
+          type: 'link',
+          title: 'External',
+          url: 'https://example.com/ext',
+          fileName: null,
+        },
+      ])
+    }
+    if (idx === 1) {
+      // section-attached artifacts (empty — dedupe handles the rest)
+      return makeThenable(async () => [])
+    }
+    // audit-log actor role lookup (and any further calls)
+    return makeThenable(async () => [{ role: 'auditor' }])
+  })
 
   // Default: fetch returns a tiny binary buffer.
   mocks.fetchMock.mockResolvedValue({
@@ -269,12 +300,15 @@ describe('evidencePackExportFn - pipeline contract (EV-05 + EV-06)', () => {
     ])
   })
 
-  it('build-metadata step invokes buildEvidencePack(documentId)', async () => {
+  it('build-metadata step invokes buildEvidencePack(documentId, sections?)', async () => {
     const handler = getHandler(fnModule?.evidencePackExportFn)
     const { step } = makeStep()
     await handler({ event: makeEvent(), step })
+    // H1: buildEvidencePack signature now takes an optional sections filter;
+    // when the event omits it, undefined is forwarded verbatim.
     expect(mocks.buildEvidencePack).toHaveBeenCalledWith(
       '00000000-0000-0000-0000-000000000002',
+      undefined,
     )
   })
 
