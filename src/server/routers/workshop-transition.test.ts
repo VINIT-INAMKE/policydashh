@@ -12,6 +12,24 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
  * test alongside.
  */
 
+// The workshop router transitively imports src/lib/calcom.ts which has
+// `import 'server-only'` at the top. Defang it so the module loads under
+// vitest.
+vi.mock('server-only', () => ({}))
+
+// calcom.ts also constructs things at module load; stub it out entirely so
+// its env-var requirements don't trip the test env.
+vi.mock('@/src/lib/calcom', () => ({
+  createCalEventType: vi.fn(),
+  updateCalEventType: vi.fn(),
+  createCalBooking: vi.fn(),
+  addAttendeeToBooking: vi.fn(),
+  cancelCalBooking: vi.fn(),
+  rescheduleCalBooking: vi.fn(),
+  deleteCalEventType: vi.fn(),
+  getCalBooking: vi.fn(),
+}))
+
 const mocks = vi.hoisted(() => {
   // db.select().from().where().limit() chain
   const limitMock = vi.fn()
@@ -124,12 +142,15 @@ describe('workshop.transition - Wave 0 RED contract (WS-06)', () => {
     expect(result).toBeDefined()
   })
 
-  it('rejects invalid transition upcoming → completed', async () => {
-    mocks.limitMock.mockResolvedValue([{ id: 'w1', status: 'upcoming', createdBy: 'mod1' }])
+  it('rejects invalid transition in_progress → in_progress', async () => {
+    // ALLOWED_TRANSITIONS in workshop.ts now permits upcoming → completed
+    // (cancelled-before-start flow). in_progress → in_progress is still
+    // genuinely invalid because `in_progress` can only advance to `completed`.
+    mocks.limitMock.mockResolvedValue([{ id: 'w1', status: 'in_progress', createdBy: 'mod1' }])
     await expect(
       invoke('transition', {
         workshopId: '00000000-0000-0000-0000-000000000001',
-        toStatus: 'completed',
+        toStatus: 'in_progress',
       }),
     ).rejects.toThrow()
   })

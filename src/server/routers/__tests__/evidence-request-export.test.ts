@@ -24,6 +24,9 @@
 
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 
+// The evidence router transitively imports modules with `import 'server-only'`.
+vi.mock('server-only', () => ({}))
+
 const mocks = vi.hoisted(() => ({
   sendEvidenceExportRequested: vi.fn().mockResolvedValue(undefined),
   writeAuditLog: vi.fn().mockResolvedValue(undefined),
@@ -112,6 +115,13 @@ function makeCtx(role: 'auditor' | 'stakeholder' = 'auditor') {
       email: 'auditor@example.com',
       name: 'Test Auditor',
     },
+    // requestMeta is populated by the Phase 9 tRPC middleware; the
+    // requestExport mutation writes ctx.requestMeta.ipAddress into the audit
+    // log (for /audit's ipAddress column).
+    requestMeta: {
+      ipAddress: '127.0.0.1',
+      userAgent: 'vitest',
+    },
   }
 }
 
@@ -139,11 +149,16 @@ describe('evidence.requestExport mutation', () => {
       documentId: '00000000-0000-0000-0000-000000000002',
     })
     expect(mocks.sendEvidenceExportRequested).toHaveBeenCalledTimes(1)
-    expect(mocks.sendEvidenceExportRequested).toHaveBeenCalledWith({
-      documentId: '00000000-0000-0000-0000-000000000002',
-      requestedBy: '00000000-0000-0000-0000-000000000001',
-      userEmail: 'auditor@example.com',
-    })
+    // The mutation also forwards `sections` (optional; undefined when not
+    // supplied). Use objectContaining so the added field doesn't break the
+    // shape assertion.
+    expect(mocks.sendEvidenceExportRequested).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: '00000000-0000-0000-0000-000000000002',
+        requestedBy: '00000000-0000-0000-0000-000000000001',
+        userEmail: 'auditor@example.com',
+      }),
+    )
   })
 
   it('fires writeAuditLog with action evidence_pack.export, stage="requested", async=true', async () => {
