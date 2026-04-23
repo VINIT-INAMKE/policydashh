@@ -280,19 +280,31 @@ export const workshopRouter = router({
         .where(eq(workshops.id, input.workshopId))
         .returning()
 
-      // F10: propagate title / duration changes to cal.com. scheduledAt is
-      // per-booking (not per-event-type) so cal.com has no direct endpoint
-      // for rescheduling an event type's default time - attendees rebook
-      // through the embed. We document this limitation and skip schedule
-      // propagation here. Seat count is set once at creation time via
-      // workshopCreatedFn and does not need an update-path propagation.
+      // F10: propagate title / duration / seat-count changes to cal.com.
+      // scheduledAt is per-booking (not per-event-type) so cal.com has no
+      // direct endpoint for rescheduling an event type's default time;
+      // reschedules flow in via webhooks instead. Seat-count propagation
+      // (restored 2026-04-23): if the admin raises maxSeats after
+      // creation, the cal.com event type's seatsPerTimeSlot must follow
+      // or addAttendeeToBooking will 4xx for seat N+1.
       const calId = existing.calcomEventTypeId
       const calNumericId =
         calId && /^\d+$/.test(calId) ? parseInt(calId, 10) : null
-      const calPatch: { title?: string; lengthInMinutes?: number } = {}
+      const calPatch: {
+        title?: string
+        lengthInMinutes?: number
+        seatsPerTimeSlot?: number
+      } = {}
       if (input.title !== undefined) calPatch.title = input.title
       if (input.durationMinutes !== undefined && input.durationMinutes !== null) {
         calPatch.lengthInMinutes = input.durationMinutes
+      }
+      if (
+        input.maxSeats !== undefined &&
+        input.maxSeats !== null &&
+        input.maxSeats !== existing.maxSeats
+      ) {
+        calPatch.seatsPerTimeSlot = input.maxSeats
       }
       if (calNumericId !== null && Object.keys(calPatch).length > 0) {
         try {

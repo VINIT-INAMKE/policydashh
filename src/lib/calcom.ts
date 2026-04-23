@@ -167,6 +167,13 @@ export async function createCalEventType(
 export interface CalEventTypePatch {
   title?: string
   lengthInMinutes?: number
+  /**
+   * Push a new seats-per-timeslot cap to an already-provisioned event
+   * type. Admins can raise `maxSeats` after creation; without this
+   * propagation, cal.com's event type would still enforce the original
+   * cap and `addAttendeeToBooking` for seat N+1 would 4xx.
+   */
+  seatsPerTimeSlot?: number
 }
 
 export async function updateCalEventType(
@@ -185,6 +192,16 @@ export async function updateCalEventType(
     // disagree on field name; sending both is safe.
     body.lengthInMinutes = patch.lengthInMinutes
     body.length = patch.lengthInMinutes
+  }
+  if (patch.seatsPerTimeSlot !== undefined) {
+    // Seats config is an object on cal.com's side. The other two fields
+    // repeat the defaults from createCalEventType so cal.com doesn't
+    // reset them to server-side defaults on the PATCH merge.
+    body.seats = {
+      seatsPerTimeSlot: patch.seatsPerTimeSlot,
+      showAttendeeInfo: false,
+      showAvailabilityCount: true,
+    }
   }
 
   if (Object.keys(body).length === 0) return
@@ -296,6 +313,18 @@ export async function createCalBooking(
   const uid = body.data?.uid
   if (!uid) {
     throw new CalApiError(500, `cal.com booking response missing uid: ${JSON.stringify(body)}`)
+  }
+
+  // Fail-fast if cal.com ships a uid that would break our composite booking_uid
+  // scheme (`${rootUid}:${attendeeId}`) or confuse the webhook handler's LIKE
+  // cascade. Character class matches the UID_SAFE guard in the webhook route.
+  // Throwing here (conservative 500) is strictly better than persisting a
+  // poisoned root uid that corrupts every downstream cascade query.
+  if (!/^[A-Za-z0-9_-]+$/.test(uid)) {
+    throw new CalApiError(
+      500,
+      `cal.com booking uid contains unsafe characters for our composite booking_uid scheme: ${JSON.stringify(uid)}`,
+    )
   }
 
   // Cal.com's response shape for the meeting URL is inconsistent between
