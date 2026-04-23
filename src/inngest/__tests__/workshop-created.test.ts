@@ -329,4 +329,42 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
     // Backfill must not have run because booking failed.
     expect(mocks.updateMock).not.toHaveBeenCalled()
   })
+
+  it('T7: meetingUrl=null from createCalBooking lands as literal null in the backfill', async () => {
+    // End-to-end coverage for the "cal.com response did not include a Meet
+    // URL" branch: backfill MUST still run and MUST write null (not
+    // undefined, not the string "null") into workshops.meeting_url.
+    mocks.limitMock.mockResolvedValueOnce([
+      {
+        id:                '00000000-0000-0000-0000-000000000001',
+        title:             'Policy Roundtable',
+        durationMinutes:   60,
+        calcomEventTypeId: null, calcomBookingUid: null,
+        scheduledAt:       new Date('2026-05-01T10:00:00.000Z'),
+        timezone:          'Asia/Kolkata', maxSeats: 50,
+      },
+    ])
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_EMAIL', 'vinay@konma.io')
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_NAME', 'Vinay (PolicyDash)')
+    mocks.createCalEventTypeMock.mockResolvedValueOnce({ id: 12345 })
+    mocks.createCalBookingMock.mockResolvedValueOnce({
+      uid: 'root-null-meet',
+      meetingUrl: null,
+    })
+
+    const { step } = makeStep()
+    const result = await invoke(makeEvent(), step)
+
+    expect(result).toMatchObject({ ok: true, bookingUid: 'root-null-meet' })
+
+    const backfillSet = mocks.setMock.mock.calls[0]?.[0] as {
+      calcomBookingUid?: string
+      meetingUrl?: string | null
+    } | undefined
+    expect(backfillSet?.calcomBookingUid).toBe('root-null-meet')
+    // Critical: must be literal null, not undefined (undefined would cause
+    // drizzle to omit the column from the SET clause and leave any prior
+    // value intact on a retry).
+    expect(backfillSet?.meetingUrl).toBeNull()
+  })
 })
