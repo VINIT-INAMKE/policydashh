@@ -56,6 +56,115 @@ describe('createCalEventType', () => {
     expect(serialized).toMatch(/google[-_:]?meet/i)
     expect(serialized).not.toMatch(/cal-video/)
   })
+
+  it('B5-15a: 4xx response surfaces CalApiError with the original status', async () => {
+    const { createCalEventType, CalApiError } = await import('@/src/lib/calcom')
+    mockFetchOnce({ ok: false, status: 409, body: { error: 'slug exists' } })
+
+    const err = await createCalEventType({
+      title: 'Dup',
+      slug: 'workshop-1',
+      durationMinutes: 60,
+    }).catch((e) => e)
+
+    expect(err).toBeInstanceOf(CalApiError)
+    expect(err.status).toBe(409)
+  })
+
+  it('B5-15b: 5xx response surfaces CalApiError with status >= 500 (retriable)', async () => {
+    const { createCalEventType, CalApiError } = await import('@/src/lib/calcom')
+    mockFetchOnce({ ok: false, status: 502, body: { error: 'upstream' } })
+
+    const err = await createCalEventType({
+      title: 'Down',
+      slug: 'workshop-1',
+      durationMinutes: 60,
+    }).catch((e) => e)
+
+    expect(err).toBeInstanceOf(CalApiError)
+    expect(err.status).toBe(502)
+  })
+})
+
+describe('updateCalEventType', () => {
+  it('B5-13: passes seats.seatsPerTimeSlot in the PATCH body when provided', async () => {
+    const { updateCalEventType } = await import('@/src/lib/calcom')
+    mockFetchOnce({ ok: true, body: {} })
+
+    await updateCalEventType(42, { seatsPerTimeSlot: 125 })
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.cal.com/v2/event-types/42')
+    expect(init.method).toBe('PATCH')
+    const body = JSON.parse(init.body as string) as {
+      seats?: { seatsPerTimeSlot?: number; showAttendeeInfo?: boolean }
+    }
+    expect(body.seats?.seatsPerTimeSlot).toBe(125)
+    expect(body.seats?.showAttendeeInfo).toBe(false)
+  })
+
+  it('B5-14: empty patch short-circuits — no fetch issued', async () => {
+    const { updateCalEventType } = await import('@/src/lib/calcom')
+    const fetchSpy = vi.fn()
+    globalThis.fetch = fetchSpy as unknown as typeof fetch
+
+    await updateCalEventType(42, {})
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('createCalBooking error paths', () => {
+  it('B5-11: throws CalApiError(500) when cal.com ships a uid that fails UID_SAFE', async () => {
+    const { createCalBooking, CalApiError } = await import('@/src/lib/calcom')
+    mockFetchOnce({
+      ok: true,
+      body: { data: { uid: 'abc%unsafe' } }, // `%` is not in [A-Za-z0-9_-]
+    })
+
+    const err = await createCalBooking({
+      eventTypeId: 42,
+      name: 'V',
+      email: 'v@konma.io',
+      startTime: '2026-05-01T10:00:00.000Z',
+      timeZone: 'Asia/Kolkata',
+    }).catch((e) => e)
+
+    expect(err).toBeInstanceOf(CalApiError)
+    expect(err.status).toBe(500)
+    expect(err.message).toMatch(/unsafe characters/i)
+  })
+
+  it('B5-12a: 4xx surfaces CalApiError with the original status', async () => {
+    const { createCalBooking, CalApiError } = await import('@/src/lib/calcom')
+    mockFetchOnce({ ok: false, status: 409, body: { error: 'full' } })
+
+    const err = await createCalBooking({
+      eventTypeId: 42,
+      name: 'V',
+      email: 'v@konma.io',
+      startTime: '2026-05-01T10:00:00.000Z',
+    }).catch((e) => e)
+
+    expect(err).toBeInstanceOf(CalApiError)
+    expect(err.status).toBe(409)
+  })
+
+  it('B5-12b: 5xx surfaces CalApiError with status >= 500', async () => {
+    const { createCalBooking, CalApiError } = await import('@/src/lib/calcom')
+    mockFetchOnce({ ok: false, status: 503, body: { error: 'upstream' } })
+
+    const err = await createCalBooking({
+      eventTypeId: 42,
+      name: 'V',
+      email: 'v@konma.io',
+      startTime: '2026-05-01T10:00:00.000Z',
+    }).catch((e) => e)
+
+    expect(err).toBeInstanceOf(CalApiError)
+    expect(err.status).toBe(503)
+  })
 })
 
 describe('createCalBooking', () => {

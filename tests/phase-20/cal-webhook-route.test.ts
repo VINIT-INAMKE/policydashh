@@ -54,6 +54,19 @@ vi.mock('next/cache', () => ({
   revalidateTag: mocks.revalidateTag,
 }))
 
+// Batch-1 exports mirrored so the route-under-test resolves them against
+// this mock instead of touching the real calcom module (which imports
+// 'server-only' and blocks in tests).
+vi.mock('@/src/lib/calcom', () => ({
+  UID_SAFE: /^[A-Za-z0-9_-]+$/,
+  COMPOSITE_BOOKING_UID_DELIMITER: ':',
+  DEFAULT_SEATS_PER_TIME_SLOT: 100,
+  WORKSHOP_CREATED_EVENT: 'workshop.created',
+  buildCompositeBookingUid: (rootUid: string, attendeeId: number) =>
+    `${rootUid}:${attendeeId}`,
+  cascadePattern: (rootUid: string) => `${rootUid}:%`,
+}))
+
 vi.mock('@/src/inngest/events', () => ({
   sendWorkshopRegistrationReceived: mocks.sendWorkshopRegistrationReceived,
   sendWorkshopFeedbackInvite: mocks.sendWorkshopFeedbackInvite,
@@ -63,10 +76,31 @@ vi.mock('@/src/inngest/events', () => ({
 
 // Build a db mock that tracks select results (queue), insert calls, update calls.
 vi.mock('@/src/db', () => {
+  // B7-4: drizzle's internal table-name symbol is exposed (and re-exported
+  // for hackery like this) via `Table.Symbol.Name`. Reaching through the
+  // public symbol object rather than `.toString()`-matching on every
+  // global symbol keeps the mock robust across drizzle version bumps —
+  // the earlier `Symbol(drizzle:Name)` string match broke silently if
+  // drizzle renamed the symbol.
   const tableNameFor = (t: unknown): string => {
     if (t && typeof t === 'object') {
-      // Drizzle stores the table name under Symbol(drizzle:Name)
-      const sym = Object.getOwnPropertySymbols(t).find(s => s.toString() === 'Symbol(drizzle:Name)')
+      try {
+        // Lazy require so the mock factory remains synchronous.
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { Table } = require('drizzle-orm')
+        const nameSym = Table?.Symbol?.Name as symbol | undefined
+        if (nameSym) {
+          const val = (t as unknown as Record<symbol, unknown>)[nameSym]
+          if (typeof val === 'string') return val
+        }
+      } catch {
+        /* drizzle unavailable in this context — fall through */
+      }
+      // Legacy fallback — still matches older drizzle releases that
+      // only exposed the symbol via .toString().
+      const sym = Object.getOwnPropertySymbols(t).find(
+        (s) => s.toString() === 'Symbol(drizzle:Name)',
+      )
       if (sym) {
         const val = (t as unknown as Record<symbol, unknown>)[sym]
         if (typeof val === 'string') return val
@@ -604,6 +638,115 @@ describe('POST /api/webhooks/cal', () => {
         'workshop-spots-ws-1',
         'max',
       )
+    })
+  })
+
+  // --- Punchlist B2-14..B2-18 coverage ----------------------------
+
+  describe('punchlist B2-14..B2-18', () => {
+    it('B2-14: BOOKING_CANCELLED honours payload.seatReferenceUid (not just seatUid)', async () => {
+      // No workshop match on root lookup — fallback to exact match using
+      // seatReferenceUid as the seat identity.
+      mocks.dbSelectResults.push([])
+      mocks.dbSelectResults.push([])
+      const body = JSON.stringify({
+        triggerEvent: 'BOOKING_CANCELLED',
+        payload: {
+          uid:              'root-abc',
+          seatReferenceUid: 'root-abc:seat-42',
+        },
+      })
+      const res = await POST!(makeReq(body, signBody(body)))
+      expect(res.status).toBe(200)
+      const upd = mocks.dbUpdateCalls.find(
+        (c) => c.table === 'workshop_registrations',
+      )
+      expect(upd?.where).toContain('root-abc:seat-42')
+      expect(upd?.where).not.toContain('%')
+    })
+
+    it('B2-15: BOOKING_CANCELLED with unsafe uid falls through to exact-match (not LIKE)', async () => {
+      // `abc%def` contains a `%` wildcard — must NOT interpolate into LIKE.
+      mocks.dbSelectResults.push([])
+      const body = JSON.stringify({
+        triggerEvent: 'BOOKING_CANCELLED',
+        payload: { uid: 'abc%def' },
+      })
+      const res = await POST!(makeReq(body, signBody(body)))
+      expect(res.status).toBe(200)
+      const upd = mocks.dbUpdateCalls.find(
+        (c) => c.table === 'workshop_registrations',
+      )
+      // Must land in the exact-match fallback: WHERE has the raw uid but
+      // not a `%:` wildcard pattern.
+      expect(upd?.where).toContain('abc%def')
+      expect(upd?.where).not.toContain('abc%def:%')
+    })
+
+    it('B2-16: BOOKING_RESCHEDULED seat-level fallback ORs across seatUid/seatReferenceUid/rescheduleUid', async () => {
+      // No root workshop match → falls through to seat-level exact rewrite.
+      mocks.dbSelectResults.push([])
+      const body = JSON.stringify({
+        triggerEvent: 'BOOKING_RESCHEDULED',
+        payload: {
+          uid:              'new-xyz',
+          rescheduleUid:    'orig-abc',
+          seatUid:          'seat-1',
+          seatReferenceUid: 'seat-1-ref',
+          startTime:        '2026-06-01T12:00:00.000Z',
+        },
+      })
+      const res = await POST!(makeReq(body, signBody(body)))
+      expect(res.status).toBe(200)
+      const regUpdates = mocks.dbUpdateCalls.filter(
+        (c) => c.table === 'workshop_registrations',
+      )
+      expect(regUpdates).toHaveLength(1)
+      // All three originals should appear in the WHERE (drizzle inArray),
+      // and the NEW uid must NOT be a candidate.
+      expect(regUpdates[0].where).toContain('orig-abc')
+      expect(regUpdates[0].where).toContain('seat-1')
+      expect(regUpdates[0].where).toContain('seat-1-ref')
+      expect(regUpdates[0].where).not.toContain('new-xyz:')
+    })
+
+    it('B2-17: BOOKING_RESCHEDULED with unsafe newUid short-circuits without an UPDATE', async () => {
+      const body = JSON.stringify({
+        triggerEvent: 'BOOKING_RESCHEDULED',
+        payload: {
+          uid:           'bad%new',
+          rescheduleUid: 'orig-abc',
+          startTime:     '2026-06-01T12:00:00.000Z',
+        },
+      })
+      const res = await POST!(makeReq(body, signBody(body)))
+      expect(res.status).toBe(200)
+      // No workshop_registrations or workshops UPDATE fired.
+      const anyUpdate = mocks.dbUpdateCalls.find(
+        (c) => c.table === 'workshop_registrations' || c.table === 'workshops',
+      )
+      expect(anyUpdate).toBeUndefined()
+    })
+
+    it('B2-18: MEETING_ENDED batch payload items carry attendeeUserId=null', async () => {
+      mocks.dbSelectResults.push([{ id: 'ws-b' }])
+      mocks.dbSelectResults.push([{ id: 'ws-b', status: 'upcoming', createdBy: 'mod-b', scheduledAt: new Date('2026-05-01T10:00:00Z') }])
+      mocks.dbSelectResults.push([{ id: 'r-1', attendedAt: null }])
+      const body = JSON.stringify({
+        triggerEvent: 'MEETING_ENDED',
+        payload: {
+          uid: 'm',
+          eventTypeId: 999,
+          attendees: [{ email: 'one@example.com', name: 'One' }],
+        },
+      })
+      await POST!(makeReq(body, signBody(body)))
+      expect(mocks.sendWorkshopFeedbackInvitesBatch).toHaveBeenCalledTimes(1)
+      const batch = mocks.sendWorkshopFeedbackInvitesBatch.mock.calls[0][0] as Array<{
+        attendeeUserId: unknown
+      }>
+      expect(batch).toHaveLength(1)
+      expect(batch[0].attendeeUserId).toBeNull()
     })
   })
 })

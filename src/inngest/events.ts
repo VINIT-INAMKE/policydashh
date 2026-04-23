@@ -324,6 +324,18 @@ const workshopRegistrationReceivedSchema = z.object({
   // participate.intake; used by workshopRegistrationReceivedFn rateLimit.
   emailHash: z.string().regex(/^[0-9a-f]{64}$/, 'emailHash must be SHA-256 hex (64 lowercase chars)'),
   name: z.string(),
+  /**
+   * B3-9: `bookingUid` is one of three shapes depending on `source`:
+   *   - `direct_register` → composite `${rootBookingUid}:${attendeeId}` —
+   *     the cal.com root booking uid joined to the seat attendee id via
+   *     COMPOSITE_BOOKING_UID_DELIMITER (`:`). Downstream consumers that
+   *     need to trace back to the root booking should split on the first
+   *     `:` or use `buildCompositeBookingUid()` in `src/lib/calcom.ts`.
+   *   - `walk_in` → `walkin:${workshopId}:${sha256(email)}` synthesized by
+   *     the MEETING_ENDED handler for attendees with no prior registration.
+   *   - `cal_booking` → legacy shape (single cal.com uid), only used by
+   *     code paths that predate the 2026-04-21 seated-booking redesign.
+   */
   bookingUid: z.string().min(1),
   source: z.enum(['cal_booking', 'walk_in', 'direct_register']),
 })

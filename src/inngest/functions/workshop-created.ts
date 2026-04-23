@@ -3,7 +3,13 @@ import { eq } from 'drizzle-orm'
 import { inngest } from '../client'
 import { db } from '@/src/db'
 import { workshops } from '@/src/db/schema/workshops'
-import { createCalEventType, createCalBooking, CalApiError } from '@/src/lib/calcom'
+import {
+  createCalEventType,
+  createCalBooking,
+  CalApiError,
+  DEFAULT_SEATS_PER_TIME_SLOT,
+  WORKSHOP_CREATED_EVENT,
+} from '@/src/lib/calcom'
 
 /**
  * workshopCreatedFn - async cal.com event-type provisioning for WS-07.
@@ -11,7 +17,8 @@ import { createCalEventType, createCalBooking, CalApiError } from '@/src/lib/cal
  * Triggered by the `workshop.created` event emitted from the admin create
  * mutation in `src/server/routers/workshop.ts`. Calls cal.com v2 API to
  * provision an event type, creates the root seated booking for the primary
- * attendee (vinay@konma.io), then backfills `workshops.calcomEventTypeId`,
+ * attendee (configured via CAL_PRIMARY_ATTENDEE_EMAIL; production:
+ * vinay@konma.io), then backfills `workshops.calcomEventTypeId`,
  * `calcomBookingUid`, and `meetingUrl` atomically.
  *
  * Why async (D-01):
@@ -19,6 +26,13 @@ import { createCalEventType, createCalBooking, CalApiError } from '@/src/lib/cal
  *   - Workshop row persists even if cal.com is down, so the admin dashboard
  *     surfaces the row immediately; the public listing (Plan 20-05) gates
  *     the cal.com embed on `calcomEventTypeId IS NOT NULL`.
+ *
+ * Required env (all validated at boot via `src/lib/env.ts`):
+ *   - CAL_API_KEY                    cal.com v2 API credential.
+ *   - CAL_PRIMARY_ATTENDEE_EMAIL     address that receives the booking-
+ *                                    confirmation email + owns the shared
+ *                                    Google Meet link.
+ *   - CAL_PRIMARY_ATTENDEE_NAME      name shown in cal.com for the above.
  *
  * Error policy (D-03, mirrors Phase 19 participateIntakeFn):
  *   - cal.com 5xx         → plain Error → Inngest retries up to `retries: 3`.
@@ -28,6 +42,14 @@ import { createCalEventType, createCalBooking, CalApiError } from '@/src/lib/cal
  *   - Missing workshop    → NonRetriableError (guard; shouldn't happen since
  *                           the event fires right after the insert, but the
  *                           guard makes the contract explicit).
+ *
+ * Half-provisioned recovery (B4-4): the idempotency guard below short-
+ * circuits only when BOTH `calcomEventTypeId` AND `calcomBookingUid` are
+ * present. If a prior run backfilled the event-type but died before the
+ * booking, re-firing `workshop.created` resumes at the booking step — the
+ * event-type is reused (via the `?` branch) and the backfill step writes
+ * both fields atomically. An operator can also NULL out one field in the
+ * DB to force a partial re-run.
  *
  * Pitfall 4 (Inngest v4 type widening): `triggers` MUST be inlined in the
  * createFunction options object. Extracting to a const collapses `event.data`
@@ -43,7 +65,7 @@ export const workshopCreatedFn = inngest.createFunction(
     // INLINE triggers - Pitfall 4. String-literal event name keeps this
     // function independent of other Wave 1 plans that may also touch
     // `src/inngest/events.ts`.
-    triggers: [{ event: 'workshop.created' }],
+    triggers: [{ event: WORKSHOP_CREATED_EVENT }],
   },
   async ({ event, step }) => {
     const { workshopId } = event.data as {
@@ -80,8 +102,23 @@ export const workshopCreatedFn = inngest.createFunction(
     // A thrown plain Error here consumes a retry; NonRetriableError skips
     // straight to failure. If event type is already present from a prior
     // partial run, reuse it.
-    const eventTypeId = workshop.calcomEventTypeId
-      ? parseInt(workshop.calcomEventTypeId, 10)
+    //
+    // B4-1: parseInt silently returns NaN on a malformed stored value (e.g.
+    // `'abc'` or `''`). Guard with `Number.isFinite` and fail
+    // NonRetriable — a malformed id is operator data corruption, not a
+    // transient issue, and retrying would loop without converging.
+    let reusedEventTypeId: number | null = null
+    if (workshop.calcomEventTypeId) {
+      const parsed = parseInt(workshop.calcomEventTypeId, 10)
+      if (!Number.isFinite(parsed)) {
+        throw new NonRetriableError(
+          `workshop ${workshopId} has non-numeric calcomEventTypeId: ${JSON.stringify(workshop.calcomEventTypeId)}`,
+        )
+      }
+      reusedEventTypeId = parsed
+    }
+    const eventTypeId = reusedEventTypeId !== null
+      ? reusedEventTypeId
       : await step.run('create-cal-event-type', async () => {
           try {
             // Deterministic slug per workshop id - guarantees uniqueness
@@ -96,8 +133,9 @@ export const workshopCreatedFn = inngest.createFunction(
               slug,
               durationMinutes:  workshop.durationMinutes ?? 60,
               // Workshops are multi-attendee broadcasts. Honor the admin-
-              // specified maxSeats, fallback to 100 for uncapped workshops.
-              seatsPerTimeSlot: workshop.maxSeats ?? 100,
+              // specified maxSeats, fallback to DEFAULT_SEATS_PER_TIME_SLOT
+              // for uncapped workshops.
+              seatsPerTimeSlot: workshop.maxSeats ?? DEFAULT_SEATS_PER_TIME_SLOT,
             })
             return result.id
           } catch (err) {
@@ -123,6 +161,12 @@ export const workshopCreatedFn = inngest.createFunction(
     // addAttendeeToBooking (Plan 20-02). The booking uid and meetingUrl land
     // on the workshop row in Step 4 and drive the public participation UX.
     const rootBooking = await step.run('create-root-booking', async () => {
+      // B4-6: env.ts validates both vars at boot, so in production neither
+      // can be falsy here. We still read via process.env (rather than the
+      // env() singleton) because the singleton caches its validated
+      // snapshot at module load — vi.stubEnv in tests would not bust that
+      // cache. The NonRetriable guard below remains as defence-in-depth
+      // for the (impossible-in-prod, possible-in-tests) empty-string case.
       const primaryEmail = process.env.CAL_PRIMARY_ATTENDEE_EMAIL
       const primaryName  = process.env.CAL_PRIMARY_ATTENDEE_NAME
       if (!primaryEmail || !primaryName) {

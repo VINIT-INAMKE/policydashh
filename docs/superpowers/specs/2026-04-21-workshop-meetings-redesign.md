@@ -172,12 +172,23 @@ Unit / integration:
 - `/api/intake/workshop-register` — asserts the composite `booking_uid` shape.
 - `/api/webhooks/cal` — new cascade-cancel assertions, reschedule-updates-workshop assertions.
 
-Smoke (manual, post-deploy):
-1. Admin creates a workshop. Confirm cal.com dashboard shows one event type (Google Meet location) + one seated booking with `vinay@konma.io` as primary attendee and a Google Meet URL on the booking. **Record which response field carries the Meet URL** — fixes the open question in flow step 3 above.
-2. Two different emails register via the public form. Confirm cal.com dashboard shows **one booking**, three attendees (primary + 2), one Meet link. Both registrants receive invites with the same Meet link.
-3. One attendee cancels via their cal.com email link. Confirm our webhook fires `BOOKING_CANCELLED` with only that seat; only their row flips to `cancelled`; other attendees remain. **Record the payload shape** — fixes the `uid` vs `seatUid` open question.
-4. Admin cancels the root booking on cal.com. Confirm our webhook cascade-cancels every registration row for that workshop.
-5. Workshop ends → `MEETING_ENDED` fires → status flips → feedback invites dispatch.
+Smoke (manual, post-deploy). Every step names the exact cal.com UI element a non-specialist operator would click (B9-2):
+
+1. **Provisioning shape.** In the admin PolicyDash UI, create a workshop (`/dashboard/workshops` → "New workshop"). Wait ~10s for Inngest's `workshop-created` run to complete. Then open cal.com:
+   - Navigate to https://app.cal.com/event-types.
+   - Confirm a new row titled `Policy Roundtable` (or whatever you entered) appears. Click it. Under "Location" confirm `Google Meet` is selected.
+   - Navigate to https://app.cal.com/bookings?status=upcoming.
+   - Confirm one booking exists for the workshop date. Click it. Confirm:
+     - Attendees list shows `vinay@konma.io` as the primary attendee.
+     - A `https://meet.google.com/...` link appears in the booking details.
+   - Back in PolicyDash, query `select meeting_url from workshops where id = '<uuid>';` to confirm the Meet URL was backfilled. **Record which cal.com response field carried it** (`data.meetingUrl` vs `data.location`) and annotate `src/lib/calcom.ts` if a tie-break changes.
+2. **Seated booking add.** From two different mailboxes (e.g. gmail + a secondary), open the public workshop detail page and register. Each registrant should receive a cal.com confirmation email with the same Google Meet link. Back on cal.com → same booking from step 1 → confirm the Attendees list now shows 3 entries (Vinay + 2 registrants), all pointing at the same meeting room.
+3. **Attendee self-cancel.** Open one registrant's cal.com confirmation email. Click the `Need to make a change? Reschedule or Cancel` link in the footer (the button label is literally those words). On the cancel page, confirm and submit. In PolicyDash, query `select status, cancelled_at from workshop_registrations where email = '<that-email>';` and confirm `status = 'cancelled'`, `cancelled_at` is populated. Other registrants' rows must remain `status='registered'`. Check the `cal-webhook` logs in Inngest / Vercel — **record the BOOKING_CANCELLED payload** and note whether the seat identity was `seatUid`, `seatReferenceUid`, or `uid`.
+4. **Root cancel cascade.** In cal.com, https://app.cal.com/bookings?status=upcoming → click the booking → "Cancel" (red button in the header). This fires BOOKING_CANCELLED with the root uid. Confirm every non-cancelled row for this workshop flips to `cancelled` in PolicyDash.
+5. **Meeting end.** Wait for the scheduled time, or temporarily reschedule the booking in cal.com to a time ~2 minutes in the future and join the Meet. After the workshop ends, cal.com fires MEETING_ENDED. Confirm in PolicyDash:
+   - The workshop row's `status` flips to `completed`.
+   - Every attended registrant has `attended_at IS NOT NULL`.
+   - One `workshop.feedback.invite` batch appears in Inngest with one entry per attendee.
 
 ## Risks & mitigations
 
@@ -193,3 +204,8 @@ Single PR. Drizzle migration runs first via existing `scripts/apply-all-migratio
 ## Open questions (to be closed during implementation)
 
 None blocking. Smoke tests #2 and #3 confirm two assumptions at deploy time.
+
+### Resolutions from the 2026-04-23 post-review punchlist
+
+- **D-1 (Turnstile on `/api/intake/workshop-register`):** resolved as **add**. The route now takes a `turnstileToken` field, verifies via the shared `src/lib/turnstile.ts#verifyTurnstile` helper, and the `RegisterForm` component embeds `@marsidev/react-turnstile` to obtain the token client-side. The pre-redesign route had no Turnstile; the spec claim at line 90 was aspirational-not-historical. Now accurate.
+- **D-2 (drizzle `_journal.json` drift):** resolved as **delete**. The stale `src/db/migrations/meta/_journal.json` was removed. Hand-written SQL migrations remain the source of truth; `src/db/migrations/README.md` documents the convention and `scripts/README.md` documents the applier usage.

@@ -1,56 +1,153 @@
 import 'server-only'
 
 /**
- * cal.com API v2 client - minimal surface for Phase 20 WS-07.
+ * cal.com API v2 client — minimal surface used by the workshop-provisioning
+ * pipeline and the public registration route.
  *
- * Decisions:
- *   - D-01: workshop create is async via Inngest; this module is called from
- *           `workshopCreatedFn` inside a `step.run` boundary so Inngest
- *           captures the network hop for retries.
- *   - D-02 (SUPERSEDED 2026-04-21): default event-type location was originally
- *           Cal Video; switched to Google Meet as part of the workshop
- *           meetings redesign (docs/superpowers/specs/2026-04-21-...). Meet
- *           link is provisioned through the shared org account's connected
- *           Google Calendar OAuth. No per-workshop location selector.
- *   - D-04: single shared cal.com org account. One API key in env
- *           `CAL_API_KEY`. Per-admin OAuth is explicitly out of scope.
+ * Architectural notes:
+ *   - Workshop create is async via Inngest. This module is called from
+ *     `workshopCreatedFn` inside a `step.run` boundary so Inngest captures
+ *     the network hop for retries.
+ *   - Default event-type location is Google Meet (switched from Cal Video
+ *     during the 2026-04-21 workshop meetings redesign). The Meet link is
+ *     provisioned through the shared cal.com account's connected Google
+ *     Calendar OAuth. There is no per-workshop location selector.
+ *   - One shared cal.com org account under `CAL_API_KEY`. Per-admin OAuth
+ *     is explicitly out of scope.
  *
- * Error contract (drives D-03 retry policy in workshopCreatedFn):
+ * Error contract (drives the retry policy in `workshopCreatedFn`):
  *   - 5xx response              → CalApiError with status >= 500 → caller
  *                                 rethrows as plain Error so Inngest retries.
  *   - 4xx response              → CalApiError with status < 500 → caller
  *                                 wraps in NonRetriableError.
  *   - Missing CAL_API_KEY       → CalApiError(400, …) → NonRetriableError.
  *   - Malformed response body   → CalApiError(500, …) → retried. This is
- *                                 intentionally conservative - a transient
+ *                                 intentionally conservative — a transient
  *                                 parse glitch is worth one retry before we
  *                                 give up.
  *
- * Per 20-RESEARCH.md "Verified: Cal.com Event Type Creation":
+ * API version headers (cal.com stabilises each endpoint independently):
+ *
+ *   | Endpoint                              | `cal-api-version` |
+ *   |---------------------------------------|-------------------|
+ *   | POST   /v2/event-types                | 2024-06-14        |
+ *   | PATCH  /v2/event-types/{id}           | 2024-06-14        |
+ *   | POST   /v2/bookings                   | 2024-08-13        |
+ *   | POST   /v2/bookings/{uid}/attendees   | 2024-08-13        |
+ *
+ * Downgrading the bookings endpoint to 2024-06-14 surfaces a legacy DTO
+ * that rejects the attendee shape with misleading "timeZone/language/
+ * metadata must be…" validation errors. Do not change the table without
+ * re-verifying against cal.com's live API.
+ *
+ * Event-type creation body shape:
  *   - Base URL:    https://api.cal.com/v2
  *   - Endpoint:    POST /v2/event-types
  *   - Auth header: Authorization: Bearer ${CAL_API_KEY}
- *   - Version hdr: cal-api-version: 2024-06-14  (required)
- *   - Body:        { title, slug, lengthInMinutes, locations: [...] }
- *   - Research OQ2: docs disagree on `lengthInMinutes` vs `length` - we pass
- *     BOTH field names in the same request body. One will be accepted and the
- *     other ignored; neither causes a 400 when both are valid.
+ *   - Body:        { title, slug, lengthInMinutes, length, locations,
+ *                    seats: { seatsPerTimeSlot, showAttendeeInfo,
+ *                             showAvailabilityCount } }
+ *     - We pass BOTH `lengthInMinutes` and `length` in the same request —
+ *       cal.com's docs disagree on field name; one is accepted and the
+ *       other ignored, neither causes a 400 when both are valid.
+ *     - `seats.seatsPerTimeSlot` is required for multi-attendee broadcasts;
+ *       without it the event type is 1-on-1 and every booking after the
+ *       first on the same slot is rejected.
  *   - Response:    { data: { id: number } }
  */
+
+// ---------------------------------------------------------------------------
+// Shared cal.com constants + helpers (extracted 2026-04-23, Batch 1 of the
+// post-redesign punchlist). Kept in this module so every cal.com caller
+// imports the same literals — the prior duplication of UID_SAFE,
+// hardcoded `:` delimiters, magic `?? 100`, and the `workshop.created`
+// event-name string literal was a consistent source of drift.
+// ---------------------------------------------------------------------------
+
+/**
+ * Authoritative format assertion for a cal.com booking uid. Used before
+ * interpolating into a SQL LIKE pattern to prevent `%` / `_` / `\`
+ * wildcard injection if cal.com's uid format ever widens beyond
+ * alphanumerics, `_`, and `-`.
+ *
+ * Aligned with the UID format cal.com currently ships
+ * (see `src/lib/calcom.ts` `createCalBooking` write-time guard and the
+ * webhook handler cascade branches).
+ */
+export const UID_SAFE = /^[A-Za-z0-9_-]+$/
+
+/**
+ * Delimiter joining a cal.com root booking uid to a seat's attendee id in
+ * our composite `workshop_registrations.booking_uid` scheme. Changing this
+ * value requires a data migration across every stored booking_uid.
+ */
+export const COMPOSITE_BOOKING_UID_DELIMITER = ':'
+
+/**
+ * Default seats-per-time-slot when an admin creates a workshop without
+ * an explicit `maxSeats`. Workshops are multi-attendee broadcasts — without
+ * `seats.seatsPerTimeSlot > 1`, cal.com treats the event type as 1-on-1
+ * and rejects every booking after the first on the same slot.
+ */
+export const DEFAULT_SEATS_PER_TIME_SLOT = 100
+
+/**
+ * Inngest event name emitted by the admin workshop-create mutation that
+ * triggers async cal.com provisioning. Keep the string in lockstep with
+ * the schema/trigger in `src/inngest/events.ts` and
+ * `src/inngest/functions/workshop-created.ts`.
+ */
+export const WORKSHOP_CREATED_EVENT = 'workshop.created'
+
+/**
+ * Shape the composite booking uid stored on `workshop_registrations.booking_uid`.
+ * Callers should never concatenate the delimiter by hand — use this helper
+ * so one day we can change the format in a single place.
+ */
+export function buildCompositeBookingUid(
+  rootUid: string,
+  attendeeId: number,
+): string {
+  return `${rootUid}${COMPOSITE_BOOKING_UID_DELIMITER}${attendeeId}`
+}
+
+/**
+ * SQL LIKE pattern that matches every seat belonging to a given root
+ * booking uid. Used by the webhook cascade branches (BOOKING_CANCELLED
+ * and BOOKING_RESCHEDULED) to address all children of a workshop in one
+ * statement.
+ */
+export function cascadePattern(rootUid: string): string {
+  return `${rootUid}${COMPOSITE_BOOKING_UID_DELIMITER}%`
+}
+
+/**
+ * Seats-per-time-slot config shared by the create + patch shapes so the
+ * field name can only drift in one place.
+ */
+export interface CalSeatsConfig {
+  seatsPerTimeSlot: number
+}
 
 export interface CalEventTypeInput {
   /** Human-visible title shown on the cal.com booking page. */
   title: string
-  /** URL slug segment for the event type. Must be unique inside the cal.com org. */
+  /**
+   * URL slug segment for the event type. Must be unique inside the cal.com
+   * org or create will fail with HTTP 409 ("slug already exists"). The
+   * workshop-created Inngest function derives slugs as `workshop-${id}`,
+   * which guarantees uniqueness and makes reprovisioning deterministic.
+   */
   slug: string
   /** Meeting length in minutes. Must be a positive integer. */
   durationMinutes: number
   /**
    * Seats per time slot - workshops are multi-attendee broadcasts, so this
    * must be > 1. Without it cal.com rejects the 2nd booking with "User
-   * already has booking at this time". Defaults to 100 when not provided.
+   * already has booking at this time". Defaults to
+   * {@link DEFAULT_SEATS_PER_TIME_SLOT} when not provided.
    */
-  seatsPerTimeSlot?: number
+  seatsPerTimeSlot?: CalSeatsConfig['seatsPerTimeSlot']
 }
 
 export interface CalEventTypeCreateResult {
@@ -114,7 +211,7 @@ export async function createCalEventType(
         // event type as 1-on-1 and rejects every booking after the first on
         // the same slot. See commit adding this for context.
         seats: {
-          seatsPerTimeSlot: input.seatsPerTimeSlot ?? 100,
+          seatsPerTimeSlot: input.seatsPerTimeSlot ?? DEFAULT_SEATS_PER_TIME_SLOT,
           showAttendeeInfo: false,
           showAvailabilityCount: true,
         },
@@ -157,9 +254,10 @@ export async function createCalEventType(
 }
 
 /**
- * Generic PATCH for cal.com event-types used by F10 workshop-edit propagation.
+ * Generic PATCH for cal.com event-types used by the workshop-update
+ * procedure in `src/server/routers/workshop.ts`.
  *
- * Only the fields actually provided on the input are sent in the PATCH body -
+ * Only the fields actually provided on the input are sent in the PATCH body —
  * cal.com merges the partial update so we do not clobber unrelated settings.
  * Any failure (network, 4xx, 5xx) surfaces as CalApiError; the caller decides
  * whether to surface a user-facing warning or silently swallow.
@@ -173,7 +271,7 @@ export interface CalEventTypePatch {
    * propagation, cal.com's event type would still enforce the original
    * cap and `addAttendeeToBooking` for seat N+1 would 4xx.
    */
-  seatsPerTimeSlot?: number
+  seatsPerTimeSlot?: CalSeatsConfig['seatsPerTimeSlot']
 }
 
 export async function updateCalEventType(
@@ -317,21 +415,19 @@ export async function createCalBooking(
 
   // Fail-fast if cal.com ships a uid that would break our composite booking_uid
   // scheme (`${rootUid}:${attendeeId}`) or confuse the webhook handler's LIKE
-  // cascade. Character class matches the UID_SAFE guard in the webhook route.
+  // cascade. Shared UID_SAFE constant keeps this in lockstep with the webhook.
   // Throwing here (conservative 500) is strictly better than persisting a
   // poisoned root uid that corrupts every downstream cascade query.
-  if (!/^[A-Za-z0-9_-]+$/.test(uid)) {
+  if (!UID_SAFE.test(uid)) {
     throw new CalApiError(
       500,
       `cal.com booking uid contains unsafe characters for our composite booking_uid scheme: ${JSON.stringify(uid)}`,
     )
   }
 
-  // Cal.com's response shape for the meeting URL is inconsistent between
-  // provider integrations (Cal Video vs Google Meet vs Zoom) and has shifted
-  // across API versions. Try `meetingUrl` first (what newer Google-Meet
-  // bookings return), fall back to `location` (older shape), else null.
-  // Smoke test #1 records the exact field during implementation.
+  // Cal.com's response shape for the meeting URL is inconsistent across API
+  // versions. Try `meetingUrl` first (what newer Google-Meet bookings
+  // return), fall back to `location` (older shape), else null.
   const meetingUrl =
     typeof body.data?.meetingUrl === 'string'
       ? body.data.meetingUrl
@@ -389,9 +485,9 @@ export async function addAttendeeToBooking(
     res = await fetch(`https://api.cal.com/v2/bookings/${bookingUid}/attendees`, {
       method: 'POST',
       headers: {
-        'Authorization':   `Bearer ${apiKey}`,
-        'Content-Type':    'application/json',
-        'cal-api-version': '2024-08-13',
+        'Authorization':    `Bearer ${apiKey}`,
+        'Content-Type':     'application/json',
+        'cal-api-version':  '2024-08-13',
       },
       body: JSON.stringify({
         name:     input.name,

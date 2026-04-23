@@ -61,6 +61,12 @@ if (!process.env.CARDANO_WALLET_MNEMONIC) {
     'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art'
 }
 if (!process.env.BLOCKFROST_PROJECT_ID) {
+  // B7-2: the `preview`-prefix is REQUIRED by env.ts's schema
+  // (`BLOCKFROST_PROJECT_ID must start with 'preview' for testnet`). The
+  // length is also constrained; padding to match the production id width
+  // keeps zod validation happy. No real Blockfrost call is ever made in
+  // tests — every module that would reach out (cardano.ts, anchor
+  // workers) is mocked per-file.
   process.env.BLOCKFROST_PROJECT_ID = 'previewPlaceholderPlaceholderPlace'
 }
 

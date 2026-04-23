@@ -26,6 +26,39 @@ import { updateCalEventType } from '@/src/lib/calcom'
 import { eq, gte, lt, desc, and, count, ne } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
+// B6-4: validate IANA timezone input against the runtime's zoneinfo
+// database via `Intl.supportedValuesOf('timeZone')`. Cached on first call
+// — the list is static per Node version and runs in the low single-ms
+// range, but we only need to build the Set once. Rejecting bogus input
+// at the boundary prevents typos like `asia/kolkta` from poisoning every
+// downstream cal.com call the workshop does.
+let _timezoneSet: Set<string> | null = null
+function isValidTimezone(tz: string): boolean {
+  if (_timezoneSet === null) {
+    try {
+      _timezoneSet = new Set(Intl.supportedValuesOf('timeZone'))
+    } catch {
+      // Node < 18 does not ship `supportedValuesOf`. In that case we
+      // fall back to a permissive check — DateTimeFormat throws for
+      // genuinely invalid values, so this still catches typos without
+      // requiring the full list.
+      _timezoneSet = new Set()
+    }
+  }
+  if (_timezoneSet.size > 0) return _timezoneSet.has(tz)
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz }).format()
+    return true
+  } catch {
+    return false
+  }
+}
+const timezoneField = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine(isValidTimezone, { message: 'Invalid IANA timezone' })
+
 // F8: mirror the webhook's transition set so the tRPC UI and the cal.com
 // webhook agree on legality. The webhook jumps `upcoming -> completed`
 // directly when MEETING_ENDED fires without a moderator having manually
@@ -53,8 +86,10 @@ export const workshopRouter = router({
       // listing). Admins set this on the create form.
       maxSeats: z.number().int().min(1).max(10000).optional(),
       // F9: IANA timezone name. Defaults to 'Asia/Kolkata' (project's prior
-      // hardcoded value). Max length guards against bogus input.
-      timezone: z.string().min(1).max(64).optional(),
+      // hardcoded value). B6-4: validated against
+      // `Intl.supportedValuesOf('timeZone')` so typos can't poison every
+      // downstream cal.com call for a workshop.
+      timezone: timezoneField.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const [workshop] = await db
@@ -149,8 +184,8 @@ export const workshopRouter = router({
     .input(z.object({ workshopId: z.string().uuid() }))
     .query(async ({ input }) => {
       // F17: include calcomEventTypeId + maxSeats + timezone so the detail
-      // page can render the cal.com deep-link, the "Reprovision seats"
-      // button (F15), and the timezone chip without extra lookups.
+      // page can render the cal.com deep-link and the timezone chip
+      // without extra lookups.
       const [workshop] = await db
         .select({
           id: workshops.id,
@@ -263,6 +298,36 @@ export const workshopRouter = router({
 
       if (existing.createdBy !== ctx.user.id && ctx.user.role !== 'admin') {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the workshop creator or admin can update this workshop' })
+      }
+
+      // B5-8: refuse to lower maxSeats below the current registered
+      // headcount. `updateCalEventType` will happily accept a lower
+      // `seatsPerTimeSlot`, but doing so silently over-commits cal.com
+      // (existing attendees remain on the booking while the cap blocks
+      // new seats N+1 < existing). Count non-cancelled registrations and
+      // reject with a clear message so admins must explicitly remove
+      // attendees first.
+      if (
+        input.maxSeats !== undefined &&
+        input.maxSeats !== null &&
+        (existing.maxSeats === null || input.maxSeats < existing.maxSeats)
+      ) {
+        const [registeredRow] = await db
+          .select({ n: count() })
+          .from(workshopRegistrations)
+          .where(
+            and(
+              eq(workshopRegistrations.workshopId, input.workshopId),
+              ne(workshopRegistrations.status, 'cancelled'),
+            ),
+          )
+        const registered = Number(registeredRow?.n ?? 0)
+        if (input.maxSeats < registered) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Cannot lower maxSeats to ${input.maxSeats}: ${registered} attendee(s) are already registered. Cancel registrations first.`,
+          })
+        }
       }
 
       const updateData: Record<string, unknown> = { updatedAt: new Date() }

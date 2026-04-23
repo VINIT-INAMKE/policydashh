@@ -6,6 +6,11 @@ import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
 import { workflowTransitions } from '@/src/db/schema/workflow'
 import { verifyCalSignature } from '@/src/lib/cal-signature'
 import {
+  cascadePattern,
+  COMPOSITE_BOOKING_UID_DELIMITER,
+  UID_SAFE,
+} from '@/src/lib/calcom'
+import {
   sendWorkshopRegistrationReceived,
   sendWorkshopFeedbackInvitesBatch,
   sendWorkshopCompleted,
@@ -19,26 +24,59 @@ function spotsTag(workshopId: string): string {
 }
 
 /**
- * Cal.com webhook handler (Phase 20, Plan 20-03, requirements WS-09/WS-10/WS-11).
+ * Cal.com webhook handler (Phase 20, Plan 20-03 — WS-09 / WS-10 / WS-11).
  *
  * Pipeline:
  *   1. Read raw body BEFORE JSON.parse (signature covers raw bytes).
- *   2. Verify x-cal-signature-256 via verifyCalSignature(). Missing or invalid
- *      signature → 401. Missing CAL_WEBHOOK_SECRET → 500.
- *   3. Parse body, defensive extract bookingData = body.payload ?? body (cal.com
- *      historically shipped MEETING_ENDED flat-at-root; we accept either shape).
- *   4. Dispatch by triggerEvent - BOOKING_CREATED, BOOKING_CANCELLED,
- *      BOOKING_RESCHEDULED, MEETING_ENDED. Unknown trigger → 200 { ignored }.
+ *   2. Verify x-cal-signature-256 via verifyCalSignature(). Missing or
+ *      invalid signature → 401. Missing CAL_WEBHOOK_SECRET → 500.
+ *   3. Parse body, defensive extract `bookingData = body.payload ?? body`
+ *      (cal.com historically shipped MEETING_ENDED flat-at-root; we accept
+ *      either shape).
+ *   4. Dispatch by triggerEvent:
+ *      - BOOKING_CREATED     → no-op 200. Under the seated-booking model
+ *                              the root booking is created server-side and
+ *                              attendee-adds don't fire this webhook.
+ *      - BOOKING_CANCELLED   → seatUid-aware lookup:
+ *                              a) if the payload carries `seatUid` /
+ *                                 `seatReferenceUid`, treat as a seat-level
+ *                                 cancel (exact-match update on the seat's
+ *                                 composite `booking_uid`).
+ *                              b) otherwise probe
+ *                                 `workshops.calcomBookingUid` with the
+ *                                 root uid; on match cascade every seat via
+ *                                 LIKE `${rootUid}:%` (cascadePattern).
+ *                              c) on no root match, fall back to an
+ *                                 exact-match OR across `seatUid`,
+ *                                 `seatReferenceUid`, `uid`.
+ *      - BOOKING_RESCHEDULED → atomic root rewrite:
+ *                              a) if the payload's uid corresponds to a
+ *                                 workshop root, rewrite the workshop row
+ *                                 AND every registration's composite prefix
+ *                                 in two SQL statements (no N+1).
+ *                              b) otherwise seat-level exact-match rewrite
+ *                                 across seatUid / seatReferenceUid /
+ *                                 rescheduleUid candidates.
+ *      - MEETING_ENDED       → flip workshop → completed (idempotent),
+ *                              backfill attendance, synthesize walk-in rows
+ *                              for attendees without a prior registration,
+ *                              batch-enqueue all feedback invites in a
+ *                              single Inngest send.
+ *      - unknown             → 200 `{ ignored }` with a console.info so the
+ *                              observability dashboard surfaces a new
+ *                              trigger name immediately.
  *
- * Idempotency: UNIQUE INDEX on workshop_registrations.booking_uid +
- * .onConflictDoNothing() per D-15. No processedWebhookEvents table.
+ * Idempotency: UNIQUE INDEX on `workshop_registrations.booking_uid` +
+ * `.onConflictDoNothing()`. No processedWebhookEvents table.
  *
- * BOOKING_RESCHEDULED correction (20-RESEARCH.md Pitfall 1): cal.com creates a
- * NEW uid on reschedule; the ORIGINAL uid is in payload.rescheduleUid. Handler
- * matches WHERE booking_uid = rescheduleUid and rewrites to the new uid.
+ * SAFETY: every uid interpolated into a SQL LIKE pattern is first checked
+ * against `UID_SAFE` (`src/lib/calcom.ts`). Unsafe uids fall through to the
+ * exact-match branch, which is drizzle-parameterised and wildcard-safe.
  *
- * Walk-ins (D-12): MEETING_ENDED attendee emails with no prior registration
+ * Walk-ins: MEETING_ENDED attendee emails with no prior registration
  * synthesize a row with bookingUid = `walkin:{workshopId}:{sha256(email)}`.
+ * See `src/server/routers/workshop.ts`'s `listRegistrations` for how these
+ * surface in the moderator UI.
  */
 
 export const runtime = 'nodejs'
@@ -46,6 +84,13 @@ export const runtime = 'nodejs'
 type CalAttendee = {
   email: string
   name?: string | null
+  /**
+   * Cal.com sometimes populates `noShow: true` on MEETING_ENDED attendees
+   * who registered but were not detected in the meeting. We log the flag
+   * so moderators can reconcile attendance manually — the seated-event
+   * model already records `attendedAt` from the webhook's attendee list,
+   * so honouring `noShow` would require a deeper attendance rework.
+   */
   noShow?: boolean
 }
 
@@ -68,17 +113,6 @@ type CalPayload = {
   [k: string]: unknown
 }
 
-/**
- * Return the best candidate uid for this webhook payload, preferring the
- * seat-level identity when cal.com provides it. Used in both cancel and
- * reschedule branches: if cal.com ships `seatUid`, the cascade lookup against
- * `workshops.calcomBookingUid` will correctly miss (seat uids are not root
- * uids), and the exact-match fallback will target only the seat.
- */
-function primaryBookingUid(p: CalPayload): string | undefined {
-  return p.seatUid ?? p.seatReferenceUid ?? p.uid
-}
-
 type CalWebhookBody = {
   triggerEvent?: string
   payload?: CalPayload
@@ -93,12 +127,22 @@ function walkinBookingUid(workshopId: string, email: string): string {
   return `walkin:${workshopId}:${emailHashOf(email)}`
 }
 
-// Defensive guard before interpolating a cal.com uid into a SQL LIKE pattern.
-// Cal.com documents uids as alphanumeric today; this regex is the authoritative
-// format assertion. If the uid fails, cascade paths fall through to exact-match
-// only — a malformed uid won't cascade but also can't corrupt data via
-// injected `%` / `_` / `\` wildcards.
-const UID_SAFE = /^[A-Za-z0-9_-]+$/
+/**
+ * Collect every plausible seat-level candidate uid from the payload, trimmed
+ * and de-duplicated. Empty strings and whitespace-only values are dropped.
+ *
+ * Used by both BOOKING_CANCELLED and BOOKING_RESCHEDULED fallbacks so they
+ * target the same uid set regardless of which field cal.com populated.
+ */
+function seatCandidates(p: CalPayload): string[] {
+  return Array.from(
+    new Set(
+      [p.seatUid, p.seatReferenceUid, p.uid]
+        .map((v) => (typeof v === 'string' ? v.trim() : ''))
+        .filter((v) => v.length > 0),
+    ),
+  )
+}
 
 async function findWorkshopByCalEventTypeId(
   eventTypeId: number | string | undefined,
@@ -133,6 +177,21 @@ export async function POST(req: Request): Promise<Response> {
   const sigHeader = req.headers.get('x-cal-signature-256')
 
   if (!verifyCalSignature(rawBody, sigHeader, secret)) {
+    // B2-12: surface the trigger name + a sig-header prefix so an
+    // attacker probing the endpoint is visible in logs without leaking
+    // the full header value. Truncate to 8 chars — enough to distinguish
+    // two nearby failures, not enough to reconstruct the secret.
+    let triggerPreview: string | null = null
+    try {
+      const peek = JSON.parse(rawBody) as { triggerEvent?: unknown }
+      if (typeof peek.triggerEvent === 'string') triggerPreview = peek.triggerEvent
+    } catch {
+      /* unparseable — fine, observability only */
+    }
+    console.warn('[cal-webhook] invalid signature', {
+      triggerEvent: triggerPreview,
+      sigPrefix:    sigHeader ? sigHeader.slice(0, 8) : null,
+    })
     return new Response('Invalid signature', { status: 401 })
   }
 
@@ -144,8 +203,10 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // Defensive parse: MEETING_ENDED historically shipped data flat-at-root.
+  // B2-4: drop the redundant `?? {}` — `body.payload ?? body` is never
+  // nullish when `body` has already parsed successfully.
   const bookingData: CalPayload =
-    (body.payload ?? (body as unknown as CalPayload)) ?? {}
+    body.payload ?? (body as unknown as CalPayload)
 
   try {
     switch (body.triggerEvent) {
@@ -162,13 +223,6 @@ export async function POST(req: Request): Promise<Response> {
         // `seatReferenceUid`) — those are per-attendee fields cal.com
         // populates for seated-event cancellations. When neither is set
         // we fall back to the booking-level `uid`.
-        const cancelUid = primaryBookingUid(bookingData)
-        if (!cancelUid) return new Response('OK', { status: 200 })
-
-        // Root-uid cascade is only meaningful when the payload's uid is
-        // the root booking. A seat-level payload (one where `seatUid` was
-        // populated) goes straight to the exact-match branch because the
-        // root lookup would never match a seat's identity.
         const hasSeatId =
           typeof bookingData.seatUid === 'string' ||
           typeof bookingData.seatReferenceUid === 'string'
@@ -176,7 +230,7 @@ export async function POST(req: Request): Promise<Response> {
 
         // SAFETY: fall through to exact match when the uid fails UID_SAFE —
         // prevents SQL LIKE wildcard injection if cal.com's uid format ever
-        // widens. Guard is declared at module scope.
+        // widens. Shared guard in `src/lib/calcom.ts`.
         const rootCandidateSafe =
           rootCandidateUid !== undefined &&
           rootCandidateUid !== null &&
@@ -187,6 +241,17 @@ export async function POST(req: Request): Promise<Response> {
           : null
 
         if (workshopIdForRoot) {
+          // B2-3: defensively log when a payload carries a seat id but we
+          // still took the cascade branch. Current control flow makes this
+          // unreachable, but a future edit that widens `rootCandidateUid`
+          // would silently cascade across every seat — the warning makes
+          // that regression loud.
+          if (hasSeatId) {
+            console.warn(
+              '[cal-webhook] BOOKING_CANCELLED unexpected: seat id present but cascade taken',
+              { workshopId: workshopIdForRoot, uid: rootCandidateUid },
+            )
+          }
           await db
             .update(workshopRegistrations)
             .set({
@@ -194,21 +259,25 @@ export async function POST(req: Request): Promise<Response> {
               cancelledAt: new Date(),
               updatedAt:   new Date(),
             })
-            .where(like(workshopRegistrations.bookingUid, `${rootCandidateUid}:%`))
+            .where(
+              like(
+                workshopRegistrations.bookingUid,
+                cascadePattern(rootCandidateUid!),
+              ),
+            )
+          // B2-5: revalidateTag is unconditional here even when the UPDATE
+          // hits zero rows (replay). The cost is a cache-key bust with no
+          // downstream effect; correctness > micro-optimisation.
           revalidateTag(spotsTag(workshopIdForRoot), 'max')
         } else {
           // Exact-match fallback targets the individual seat. We try every
           // plausible candidate identifier because cal.com's seat-cancel
           // payload shape has drifted across versions — OR'ing across them
           // lands the cancellation wherever our composite booking_uid was
-          // stored.
-          const candidates = Array.from(
-            new Set(
-              [bookingData.seatUid, bookingData.seatReferenceUid, bookingData.uid].filter(
-                (v): v is string => typeof v === 'string' && v.length > 0,
-              ),
-            ),
-          )
+          // stored. B2-11: `seatCandidates` trims each value before the
+          // length check so a stray space in a malformed payload doesn't
+          // slip through as a valid "candidate".
+          const candidates = seatCandidates(bookingData)
           if (candidates.length === 0) return new Response('OK', { status: 200 })
 
           const cancelled = await db
@@ -229,15 +298,36 @@ export async function POST(req: Request): Promise<Response> {
       }
 
       case 'BOOKING_RESCHEDULED': {
+        // B2-1: seat-level reschedules historically only carried
+        // `rescheduleUid`. Newer cal.com seated-event payloads may ship
+        // `seatUid` / `seatReferenceUid` as the original identity on
+        // reschedule — same shape drift as BOOKING_CANCELLED. Build the
+        // candidate set the same way we do for cancel so the exact-match
+        // fallback lands wherever our composite booking_uid was stored.
         const origUid = bookingData.rescheduleUid
         const newUid  = bookingData.uid
         if (!origUid || !newUid || !bookingData.startTime) {
           return new Response('OK', { status: 200 })
         }
+
+        // B2-2: newUid is interpolated into the composite-rebuild SQL via
+        // `${newUid} || ':' || substring(...)`. Drizzle parameterises the
+        // value, but we still gate via UID_SAFE so an unexpected payload
+        // (future cal.com uid change) can't corrupt the stored prefix
+        // shape. Unsafe newUid → short-circuit 200 so cal.com doesn't
+        // retry indefinitely while we investigate.
+        if (!UID_SAFE.test(newUid)) {
+          console.warn(
+            '[cal-webhook] BOOKING_RESCHEDULED newUid failed UID_SAFE, skipping',
+            { newUid },
+          )
+          return new Response('OK (unsafe newUid)', { status: 200 })
+        }
+
         const newStart = new Date(bookingData.startTime)
 
         // SAFETY: same wildcard guard as BOOKING_CANCELLED — only match via
-        // LIKE when origUid is format-safe. Module-scope UID_SAFE.
+        // LIKE when origUid is format-safe. Shared UID_SAFE.
         const origIsSafe = UID_SAFE.test(origUid)
 
         const workshopIdForRoot = origIsSafe
@@ -255,7 +345,7 @@ export async function POST(req: Request): Promise<Response> {
           // The registrations UPDATE uses Postgres' CONCAT + SUBSTRING to
           // swap the prefix in-place: the stored composite is
           // `${origUid}:${attendeeId}`, so starting from position
-          // (origUid.length + 1) yields just the trailing attendeeId, and
+          // (origUid.length + 2) yields just the trailing attendeeId, and
           // prepending `${newUid}:` reassembles the composite with the new
           // root uid. Replay-safe: a re-fired webhook after the workshop
           // row already holds newUid (and the children too) simply can't
@@ -273,18 +363,30 @@ export async function POST(req: Request): Promise<Response> {
           await db
             .update(workshopRegistrations)
             .set({
-              bookingUid: drizzleSql`${newUid} || ':' || substring(${workshopRegistrations.bookingUid} from ${origUid.length + 2})`,
+              bookingUid: drizzleSql`${newUid} || ${COMPOSITE_BOOKING_UID_DELIMITER} || substring(${workshopRegistrations.bookingUid} from ${origUid.length + 2})`,
               bookingStartTime: newStart,
               status:           'rescheduled',
               updatedAt:        new Date(),
             })
-            .where(like(workshopRegistrations.bookingUid, `${origUid}:%`))
+            .where(like(workshopRegistrations.bookingUid, cascadePattern(origUid)))
 
           revalidateTag(spotsTag(workshopIdForRoot), 'max')
           return new Response('OK', { status: 200 })
         }
 
-        // Fall back to seat-level reschedule (exact bookingUid match).
+        // Seat-level fallback. B2-1: match against every plausible
+        // candidate identifier cal.com could have populated as the ORIGINAL
+        // seat uid on a reschedule. `uid` is excluded intentionally — in
+        // BOOKING_RESCHEDULED it holds the NEW uid, not the original.
+        const candidates = Array.from(
+          new Set(
+            [bookingData.seatUid, bookingData.seatReferenceUid, origUid]
+              .map((v) => (typeof v === 'string' ? v.trim() : ''))
+              .filter((v) => v.length > 0 && v !== newUid),
+          ),
+        )
+        if (candidates.length === 0) return new Response('OK', { status: 200 })
+
         const updated = await db
           .update(workshopRegistrations)
           .set({
@@ -293,7 +395,7 @@ export async function POST(req: Request): Promise<Response> {
             status:           'rescheduled',
             updatedAt:        new Date(),
           })
-          .where(eq(workshopRegistrations.bookingUid, origUid))
+          .where(inArray(workshopRegistrations.bookingUid, candidates))
           .returning({ workshopId: workshopRegistrations.workshopId })
 
         for (const row of updated) {
@@ -316,8 +418,7 @@ export async function POST(req: Request): Promise<Response> {
         // S5: archived workshops are no longer soliciting feedback. Skip
         // BOTH the status transition AND the attendee loop so we don't
         // email feedback invites on a workshop that was intentionally
-        // retired. The guard below already excludes `archived` from the
-        // status flip, but the loop ran unconditionally after it.
+        // retired.
         if (workshop.status === 'archived') {
           console.warn(
             '[cal-webhook] MEETING_ENDED ignored for archived workshop',
@@ -326,7 +427,7 @@ export async function POST(req: Request): Promise<Response> {
           return new Response('OK (archived)', { status: 200 })
         }
 
-        // Idempotency: short-circuit if already completed (D-15).
+        // Idempotency: short-circuit if already completed.
         if (
           workshop.status !== 'completed' &&
           (workshop.status === 'upcoming' || workshop.status === 'in_progress')
@@ -365,6 +466,10 @@ export async function POST(req: Request): Promise<Response> {
         // emit a single batch `inngest.send([...])` at the end of the loop,
         // replacing the prior N sequential sends. A 50-person workshop used
         // to saturate cal.com's retry window; now it's one network hop.
+        //
+        // B2-8: walk-in `sendWorkshopRegistrationReceived` calls used to
+        // fire sequentially per attendee in the loop; we now collect them
+        // and `Promise.all` once below.
         const attendees = bookingData.attendees ?? []
         const feedbackInvites: Array<{
           workshopId: string
@@ -372,9 +477,19 @@ export async function POST(req: Request): Promise<Response> {
           name: string
           attendeeUserId: null
         }> = []
+        const walkInInvites: Array<{
+          workshopId: string
+          email: string
+          emailHash: string
+          name: string
+          bookingUid: string
+          source: 'walk_in'
+        }> = []
+        let noShowCount = 0
 
         for (const a of attendees) {
           if (!a.email) continue
+          if (a.noShow) noShowCount++
           const emailHash = emailHashOf(a.email)
 
           // F7: match on (workshopId, email, status in ('registered',
@@ -406,7 +521,10 @@ export async function POST(req: Request): Promise<Response> {
                 .where(eq(workshopRegistrations.id, existing.id))
             }
           } else {
-            // Walk-in (D-12): synthesize deterministic bookingUid.
+            // Walk-in: synthesize deterministic bookingUid so the row is
+            // idempotent across webhook redeliveries. See the
+            // `walkinBookingUid` helper + the composite-uid JSDoc in
+            // `src/inngest/events.ts`.
             const walkUid = walkinBookingUid(workshopId, a.email)
             await db
               .insert(workshopRegistrations)
@@ -423,19 +541,14 @@ export async function POST(req: Request): Promise<Response> {
               })
               .onConflictDoNothing({ target: workshopRegistrations.bookingUid })
 
-            // Walk-ins also enqueue the Clerk invite + welcome email flow.
-            await sendWorkshopRegistrationReceived({
+            // B2-8: queue for a batched Promise.all below.
+            walkInInvites.push({
               workshopId,
               email: a.email,
               emailHash,
               name: a.name ?? '',
               bookingUid: walkUid,
               source: 'walk_in',
-            }).catch((err) => {
-              console.error(
-                '[cal-webhook] sendWorkshopRegistrationReceived (walk-in) failed',
-                err,
-              )
             })
           }
 
@@ -448,16 +561,59 @@ export async function POST(req: Request): Promise<Response> {
           })
         }
 
-        // P3: single batch send for all feedback invites.
-        await sendWorkshopFeedbackInvitesBatch(feedbackInvites).catch((err) => {
-          console.error('[cal-webhook] sendWorkshopFeedbackInvitesBatch failed', err)
-        })
+        // B2-10: surface noShow attendees for observability. Attendance is
+        // recorded from cal.com's attendee list (attendees absent from the
+        // meeting are still marked attended if they were on the booking),
+        // so `noShow` is additional signal moderators may want for manual
+        // reconciliation. We log the count rather than auto-reversing
+        // attendance — deciding how to treat noShow is a product call.
+        if (noShowCount > 0) {
+          console.info('[cal-webhook] MEETING_ENDED noShow attendees', {
+            workshopId,
+            noShowCount,
+          })
+        }
+
+        // B2-8: walk-in invites — one network round-trip for all of them.
+        if (walkInInvites.length > 0) {
+          await Promise.all(
+            walkInInvites.map((payload) =>
+              sendWorkshopRegistrationReceived(payload).catch((err) => {
+                console.error(
+                  '[cal-webhook] sendWorkshopRegistrationReceived (walk-in) failed',
+                  { workshopId: payload.workshopId, err },
+                )
+              }),
+            ),
+          )
+        }
+
+        // P3 + B2-9: single batch send for all feedback invites, only when
+        // there is at least one attendee to invite. The Inngest helper
+        // short-circuits on an empty array today but gating here means no
+        // network intent is implied for empty attendee lists.
+        if (feedbackInvites.length > 0) {
+          await sendWorkshopFeedbackInvitesBatch(feedbackInvites).catch((err) => {
+            console.error(
+              '[cal-webhook] sendWorkshopFeedbackInvitesBatch failed',
+              err,
+            )
+          })
+        }
 
         return new Response('OK', { status: 200 })
       }
 
-      default:
+      default: {
+        // B2-13: observability for unknown triggers. Cal.com adds trigger
+        // events every few releases; logging the name makes the "why is
+        // this 200-ignored webhook arriving?" investigation two greps
+        // instead of a redeploy.
+        console.info('[cal-webhook] unknown trigger ignored', {
+          triggerEvent: body.triggerEvent ?? null,
+        })
         return new Response('OK (ignored)', { status: 200 })
+      }
     }
   } catch (err) {
     console.error('[cal-webhook] error:', err)

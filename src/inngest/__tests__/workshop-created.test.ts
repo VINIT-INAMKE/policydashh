@@ -71,6 +71,17 @@ vi.mock('@/src/lib/calcom', () => {
     CalApiError,
     createCalEventType: mocks.createCalEventTypeMock,
     createCalBooking:   mocks.createCalBookingMock,
+    // Mirror the shared constants added in Batch 1 (2026-04-23 punchlist)
+    // so the function-under-test resolves them against this mock rather
+    // than the real module (which imports 'server-only' and blocks in
+    // test context).
+    DEFAULT_SEATS_PER_TIME_SLOT: 100,
+    WORKSHOP_CREATED_EVENT: 'workshop.created',
+    UID_SAFE: /^[A-Za-z0-9_-]+$/,
+    COMPOSITE_BOOKING_UID_DELIMITER: ':',
+    buildCompositeBookingUid: (rootUid: string, attendeeId: number) =>
+      `${rootUid}:${attendeeId}`,
+    cascadePattern: (rootUid: string) => `${rootUid}:%`,
   }
 })
 
@@ -327,6 +338,142 @@ describe('workshopCreatedFn - cal.com event-type provisioning (WS-07)', () => {
     expect(thrown).toBeInstanceOf(Error)
     expect(thrown).not.toBeInstanceOf(NonRetriableError)
     // Backfill must not have run because booking failed.
+    expect(mocks.updateMock).not.toHaveBeenCalled()
+  })
+
+  it('B4-5: non-UTC timezone round-trips through step.run JSON serialization as canonical ISO', async () => {
+    // `workshop.scheduledAt` is stored as a timestamptz. When Inngest's
+    // step.run boundary JSON-encodes the value, `Date` instances become
+    // ISO strings and are revived as strings on re-entry. The function
+    // wraps them in `new Date(...).toISOString()` to normalize either
+    // shape to UTC ISO, so the cal.com API receives a deterministic value
+    // regardless of the workshop's timezone field.
+    mocks.limitMock.mockResolvedValueOnce([
+      {
+        id: '00000000-0000-0000-0000-000000000001',
+        title: 'Test workshop',
+        durationMinutes: 60,
+        calcomEventTypeId: null,
+        calcomBookingUid:  null,
+        // 15:30 IST (UTC+5:30) == 10:00 UTC. Whichever the raw value is,
+        // the cal.com call should receive the UTC ISO form.
+        scheduledAt: '2026-05-01T10:00:00.000Z',
+        timezone: 'America/Los_Angeles',
+        maxSeats: 50,
+      },
+    ])
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_EMAIL', 'vinay@konma.io')
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_NAME', 'Vinay (PolicyDash)')
+    mocks.createCalEventTypeMock.mockResolvedValueOnce({ id: 4242 })
+    mocks.createCalBookingMock.mockResolvedValueOnce({ uid: 'root', meetingUrl: null })
+
+    const { step } = makeStep()
+    await invoke(makeEvent(), step)
+
+    const bookingCall = mocks.createCalBookingMock.mock.calls[0]?.[0] as {
+      startTime: string
+      timeZone:  string
+    }
+    // Timezone field propagates verbatim — it's cal.com's attendee-invite
+    // renderer that localizes; the startTime itself is always UTC ISO.
+    expect(bookingCall.timeZone).toBe('America/Los_Angeles')
+    expect(bookingCall.startTime).toBe('2026-05-01T10:00:00.000Z')
+  })
+
+  it('B4-7: calcomEventTypeId populated but calcomBookingUid null resumes booking without re-creating event-type', async () => {
+    // Resume path for a half-provisioned row: event-type was backfilled
+    // but the booking step never ran (or ran and died before the final
+    // update). Re-firing `workshop.created` should reuse the stored id
+    // and only run steps 3 + 4.
+    mocks.limitMock.mockResolvedValueOnce([
+      {
+        id: '00000000-0000-0000-0000-000000000001',
+        title: 'Partial workshop',
+        durationMinutes:   60,
+        calcomEventTypeId: '9999',
+        calcomBookingUid:  null,
+        scheduledAt: new Date('2026-05-01T10:00:00.000Z'),
+        timezone:    'Asia/Kolkata',
+        maxSeats:    50,
+      },
+    ])
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_EMAIL', 'vinay@konma.io')
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_NAME', 'Vinay (PolicyDash)')
+    mocks.createCalBookingMock.mockResolvedValueOnce({
+      uid: 'root-resumed',
+      meetingUrl: 'https://meet.google.com/resumed-xxx-yyy',
+    })
+
+    const { step } = makeStep()
+    const result = await invoke(makeEvent(), step)
+
+    // Event-type creation skipped — reused from the stored id.
+    expect(mocks.createCalEventTypeMock).not.toHaveBeenCalled()
+    // Booking step fires with the parsed numeric id.
+    expect(mocks.createCalBookingMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventTypeId: 9999 }),
+    )
+    // Backfill writes BOTH identifiers + the meetingUrl so the next
+    // invocation short-circuits on the idempotency guard.
+    const backfillSet = mocks.setMock.mock.calls[0]?.[0] as {
+      calcomEventTypeId?: string
+      calcomBookingUid?:  string
+      meetingUrl?: string | null
+    } | undefined
+    expect(backfillSet?.calcomEventTypeId).toBe('9999')
+    expect(backfillSet?.calcomBookingUid).toBe('root-resumed')
+    expect(backfillSet?.meetingUrl).toBe('https://meet.google.com/resumed-xxx-yyy')
+    expect(result).toMatchObject({ ok: true, eventTypeId: 9999, bookingUid: 'root-resumed' })
+  })
+
+  it('B4-7b: malformed calcomEventTypeId (non-numeric) throws NonRetriableError', async () => {
+    mocks.limitMock.mockResolvedValueOnce([
+      {
+        id: '00000000-0000-0000-0000-000000000001',
+        title: 'Broken',
+        durationMinutes: 60,
+        calcomEventTypeId: 'not-a-number',
+        calcomBookingUid:  null,
+        scheduledAt: new Date('2026-05-01T10:00:00.000Z'),
+        timezone:    'Asia/Kolkata',
+        maxSeats:    50,
+      },
+    ])
+
+    const { step } = makeStep()
+    const { NonRetriableError } = await import('inngest')
+    const thrown = await invoke(makeEvent(), step).catch((e) => e)
+    expect(thrown).toBeInstanceOf(NonRetriableError)
+    expect((thrown as Error).message).toMatch(/non-numeric/i)
+    // No cal.com call and no backfill.
+    expect(mocks.createCalEventTypeMock).not.toHaveBeenCalled()
+    expect(mocks.createCalBookingMock).not.toHaveBeenCalled()
+    expect(mocks.updateMock).not.toHaveBeenCalled()
+  })
+
+  it('B4-8: missing CAL_PRIMARY_ATTENDEE_EMAIL throws NonRetriableError from the booking step', async () => {
+    mocks.limitMock.mockResolvedValueOnce([
+      {
+        id: '00000000-0000-0000-0000-000000000001',
+        title: 'Workshop',
+        durationMinutes: 60,
+        calcomEventTypeId: null,
+        calcomBookingUid:  null,
+        scheduledAt: new Date('2026-05-01T10:00:00.000Z'),
+        timezone:    'Asia/Kolkata',
+        maxSeats:    50,
+      },
+    ])
+    mocks.createCalEventTypeMock.mockResolvedValueOnce({ id: 12345 })
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_EMAIL', '')
+    vi.stubEnv('CAL_PRIMARY_ATTENDEE_NAME', 'Vinay (PolicyDash)')
+
+    const { step } = makeStep()
+    const { NonRetriableError } = await import('inngest')
+    const thrown = await invoke(makeEvent(), step).catch((e) => e)
+    expect(thrown).toBeInstanceOf(NonRetriableError)
+    expect((thrown as Error).message).toMatch(/CAL_PRIMARY_ATTENDEE_EMAIL/)
+    // Backfill must not have run.
     expect(mocks.updateMock).not.toHaveBeenCalled()
   })
 

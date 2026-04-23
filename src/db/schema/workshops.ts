@@ -44,6 +44,18 @@ export const workshops = pgTable('workshops', {
   // Root seated booking + shared Google Meet link, backfilled by workshopCreatedFn
   // after cal.com provisioning completes. Nullable because creation is async
   // (mirrors the calcomEventTypeId null-until-backfilled pattern).
+  //
+  // COMPOSITE CONTRACT (B6-3): when a public attendee registers via
+  // `/api/intake/workshop-register`, their row on `workshop_registrations`
+  // stores `booking_uid` as `${calcomBookingUid}:${attendeeId}` (see
+  // `buildCompositeBookingUid` in `src/lib/calcom.ts`). Every webhook
+  // cascade branch (BOOKING_CANCELLED / BOOKING_RESCHEDULED root-uid
+  // match → LIKE `${uid}:%`) relies on this prefix contract. Changing
+  // the separator or prefix shape requires a data migration across every
+  // stored `workshop_registrations.booking_uid`.
+  //
+  // Indexed via a WHERE-NOT-NULL partial index in migration 0027 to keep
+  // the per-webhook cascade lookup O(log n) instead of O(n).
   calcomBookingUid:    text('calcom_booking_uid'),
   meetingUrl:          text('meeting_url'),
   maxSeats:            integer('max_seats'),

@@ -19,6 +19,7 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { sendParticipateIntake } from '@/src/inngest/events'
 import { consume, getClientIp } from '@/src/lib/rate-limit'
+import { verifyTurnstile } from '@/src/lib/turnstile'
 
 const bodySchema = z.object({
   name: z.string().min(2).max(120),
@@ -46,34 +47,6 @@ async function parseBody(req: Request): Promise<ParseFail | ParseOk> {
   const parsed = bodySchema.safeParse(json)
   if (!parsed.success) return { ok: false, status: 400 }
   return { ok: true, data: parsed.data }
-}
-
-async function verifyTurnstile(token: string, req: Request): Promise<{ success: boolean }> {
-  // Pitfall 2: pass whatever secret is configured to Cloudflare /siteverify and
-  // trust ITS reply. Do NOT short-circuit on missing secret - in production the
-  // real Cloudflare endpoint will reply success:false; in tests the global
-  // fetch is stubbed and answers from the test's mock. Either way the gate is
-  // closed unless siteverify itself returns success:true.
-  const secret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY ?? ''
-  const ip =
-    req.headers.get('CF-Connecting-IP') ??
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    ''
-  const form = new FormData()
-  form.append('secret', secret)
-  form.append('response', token)
-  if (ip) form.append('remoteip', ip)
-
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      body: form,
-    })
-    const data = (await res.json()) as { success?: boolean }
-    return { success: data.success === true }
-  } catch {
-    return { success: false }
-  }
 }
 
 export async function POST(request: Request): Promise<Response> {
