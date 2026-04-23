@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import Link from 'next/link'
 import { CryptoSeal } from './_components/crypto-seal'
 
 export default function Home() {
@@ -82,7 +83,7 @@ export default function Home() {
               transparency for the digital economy.
             </p>
             <div className="cl-hero-actions flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
-              <a
+              <Link
                 href="/portal"
                 className="bg-[var(--cl-primary)] text-[var(--cl-on-primary)] px-6 py-3 sm:px-8 sm:py-4 rounded-sm font-medium flex items-center justify-center space-x-2 transition-all hover:bg-[var(--cl-primary-container)] text-sm sm:text-base"
               >
@@ -90,13 +91,13 @@ export default function Home() {
                 <span className="material-symbols-outlined text-sm">
                   arrow_forward
                 </span>
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/sign-up"
                 className="border border-[var(--cl-outline-variant-20)] px-6 py-3 sm:px-8 sm:py-4 rounded-sm font-medium hover:bg-[var(--cl-surface-container-low)] transition-colors text-center text-sm sm:text-base"
               >
                 Participate
-              </a>
+              </Link>
             </div>
           </div>
           <div className="cl-hero-artifact-wrap lg:col-span-5 relative min-w-0">
@@ -631,12 +632,12 @@ export default function Home() {
             verifiable infrastructure for India&apos;s digital century.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6">
-            <a
+            <Link
               href="/sign-in"
               className="bg-[var(--cl-tertiary-fixed)] text-[var(--cl-on-tertiary-fixed)] px-8 py-4 sm:px-10 sm:py-5 rounded-sm font-bold uppercase tracking-widest text-xs sm:text-sm transition-transform hover:scale-105 active:scale-95 text-center"
             >
               Enter the System
-            </a>
+            </Link>
             <a
               href="mailto:hello@civilizationlab.in"
               className="text-white border border-white/20 px-8 py-4 sm:px-10 sm:py-5 rounded-sm font-bold uppercase tracking-widest text-xs sm:text-sm hover:bg-white/5 transition-colors text-center"
