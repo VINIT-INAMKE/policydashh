@@ -152,15 +152,31 @@ export async function POST(req: Request): Promise<Response> {
     )
   }
 
+  // Partial-failure ordering (revised 2026-04-23): cal.com is the outermost
+  // side effect. If cal.com succeeds but the DB insert or Inngest send
+  // fails afterwards, the attendee IS seated on cal.com (and has already
+  // received the confirmation email with the Meet link) but we have no
+  // local row to track attendance. We explicitly log the orphaned seat at
+  // ERROR level with enough identifiers (rootBookingUid, attendeeId,
+  // email, bookingId) for out-of-band reconciliation, and still return
+  // 500 so the client doesn't retry (which would create a second seat).
+  let attendee: { id: number; bookingId: number } | null = null
   try {
-    const attendee = await addAttendeeToBooking(workshop.calcomBookingUid, {
+    attendee = await addAttendeeToBooking(workshop.calcomBookingUid, {
       name:     cleanName || 'Guest',
       email:    cleanEmail,
       timeZone: workshop.timezone,
     })
+  } catch (err) {
+    // Cal.com attendee-add failed. No seat was created, no DB row written,
+    // user gets 500 and can safely retry.
+    console.error('[workshop-register] addAttendeeToBooking failed:', err)
+    return Response.json({ error: 'Registration failed' }, { status: 500 })
+  }
 
-    const compositeBookingUid = `${workshop.calcomBookingUid}:${attendee.id}`
+  const compositeBookingUid = `${workshop.calcomBookingUid}:${attendee.id}`
 
+  try {
     await db
       .insert(workshopRegistrations)
       .values({
@@ -173,7 +189,22 @@ export async function POST(req: Request): Promise<Response> {
         status:           'registered',
       })
       .onConflictDoNothing()
+  } catch (err) {
+    // ORPHAN: attendee is already seated on cal.com but we could not
+    // persist the tracking row. Log every identifier a human would need
+    // to find the stray seat and remove it manually.
+    console.error('[workshop-register] ORPHAN: DB insert failed after cal.com seat creation', {
+      workshopId,
+      rootBookingUid: workshop.calcomBookingUid,
+      attendeeId:     attendee.id,
+      bookingId:      attendee.bookingId,
+      email:          cleanEmail,
+      err:            err instanceof Error ? err.message : String(err),
+    })
+    return Response.json({ error: 'Registration failed' }, { status: 500 })
+  }
 
+  try {
     await sendWorkshopRegistrationReceived({
       workshopId,
       email:      cleanEmail,
@@ -182,16 +213,25 @@ export async function POST(req: Request): Promise<Response> {
       bookingUid: compositeBookingUid,
       source:     'direct_register',
     })
-
-    console.log('[workshop-register] attendee added to root booking', {
-      workshopId,
-      rootBookingUid: workshop.calcomBookingUid,
-      attendeeId:     attendee.id,
-    })
   } catch (err) {
-    console.error('[workshop-register] error:', err)
-    return Response.json({ error: 'Registration failed' }, { status: 500 })
+    // Registration row is persisted; Clerk invite enqueueing is best-effort.
+    // Log the gap so the invite-dispatcher backfill job can pick it up.
+    // Do NOT return 500 here — the user is already registered; the invite
+    // will eventually fire when Inngest recovers.
+    console.error('[workshop-register] Inngest send failed, Clerk invite deferred', {
+      workshopId,
+      bookingUid: compositeBookingUid,
+      email:      cleanEmail,
+      err:        err instanceof Error ? err.message : String(err),
+    })
   }
+
+  console.log('[workshop-register] attendee added to root booking', {
+    workshopId,
+    rootBookingUid: workshop.calcomBookingUid,
+    attendeeId:     attendee.id,
+    bookingId:      attendee.bookingId,
+  })
 
   return Response.json({ success: true })
 }
