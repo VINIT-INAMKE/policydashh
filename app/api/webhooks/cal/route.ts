@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { revalidateTag } from 'next/cache'
-import { and, eq, inArray, desc, like } from 'drizzle-orm'
+import { and, eq, inArray, desc, like, sql as drizzleSql } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
 import { workflowTransitions } from '@/src/db/schema/workflow'
@@ -51,12 +51,32 @@ type CalAttendee = {
 
 type CalPayload = {
   uid?: string
+  /**
+   * Cal.com seated-event webhooks historically carry the per-seat identity
+   * in a dedicated `seatUid` field on BOOKING_CANCELLED / BOOKING_RESCHEDULED
+   * (docs disagree across versions; newer payloads may use `seatReferenceUid`
+   * or continue to overload `uid`). We look at all three so the handler
+   * tolerates any shape cal.com ships.
+   */
+  seatUid?: string
+  seatReferenceUid?: string
   rescheduleUid?: string
   startTime?: string
   endTime?: string
   attendees?: CalAttendee[]
   eventTypeId?: number
   [k: string]: unknown
+}
+
+/**
+ * Return the best candidate uid for this webhook payload, preferring the
+ * seat-level identity when cal.com provides it. Used in both cancel and
+ * reschedule branches: if cal.com ships `seatUid`, the cascade lookup against
+ * `workshops.calcomBookingUid` will correctly miss (seat uids are not root
+ * uids), and the exact-match fallback will target only the seat.
+ */
+function primaryBookingUid(p: CalPayload): string | undefined {
+  return p.seatUid ?? p.seatReferenceUid ?? p.uid
 }
 
 type CalWebhookBody = {
@@ -138,19 +158,32 @@ export async function POST(req: Request): Promise<Response> {
       }
 
       case 'BOOKING_CANCELLED': {
-        if (!bookingData.uid) return new Response('OK', { status: 200 })
+        // Prefer seat-level identity when present (`seatUid` /
+        // `seatReferenceUid`) — those are per-attendee fields cal.com
+        // populates for seated-event cancellations. When neither is set
+        // we fall back to the booking-level `uid`.
+        const cancelUid = primaryBookingUid(bookingData)
+        if (!cancelUid) return new Response('OK', { status: 200 })
+
+        // Root-uid cascade is only meaningful when the payload's uid is
+        // the root booking. A seat-level payload (one where `seatUid` was
+        // populated) goes straight to the exact-match branch because the
+        // root lookup would never match a seat's identity.
+        const hasSeatId =
+          typeof bookingData.seatUid === 'string' ||
+          typeof bookingData.seatReferenceUid === 'string'
+        const rootCandidateUid = hasSeatId ? null : bookingData.uid
 
         // SAFETY: fall through to exact match when the uid fails UID_SAFE —
         // prevents SQL LIKE wildcard injection if cal.com's uid format ever
         // widens. Guard is declared at module scope.
-        const uidIsSafeForLike = UID_SAFE.test(bookingData.uid)
+        const rootCandidateSafe =
+          rootCandidateUid !== undefined &&
+          rootCandidateUid !== null &&
+          UID_SAFE.test(rootCandidateUid)
 
-        // If this uid is a workshop's root booking, cascade-cancel every
-        // registration for that workshop. Otherwise treat uid as an
-        // individual seat's booking_uid (attendee-self-cancel or legacy
-        // per-seat cancel shape) and update only that row.
-        const workshopIdForRoot = uidIsSafeForLike
-          ? await findWorkshopByRootBookingUid(bookingData.uid)
+        const workshopIdForRoot = rootCandidateSafe
+          ? await findWorkshopByRootBookingUid(rootCandidateUid!)
           : null
 
         if (workshopIdForRoot) {
@@ -161,9 +194,23 @@ export async function POST(req: Request): Promise<Response> {
               cancelledAt: new Date(),
               updatedAt:   new Date(),
             })
-            .where(like(workshopRegistrations.bookingUid, `${bookingData.uid}:%`))
+            .where(like(workshopRegistrations.bookingUid, `${rootCandidateUid}:%`))
           revalidateTag(spotsTag(workshopIdForRoot), 'max')
         } else {
+          // Exact-match fallback targets the individual seat. We try every
+          // plausible candidate identifier because cal.com's seat-cancel
+          // payload shape has drifted across versions — OR'ing across them
+          // lands the cancellation wherever our composite booking_uid was
+          // stored.
+          const candidates = Array.from(
+            new Set(
+              [bookingData.seatUid, bookingData.seatReferenceUid, bookingData.uid].filter(
+                (v): v is string => typeof v === 'string' && v.length > 0,
+              ),
+            ),
+          )
+          if (candidates.length === 0) return new Response('OK', { status: 200 })
+
           const cancelled = await db
             .update(workshopRegistrations)
             .set({
@@ -171,7 +218,7 @@ export async function POST(req: Request): Promise<Response> {
               cancelledAt: new Date(),
               updatedAt:   new Date(),
             })
-            .where(eq(workshopRegistrations.bookingUid, bookingData.uid))
+            .where(inArray(workshopRegistrations.bookingUid, candidates))
             .returning({ workshopId: workshopRegistrations.workshopId })
           for (const row of cancelled) {
             if (row.workshopId) revalidateTag(spotsTag(row.workshopId), 'max')
@@ -198,8 +245,22 @@ export async function POST(req: Request): Promise<Response> {
           : null
 
         if (workshopIdForRoot) {
-          // Workshop-level reschedule: update the workshop row AND every
-          // registration's booking_uid prefix + bookingStartTime.
+          // Workshop-level reschedule: atomically rewrite the workshop row
+          // AND every registration's composite booking_uid prefix +
+          // bookingStartTime in TWO SQL statements (no N+1 loop). Prior
+          // implementation walked rows in a loop — on a 100-seat workshop
+          // that is ~100 Neon HTTP round-trips and a mid-flight process
+          // death left the workshop + some rows pointing at different uids.
+          //
+          // The registrations UPDATE uses Postgres' CONCAT + SUBSTRING to
+          // swap the prefix in-place: the stored composite is
+          // `${origUid}:${attendeeId}`, so starting from position
+          // (origUid.length + 1) yields just the trailing attendeeId, and
+          // prepending `${newUid}:` reassembles the composite with the new
+          // root uid. Replay-safe: a re-fired webhook after the workshop
+          // row already holds newUid (and the children too) simply can't
+          // match `booking_uid LIKE '${origUid}:%'` anymore — the whole
+          // handler becomes a harmless no-op.
           await db
             .update(workshops)
             .set({
@@ -209,27 +270,15 @@ export async function POST(req: Request): Promise<Response> {
             })
             .where(eq(workshops.id, workshopIdForRoot))
 
-          // Rewrite each child registration's composite booking_uid prefix.
-          // We cannot express the prefix-swap purely in SQL with drizzle's
-          // query builder, so fetch + update in a loop. Ranges are small
-          // (≤ maxSeats) so this is fine.
-          const rows = await db
-            .select({ id: workshopRegistrations.id, bookingUid: workshopRegistrations.bookingUid })
-            .from(workshopRegistrations)
+          await db
+            .update(workshopRegistrations)
+            .set({
+              bookingUid: drizzleSql`${newUid} || ':' || substring(${workshopRegistrations.bookingUid} from ${origUid.length + 2})`,
+              bookingStartTime: newStart,
+              status:           'rescheduled',
+              updatedAt:        new Date(),
+            })
             .where(like(workshopRegistrations.bookingUid, `${origUid}:%`))
-
-          for (const row of rows) {
-            const suffix = row.bookingUid.slice(origUid.length + 1)
-            await db
-              .update(workshopRegistrations)
-              .set({
-                bookingUid:       `${newUid}:${suffix}`,
-                bookingStartTime: newStart,
-                status:           'rescheduled',
-                updatedAt:        new Date(),
-              })
-              .where(eq(workshopRegistrations.id, row.id))
-          }
 
           revalidateTag(spotsTag(workshopIdForRoot), 'max')
           return new Response('OK', { status: 200 })

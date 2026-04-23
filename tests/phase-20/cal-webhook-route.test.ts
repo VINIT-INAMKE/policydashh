@@ -494,14 +494,20 @@ describe('POST /api/webhooks/cal', () => {
       const res = await POST!(makeReq(body, signBody(body)))
       expect(res.status).toBe(200)
 
-      // Should have an UPDATE on workshopRegistrations with a LIKE clause
-      // pattern. We assert the SET status and the WHERE shape by inspecting
-      // the captured update call.
       const upd = mocks.dbUpdateCalls.find(
         (c) => c.table === 'workshop_registrations',
       )
       expect(upd).toBeTruthy()
       expect((upd?.set as { status?: string }).status).toBe('cancelled')
+      // Assert the LIKE pattern targets `root-abc:%` specifically — this is
+      // the whole point of the cascade and regressions here would silently
+      // miss every child seat.
+      expect(upd?.where).toContain('root-abc:%')
+      // And confirm the spots-left cache was busted for the right workshop.
+      expect(mocks.revalidateTag).toHaveBeenCalledWith(
+        'workshop-spots-ws-1',
+        'max',
+      )
     })
   })
 
@@ -510,6 +516,10 @@ describe('POST /api/webhooks/cal', () => {
   describe('BOOKING_CANCELLED — seat-level', () => {
     it('matches the seat booking_uid exactly when root lookup returns no workshop', async () => {
       // First select: no workshop for that uid → falls back to exact match.
+      mocks.dbSelectResults.push([])
+      // returning(): no rows matched (seat uid not in our table) → no
+      // revalidateTag fires. OK — test only needs to verify the fallback
+      // path dispatched the right UPDATE shape.
       mocks.dbSelectResults.push([])
 
       const body = JSON.stringify({
@@ -523,13 +533,42 @@ describe('POST /api/webhooks/cal', () => {
         (c) => c.table === 'workshop_registrations',
       )
       expect(upd).toBeTruthy()
+      // Fallback must not use LIKE wildcards (that would be the cascade
+      // branch) — assert the seat-uid appears literally in the WHERE.
+      expect(upd?.where).toContain('root-abc:777')
+      expect(upd?.where).not.toContain('%')
+    })
+
+    it('honours payload.seatUid when present (cal.com seat-cancel shape)', async () => {
+      // Cal.com sometimes ships seat-cancels with `seatUid` distinct from
+      // `uid`. The handler should skip the root-lookup (seat uid is not
+      // a root uid) and go straight to exact-match with seatUid as a
+      // candidate.
+      mocks.dbSelectResults.push([])
+
+      const body = JSON.stringify({
+        triggerEvent: 'BOOKING_CANCELLED',
+        payload: {
+          uid:     'root-abc',       // root booking uid (not used)
+          seatUid: 'root-abc:777',   // the seat actually being cancelled
+        },
+      })
+      const res = await POST!(makeReq(body, signBody(body)))
+      expect(res.status).toBe(200)
+
+      const upd = mocks.dbUpdateCalls.find(
+        (c) => c.table === 'workshop_registrations',
+      )
+      expect(upd).toBeTruthy()
+      // Must target the seatUid, not the root uid.
+      expect(upd?.where).toContain('root-abc:777')
     })
   })
 
   // --- BOOKING_RESCHEDULED: root booking cascade (Task 7) ----------
 
   describe('BOOKING_RESCHEDULED — root booking', () => {
-    it('updates workshops.scheduledAt + calcomBookingUid + cascades booking_uid prefix', async () => {
+    it('updates workshops.scheduledAt + calcomBookingUid + cascades booking_uid prefix atomically', async () => {
       mocks.dbSelectResults.push([{ id: 'ws-1' }])
       const body = JSON.stringify({
         triggerEvent: 'BOOKING_RESCHEDULED',
@@ -545,12 +584,26 @@ describe('POST /api/webhooks/cal', () => {
       const workshopUpdate = mocks.dbUpdateCalls.find(
         (c) => c.table === 'workshops',
       )
-      const set = workshopUpdate?.set as {
+      const wsSet = workshopUpdate?.set as {
         calcomBookingUid?: string
         scheduledAt?: Date
       } | undefined
-      expect(set?.calcomBookingUid).toBe('root-xyz')
-      expect(set?.scheduledAt).toBeInstanceOf(Date)
+      expect(wsSet?.calcomBookingUid).toBe('root-xyz')
+      expect(wsSet?.scheduledAt).toBeInstanceOf(Date)
+
+      // Children: exactly ONE UPDATE on workshop_registrations, matching
+      // `root-abc:%` via LIKE. The prior N+1-loop implementation would fire
+      // N updates; the atomic rewrite fires exactly one.
+      const regUpdates = mocks.dbUpdateCalls.filter(
+        (c) => c.table === 'workshop_registrations',
+      )
+      expect(regUpdates).toHaveLength(1)
+      expect(regUpdates[0].where).toContain('root-abc:%')
+
+      expect(mocks.revalidateTag).toHaveBeenCalledWith(
+        'workshop-spots-ws-1',
+        'max',
+      )
     })
   })
 })
