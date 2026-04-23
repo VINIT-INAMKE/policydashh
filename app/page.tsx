@@ -53,36 +53,21 @@ export default function Home() {
         </svg>
         <div className="max-w-screen-2xl mx-auto px-5 sm:px-8 lg:px-12 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center relative">
           <div className="lg:col-span-7 space-y-6 sm:space-y-8 min-w-0">
-            <div className="cl-hero-meta inline-flex items-center space-x-3 px-3 py-1 bg-[var(--cl-secondary-container)] text-[var(--cl-on-secondary-fixed-variant)] rounded-sm">
+            <div className="inline-flex items-center space-x-3 px-3 py-1 bg-[var(--cl-secondary-container)] text-[var(--cl-on-secondary-fixed-variant)] rounded-sm">
               <span className="w-2 h-2 rounded-full bg-[var(--cl-tertiary-fixed-dim)] animate-pulse"></span>
               <span className="text-[0.7rem] font-bold uppercase tracking-[0.2em]">
                 Institutional Update 2024
               </span>
             </div>
             <h1 className="text-[2.25rem] sm:text-5xl md:text-6xl lg:text-7xl font-headline text-[var(--cl-primary)] leading-[1.05] sm:leading-[1.1] tracking-tight break-words">
-              <span className="cl-hero-word" style={{ ['--i' as string]: 0 }}>
-                Designing
-              </span>{' '}
-              <span className="cl-hero-word" style={{ ['--i' as string]: 1 }}>
-                and
-              </span>{' '}
-              <span className="cl-hero-word" style={{ ['--i' as string]: 2 }}>
-                Coordinating
-              </span>{' '}
-              <span className="cl-hero-italic italic">Blockchain Policy</span>{' '}
-              <span className="cl-hero-word" style={{ ['--i' as string]: 5 }}>
-                for
-              </span>{' '}
-              <span className="cl-hero-word" style={{ ['--i' as string]: 6 }}>
-                India
-              </span>
+              Designing and Coordinating <span className="italic">Blockchain Policy</span> for India
             </h1>
-            <p className="cl-hero-paragraph text-base sm:text-lg md:text-xl text-[var(--cl-on-surface-variant)] max-w-2xl leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-[var(--cl-on-surface-variant)] max-w-2xl leading-relaxed">
               A verifiable, stakeholder-driven policy system engineered to
               bridge the gap between academic rigor and cryptographic
               transparency for the digital economy.
             </p>
-            <div className="cl-hero-actions flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
               <Link
                 href="/portal"
                 className="bg-[var(--cl-primary)] text-[var(--cl-on-primary)] px-6 py-3 sm:px-8 sm:py-4 rounded-sm font-medium flex items-center justify-center space-x-2 transition-all hover:bg-[var(--cl-primary-container)] text-sm sm:text-base"
@@ -100,7 +85,7 @@ export default function Home() {
               </Link>
             </div>
           </div>
-          <div className="cl-hero-artifact-wrap lg:col-span-5 relative min-w-0">
+          <div className="lg:col-span-5 relative min-w-0">
             <div className="aspect-square bg-[var(--cl-surface-container-lowest)] relative overflow-hidden rounded-sm shadow-2xl">
               <CryptoSeal />
             </div>

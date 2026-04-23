@@ -490,28 +490,6 @@
 
 /* ──────────── OVERDRIVE: animations, scroll-driven reveals ──────────── */
 
-@property --cl-sweep {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: -50%;
-}
-
-@keyframes cl-word-in {
-  0% {
-    opacity: 0;
-    transform: translateY(0.45em);
-    filter: blur(10px);
-  }
-  60% {
-    filter: blur(0.5px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
 @keyframes cl-rise-in {
   0% {
     opacity: 0;
@@ -521,16 +499,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-@keyframes cl-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes cl-sweep {
-  0% { --cl-sweep: -40%; }
-  100% { --cl-sweep: 140%; }
 }
 
 @keyframes cl-draw-x {
@@ -552,52 +520,6 @@
   0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); }
   50% { transform: translate3d(-1.5%, -1%, 0) scale(1.08); }
 }
-
-/* === Hero load entrance === */
-.cl-hero-word {
-  display: inline-block;
-  opacity: 0;
-  will-change: transform, opacity, filter;
-  animation: cl-word-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--i, 0) * 75ms + 200ms);
-}
-
-.cl-hero-italic {
-  display: inline;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-  background-image: linear-gradient(
-    100deg,
-    var(--cl-primary) 0%,
-    var(--cl-primary) 38%,
-    var(--cl-primary-container) 50%,
-    var(--cl-primary) 62%,
-    var(--cl-primary) 100%
-  );
-  background-size: 220% 100%;
-  background-position: var(--cl-sweep) 0%;
-  background-repeat: no-repeat;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  opacity: 0;
-  animation:
-    cl-fade-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 450ms forwards,
-    cl-sweep 4.5s cubic-bezier(0.45, 0.05, 0.2, 1) 1700ms forwards;
-}
-
-.cl-hero-meta,
-.cl-hero-paragraph,
-.cl-hero-actions,
-.cl-hero-artifact-wrap {
-  opacity: 0;
-  will-change: opacity, transform;
-  animation: cl-rise-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-.cl-hero-meta { animation-delay: 80ms; }
-.cl-hero-paragraph { animation-delay: 950ms; }
-.cl-hero-actions { animation-delay: 1080ms; }
-.cl-hero-artifact-wrap { animation-delay: 1200ms; }
 
 /* === Topographic backdrop drift === */
 .cl-topo {
@@ -640,12 +562,6 @@
 
 /* === Reduced motion: kill everything, keep final state === */
 @media (prefers-reduced-motion: reduce) {
-  .cl-hero-word,
-  .cl-hero-italic,
-  .cl-hero-meta,
-  .cl-hero-paragraph,
-  .cl-hero-actions,
-  .cl-hero-artifact-wrap,
   .cl-rise,
   .cl-meth-line,
   .cl-timeline-line,
@@ -655,11 +571,5 @@
     opacity: 1 !important;
     transform: none !important;
     filter: none !important;
-  }
-  .cl-hero-italic {
-    background: none;
-    -webkit-background-clip: unset;
-    background-clip: unset;
-    color: var(--cl-primary);
   }
 }
