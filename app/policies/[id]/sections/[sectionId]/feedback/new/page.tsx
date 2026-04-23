@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import { api } from '@/src/trpc/server'
 import { SubmitFeedbackForm } from './_components/submit-feedback-form'
 
