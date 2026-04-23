@@ -32,10 +32,17 @@ const migrationPath = path.join(
 )
 const raw = readFileSync(migrationPath, 'utf8')
 
+// Strip block comments first, then per-chunk strip leading line comments
+// BEFORE the empty-check, so a chunk whose only non-SQL content is a leading
+// `--` header block doesn't get dropped by the `!/^--/` guard. Previous
+// template (copied from apply-migration-0025.mjs) silently no-op'd on any
+// migration that started with `-- ...` lines.
 const stmts = raw
   .split(/;\s*\n/)
-  .map((s) => s.replace(/\/\*[\s\S]*?\*\//g, '').trim())
-  .filter((s) => s.length > 0 && !/^--/.test(s))
+  .map((s) => s.replace(/\/\*[\s\S]*?\*\//g, ''))
+  .map((s) => s.replace(/^(?:[ \t]*--[^\n]*\n)+/, ''))
+  .map((s) => s.trim())
+  .filter((s) => s.length > 0)
 
 for (const stmt of stmts) {
   const preview = stmt.slice(0, 80).replace(/\s+/g, ' ')
