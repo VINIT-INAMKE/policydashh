@@ -2,13 +2,15 @@ import { z } from 'zod'
 import { router, protectedProcedure, requirePermission } from '@/src/trpc/init'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
-import { eq, count, and, isNull } from 'drizzle-orm'
+import { eq, count, and, isNull, desc, or, ilike } from 'drizzle-orm'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS, ORG_TYPE_VALUES } from '@/src/lib/constants'
 import { TRPCError } from '@trpc/server'
 
 export const userRouter = router({
-  // Any authenticated user can read their own profile
+  // Any authenticated user can read their own profile.
+  // Option C (migration 0028): surface the four enrichment columns so the
+  // /profile self-service page can show & edit them.
   getMe: protectedProcedure.query(async ({ ctx }) => {
     return {
       id: ctx.user.id,
@@ -18,20 +20,36 @@ export const userRouter = router({
       name: ctx.user.name,
       role: ctx.user.role,
       orgType: ctx.user.orgType,
+      designation: ctx.user.designation,
+      orgName: ctx.user.orgName,
+      expertise: ctx.user.expertise,
+      howHeard: ctx.user.howHeard,
       createdAt: ctx.user.createdAt,
     }
   }),
 
-  // Any authenticated user can update their own org type
+  // Any authenticated user can update their own profile. orgType stays
+  // self-editable (unchanged behaviour). The four new fields from migration
+  // 0028 (designation / orgName / expertise / howHeard) are also
+  // self-editable because they describe the user themselves; role is still
+  // admin-only (see updateRole).
   updateProfile: protectedProcedure
     .input(z.object({
       orgType: z.enum(ORG_TYPE_VALUES as [string, ...string[]]).nullable().optional(),
       name: z.string().min(1).max(200).optional(),
+      designation: z.string().max(200).nullable().optional(),
+      orgName: z.string().max(200).nullable().optional(),
+      expertise: z.string().max(1000).nullable().optional(),
+      howHeard: z.string().max(100).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const updateData: Record<string, unknown> = { updatedAt: new Date() }
       if (input.orgType !== undefined) updateData.orgType = input.orgType
       if (input.name !== undefined) updateData.name = input.name
+      if (input.designation !== undefined) updateData.designation = input.designation
+      if (input.orgName !== undefined) updateData.orgName = input.orgName
+      if (input.expertise !== undefined) updateData.expertise = input.expertise
+      if (input.howHeard !== undefined) updateData.howHeard = input.howHeard
 
       const [updated] = await db
         .update(users)
@@ -42,7 +60,14 @@ export const userRouter = router({
       // C11: produce a clean diff by merging the prior row with the input so
       // `after` reflects the full post-state, not just the delta. This keeps
       // audit payloads symmetrical (same keys on both sides).
-      const before = { orgType: ctx.user.orgType, name: ctx.user.name }
+      const before = {
+        orgType: ctx.user.orgType,
+        name: ctx.user.name,
+        designation: ctx.user.designation,
+        orgName: ctx.user.orgName,
+        expertise: ctx.user.expertise,
+        howHeard: ctx.user.howHeard,
+      }
       const after = { ...before, ...input }
       writeAuditLog({
         actorId: ctx.user.id,
@@ -329,6 +354,58 @@ export const userRouter = router({
         orderBy: (users, { desc }) => [desc(users.createdAt)],
       })
       return allUsers
+    }),
+
+  // Option C (migration 0028): stakeholder directory query. Any
+  // authenticated user can browse the directory — it's scoped to
+  // role='stakeholder', non-deleted, and filtered by orgType / free-text
+  // search on name + designation + orgName + expertise. Email is NOT
+  // returned (the directory view is intentionally lighter than the admin
+  // /users/[id] page).
+  //
+  // The partial index `users_stakeholder_directory_idx` (migration 0028)
+  // covers the base filter (deleted_at IS NULL AND role='stakeholder' AND
+  // org_type IS NOT NULL) so the orgType filter is O(log n) over
+  // eligible rows.
+  listStakeholders: protectedProcedure
+    .input(z.object({
+      orgType: z.enum(ORG_TYPE_VALUES as [string, ...string[]]).optional(),
+      q: z.string().max(200).optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const filters = input ?? {}
+
+      const conditions = [
+        isNull(users.deletedAt),
+        eq(users.role, 'stakeholder'),
+      ]
+      if (filters.orgType) {
+        conditions.push(eq(users.orgType, filters.orgType as (typeof ORG_TYPE_VALUES)[number]))
+      }
+      if (filters.q && filters.q.trim().length > 0) {
+        const needle = `%${filters.q.trim()}%`
+        const searchClause = or(
+          ilike(users.name, needle),
+          ilike(users.designation, needle),
+          ilike(users.orgName, needle),
+          ilike(users.expertise, needle),
+        )
+        if (searchClause) conditions.push(searchClause)
+      }
+
+      return db
+        .select({
+          id: users.id,
+          name: users.name,
+          designation: users.designation,
+          orgType: users.orgType,
+          orgName: users.orgName,
+          expertise: users.expertise,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(and(...conditions))
+        .orderBy(desc(users.createdAt))
     }),
 
 })

@@ -46,10 +46,13 @@ beforeEach(() => {
   mocks.fetchMock.mockReset()
 })
 
+// Updated for Option C (migration 0028): the body used to carry a
+// redundant `role` field (same enum as orgType) which has been replaced
+// by a free-text `designation`. All other fields unchanged.
 const validBody = {
   name: 'Dr. Priya Sharma',
   email: 'priya@ministry.gov.in',
-  role: 'government',
+  designation: 'Policy Officer, Digital Governance',
   orgType: 'government',
   orgName: 'Ministry of Electronics and IT',
   expertise: 'Digital policy and data protection frameworks for India.',

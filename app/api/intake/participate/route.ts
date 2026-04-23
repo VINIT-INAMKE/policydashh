@@ -24,7 +24,11 @@ import { verifyTurnstile } from '@/src/lib/turnstile'
 const bodySchema = z.object({
   name: z.string().min(2).max(120),
   email: z.string().email(),
-  role: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal']),
+  // Option C (migration 0028): the intake form used to ask the user to pick
+  // their "role" from the same enum as orgType, which was redundant. Now it
+  // asks for a free-text designation/title (e.g. "Partner, Fintech Practice")
+  // which is actually useful signal for the stakeholder directory.
+  designation: z.string().min(2).max(200),
   orgType: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal']),
   orgName: z.string().min(2).max(200),
   expertise: z.string().min(20).max(1000),
@@ -120,9 +124,9 @@ export async function POST(request: Request): Promise<Response> {
 
   // Step 3: Fire Inngest event. Rate limit + Clerk + welcome email all run
   // inside participateIntakeFn (src/inngest/functions/participate-intake.ts).
-  // I4: forward orgName and role so the worker can persist them on the
-  // Clerk invitation publicMetadata and emit an audit event containing
-  // the full intake payload.
+  // Option C: forward orgName + designation so the worker stashes them on the
+  // Clerk invitation publicMetadata; the webhook then hydrates the users row
+  // on invitation-accept (migration 0028).
   try {
     await sendParticipateIntake({
       emailHash,
@@ -132,7 +136,7 @@ export async function POST(request: Request): Promise<Response> {
       expertise: data.expertise,
       howHeard: data.howHeard,
       orgName: data.orgName,
-      role: data.role,
+      designation: data.designation,
     })
   } catch (err) {
     // Inngest send failure is a real server error - surface generically.

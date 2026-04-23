@@ -116,7 +116,21 @@ export default async function UserProfilePage({
             </Badge>
           )}
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+        {/* Option C (migration 0028): designation + orgName sit right under the
+            name row because they answer "who is this person?" at a glance —
+            the ROLE_DISPLAY badge describes their platform permission level,
+            this line describes their real-world job. */}
+        {(profile.designation || profile.orgName) && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {profile.designation}
+            {profile.designation && profile.orgName ? ' · ' : ''}
+            {profile.orgName}
+          </p>
+        )}
+        {profile.email && (
+          <p className="mt-1 text-sm text-muted-foreground">{profile.email}</p>
+        )}
+        <div className="mt-3 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
           <div>
             <span className="font-medium text-foreground">Last Active:</span>{' '}
             {format(new Date(profile.lastActivityAt), 'MMM d, yyyy')}
@@ -131,6 +145,36 @@ export default async function UserProfilePage({
           <span className="ml-2 text-xs text-muted-foreground">engagements</span>
         </div>
       </div>
+
+      {/* About — Option C (migration 0028). Expertise and howHeard answer
+          "what does this person bring to the consultation?" and "where did
+          they come from?". Card is hidden entirely when neither is set so
+          legacy users pre-dating the enrichment don't show an empty block. */}
+      {(profile.expertise || profile.howHeard) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2 className="text-xl font-semibold">About</h2>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile.expertise && (
+              <div>
+                <h3 className="text-sm font-medium text-foreground">Expertise</h3>
+                <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+                  {profile.expertise}
+                </p>
+              </div>
+            )}
+            {profile.howHeard && (
+              <div>
+                <h3 className="text-sm font-medium text-foreground">How they heard about us</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{profile.howHeard}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Workshop Attendance */}
       <Card>

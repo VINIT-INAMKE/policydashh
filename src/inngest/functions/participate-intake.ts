@@ -63,7 +63,7 @@ export const participateIntakeFn = inngest.createFunction(
     triggers: [{ event: 'participate.intake' }],
   },
   async ({ event, step }) => {
-    const { email, orgType, name, expertise, howHeard, orgName, role } =
+    const { email, orgType, name, expertise, howHeard, orgName, designation } =
       event.data as {
         email: string
         name: string
@@ -72,16 +72,16 @@ export const participateIntakeFn = inngest.createFunction(
         expertise?: string
         howHeard?: string
         orgName?: string
-        role?: string
+        designation?: string
       }
 
     await step.run('create-clerk-invitation', async () => {
       try {
         const client = await clerkClient()
-        // I4: stash expertise/orgName/howHeard on publicMetadata so the
-        // Clerk user.created webhook can back-fill the users row once the
-        // invitee accepts. Keep role + orgType minimal so the RBAC
-        // defaults on webhook ingest stay stable.
+        // Option C (migration 0028): stash the profile-enrichment fields on
+        // publicMetadata so the Clerk user.created webhook can hydrate the
+        // users row once the invitee accepts. `role: 'stakeholder'` stays
+        // hardcoded — intake users always land as stakeholders.
         await client.invitations.createInvitation({
           emailAddress: email,
           ignoreExisting: true,
@@ -91,7 +91,7 @@ export const participateIntakeFn = inngest.createFunction(
             orgName,
             expertise,
             howHeard,
-            selfReportedRole: role,
+            designation,
           },
         })
       } catch (err) {
@@ -110,9 +110,9 @@ export const participateIntakeFn = inngest.createFunction(
     })
 
     // I8: audit log the intake submission so admins can see public intake
-    // traffic in /audit. I4: include expertise / orgName / role in the
-    // payload so the details are recoverable even if the user never
-    // accepts the Clerk invitation.
+    // traffic in /audit. Payload includes the full set of collected fields
+    // so the details are recoverable even if the user never accepts the
+    // Clerk invitation.
     //
     // Wrapped in step.run so Inngest memoizes the insert across retries.
     // entityId uses the emailHash (the only stable, privacy-preserving
@@ -134,7 +134,7 @@ export const participateIntakeFn = inngest.createFunction(
           name,
           orgType,
           orgName: orgName ?? null,
-          role: role ?? null,
+          designation: designation ?? null,
           expertise: expertise ?? null,
           howHeard: howHeard ?? null,
         },

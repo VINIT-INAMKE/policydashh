@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ParticipateSuccess } from './participate-success'
 
 type OrgType = 'government' | 'industry' | 'legal' | 'academia' | 'civil_society' | 'internal'
@@ -24,7 +23,12 @@ type OrgType = 'government' | 'industry' | 'legal' | 'academia' | 'civil_society
 interface FormState {
   name: string
   email: string
-  role: OrgType | ''
+  // Option C (migration 0028): `designation` is a free-text title that
+  // replaces the old `role` radio group — that radio asked the user to pick
+  // their "role" from the same enum as orgType, which was redundant and
+  // stored nothing useful. A designation like "Partner, Fintech Practice" or
+  // "Research Fellow" is what the /stakeholders directory actually shows.
+  designation: string
   orgType: OrgType | ''
   orgName: string
   expertise: string
@@ -34,21 +38,12 @@ interface FormState {
 const INITIAL: FormState = {
   name: '',
   email: '',
-  role: '',
+  designation: '',
   orgType: '',
   orgName: '',
   expertise: '',
   howHeard: '',
 }
-
-const ROLE_OPTIONS: { value: OrgType; label: string }[] = [
-  { value: 'government', label: 'Policy Maker / Government Official' },
-  { value: 'industry', label: 'Industry Professional' },
-  { value: 'legal', label: 'Legal Professional' },
-  { value: 'academia', label: 'Academic / Researcher' },
-  { value: 'civil_society', label: 'Civil Society Representative' },
-  { value: 'internal', label: 'Internal Team Member' },
-]
 
 const ORG_TYPE_OPTIONS: { value: OrgType; label: string }[] = [
   { value: 'government', label: 'Government' },
@@ -71,7 +66,7 @@ const HOW_HEARD_OPTIONS = [
 interface Errors {
   name?: string
   email?: string
-  role?: string
+  designation?: string
   orgType?: string
   orgName?: string
   expertise?: string
@@ -81,7 +76,7 @@ function validate(state: FormState): Errors {
   const errs: Errors = {}
   if (state.name.trim().length < 2) errs.name = 'Please enter your full name.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) errs.email = 'Please enter a valid email address.'
-  if (!state.role) errs.role = 'Please select your role.'
+  if (state.designation.trim().length < 2) errs.designation = 'Please enter your title or designation.'
   if (!state.orgType) errs.orgType = 'Please select your organization type.'
   if (state.orgName.trim().length < 2) errs.orgName = 'Please enter your organization name.'
   if (state.expertise.trim().length < 20) {
@@ -234,36 +229,23 @@ export function ParticipateForm() {
 
         <Separator />
 
-        {/* Section: Your Role */}
-        <section className="flex flex-col gap-4">
-          <h3 className="text-base font-semibold text-[var(--cl-on-surface)]">Your Role</h3>
-          <RadioGroup
-            value={state.role}
-            onValueChange={(v) => update('role', v as OrgType)}
-            className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-            aria-label="Your role"
-            aria-invalid={!!errors.role}
-            aria-describedby={errors.role ? 'role-error' : undefined}
-          >
-            {ROLE_OPTIONS.map((opt) => (
-              <div key={opt.value} className="flex items-center gap-2 rounded-md border border-border/60 px-3 py-3">
-                <RadioGroupItem value={opt.value} id={`role-${opt.value}`} />
-                <Label htmlFor={`role-${opt.value}`} className="cursor-pointer text-sm">{opt.label}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-          {errors.role ? (
-            <p id="role-error" className="text-sm text-destructive">
-              {errors.role}
-            </p>
-          ) : null}
-        </section>
-
-        <Separator />
-
         {/* Section: Your Organization */}
         <section className="flex flex-col gap-4">
           <h3 className="text-base font-semibold text-[var(--cl-on-surface)]">Your Organization</h3>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="designation">Title / Designation</Label>
+            <Input
+              id="designation"
+              placeholder="e.g. Partner, Fintech Practice  /  Research Fellow  /  Policy Officer"
+              value={state.designation}
+              onChange={(e) => update('designation', e.target.value)}
+              aria-invalid={!!errors.designation}
+              aria-describedby={errors.designation ? 'designation-error' : undefined}
+              maxLength={200}
+              required
+            />
+            {errors.designation ? <p id="designation-error" className="text-sm text-destructive">{errors.designation}</p> : null}
+          </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="orgType">Organization type</Label>
             <Select value={state.orgType || null} onValueChange={(v) => update('orgType', (v ?? '') as OrgType | '')}>

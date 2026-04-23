@@ -261,12 +261,13 @@ const participateIntakeSchema = z.object({
   orgType: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal']),
   expertise: z.string().min(20).max(1000),
   howHeard: z.string().max(100).optional(),
-  // I4: forward orgName and role from the intake form so
-  // participateIntakeFn can stash them on the Clerk invitation's
-  // publicMetadata (then onto the users row via the Clerk user.created
-  // webhook) and the audit log.
+  // Option C (migration 0028): participate intake now forwards orgName and
+  // designation so the Clerk user.created webhook can hydrate the users row
+  // directly. `designation` replaces the old `role` free-text field that
+  // duplicated orgType's enum; it's a free-text job title like
+  // "Partner, Fintech Practice" that the directory + profile surfaces show.
   orgName: z.string().min(2).max(200).optional(),
-  role: z.enum(['government', 'industry', 'legal', 'academia', 'civil_society', 'internal']).optional(),
+  designation: z.string().min(2).max(200).optional(),
 })
 
 export const participateIntakeEvent = eventType('participate.intake', {

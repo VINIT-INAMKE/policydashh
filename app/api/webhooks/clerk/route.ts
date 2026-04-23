@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { users } from '@/src/db/schema/users'
 import type { Role } from '@/src/lib/constants'
-import { ACTIONS, ROLE_VALUES } from '@/src/lib/constants'
+import { ACTIONS, ROLE_VALUES, ORG_TYPE_VALUES } from '@/src/lib/constants'
 import { writeAuditLog } from '@/src/lib/audit'
 import { sendUserUpserted } from '@/src/inngest/events'
 
@@ -18,11 +18,30 @@ interface ClerkWebhookEvent {
     last_name?: string | null
     public_metadata?: {
       role?: string
+      // Option C profile enrichment: /participate stashes these on the Clerk
+      // invitation so this webhook can hydrate the users row once the invitee
+      // accepts. See src/inngest/functions/participate-intake.ts for the
+      // write site and src/db/migrations/0028 for the columns.
+      orgType?: string
+      orgName?: string
+      expertise?: string
+      howHeard?: string
+      designation?: string
     }
     // `user.deleted` payloads only include `id` + `deleted: true`. Everything
     // else is optional, so we type it loosely.
     deleted?: boolean
   }
+}
+
+// Coerce a free-text field to either a trimmed non-empty string or null.
+// publicMetadata preserves empty strings as empty strings; we normalise so a
+// user who hits the participate form with whitespace-only designation doesn't
+// end up with a row that shows an empty string instead of "Not set yet".
+function textOrNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
 export async function POST(req: Request) {
@@ -63,6 +82,21 @@ export async function POST(req: Request) {
     const metadataRoleIsValid = !!metadataRole && ROLE_VALUES.includes(metadataRole as Role)
     const role: Role = metadataRoleIsValid ? (metadataRole as Role) : 'stakeholder'
 
+    // Option C hydration (migration 0028): read the profile fields that the
+    // participate flow stashes on publicMetadata and fold them into the upsert.
+    // orgType is enum-validated like role; designation/orgName/expertise/howHeard
+    // are free text and only normalised (trim + empty→null).
+    const metadataOrgType = public_metadata?.orgType
+    const metadataOrgTypeIsValid =
+      !!metadataOrgType && (ORG_TYPE_VALUES as readonly string[]).includes(metadataOrgType)
+    const orgTypeFromMetadata = metadataOrgTypeIsValid
+      ? (metadataOrgType as (typeof ORG_TYPE_VALUES)[number])
+      : null
+    const designation = textOrNull(public_metadata?.designation)
+    const orgName = textOrNull(public_metadata?.orgName)
+    const expertise = textOrNull(public_metadata?.expertise)
+    const howHeard = textOrNull(public_metadata?.howHeard)
+
     const phone = phone_numbers?.[0]?.phone_number ?? null
     const email = email_addresses?.[0]?.email_address ?? null
     const name = [first_name, last_name].filter(Boolean).join(' ') || null
@@ -84,7 +118,11 @@ export async function POST(req: Request) {
       email,
       name,
       role,
-      orgType: null,
+      orgType: orgTypeFromMetadata,
+      designation,
+      orgName,
+      expertise,
+      howHeard,
     }).onConflictDoUpdate({
       target: users.clerkId,
       set: {
@@ -95,6 +133,15 @@ export async function POST(req: Request) {
         // enum value. A webhook without publicMetadata.role (or a malformed
         // one) must not silently demote the user back to stakeholder.
         ...(metadataRoleIsValid ? { role } : {}),
+        // Option C: same guard semantics for profile fields — only overwrite
+        // when the metadata actually carries a value. A self-edit via
+        // /profile that doesn't touch these fields shouldn't get clobbered
+        // by a stray Clerk profile sync that carries no publicMetadata.
+        ...(metadataOrgTypeIsValid ? { orgType: orgTypeFromMetadata } : {}),
+        ...(designation !== null ? { designation } : {}),
+        ...(orgName !== null ? { orgName } : {}),
+        ...(expertise !== null ? { expertise } : {}),
+        ...(howHeard !== null ? { howHeard } : {}),
         updatedAt: new Date(),
       },
     }).returning({ id: users.id })
