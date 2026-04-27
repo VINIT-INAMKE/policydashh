@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { format, parseISO } from 'date-fns'
 import {
   Calendar,
   Clock,
@@ -15,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { trpc } from '@/src/trpc/client'
+import { formatWorkshopTime } from '@/src/lib/format-workshop-time'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -85,10 +85,7 @@ export default function WorkshopDetailPage() {
   const workshop = workshopQuery.data
   if (!workshop) return null
 
-  const dateStr = typeof workshop.scheduledAt === 'string'
-    ? workshop.scheduledAt
-    : (workshop.scheduledAt as unknown as Date).toISOString()
-  const formattedDate = format(parseISO(dateStr), 'MMM d, yyyy \u00b7 h:mm a')
+  const formattedDate = formatWorkshopTime(workshop.scheduledAt, workshop.timezone)
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">

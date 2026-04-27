@@ -23,6 +23,7 @@ import {
   sendWorkshopCreated,
 } from '@/src/inngest/events'
 import { updateCalEventType } from '@/src/lib/calcom'
+import { wallTimeToUtc } from '@/src/lib/wall-time'
 import { eq, gte, lt, desc, and, count, ne } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
@@ -59,6 +60,45 @@ const timezoneField = z
   .max(64)
   .refine(isValidTimezone, { message: 'Invalid IANA timezone' })
 
+// Wall-clock datetime: "YYYY-MM-DDTHH:mm" with NO timezone. The tz comes
+// from the workshop's `timezone` field; the conversion happens server-side
+// via `wallTimeToUtc`. We deliberately reject the strict-ISO format because
+// the form's old `new Date(value).toISOString()` would silently reinterpret
+// the wall time in the BROWSER's tz instead of the workshop's — corrupting
+// every meeting time when admin and workshop are in different zones.
+const wallTimeField = z
+  .string()
+  .regex(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/,
+    'Expected wall time in YYYY-MM-DDTHH:mm format',
+  )
+
+// Optional URL that tolerates and trims empty/whitespace input. Plain
+// `z.string().url().optional()` rejects "" — which 400'd the entire
+// workshop.create mutation if the admin typed-then-deleted the field.
+const optionalUrlField = z.preprocess(
+  (v) => {
+    if (typeof v !== 'string') return v
+    const trimmed = v.trim()
+    return trimmed === '' ? undefined : trimmed
+  },
+  z.string().url().optional(),
+)
+
+// Update variant: blank means "clear" (null), absent means "no change"
+// (undefined), non-empty must be a valid URL.
+const optionalNullableUrlField = z.preprocess(
+  (v) => {
+    if (v === undefined || v === null) return v
+    if (typeof v === 'string') {
+      const trimmed = v.trim()
+      return trimmed === '' ? null : trimmed
+    }
+    return v
+  },
+  z.string().url().nullable().optional(),
+)
+
 // F8: mirror the webhook's transition set so the tRPC UI and the cal.com
 // webhook agree on legality. The webhook jumps `upcoming -> completed`
 // directly when MEETING_ENDED fires without a moderator having manually
@@ -78,9 +118,11 @@ export const workshopRouter = router({
     .input(z.object({
       title: z.string().min(1).max(200),
       description: z.string().max(2000).optional(),
-      scheduledAt: z.string().datetime(),
+      // Wall-clock time in the workshop's timezone (NOT UTC). See
+      // wallTimeField above for why we don't accept strict ISO here.
+      scheduledAt: wallTimeField,
       durationMinutes: z.number().int().positive().optional(),
-      registrationLink: z.string().url().optional(),
+      registrationLink: optionalUrlField,
       // Phase 20 WS-07 (D-07): optional per-workshop capacity. NULL in the DB
       // means "open registration" (no "X spots left" badge on the public
       // listing). Admins set this on the create form.
@@ -92,16 +134,19 @@ export const workshopRouter = router({
       timezone: timezoneField.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const tz = input.timezone ?? 'Asia/Kolkata'
+      const scheduledAtUtc = wallTimeToUtc(input.scheduledAt, tz)
+
       const [workshop] = await db
         .insert(workshops)
         .values({
           title: input.title,
           description: input.description ?? null,
-          scheduledAt: new Date(input.scheduledAt),
+          scheduledAt: scheduledAtUtc,
           durationMinutes: input.durationMinutes ?? null,
           registrationLink: input.registrationLink ?? null,
           maxSeats: input.maxSeats ?? null,
-          timezone: input.timezone ?? 'Asia/Kolkata',
+          timezone: tz,
           createdBy: ctx.user.id,
         })
         .returning()
@@ -165,6 +210,11 @@ export const workshopRouter = router({
           registrationLink: workshops.registrationLink,
           status: workshops.status,
           calcomEventTypeId: workshops.calcomEventTypeId,
+          // Surfaced so the admin card formatter renders in the workshop's
+          // own tz. Without this the card fell back to runtime tz (UTC on
+          // Vercel SSR / browser-local on hydration), mismatching what the
+          // admin typed and what cal.com showed in invitation emails.
+          timezone: workshops.timezone,
           createdBy: workshops.createdBy,
           createdAt: workshops.createdAt,
           updatedAt: workshops.updatedAt,
@@ -260,17 +310,21 @@ export const workshopRouter = router({
       workshopId: z.string().uuid(),
       title: z.string().min(1).max(200).optional(),
       description: z.string().max(2000).optional(),
-      scheduledAt: z.string().datetime().optional(),
+      // Wall-clock time in the workshop's timezone (NOT UTC). Combined
+      // with the timezone field (or the existing tz if unchanged) to
+      // produce the stored UTC instant. See wallTimeField above.
+      scheduledAt: wallTimeField.optional(),
       durationMinutes: z.number().int().positive().nullable().optional(),
-      registrationLink: z.string().url().nullable().optional(),
+      registrationLink: optionalNullableUrlField,
       // F11: expose maxSeats on the update path so admins can bump capacity
       // after launch. Seat count is set at creation time via workshopCreatedFn;
       // updating maxSeats here adjusts the DB row only.
       maxSeats: z.number().int().min(1).max(10000).nullable().optional(),
       // F9: per-workshop timezone. Changing this does NOT retro-apply to
       // existing cal.com bookings - it only affects future bookings + email
-      // rendering.
-      timezone: z.string().min(1).max(64).optional(),
+      // rendering. B6-4: validate against IANA so typos can't poison
+      // downstream cal.com calls (matches the create-path behaviour).
+      timezone: timezoneField.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Fetch workshop for ownership check + existing cal.com id for F10.
@@ -330,10 +384,17 @@ export const workshopRouter = router({
         }
       }
 
+      // If the admin is updating both scheduledAt and timezone in the same
+      // call, the new wall time is in the NEW tz (matches admin intent).
+      // If only scheduledAt changes, use the existing stored tz.
+      const effectiveTz = input.timezone ?? existing.timezone ?? 'Asia/Kolkata'
+
       const updateData: Record<string, unknown> = { updatedAt: new Date() }
       if (input.title !== undefined) updateData.title = input.title
       if (input.description !== undefined) updateData.description = input.description
-      if (input.scheduledAt !== undefined) updateData.scheduledAt = new Date(input.scheduledAt)
+      if (input.scheduledAt !== undefined) {
+        updateData.scheduledAt = wallTimeToUtc(input.scheduledAt, effectiveTz)
+      }
       if (input.durationMinutes !== undefined) updateData.durationMinutes = input.durationMinutes
       if (input.registrationLink !== undefined) updateData.registrationLink = input.registrationLink
       if (input.maxSeats !== undefined) updateData.maxSeats = input.maxSeats
@@ -402,7 +463,10 @@ export const workshopRouter = router({
       }
       if (input.scheduledAt !== undefined) {
         before.scheduledAt = existingScheduledAtIso
-        after.scheduledAt = input.scheduledAt
+        // Audit log records the resolved UTC ISO (not the wall-time input)
+        // so reviewers reconstructing a workshop's history compare apples
+        // to apples regardless of which tz the admin typed it in.
+        after.scheduledAt = (updateData.scheduledAt as Date | undefined)?.toISOString()
       }
       if (input.durationMinutes !== undefined) {
         before.durationMinutes = existing.durationMinutes

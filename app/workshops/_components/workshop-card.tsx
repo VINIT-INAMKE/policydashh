@@ -24,6 +24,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { RegisterForm } from './register-form'
 import { SpotsLeftBadge } from './spots-left-badge'
+import { formatWorkshopTime } from '@/src/lib/format-workshop-time'
 
 export interface WorkshopCardData {
   id: string
@@ -36,25 +37,15 @@ export interface WorkshopCardData {
   // F23: external registration URL. When set, the card offers a secondary
   // "Register elsewhere" link next to the cal.com embed button.
   registrationLink: string | null
+  // Source-of-truth IANA tz for the date label below. Without this the
+  // formatter rendered in server tz (UTC on Vercel) instead of the
+  // workshop's own zone, mismatching the admin's typed time + the email.
+  timezone: string | null
   registeredCount: number
   hasApprovedSummary: boolean
 }
 
 export type WorkshopCardVariant = 'upcoming' | 'live' | 'past'
-
-function formatWorkshopDate(d: Date): string {
-  // Deterministic server-side formatting. Mirrors Phase 19 /participate date
-  // handling - ISO parse on the server, locale-aware display on the client
-  // would need useEffect; keeping it simple and SSR-stable.
-  return d.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
 
 export function WorkshopCard({
   workshop,
@@ -67,7 +58,7 @@ export function WorkshopCard({
   currentUser?: { name: string | null; email: string | null } | null
   alreadyRegistered?: boolean
 }) {
-  const formattedDate = formatWorkshopDate(workshop.scheduledAt)
+  const formattedDate = formatWorkshopTime(workshop.scheduledAt, workshop.timezone)
 
   if (variant === 'past') {
     return (

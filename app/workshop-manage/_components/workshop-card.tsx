@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { format, parseISO } from 'date-fns'
 import { Calendar, ExternalLink, MoreHorizontal } from 'lucide-react'
+import { formatWorkshopTime } from '@/src/lib/format-workshop-time'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,10 @@ interface WorkshopData {
   // that have not wired the new columns yet.
   status?: 'upcoming' | 'in_progress' | 'completed' | 'archived'
   calcomEventTypeId?: string | null
+  // Per-workshop IANA tz used to render the date string in the workshop's
+  // own zone instead of the browser/server runtime tz. Optional for caller
+  // compatibility — defaults to Asia/Kolkata in formatWorkshopTime when null.
+  timezone?: string | null
 }
 
 interface WorkshopCardProps {
@@ -46,10 +50,7 @@ const STATUS_BADGE_CLASS: Record<NonNullable<WorkshopData['status']>, string> = 
 export function WorkshopCard({ workshop, canManage }: WorkshopCardProps) {
   const router = useRouter()
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const dateStr = typeof workshop.scheduledAt === 'string'
-    ? workshop.scheduledAt
-    : workshop.scheduledAt.toISOString()
-  const formattedDate = format(parseISO(dateStr), 'MMM d, yyyy \u00b7 h:mm a')
+  const formattedDate = formatWorkshopTime(workshop.scheduledAt, workshop.timezone)
 
   return (
     <>

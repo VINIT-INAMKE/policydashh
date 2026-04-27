@@ -33,16 +33,30 @@ export default function CreateWorkshopPage() {
   // in DB which means "open registration" on the public listing.
   const [maxSeats, setMaxSeats] = useState('')
   const [registrationLink, setRegistrationLink] = useState('')
-  // F9: per-workshop timezone. Default matches the prior hardcoded value.
-  const [timezone, setTimezone] = useState('Asia/Kolkata')
+  // Workshop times are always entered in IST (admin's working tz). Cal.com
+  // converts to each attendee's local tz at booking time, so the source-of-
+  // truth tz on our row is fixed at Asia/Kolkata. No selector needed.
+  const WORKSHOP_TZ = 'Asia/Kolkata'
 
   const createMutation = trpc.workshop.create.useMutation({
     onSuccess: (workshop) => {
       toast.success('Workshop created.')
       router.push(`/workshop-manage/${workshop.id}`)
     },
-    onError: () => {
-      toast.error("Couldn't create the workshop. Check your connection and try again.")
+    onError: (err) => {
+      // Surface ZodError field-level detail instead of a generic
+      // "check your connection" toast — prior behaviour buried real
+      // input errors and made every 400 look like a transport failure.
+      // Project's tRPC errorFormatter (src/trpc/init.ts) emits the v4 shape
+      // `{ issues, tree }` — issues[].path is the field path, .message the reason.
+      const issues = err.data?.zodError?.issues
+      if (issues && issues.length > 0) {
+        const first = issues[0]
+        const field = first.path.join('.')
+        toast.error(field ? `${field}: ${first.message}` : first.message)
+        return
+      }
+      toast.error(err.message || "Couldn't create the workshop. Please try again.")
     },
   })
 
@@ -52,19 +66,21 @@ export default function CreateWorkshopPage() {
     e.preventDefault()
     if (!canSubmit) return
 
-    const isoDate = new Date(scheduledAt).toISOString()
     const dur = durationMinutes ? parseInt(durationMinutes, 10) : undefined
     const seats = maxSeats ? parseInt(maxSeats, 10) : undefined
-    const regLink = registrationLink.trim() || undefined
 
+    // Send the wall-clock string AS-IS. The server converts it to UTC
+    // using the workshop's timezone, so the admin's browser locale never
+    // factors in (the old `new Date(scheduledAt).toISOString()` reinterpreted
+    // the value in browser-local tz, silently mangling cross-tz workshops).
     createMutation.mutate({
       title: title.trim(),
       description: description.trim() || undefined,
-      scheduledAt: isoDate,
+      scheduledAt: scheduledAt,
       durationMinutes: dur && dur > 0 ? dur : undefined,
       maxSeats: seats && seats > 0 ? seats : undefined,
-      registrationLink: regLink,
-      timezone: timezone.trim() || undefined,
+      registrationLink: registrationLink,
+      timezone: WORKSHOP_TZ,
     })
   }
 
@@ -109,7 +125,10 @@ export default function CreateWorkshopPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="workshop-datetime">Date &amp; Time</Label>
+              <Label htmlFor="workshop-datetime">
+                Date &amp; Time{' '}
+                <span className="text-muted-foreground text-xs">(in IST)</span>
+              </Label>
               <input
                 id="workshop-datetime"
                 type="datetime-local"
@@ -118,6 +137,10 @@ export default function CreateWorkshopPage() {
                 value={scheduledAt}
                 onChange={(e) => setScheduledAt(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Stored as Asia/Kolkata. Cal.com converts the time into each
+                attendee&apos;s local timezone when they book.
+              </p>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -145,20 +168,6 @@ export default function CreateWorkshopPage() {
                 value={maxSeats}
                 onChange={(e) => setMaxSeats(e.target.value)}
               />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="workshop-timezone">Timezone</Label>
-              <Input
-                id="workshop-timezone"
-                placeholder="Asia/Kolkata"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                maxLength={64}
-              />
-              <p className="text-xs text-muted-foreground">
-                IANA timezone (e.g. Asia/Kolkata, America/New_York).
-              </p>
             </div>
 
             <div className="flex flex-col gap-2">

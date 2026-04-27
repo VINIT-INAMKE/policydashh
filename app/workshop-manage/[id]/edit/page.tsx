@@ -12,12 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-
-function toDatetimeLocalValue(isoString: string | Date): string {
-  const d = typeof isoString === 'string' ? new Date(isoString) : isoString
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+import { utcToWallTime } from '@/src/lib/wall-time'
 
 export default function EditWorkshopPage() {
   const params = useParams<{ id: string }>()
@@ -50,13 +45,18 @@ export default function EditWorkshopPage() {
   useEffect(() => {
     if (workshopQuery.data && !initialized) {
       const w = workshopQuery.data
+      const tz = w.timezone ?? 'Asia/Kolkata'
       setTitle(w.title)
       setDescription(w.description ?? '')
-      setScheduledAt(toDatetimeLocalValue(w.scheduledAt))
+      // Render the stored UTC instant in the workshop's OWN tz, not the
+      // browser's. Old `toDatetimeLocalValue` used `d.getHours()` etc which
+      // is browser-local — admin in Singapore editing a Mumbai workshop
+      // would see the wrong time and round-trip-corrupt it on save.
+      setScheduledAt(utcToWallTime(w.scheduledAt, tz))
       setDurationMinutes(w.durationMinutes ? String(w.durationMinutes) : '')
       setRegistrationLink(w.registrationLink ?? '')
       setMaxSeats(w.maxSeats != null ? String(w.maxSeats) : '')
-      setTimezone(w.timezone ?? 'Asia/Kolkata')
+      setTimezone(tz)
       setInitialized(true)
     }
   }, [workshopQuery.data, initialized])
@@ -66,8 +66,17 @@ export default function EditWorkshopPage() {
       toast.success('Workshop updated.')
       router.push(`/workshop-manage/${workshopId}`)
     },
-    onError: () => {
-      toast.error("Couldn't save changes. Check your connection and try again.")
+    onError: (err) => {
+      // See workshop-create's identical handler for rationale; v4 ZodError
+      // shape is `{ issues, tree }`, not `{ fieldErrors }`.
+      const issues = err.data?.zodError?.issues
+      if (issues && issues.length > 0) {
+        const first = issues[0]
+        const field = first.path.join('.')
+        toast.error(field ? `${field}: ${first.message}` : first.message)
+        return
+      }
+      toast.error(err.message || "Couldn't save changes. Please try again.")
     },
   })
 
@@ -77,22 +86,23 @@ export default function EditWorkshopPage() {
     e.preventDefault()
     if (!canSubmit) return
 
-    const isoDate = new Date(scheduledAt).toISOString()
     const dur = durationMinutes ? parseInt(durationMinutes, 10) : null
-    const regLink = registrationLink.trim() || null
     // F11: blank maxSeats clears the cap (open registration). Non-numeric
     // input is treated as "no change" - the server-side z.number() guard
     // rejects stringified garbage either way.
     const seats = maxSeats.trim() === '' ? null : parseInt(maxSeats, 10)
     const tz = timezone.trim() || undefined
 
+    // Send the wall-clock string AS-IS. The server converts it to UTC
+    // using the (possibly updated) timezone field — see workshop.update's
+    // `effectiveTz` for the same-call tz+time semantics.
     updateMutation.mutate({
       workshopId,
       title: title.trim(),
       description: description.trim() || undefined,
-      scheduledAt: isoDate,
+      scheduledAt: scheduledAt,
       durationMinutes: dur && dur > 0 ? dur : null,
-      registrationLink: regLink,
+      registrationLink: registrationLink,
       maxSeats: seats === null ? null : seats > 0 ? seats : null,
       timezone: tz,
     })

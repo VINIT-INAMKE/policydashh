@@ -53,6 +53,10 @@ export interface PublicWorkshop {
   // create/edit form when they want to route registrations to another
   // system entirely (e.g. Eventbrite).
   registrationLink: string | null
+  // Source-of-truth IANA tz for rendering scheduledAt. Without this the
+  // public card formatter would fall back to server tz (UTC on Vercel),
+  // showing wall times that disagree with what the admin typed.
+  timezone: string | null
   registeredCount: number
   hasApprovedSummary: boolean
 }
@@ -110,6 +114,7 @@ export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {
       calcomEventTypeId: workshops.calcomEventTypeId,
       maxSeats: workshops.maxSeats,
       registrationLink: workshops.registrationLink,
+      timezone: workshops.timezone,
     })
     .from(workshops)
     .where(isNotNull(workshops.calcomEventTypeId))
@@ -137,6 +142,7 @@ export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {
       calcomEventTypeId: w.calcomEventTypeId,
       maxSeats: w.maxSeats,
       registrationLink: w.registrationLink,
+      timezone: w.timezone,
       registeredCount,
       hasApprovedSummary: Number(summary?.n ?? 0) > 0,
     })
