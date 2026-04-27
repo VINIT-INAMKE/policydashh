@@ -76,7 +76,12 @@ export async function _internal_getAccessToken(): Promise<string> {
 
 async function callCalendar(
   path: string,
-  init: { method: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown; query?: Record<string, string> },
+  init: {
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+    body?: unknown
+    query?: Record<string, string>
+    headers?: Record<string, string>
+  },
 ): Promise<unknown> {
   const url = new URL(`${CALENDAR_API}${path}`)
   if (init.query) {
@@ -89,6 +94,7 @@ async function callCalendar(
       headers: {
         authorization: `Bearer ${token}`,
         'content-type': 'application/json',
+        ...(init.headers || {}),
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     })
@@ -98,7 +104,14 @@ async function callCalendar(
 
   if (res.status === 401) {
     _internal_resetTokenCache()
-    token = await _internal_getAccessToken()
+    try {
+      token = await _internal_getAccessToken()
+    } catch (err) {
+      if (err instanceof GoogleCalendarError) {
+        throw new GoogleCalendarError(401, 'OAuth refresh failed — admin must re-authenticate')
+      }
+      throw err
+    }
     res = await doFetch(token)
   }
 
@@ -113,8 +126,6 @@ async function callCalendar(
   if (res.status === 204) return null
   return res.json()
 }
-
-export const _internal_callCalendar = callCalendar
 
 type CreateWorkshopEventInput = {
   title: string
@@ -139,8 +150,18 @@ export async function createWorkshopEvent(
 ): Promise<CreateWorkshopEventResult> {
   const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
 
-  if (input.meetingMode === 'manual' && !input.manualMeetingUrl) {
-    throw new GoogleCalendarError(400, 'meetingMode=manual requires manualMeetingUrl')
+  if (input.meetingMode === 'manual') {
+    if (!input.manualMeetingUrl) {
+      throw new GoogleCalendarError(400, 'meetingMode=manual requires manualMeetingUrl')
+    }
+    try {
+      const u = new URL(input.manualMeetingUrl)
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') {
+        throw new Error()
+      }
+    } catch {
+      throw new GoogleCalendarError(400, 'manualMeetingUrl must be a valid http(s) URL')
+    }
   }
 
   const body: Record<string, unknown> = {
@@ -160,7 +181,7 @@ export async function createWorkshopEvent(
   if (input.meetingMode === 'auto_meet') {
     body.conferenceData = {
       createRequest: {
-        requestId: `policydash-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        requestId: `policydash-${crypto.randomUUID()}`,
         conferenceSolutionKey: { type: 'hangoutsMeet' },
       },
     }
@@ -200,6 +221,7 @@ export async function createWorkshopEvent(
 
 type CalendarEventResource = {
   id: string
+  etag?: string
   attendees?: Array<{ email: string; displayName?: string; responseStatus?: string }>
 }
 
@@ -211,27 +233,40 @@ async function getEvent(eventId: string): Promise<CalendarEventResource> {
   )) as CalendarEventResource
 }
 
+const ETAG_RETRY_LIMIT = 3
+
 export async function addAttendeeToEvent(input: {
   eventId: string
   attendeeEmail: string
   attendeeName: string
 }): Promise<void> {
   const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
-  const event = await getEvent(input.eventId)
-  const existing = event.attendees ?? []
-  const lower = input.attendeeEmail.toLowerCase()
-  if (existing.some((a) => a.email.toLowerCase() === lower)) {
-    return
+  for (let attempt = 0; attempt < ETAG_RETRY_LIMIT; attempt++) {
+    const event = await getEvent(input.eventId)
+    const existing = event.attendees ?? []
+    const lower = input.attendeeEmail.toLowerCase()
+    if (existing.some((a) => a.email.toLowerCase() === lower)) {
+      return
+    }
+    const next = [...existing, { email: input.attendeeEmail, displayName: input.attendeeName }]
+    try {
+      await callCalendar(
+        `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.eventId)}`,
+        {
+          method: 'PATCH',
+          body: { attendees: next },
+          query: { sendUpdates: 'all' },
+          headers: event.etag ? { 'If-Match': event.etag } : {},
+        },
+      )
+      return
+    } catch (err) {
+      if (err instanceof GoogleCalendarError && err.status === 412 && attempt < ETAG_RETRY_LIMIT - 1) {
+        continue
+      }
+      throw err
+    }
   }
-  const next = [...existing, { email: input.attendeeEmail, displayName: input.attendeeName }]
-  await callCalendar(
-    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.eventId)}`,
-    {
-      method: 'PATCH',
-      body: { attendees: next },
-      query: { sendUpdates: 'all' },
-    },
-  )
 }
 
 export async function rescheduleEvent(input: {
@@ -287,17 +322,28 @@ export async function removeAttendeeFromEvent(input: {
   attendeeEmail: string
 }): Promise<void> {
   const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
-  const event = await getEvent(input.eventId)
-  const existing = event.attendees ?? []
-  const lower = input.attendeeEmail.toLowerCase()
-  const next = existing.filter((a) => a.email.toLowerCase() !== lower)
-  if (next.length === existing.length) return
-  await callCalendar(
-    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.eventId)}`,
-    {
-      method: 'PATCH',
-      body: { attendees: next },
-      query: { sendUpdates: 'all' },
-    },
-  )
+  for (let attempt = 0; attempt < ETAG_RETRY_LIMIT; attempt++) {
+    const event = await getEvent(input.eventId)
+    const existing = event.attendees ?? []
+    const lower = input.attendeeEmail.toLowerCase()
+    const next = existing.filter((a) => a.email.toLowerCase() !== lower)
+    if (next.length === existing.length) return
+    try {
+      await callCalendar(
+        `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.eventId)}`,
+        {
+          method: 'PATCH',
+          body: { attendees: next },
+          query: { sendUpdates: 'all' },
+          headers: event.etag ? { 'If-Match': event.etag } : {},
+        },
+      )
+      return
+    } catch (err) {
+      if (err instanceof GoogleCalendarError && err.status === 412 && attempt < ETAG_RETRY_LIMIT - 1) {
+        continue
+      }
+      throw err
+    }
+  }
 }

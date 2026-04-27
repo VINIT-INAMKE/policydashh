@@ -422,4 +422,160 @@ describe('google-calendar — patch operations', () => {
     await removeAttendeeFromEvent({ eventId: 'evt1', attendeeEmail: 'bob@x.com' })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
+
+  it('addAttendeeToEvent retries on 412 etag mismatch then succeeds', async () => {
+    // GET 1 (with etag)
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1', etag: 'etag-1', attendees: [{ email: 'a@x.com' }] }),
+    })
+    // PATCH 1 → 412 precondition failed
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 412,
+      text: async () => 'precondition failed',
+    })
+    // GET 2 (refreshed etag)
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1', etag: 'etag-2', attendees: [{ email: 'a@x.com' }, { email: 'c@x.com' }] }),
+    })
+    // PATCH 2 → 200
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1' }),
+    })
+    const { addAttendeeToEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await addAttendeeToEvent({ eventId: 'evt1', attendeeEmail: 'b@x.com', attendeeName: 'B' })
+
+    // Final patch should include the c@x.com attendee from the refreshed GET
+    const finalPatchBody = JSON.parse(fetchMock.mock.calls[fetchMock.mock.calls.length - 1][1].body)
+    expect(finalPatchBody.attendees).toEqual([
+      { email: 'a@x.com' },
+      { email: 'c@x.com' },
+      { email: 'b@x.com', displayName: 'B' },
+    ])
+  })
+
+  it('addAttendeeToEvent gives up after 3 etag retries', async () => {
+    for (let i = 0; i < 3; i++) {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'evt1', etag: `etag-${i}`, attendees: [] }),
+      })
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 412,
+        text: async () => 'precondition failed',
+      })
+    }
+    const { addAttendeeToEvent, _internal_resetTokenCache, GoogleCalendarError } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(
+      addAttendeeToEvent({ eventId: 'evt1', attendeeEmail: 'b@x.com', attendeeName: 'B' }),
+    ).rejects.toBeInstanceOf(GoogleCalendarError)
+  })
+
+  it('createWorkshopEvent rejects malformed manualMeetingUrl', async () => {
+    const { createWorkshopEvent, GoogleCalendarError, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(
+      createWorkshopEvent({
+        title: 't',
+        description: null,
+        startUtc: new Date(),
+        endUtc: new Date(Date.now() + 60_000),
+        timezone: 'Asia/Kolkata',
+        organizerEmail: 'a@b.c',
+        meetingMode: 'manual',
+        manualMeetingUrl: 'not a url',
+        reminderMinutesBefore: [],
+      }),
+    ).rejects.toBeInstanceOf(GoogleCalendarError)
+  })
+
+  it('createWorkshopEvent rejects javascript: protocol in manualMeetingUrl', async () => {
+    const { createWorkshopEvent, GoogleCalendarError, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(
+      createWorkshopEvent({
+        title: 't',
+        description: null,
+        startUtc: new Date(),
+        endUtc: new Date(Date.now() + 60_000),
+        timezone: 'Asia/Kolkata',
+        organizerEmail: 'a@b.c',
+        meetingMode: 'manual',
+        manualMeetingUrl: 'javascript:alert(1)',
+        reminderMinutesBefore: [],
+      }),
+    ).rejects.toBeInstanceOf(GoogleCalendarError)
+  })
+
+  it('callCalendar invalidates cache and retries once on Calendar API 401', async () => {
+    // The very first OAuth fetch is queued by beforeEach. Then we add:
+    // Calendar API: 401 (token expired)
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 401, text: async () => 'expired' })
+    // OAuth #2 (after invalidation)
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ access_token: 'new', expires_in: 3600 }) })
+    // Calendar API: 200
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'evt_retry',
+        htmlLink: 'https://calendar.google.com/event?eid=evt_retry',
+        hangoutLink: 'https://meet.google.com/x',
+      }),
+    })
+    const { createWorkshopEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    const out = await createWorkshopEvent({
+      title: 't',
+      description: null,
+      startUtc: new Date('2026-05-01T10:30:00Z'),
+      endUtc: new Date('2026-05-01T11:30:00Z'),
+      timezone: 'Asia/Kolkata',
+      organizerEmail: 'a@b.c',
+      meetingMode: 'auto_meet',
+      reminderMinutesBefore: [],
+    })
+    expect(out.eventId).toBe('evt_retry')
+    // Should have made: OAuth1, Calendar(401), OAuth2, Calendar(200) = 4 fetch calls
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    // Last Calendar call should use the new token
+    expect(fetchMock.mock.calls[3][1].headers.authorization).toBe('Bearer new')
+  })
+
+  it('callCalendar surfaces stable error on second 401 (refresh-token revoked)', async () => {
+    // Calendar API: 401
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 401, text: async () => 'expired' })
+    // OAuth refresh: also 401 (token revoked)
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 401, text: async () => 'invalid_grant' })
+
+    const { createWorkshopEvent, GoogleCalendarError, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    try {
+      await createWorkshopEvent({
+        title: 't',
+        description: null,
+        startUtc: new Date('2026-05-01T10:30:00Z'),
+        endUtc: new Date('2026-05-01T11:30:00Z'),
+        timezone: 'Asia/Kolkata',
+        organizerEmail: 'a@b.c',
+        meetingMode: 'auto_meet',
+        reminderMinutesBefore: [],
+      })
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(GoogleCalendarError)
+      expect((err as InstanceType<typeof GoogleCalendarError>).status).toBe(401)
+      expect((err as Error).message).toContain('admin must re-authenticate')
+    }
+  })
 })
