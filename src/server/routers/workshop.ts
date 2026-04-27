@@ -21,12 +21,13 @@ import {
   sendWorkshopCompleted,
   sendWorkshopRecordingUploaded,
   sendWorkshopCreated,
+  sendWorkshopRemindersRescheduled,
 } from '@/src/inngest/events'
 import { revalidateTag } from 'next/cache'
-import { updateCalEventType, CalApiError, DEFAULT_SEATS_PER_TIME_SLOT } from '@/src/lib/calcom'
 import {
   createWorkshopEvent,
   cancelEvent,
+  rescheduleEvent,
   GoogleCalendarError,
 } from '@/src/lib/google-calendar'
 import { wallTimeToUtc } from '@/src/lib/wall-time'
@@ -258,9 +259,8 @@ export const workshopRouter = router({
         conditions.push(lt(workshops.scheduledAt, now))
       }
 
-      // F16: include status + calcomEventTypeId so the manage page can
-      // render provisioning state badges and an external cal.com link
-      // without a second lookup per card.
+      // F16: include status + Google Calendar fields so the manage page can
+      // render provisioning state badges without a second lookup per card.
       const rows = await db
         .select({
           id: workshops.id,
@@ -270,11 +270,13 @@ export const workshopRouter = router({
           durationMinutes: workshops.durationMinutes,
           registrationLink: workshops.registrationLink,
           status: workshops.status,
-          calcomEventTypeId: workshops.calcomEventTypeId,
+          googleCalendarEventId: workshops.googleCalendarEventId,
+          meetingUrl: workshops.meetingUrl,
+          meetingProvisionedBy: workshops.meetingProvisionedBy,
           // Surfaced so the admin card formatter renders in the workshop's
           // own tz. Without this the card fell back to runtime tz (UTC on
           // Vercel SSR / browser-local on hydration), mismatching what the
-          // admin typed and what cal.com showed in invitation emails.
+          // admin typed and what Google Calendar showed in invitation emails.
           timezone: workshops.timezone,
           createdBy: workshops.createdBy,
           createdAt: workshops.createdAt,
@@ -294,13 +296,9 @@ export const workshopRouter = router({
   getById: requirePermission('workshop:read')
     .input(z.object({ workshopId: z.string().uuid() }))
     .query(async ({ input }) => {
-      // F17: include calcomEventTypeId + maxSeats + timezone so the detail
-      // page can render the cal.com deep-link and the timezone chip
-      // without extra lookups. M5 (audit 2026-04-27): also include
-      // meetingUrl + calcomBookingUid so the detail page can show the
-      // "missing meeting URL" warning + manual setMeetingUrl form when
-      // cal.com finished provisioning but the booking response was
-      // missing both meetingUrl and location fields.
+      // F17: include Google Calendar fields + maxSeats + timezone so the
+      // detail page can render the meeting link, timezone chip, and
+      // provisioning state without extra lookups.
       const [workshop] = await db
         .select({
           id: workshops.id,
@@ -310,8 +308,8 @@ export const workshopRouter = router({
           durationMinutes: workshops.durationMinutes,
           registrationLink: workshops.registrationLink,
           status: workshops.status,
-          calcomEventTypeId: workshops.calcomEventTypeId,
-          calcomBookingUid: workshops.calcomBookingUid,
+          googleCalendarEventId: workshops.googleCalendarEventId,
+          meetingProvisionedBy: workshops.meetingProvisionedBy,
           meetingUrl: workshops.meetingUrl,
           maxSeats: workshops.maxSeats,
           timezone: workshops.timezone,
@@ -371,40 +369,45 @@ export const workshopRouter = router({
       }
     }),
 
-  // Update a workshop (ownership check)
+  // Update a workshop — propagates changes to Google Calendar before DB write
+  // so a GCal failure aborts cleanly without leaving DB and calendar out of sync.
   update: requirePermission('workshop:manage')
     .input(z.object({
       workshopId: z.string().uuid(),
-      title: z.string().min(1).max(200).optional(),
-      description: z.string().max(2000).optional(),
+      title: z.string().min(2).max(120).optional(),
+      description: z.string().max(2000).nullable().optional(),
       // Wall-clock time in the workshop's timezone (NOT UTC). Combined
       // with the timezone field (or the existing tz if unchanged) to
       // produce the stored UTC instant. See wallTimeField above.
       scheduledAt: wallTimeField.optional(),
-      durationMinutes: z.number().int().positive().nullable().optional(),
+      durationMinutes: z.number().int().min(15).max(480).nullable().optional(),
       registrationLink: optionalNullableUrlField,
       // F11: expose maxSeats on the update path so admins can bump capacity
-      // after launch. Seat count is set at creation time via workshopCreatedFn;
-      // updating maxSeats here adjusts the DB row only.
-      maxSeats: z.number().int().min(1).max(10000).nullable().optional(),
-      // F9: per-workshop timezone. Changing this does NOT retro-apply to
-      // existing cal.com bookings - it only affects future bookings + email
-      // rendering. B6-4: validate against IANA so typos can't poison
-      // downstream cal.com calls (matches the create-path behaviour).
+      // after launch. Updating maxSeats adjusts the DB row only (no GCal
+      // call needed — Google Calendar has no seat concept).
+      maxSeats: z.number().int().positive().nullable().optional(),
+      // F9: per-workshop timezone. Changing this triggers a Google Calendar
+      // reschedule so the event displays in the correct zone for all
+      // attendees. B6-4: validate against IANA so typos can't poison
+      // downstream GCal calls (matches the create-path behaviour).
       timezone: timezoneField.optional(),
+      // Google Calendar pivot: allow switching meeting mode on update.
+      // Blocked server-side when non-cancelled registrations exist.
+      meetingMode: z.enum(['auto_meet', 'manual']).optional(),
+      manualMeetingUrl: z.preprocess(
+        (v) => (typeof v === 'string' ? v.trim() : v),
+        z.url().optional(),
+      ),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Fetch workshop for ownership check + existing cal.com id for F10.
+      // Fetch workshop for ownership check + existing Google fields.
       // D13: pull every mutable field so we can capture a proper before/after
       // diff in the audit payload below.
       const [existing] = await db
         .select({
           createdBy: workshops.createdBy,
-          calcomEventTypeId: workshops.calcomEventTypeId,
-          // Flow-3 (audit 2026-04-27): selected so the scheduledAt-edit
-          // guard below can refuse reschedules on already-provisioned
-          // workshops (where cal.com is the source of truth for the time).
-          calcomBookingUid: workshops.calcomBookingUid,
+          googleCalendarEventId: workshops.googleCalendarEventId,
+          meetingProvisionedBy: workshops.meetingProvisionedBy,
           title: workshops.title,
           description: workshops.description,
           scheduledAt: workshops.scheduledAt,
@@ -425,13 +428,51 @@ export const workshopRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Only the workshop creator or admin can update this workshop' })
       }
 
-      // B5-8: refuse to lower maxSeats below the current registered
-      // headcount. `updateCalEventType` will happily accept a lower
-      // `seatsPerTimeSlot`, but doing so silently over-commits cal.com
-      // (existing attendees remain on the booking while the cap blocks
-      // new seats N+1 < existing). Count non-cancelled registrations and
-      // reject with a clear message so admins must explicitly remove
-      // attendees first.
+      const tz = input.timezone ?? existing.timezone ?? 'Asia/Kolkata'
+      if (input.timezone && !isValidTimezone(tz)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: `Invalid IANA timezone: ${tz}` })
+      }
+
+      const newScheduledAt = input.scheduledAt
+        ? wallTimeToUtc(input.scheduledAt, tz)
+        : existing.scheduledAt
+      const newDuration =
+        input.durationMinutes !== undefined ? input.durationMinutes : existing.durationMinutes
+      const newEndUtc = newDuration
+        ? new Date(newScheduledAt.getTime() + newDuration * 60_000)
+        : null
+
+      const titleChanged = input.title !== undefined && input.title !== existing.title
+      const descriptionChanged =
+        input.description !== undefined &&
+        (input.description ?? null) !== existing.description
+      const scheduledAtChanged =
+        newScheduledAt.getTime() !== existing.scheduledAt.getTime()
+      const timezoneChanged = tz !== existing.timezone
+
+      // Switching meeting mode mid-workshop is not supported — registrants
+      // would get conflicting calendar invites. Force admin to delete + recreate.
+      if (input.meetingMode && input.meetingMode !== existing.meetingProvisionedBy) {
+        const [registeredRow] = await db
+          .select({ n: count() })
+          .from(workshopRegistrations)
+          .where(
+            and(
+              eq(workshopRegistrations.workshopId, input.workshopId),
+              ne(workshopRegistrations.status, 'cancelled'),
+            ),
+          )
+        const registered = Number(registeredRow?.n ?? 0)
+        if (registered > 0) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'Cannot switch meeting mode after registrations exist — delete and recreate the workshop',
+          })
+        }
+      }
+
+      // B5-8: refuse to lower maxSeats below the current registered headcount.
       if (
         input.maxSeats !== undefined &&
         input.maxSeats !== null &&
@@ -455,96 +496,64 @@ export const workshopRouter = router({
         }
       }
 
-      // Flow-3 (audit 2026-04-27 wide review): refuse scheduledAt edits on
-      // provisioned workshops. cal.com's event-type doesn't reschedule via
-      // PATCH; the only correct path is cal.com's own reschedule flow,
-      // which fires BOOKING_RESCHEDULED back to our webhook (which DOES
-      // atomically rewrite our row). If we accept the edit here, our DB
-      // and cal.com diverge silently — attendees show up at the old time.
-      if (input.scheduledAt !== undefined && existing.calcomBookingUid != null) {
-        const existingIso =
-          existing.scheduledAt instanceof Date
-            ? existing.scheduledAt.toISOString()
-            : (existing.scheduledAt as unknown as string)
-        // Compute the proposed UTC for comparison so a no-op edit (admin
-        // saved the form without changing the time) doesn't trip the guard.
-        const tzForCompare =
-          input.timezone ?? existing.timezone ?? 'Asia/Kolkata'
-        const proposedIso = wallTimeToUtc(input.scheduledAt, tzForCompare).toISOString()
-        if (existingIso !== proposedIso) {
+      // Propagate to Google FIRST so a failure aborts before DB drift.
+      if (titleChanged || descriptionChanged || scheduledAtChanged || timezoneChanged) {
+        if (!existing.googleCalendarEventId) {
           throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message:
-              'To reschedule a workshop after cal.com provisioning, use the "Open in cal.com" button on the workshop detail page — that reschedule flow notifies all registered attendees automatically. Direct edits here would diverge our records from cal.com.',
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Workshop has no Google Calendar event',
           })
         }
-      }
-
-      // If the admin is updating both scheduledAt and timezone in the same
-      // call, the new wall time is in the NEW tz (matches admin intent).
-      // If only scheduledAt changes, use the existing stored tz.
-      const effectiveTz = input.timezone ?? existing.timezone ?? 'Asia/Kolkata'
-
-      // C3 (audit 2026-04-27): the cal.com PATCH used to run AFTER the DB
-      // write and silently swallow failures, so a 50→100 capacity bump
-      // could leave our DB at 100 and cal.com still enforcing 50 — the
-      // 51st registrant would pass our gate then 4xx out of cal.com's
-      // addAttendeeToBooking. Capacity is safety-critical, so the cal.com
-      // PATCH for `seatsPerTimeSlot` runs FIRST, throws on failure, and
-      // only then does the DB update land. Non-capacity fields (title /
-      // duration) stay best-effort post-DB so a cal.com hiccup doesn't
-      // block cosmetic edits.
-      const calId = existing.calcomEventTypeId
-      const calNumericId =
-        calId && /^\d+$/.test(calId) ? parseInt(calId, 10) : null
-
-      // C2 (audit 2026-04-27): handle BOTH directions of capacity change
-      // including cleared-cap. Clearing maxSeats (null) is the admin
-      // saying "open registration" — cal.com needs `seatsPerTimeSlot`
-      // reset to DEFAULT (today the prior cap stayed in force, so
-      // attendees N+1 still 4xx'd despite our DB being uncapped).
-      let nextCalSeats: number | null = null
-      if (input.maxSeats !== undefined) {
-        if (input.maxSeats === null && existing.maxSeats !== null) {
-          nextCalSeats = DEFAULT_SEATS_PER_TIME_SLOT
-        } else if (input.maxSeats !== null && input.maxSeats !== existing.maxSeats) {
-          nextCalSeats = input.maxSeats
+        if (newEndUtc === null && scheduledAtChanged) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'durationMinutes required for Google reschedule',
+          })
         }
-      }
-
-      if (calNumericId !== null && nextCalSeats !== null) {
         try {
-          await updateCalEventType(calNumericId, { seatsPerTimeSlot: nextCalSeats })
+          await rescheduleEvent({
+            eventId: existing.googleCalendarEventId,
+            newStartUtc: scheduledAtChanged ? newScheduledAt : undefined,
+            newEndUtc: scheduledAtChanged && newEndUtc ? newEndUtc : undefined,
+            newTitle: titleChanged ? input.title : undefined,
+            newDescription: descriptionChanged ? (input.description ?? null) : undefined,
+            newTimezone: timezoneChanged ? tz : undefined,
+          })
         } catch (err) {
-          if (err instanceof CalApiError && err.status >= 500) {
+          if (err instanceof GoogleCalendarError) {
             throw new TRPCError({
-              code: 'BAD_GATEWAY',
-              message: `Cal.com is unreachable for the seat-count update — please retry. Underlying: ${err.message}`,
+              code: err.status >= 500 ? 'BAD_GATEWAY' : 'BAD_REQUEST',
+              message: `Google Calendar reschedule failed: ${err.message}`,
             })
           }
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: `Cal.com rejected the seat-count update: ${err instanceof Error ? err.message : String(err)}`,
-          })
+          throw err
         }
       }
 
-      const updateData: Record<string, unknown> = { updatedAt: new Date() }
-      if (input.title !== undefined) updateData.title = input.title
-      if (input.description !== undefined) updateData.description = input.description
-      if (input.scheduledAt !== undefined) {
-        updateData.scheduledAt = wallTimeToUtc(input.scheduledAt, effectiveTz)
-      }
-      if (input.durationMinutes !== undefined) updateData.durationMinutes = input.durationMinutes
-      if (input.registrationLink !== undefined) updateData.registrationLink = input.registrationLink
-      if (input.maxSeats !== undefined) updateData.maxSeats = input.maxSeats
-      if (input.timezone !== undefined) updateData.timezone = input.timezone
-
+      // DB update
       const [updated] = await db
         .update(workshops)
-        .set(updateData)
+        .set({
+          title: input.title ?? existing.title,
+          description:
+            input.description !== undefined ? input.description : existing.description,
+          scheduledAt: newScheduledAt,
+          durationMinutes: newDuration,
+          registrationLink:
+            input.registrationLink !== undefined
+              ? (input.registrationLink || null)
+              : existing.registrationLink,
+          maxSeats: input.maxSeats !== undefined ? input.maxSeats : existing.maxSeats,
+          timezone: tz,
+          updatedAt: new Date(),
+        })
         .where(eq(workshops.id, input.workshopId))
         .returning()
+
+      // Reminders re-schedule fan-out — only when timing changed.
+      if (scheduledAtChanged || timezoneChanged) {
+        await sendWorkshopRemindersRescheduled({ workshopId: input.workshopId })
+      }
 
       // C1: bust the spots-left cache when capacity changed (raise/lower
       // both shift the badge math) so the public /workshops listing
@@ -553,46 +562,23 @@ export const workshopRouter = router({
         revalidateTag(spotsTag(input.workshopId), 'max')
       }
 
-      // Cosmetic fields propagate post-DB; failures are logged but don't
-      // block the admin from seeing their edit persisted on our side.
-      const cosmeticPatch: { title?: string; lengthInMinutes?: number } = {}
-      if (input.title !== undefined) cosmeticPatch.title = input.title
-      if (input.durationMinutes !== undefined && input.durationMinutes !== null) {
-        cosmeticPatch.lengthInMinutes = input.durationMinutes
-      }
-      if (calNumericId !== null && Object.keys(cosmeticPatch).length > 0) {
-        try {
-          await updateCalEventType(calNumericId, cosmeticPatch)
-        } catch (err) {
-          console.error(
-            '[workshop.update] cal.com cosmetic PATCH failed (DB update succeeded):',
-            err,
-          )
-        }
-      }
-
-      // D13: capture the full before/after diff of every mutable field, not
-      // just title. Evidence-pack reviewers rely on this log to reconstruct
-      // the workshop's change history (scheduledAt, timezone, maxSeats, etc).
+      // D13: capture the full before/after diff of every mutable field.
+      // Evidence-pack reviewers rely on this log to reconstruct the
+      // workshop's change history (scheduledAt, timezone, maxSeats, etc).
       const before: Record<string, unknown> = {}
       const after: Record<string, unknown> = {}
-      const existingScheduledAtIso = existing.scheduledAt instanceof Date
-        ? existing.scheduledAt.toISOString()
-        : (existing.scheduledAt as unknown as string | null)
-      if (input.title !== undefined) {
-        before.title = existing.title
-        after.title = updated.title
-      }
-      if (input.description !== undefined) {
-        before.description = existing.description
-        after.description = updated.description
-      }
-      if (input.scheduledAt !== undefined) {
+      const existingScheduledAtIso =
+        existing.scheduledAt instanceof Date
+          ? existing.scheduledAt.toISOString()
+          : (existing.scheduledAt as unknown as string | null)
+      if (titleChanged) { before.title = existing.title; after.title = updated.title }
+      if (descriptionChanged) { before.description = existing.description; after.description = updated.description }
+      if (scheduledAtChanged) {
         before.scheduledAt = existingScheduledAtIso
-        // Audit log records the resolved UTC ISO (not the wall-time input)
-        // so reviewers reconstructing a workshop's history compare apples
-        // to apples regardless of which tz the admin typed it in.
-        after.scheduledAt = (updateData.scheduledAt as Date | undefined)?.toISOString()
+        // Audit log records resolved UTC ISO (not the wall-time input) so
+        // reviewers compare apples to apples regardless of which tz the
+        // admin typed in.
+        after.scheduledAt = newScheduledAt.toISOString()
       }
       if (input.durationMinutes !== undefined) {
         before.durationMinutes = existing.durationMinutes
@@ -606,10 +592,7 @@ export const workshopRouter = router({
         before.maxSeats = existing.maxSeats
         after.maxSeats = updated.maxSeats
       }
-      if (input.timezone !== undefined) {
-        before.timezone = existing.timezone
-        after.timezone = updated.timezone
-      }
+      if (timezoneChanged) { before.timezone = existing.timezone; after.timezone = updated.timezone }
 
       writeAuditLog({
         actorId: ctx.user.id,
