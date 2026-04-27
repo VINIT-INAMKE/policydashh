@@ -1414,6 +1414,7 @@ export const workshopRouter = router({
           cancelledAt:        workshopRegistrations.cancelledAt,
           attendedAt:         workshopRegistrations.attendedAt,
           attendanceSource:   workshopRegistrations.attendanceSource,
+          inviteSentAt:       workshopRegistrations.inviteSentAt,
         })
         .from(workshopRegistrations)
         .where(eq(workshopRegistrations.workshopId, input.workshopId))
