@@ -97,6 +97,7 @@ export const ACTIONS = {
   WORKSHOP_FEEDBACK_UNLINK: 'workshop.feedback_unlink',
   WORKSHOP_TRANSITION:        'workshop.transition',
   WORKSHOP_ARTIFACT_APPROVE:  'workshop.artifact_approve',
+  WORKSHOP_END:               'workshop.end',
   MILESTONE_CREATE:         'milestone.create',
   MILESTONE_ATTACH_ENTITY:  'milestone.attach_entity',
   MILESTONE_DETACH_ENTITY:  'milestone.detach_entity',

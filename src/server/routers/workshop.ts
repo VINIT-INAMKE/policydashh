@@ -22,6 +22,7 @@ import {
   sendWorkshopRecordingUploaded,
   sendWorkshopCreated,
   sendWorkshopRemindersRescheduled,
+  sendWorkshopFeedbackInvitesBatch,
 } from '@/src/inngest/events'
 import { revalidateTag } from 'next/cache'
 import {
@@ -1016,6 +1017,98 @@ export const workshopRouter = router({
       }
 
       return { success: true, fromStatus: existing.status, toStatus: input.toStatus }
+    }),
+
+  // Task 14 (Google Calendar pivot): admin-triggered manual completion.
+  // Mirrors the post-completion fan-out logic from the cal.com MEETING_ENDED
+  // webhook handler (app/api/webhooks/cal/route.ts) which will be removed in
+  // Task 22. Both paths stamp `completionPipelineSentAt` so repeated calls are
+  // idempotent and the webhook can't double-fire the evidence-nudge pipeline.
+  endWorkshop: requirePermission('workshop:manage')
+    .input(z.object({ workshopId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [existing] = await db
+        .select()
+        .from(workshops)
+        .where(eq(workshops.id, input.workshopId))
+        .limit(1)
+
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Workshop not found' })
+      }
+
+      // Idempotent re-run: already completed AND pipeline already fired.
+      if (existing.status === 'completed' && existing.completionPipelineSentAt != null) {
+        return { alreadyCompleted: true, registrantsNotified: 0 }
+      }
+
+      if (existing.status === 'archived') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot end an archived workshop',
+        })
+      }
+
+      const now = new Date()
+      const fromStatus = existing.status
+
+      await db
+        .update(workshops)
+        .set({
+          status: 'completed',
+          completionPipelineSentAt: now,
+          updatedAt: now,
+        })
+        .where(eq(workshops.id, input.workshopId))
+
+      await db.insert(workflowTransitions).values({
+        entityType: 'workshop',
+        entityId:   input.workshopId,
+        fromState:  fromStatus,
+        toState:    'completed',
+        actorId:    ctx.user.id,
+        metadata:   { triggeredBy: 'workshop.endWorkshop' },
+      })
+
+      // Collect all non-cancelled registrants for feedback invites.
+      const registrants = await db
+        .select({
+          email:  workshopRegistrations.email,
+          name:   workshopRegistrations.name,
+          userId: workshopRegistrations.userId,
+        })
+        .from(workshopRegistrations)
+        .where(
+          and(
+            eq(workshopRegistrations.workshopId, input.workshopId),
+            ne(workshopRegistrations.status, 'cancelled'),
+          ),
+        )
+
+      await sendWorkshopCompleted({
+        workshopId:  input.workshopId,
+        moderatorId: ctx.user.id,
+      })
+
+      await sendWorkshopFeedbackInvitesBatch(
+        registrants.map((r) => ({
+          workshopId:     input.workshopId,
+          email:          r.email,
+          name:           r.name ?? '',
+          attendeeUserId: r.userId ?? null,
+        })),
+      )
+
+      writeAuditLog({
+        actorId:    ctx.user.id,
+        actorRole:  ctx.user.role,
+        action:     ACTIONS.WORKSHOP_END,
+        entityType: 'workshop',
+        entityId:   input.workshopId,
+        payload:    { fromStatus, registrantsNotified: registrants.length },
+      }).catch(console.error)
+
+      return { alreadyCompleted: false, registrantsNotified: registrants.length }
     }),
 
   // M5 / Google Calendar pivot: admin recovery surface to correct or set the
