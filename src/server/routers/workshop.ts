@@ -133,10 +133,6 @@ const createWorkshopInput = z.object({
   // wallTimeField above for why we don't accept strict ISO here.
   scheduledAt: wallTimeField,
   durationMinutes: z.number().int().min(15).max(480).optional(),
-  registrationLink: z.preprocess(
-    (v) => (typeof v === 'string' ? v.trim() : v),
-    z.union([z.url(), z.literal('')]).optional(),
-  ),
   // Phase 20 WS-07 (D-07): optional per-workshop capacity. NULL in the DB
   // means "open registration" (no "X spots left" badge on the public
   // listing). Admins set this on the create form.
@@ -211,7 +207,6 @@ export const workshopRouter = router({
           description: input.description ?? null,
           scheduledAt: startUtc,
           durationMinutes,
-          registrationLink: input.registrationLink || null,
           maxSeats: input.maxSeats ?? null,
           timezone: tz,
           googleCalendarEventId: gcResult.eventId,

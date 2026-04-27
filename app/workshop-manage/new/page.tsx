@@ -11,6 +11,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
 export default function CreateWorkshopPage() {
   const router = useRouter()
@@ -32,7 +33,8 @@ export default function CreateWorkshopPage() {
   // Phase 20 WS-07 (D-07): optional capacity; blank string → undefined → null
   // in DB which means "open registration" on the public listing.
   const [maxSeats, setMaxSeats] = useState('')
-  const [registrationLink, setRegistrationLink] = useState('')
+  const [meetingMode, setMeetingMode] = useState<'auto_meet' | 'manual'>('auto_meet')
+  const [manualMeetingUrl, setManualMeetingUrl] = useState('')
   // Workshop times are always entered in IST (admin's working tz). Cal.com
   // converts to each attendee's local tz at booking time, so the source-of-
   // truth tz on our row is fixed at Asia/Kolkata. No selector needed.
@@ -79,8 +81,9 @@ export default function CreateWorkshopPage() {
       scheduledAt: scheduledAt,
       durationMinutes: dur && dur > 0 ? dur : undefined,
       maxSeats: seats && seats > 0 ? seats : undefined,
-      registrationLink: registrationLink,
       timezone: WORKSHOP_TZ,
+      meetingMode,
+      manualMeetingUrl: meetingMode === 'manual' ? manualMeetingUrl : undefined,
     })
   }
 
@@ -171,15 +174,40 @@ export default function CreateWorkshopPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="workshop-reglink">Registration Link</Label>
-              <Input
-                id="workshop-reglink"
-                type="url"
-                placeholder="https://..."
-                value={registrationLink}
-                onChange={(e) => setRegistrationLink(e.target.value)}
-              />
+              <Label>Meeting source</Label>
+              <RadioGroup
+                value={meetingMode}
+                onValueChange={(v) => setMeetingMode(v as 'auto_meet' | 'manual')}
+                className="flex flex-col gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="auto_meet" id="mode-auto" />
+                  <Label htmlFor="mode-auto" className="font-normal cursor-pointer">
+                    Auto-provision Google Meet
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="manual" id="mode-manual" />
+                  <Label htmlFor="mode-manual" className="font-normal cursor-pointer">
+                    Use my own meeting link
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
+
+            {meetingMode === 'manual' && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="manual-meeting-url">Meeting URL</Label>
+                <Input
+                  id="manual-meeting-url"
+                  type="url"
+                  placeholder="https://zoom.us/j/123456789"
+                  value={manualMeetingUrl}
+                  onChange={(e) => setManualMeetingUrl(e.target.value)}
+                  required
+                />
+              </div>
+            )}
           </CardContent>
           <CardFooter>
             <div className="flex w-full items-center justify-end gap-2">
