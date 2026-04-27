@@ -617,9 +617,13 @@ export const workshopRouter = router({
       force: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Fetch workshop for ownership check
+      // Fetch workshop for ownership check + Google Calendar event id
       const [existing] = await db
-        .select({ createdBy: workshops.createdBy })
+        .select({
+          createdBy: workshops.createdBy,
+          googleCalendarEventId: workshops.googleCalendarEventId,
+          title: workshops.title,
+        })
         .from(workshops)
         .where(eq(workshops.id, input.workshopId))
         .limit(1)
@@ -655,7 +659,26 @@ export const workshopRouter = router({
         }
       }
 
+      // Cancel the Google Calendar event BEFORE the DB delete so a GCal
+      // failure aborts cleanly without leaving the row orphaned.
+      // cancelEvent already swallows 404 internally, so a missing-in-Google
+      // event won't block the DB delete.
+      if (existing.googleCalendarEventId) {
+        try {
+          await cancelEvent({ eventId: existing.googleCalendarEventId })
+        } catch (err) {
+          if (err instanceof GoogleCalendarError) {
+            throw new TRPCError({
+              code: err.status >= 500 ? 'BAD_GATEWAY' : 'BAD_REQUEST',
+              message: `Google Calendar cancel failed: ${err.message}`,
+            })
+          }
+          throw err
+        }
+      }
+
       await db.delete(workshops).where(eq(workshops.id, input.workshopId))
+      // ON DELETE CASCADE handles workshop_registrations rows.
 
       writeAuditLog({
         actorId: ctx.user.id,
