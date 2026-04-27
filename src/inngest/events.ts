@@ -293,8 +293,13 @@ export async function sendParticipateIntake(data: ParticipateIntakeData): Promis
 }
 
 // -- workshop.created ----------------------------------------------------
-// Phase 20 D-01 - admin creates a workshop; async cal.com event-type
-// provisioning runs in Inngest so the tRPC mutation stays fast.
+// Emitted by workshop.create after the synchronous Google Calendar event
+// creation succeeds. Triggers workshopRemindersScheduledFn (24h+1h
+// reminder fan-out).
+//
+// Pivot 2026-04-28: previously triggered cal.com event-type provisioning;
+// the Google Calendar pivot moves all provisioning into the synchronous
+// path of workshop.create, so this event now only schedules reminders.
 
 const workshopCreatedSchema = z.object({
   workshopId: z.guid(),
@@ -313,10 +318,34 @@ export async function sendWorkshopCreated(data: WorkshopCreatedData): Promise<vo
   await inngest.send(event)
 }
 
+// -- workshop.reminders_rescheduled --------------------------------------
+// Emitted by workshop.update after a successful Google Calendar reschedule.
+// Triggers workshopRemindersScheduledFn with the NEW scheduledAt; the old
+// reminder run wakes at the OLD time and self-exits because its captured
+// scheduledAtAtSchedule no longer matches the DB row.
+
+const workshopRemindersRescheduledSchema = z.object({
+  workshopId: z.guid(),
+})
+
+export const workshopRemindersRescheduledEvent = eventType(
+  'workshop.reminders_rescheduled',
+  { schema: workshopRemindersRescheduledSchema },
+)
+
+export type WorkshopRemindersRescheduledData = z.infer<
+  typeof workshopRemindersRescheduledSchema
+>
+
+export async function sendWorkshopRemindersRescheduled(
+  data: WorkshopRemindersRescheduledData,
+): Promise<void> {
+  const event = workshopRemindersRescheduledEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
+
 // -- workshop.registration.received --------------------------------------
-// Phase 20 D-11 - cal.com webhook INSERTs a workshop_registrations row,
-// then emits this event so Clerk invite + confirmation email run async.
-// Reused by D-12 walk-in synthetic rows.
 
 const workshopRegistrationReceivedSchema = z.object({
   workshopId: z.guid(),
@@ -326,19 +355,12 @@ const workshopRegistrationReceivedSchema = z.object({
   emailHash: z.string().regex(/^[0-9a-f]{64}$/, 'emailHash must be SHA-256 hex (64 lowercase chars)'),
   name: z.string(),
   /**
-   * B3-9: `bookingUid` is one of three shapes depending on `source`:
-   *   - `direct_register` → composite `${rootBookingUid}:${attendeeId}` —
-   *     the cal.com root booking uid joined to the seat attendee id via
-   *     COMPOSITE_BOOKING_UID_DELIMITER (`:`). Downstream consumers that
-   *     need to trace back to the root booking should split on the first
-   *     `:` or use `buildCompositeBookingUid()` in `src/lib/calcom.ts`.
-   *   - `walk_in` → `walkin:${workshopId}:${sha256(email)}` synthesized by
-   *     the MEETING_ENDED handler for attendees with no prior registration.
-   *   - `cal_booking` → legacy shape (single cal.com uid), only used by
-   *     code paths that predate the 2026-04-21 seated-booking redesign.
+   * Always `reg_${uuid()}` (public registration via /api/intake/workshop-register)
+   * or `walkin_${uuid()}` (admin-added walk-in via workshop.addWalkIn).
+   * Cal.com composite UIDs are gone in the Google Calendar pivot.
    */
   bookingUid: z.string().min(1),
-  source: z.enum(['cal_booking', 'walk_in', 'direct_register']),
+  source: z.enum(['walk_in', 'direct_register']),
 })
 
 export const workshopRegistrationReceivedEvent = eventType(
@@ -352,49 +374,6 @@ export async function sendWorkshopRegistrationReceived(
   data: WorkshopRegistrationReceivedData,
 ): Promise<void> {
   const event = workshopRegistrationReceivedEvent.create(data)
-  await event.validate()
-  await inngest.send(event)
-}
-
-// -- workshop.registration.orphan ----------------------------------------
-// H1 (audit 2026-04-27): cal.com seat creation succeeded but our DB write
-// or post-Cal.com capacity recheck failed — the attendee is seated on
-// cal.com (with the Meet link in their inbox) but our system has no row.
-// This event fan-outs an admin alert email so a human can manually un-seat
-// the orphan attendee on cal.com. Auto-removal is intentionally NOT done
-// because deleting an attendee who legitimately paid is worse than
-// reconciliation by hand.
-
-const workshopRegistrationOrphanSchema = z.object({
-  workshopId:     z.guid(),
-  rootBookingUid: z.string().min(1),
-  attendeeId:     z.number().int().positive(),
-  bookingId:      z.number().int().positive(),
-  email:          z.string().email(),
-  // Why the orphan happened. `db_insert_failed` = unique-constraint
-  // collision or DB write error after the cal.com seat was created;
-  // `capacity_recheck_failed` = cal.com seat was assigned, but our
-  // post-Cal.com locked recheck saw a now-full workshop and rolled back
-  // the INSERT; `unique_collision` = double-click race lost to the
-  // partial unique index.
-  reason: z.enum([
-    'db_insert_failed',
-    'capacity_recheck_failed',
-    'unique_collision',
-  ]),
-})
-
-export const workshopRegistrationOrphanEvent = eventType(
-  'workshop.registration.orphan',
-  { schema: workshopRegistrationOrphanSchema },
-)
-
-export type WorkshopRegistrationOrphanData = z.infer<typeof workshopRegistrationOrphanSchema>
-
-export async function sendWorkshopRegistrationOrphan(
-  data: WorkshopRegistrationOrphanData,
-): Promise<void> {
-  const event = workshopRegistrationOrphanEvent.create(data)
   await event.validate()
   await inngest.send(event)
 }
