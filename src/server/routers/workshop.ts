@@ -35,30 +35,23 @@ function spotsTag(workshopId: string): string {
   return `workshop-spots-${workshopId}`
 }
 
-// B6-4: validate IANA timezone input against the runtime's zoneinfo
-// database via `Intl.supportedValuesOf('timeZone')`. Cached on first call
-// — the list is static per Node version and runs in the low single-ms
-// range, but we only need to build the Set once. Rejecting bogus input
-// at the boundary prevents typos like `asia/kolkta` from poisoning every
-// downstream cal.com call the workshop does.
-let _timezoneSet: Set<string> | null = null
+// Validate IANA timezone input by attempting `Intl.DateTimeFormat`. We
+// previously used `Intl.supportedValuesOf('timeZone').has(tz)` for an
+// O(1) set lookup, but that returns ONLY canonical IANA names — `Asia/
+// Calcutta` is canonical, while the alias `Asia/Kolkata` (which the
+// project uses everywhere as the default) was rejected even though
+// `DateTimeFormat` accepts both. Cache the result per-tz so repeat
+// validations stay constant-time without losing alias support.
+const _tzValidationCache = new Map<string, boolean>()
 function isValidTimezone(tz: string): boolean {
-  if (_timezoneSet === null) {
-    try {
-      _timezoneSet = new Set(Intl.supportedValuesOf('timeZone'))
-    } catch {
-      // Node < 18 does not ship `supportedValuesOf`. In that case we
-      // fall back to a permissive check — DateTimeFormat throws for
-      // genuinely invalid values, so this still catches typos without
-      // requiring the full list.
-      _timezoneSet = new Set()
-    }
-  }
-  if (_timezoneSet.size > 0) return _timezoneSet.has(tz)
+  const cached = _tzValidationCache.get(tz)
+  if (cached !== undefined) return cached
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: tz }).format()
+    _tzValidationCache.set(tz, true)
     return true
   } catch {
+    _tzValidationCache.set(tz, false)
     return false
   }
 }
