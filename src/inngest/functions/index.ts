@@ -5,10 +5,9 @@ import { workshopCompletedFn } from './workshop-completed'
 import { workshopRecordingProcessedFn } from './workshop-recording-processed'
 import { evidencePackExportFn } from './evidence-pack-export'
 import { participateIntakeFn } from './participate-intake'
-import { workshopCreatedFn } from './workshop-created'
 import { workshopRegistrationReceivedFn } from './workshop-registration-received'
-import { workshopRegistrationOrphanFn } from './workshop-registration-orphan'
 import { workshopFeedbackInviteFn } from './workshop-feedback-invite'
+import { workshopRemindersScheduledFn } from './workshop-reminders-scheduled'
 import { consultationSummaryGenerateFn } from './consultation-summary-generate'
 import { milestoneReadyFn } from './milestone-ready'
 import { versionAnchorFn } from './version-anchor'
@@ -32,14 +31,13 @@ export const functions = [
   notificationDispatchFn,
   workshopCompletedFn,
   workshopRecordingProcessedFn,
-  evidencePackExportFn, // Phase 18
-  participateIntakeFn,  // Phase 19
-  workshopCreatedFn,    // Phase 20 Plan 02 - cal.com event-type provisioning
-  workshopRegistrationReceivedFn,  // Phase 20 Plan 04 - Clerk invite (F28: confirmation email dropped)
-  workshopRegistrationOrphanFn,    // Audit 2026-04-27 H1 - admin alert when cal.com seat orphans our DB row
-  workshopFeedbackInviteFn,  // Phase 20 Plan 04 - post-workshop feedback JWT deep-link email
-  consultationSummaryGenerateFn, // Phase 21 LLM-04/05/06/08 - per-section consultation summary via llama-3.3-70b-versatile
-  milestoneReadyFn,     // Phase 23 VERIFY-06 - milestoneReady 5-step Cardano anchor
-  versionAnchorFn,      // Phase 23 VERIFY-07 - per-version Cardano anchor on version.published
-  userUpsertedFn,       // P2 - Clerk webhook fan-out (audit + workshop reg backfill)
+  evidencePackExportFn,                // Phase 18
+  participateIntakeFn,                 // Phase 19
+  workshopRegistrationReceivedFn,      // Phase 20 Plan 04 - Clerk invite
+  workshopFeedbackInviteFn,            // Phase 20 Plan 04 - feedback JWT email
+  workshopRemindersScheduledFn,        // Pivot 2026-04-28 - replaces workshopCreatedFn (24h+1h reminder fan-out)
+  consultationSummaryGenerateFn,       // Phase 21 LLM
+  milestoneReadyFn,                    // Phase 23 VERIFY-06
+  versionAnchorFn,                     // Phase 23 VERIFY-07
+  userUpsertedFn,                      // P2 - Clerk webhook fan-out
 ]
