@@ -223,3 +223,203 @@ describe('google-calendar — createWorkshopEvent', () => {
     ).rejects.toBeInstanceOf(GoogleCalendarError)
   })
 })
+
+describe('google-calendar — patch operations', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_ID', 'cid')
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_SECRET', 'cs')
+    vi.stubEnv('GOOGLE_OAUTH_REFRESH_TOKEN', 'rt')
+    vi.stubEnv('GOOGLE_CALENDAR_ID', 'primary')
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ access_token: 't', expires_in: 3600 }),
+    })
+    vi.resetModules()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  it('addAttendeeToEvent fetches existing event and patches with appended attendee', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'evt1',
+        attendees: [{ email: 'alice@x.com', displayName: 'Alice' }],
+      }),
+    })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1' }),
+    })
+    const { addAttendeeToEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await addAttendeeToEvent({ eventId: 'evt1', attendeeEmail: 'bob@x.com', attendeeName: 'Bob' })
+    const patchCall = fetchMock.mock.calls[2]
+    expect(patchCall[1].method).toBe('PATCH')
+    expect(patchCall[0]).toContain('sendUpdates=all')
+    const body = JSON.parse(patchCall[1].body)
+    expect(body.attendees).toEqual([
+      { email: 'alice@x.com', displayName: 'Alice' },
+      { email: 'bob@x.com', displayName: 'Bob' },
+    ])
+  })
+
+  it('addAttendeeToEvent is idempotent — does not duplicate existing attendee (case-insensitive)', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'evt1',
+        attendees: [{ email: 'Bob@X.com', displayName: 'Bob' }],
+      }),
+    })
+    const { addAttendeeToEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await addAttendeeToEvent({ eventId: 'evt1', attendeeEmail: 'bob@x.com', attendeeName: 'Bob' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('addAttendeeToEvent works when existing event has no attendees array', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1' }),
+    })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1' }),
+    })
+    const { addAttendeeToEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await addAttendeeToEvent({ eventId: 'evt1', attendeeEmail: 'first@x.com', attendeeName: 'First' })
+    const body = JSON.parse(fetchMock.mock.calls[2][1].body)
+    expect(body.attendees).toEqual([{ email: 'first@x.com', displayName: 'First' }])
+  })
+
+  it('rescheduleEvent patches scheduledAt + title with sendUpdates=all', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1' }),
+    })
+    const { rescheduleEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await rescheduleEvent({
+      eventId: 'evt1',
+      newStartUtc: new Date('2026-05-02T10:00:00Z'),
+      newEndUtc: new Date('2026-05-02T11:00:00Z'),
+      newTitle: 'Updated title',
+      newTimezone: 'Asia/Kolkata',
+    })
+    const call = fetchMock.mock.calls[1]
+    expect(call[1].method).toBe('PATCH')
+    expect(call[0]).toContain('sendUpdates=all')
+    const body = JSON.parse(call[1].body)
+    expect(body.summary).toBe('Updated title')
+    expect(body.start).toEqual({ dateTime: '2026-05-02T10:00:00.000Z', timeZone: 'Asia/Kolkata' })
+    expect(body.end).toEqual({ dateTime: '2026-05-02T11:00:00.000Z', timeZone: 'Asia/Kolkata' })
+  })
+
+  it('rescheduleEvent omits unchanged fields from PATCH body', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1' }),
+    })
+    const { rescheduleEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await rescheduleEvent({
+      eventId: 'evt1',
+      newTitle: 'Just title',
+    })
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(body.summary).toBe('Just title')
+    expect(body.start).toBeUndefined()
+    expect(body.end).toBeUndefined()
+  })
+
+  it('cancelEvent issues DELETE with sendUpdates=all', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      text: async () => '',
+      json: async () => null,
+    })
+    const { cancelEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await cancelEvent({ eventId: 'evt1' })
+    const call = fetchMock.mock.calls[1]
+    expect(call[1].method).toBe('DELETE')
+    expect(call[0]).toContain('sendUpdates=all')
+  })
+
+  it('cancelEvent treats 404 as already-cancelled (no throw)', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      text: async () => 'not found',
+    })
+    const { cancelEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(cancelEvent({ eventId: 'evt_gone' })).resolves.toBeUndefined()
+  })
+
+  it('cancelEvent propagates non-404 errors', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: async () => 'server error',
+    })
+    const { cancelEvent, _internal_resetTokenCache, GoogleCalendarError } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(cancelEvent({ eventId: 'evt1' })).rejects.toBeInstanceOf(GoogleCalendarError)
+  })
+
+  it('removeAttendeeFromEvent fetches + patches with attendee removed', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'evt1',
+        attendees: [
+          { email: 'alice@x.com' },
+          { email: 'bob@x.com' },
+        ],
+      }),
+    })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'evt1' }),
+    })
+    const { removeAttendeeFromEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await removeAttendeeFromEvent({ eventId: 'evt1', attendeeEmail: 'bob@x.com' })
+    const patchBody = JSON.parse(fetchMock.mock.calls[2][1].body)
+    expect(patchBody.attendees).toEqual([{ email: 'alice@x.com' }])
+  })
+
+  it('removeAttendeeFromEvent is a no-op when attendee not in list', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'evt1',
+        attendees: [{ email: 'alice@x.com' }],
+      }),
+    })
+    const { removeAttendeeFromEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await removeAttendeeFromEvent({ eventId: 'evt1', attendeeEmail: 'bob@x.com' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+})

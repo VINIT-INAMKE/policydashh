@@ -197,3 +197,107 @@ export async function createWorkshopEvent(
 
   return { eventId: res.id, meetingUrl, htmlLink: res.htmlLink }
 }
+
+type CalendarEventResource = {
+  id: string
+  attendees?: Array<{ email: string; displayName?: string; responseStatus?: string }>
+}
+
+async function getEvent(eventId: string): Promise<CalendarEventResource> {
+  const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
+  return (await callCalendar(
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    { method: 'GET' },
+  )) as CalendarEventResource
+}
+
+export async function addAttendeeToEvent(input: {
+  eventId: string
+  attendeeEmail: string
+  attendeeName: string
+}): Promise<void> {
+  const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
+  const event = await getEvent(input.eventId)
+  const existing = event.attendees ?? []
+  const lower = input.attendeeEmail.toLowerCase()
+  if (existing.some((a) => a.email.toLowerCase() === lower)) {
+    return
+  }
+  const next = [...existing, { email: input.attendeeEmail, displayName: input.attendeeName }]
+  await callCalendar(
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.eventId)}`,
+    {
+      method: 'PATCH',
+      body: { attendees: next },
+      query: { sendUpdates: 'all' },
+    },
+  )
+}
+
+export async function rescheduleEvent(input: {
+  eventId: string
+  newStartUtc?: Date
+  newEndUtc?: Date
+  newTitle?: string
+  newDescription?: string | null
+  newTimezone?: string
+}): Promise<void> {
+  const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
+  const body: Record<string, unknown> = {}
+  const tz = input.newTimezone
+  if (input.newTitle !== undefined) body.summary = input.newTitle
+  if (input.newDescription !== undefined) body.description = input.newDescription ?? ''
+  if (input.newStartUtc) {
+    body.start = { dateTime: input.newStartUtc.toISOString(), timeZone: tz }
+  }
+  if (input.newEndUtc) {
+    body.end = { dateTime: input.newEndUtc.toISOString(), timeZone: tz }
+  }
+
+  await callCalendar(
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.eventId)}`,
+    {
+      method: 'PATCH',
+      body,
+      query: { sendUpdates: 'all' },
+    },
+  )
+}
+
+export async function cancelEvent(input: { eventId: string }): Promise<void> {
+  const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
+  try {
+    await callCalendar(
+      `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.eventId)}`,
+      {
+        method: 'DELETE',
+        query: { sendUpdates: 'all' },
+      },
+    )
+  } catch (err) {
+    if (err instanceof GoogleCalendarError && err.status === 404) {
+      return
+    }
+    throw err
+  }
+}
+
+export async function removeAttendeeFromEvent(input: {
+  eventId: string
+  attendeeEmail: string
+}): Promise<void> {
+  const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
+  const event = await getEvent(input.eventId)
+  const existing = event.attendees ?? []
+  const lower = input.attendeeEmail.toLowerCase()
+  const next = existing.filter((a) => a.email.toLowerCase() !== lower)
+  if (next.length === existing.length) return
+  await callCalendar(
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(input.eventId)}`,
+    {
+      method: 'PATCH',
+      body: { attendees: next },
+      query: { sendUpdates: 'all' },
+    },
+  )
+}
