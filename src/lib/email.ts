@@ -28,57 +28,6 @@ function getReplyToAddress(): string {
 }
 
 /**
- * Operator alert: a workshop registration left an orphan cal.com seat.
- *
- * Sent by `workshopRegistrationOrphanFn` when our DB write fails after
- * cal.com's `addAttendeeToBooking` already succeeded — the attendee is
- * seated on cal.com (with the Meet link) but our system has no row.
- * Operator must manually un-seat them on cal.com (no API for that today)
- * AND insert a tracking row if they want our system to track attendance.
- *
- * Routes to ADMIN_ALERT_EMAIL, falling back to CAL_PRIMARY_ATTENDEE_EMAIL
- * (the cal.com account owner) — that mailbox is already monitored.
- */
-export async function sendWorkshopOrphanSeatAlert(data: {
-  workshopId:     string
-  workshopTitle:  string
-  rootBookingUid: string
-  attendeeId:     number
-  bookingId:      number
-  email:          string
-  reason:         string
-}): Promise<void> {
-  const resend = getResend()
-  if (!resend) return
-  const to =
-    process.env.ADMIN_ALERT_EMAIL ||
-    process.env.CAL_PRIMARY_ATTENDEE_EMAIL ||
-    null
-  if (!to) return
-  const lines = [
-    `An attendee was seated on cal.com but our DB write failed.`,
-    `Manual reconciliation required:`,
-    ``,
-    `Reason:           ${data.reason}`,
-    `Workshop:         ${data.workshopTitle} (${data.workshopId})`,
-    `Cal.com root uid: ${data.rootBookingUid}`,
-    `Attendee id:      ${data.attendeeId}`,
-    `Booking id:       ${data.bookingId}`,
-    `Attendee email:   ${data.email}`,
-    ``,
-    `Action: open cal.com → bookings → root uid above → remove the attendee.`,
-    `Then either ask them to retry registration, or insert a workshop_registrations row by hand.`,
-  ].join('\n')
-  await resend.emails.send({
-    from: getFromAddress(),
-    replyTo: getReplyToAddress(),
-    to,
-    subject: `[orphan-seat] ${data.workshopTitle} — manual cleanup needed`,
-    text: lines,
-  })
-}
-
-/**
  * Send email notification when feedback is reviewed.
  * Fire-and-forget: caller does sendFeedbackReviewedEmail(...).catch(console.error)
  * Silently returns if no Resend key or no email (phone-only user).
