@@ -6,11 +6,9 @@
  *   - "live":     full card + RegisterForm + "Live now" header badge (no spots)
  *   - "past":     compact card (title + date), optional "Summary available" note
  *
- * Register CTA is only wired when the workshop has a non-null
- * `calcomEventTypeId` (D-03 - failed cal.com provisioning hides the embed).
- * The server query `listPublicWorkshops` already filters out null cases, so
- * every card that reaches this component is expected to have a cal link,
- * but we defensively guard on the prop anyway.
+ * Register CTA is always enabled for upcoming/live workshops — the server
+ * query `listPublicWorkshops` gates on `googleCalendarEventId IS NOT NULL`
+ * so every card reaching this component is provisioned end-to-end.
  */
 import { Calendar } from 'lucide-react'
 import {
@@ -32,10 +30,10 @@ export interface WorkshopCardData {
   description: string | null
   scheduledAt: Date
   durationMinutes: number | null
-  calcomEventTypeId: string | null
+  googleCalendarEventId: string
   maxSeats: number | null
   // F23: external registration URL. When set, the card offers a secondary
-  // "Register elsewhere" link next to the cal.com embed button.
+  // "Register elsewhere" link below the register form.
   registrationLink: string | null
   // Source-of-truth IANA tz for the date label below. Without this the
   // formatter rendered in server tz (UTC on Vercel) instead of the
@@ -84,13 +82,12 @@ export function WorkshopCard({
   }
 
   // upcoming | live
-  const hasCalLink = workshop.calcomEventTypeId !== null
   const available =
     workshop.maxSeats === null
       ? null
       : Math.max(0, workshop.maxSeats - workshop.registeredCount)
   const isFullyBooked = available === 0
-  const disabled = !hasCalLink || isFullyBooked
+  const disabled = isFullyBooked
 
   return (
     <Card>
@@ -144,13 +141,8 @@ export function WorkshopCard({
                 You&apos;re registered
               </p>
             </div>
-            {/* F22: link to cal.com's public booking page for this attendee -
-                cal.com emails every booking with a "Manage booking" link that
-                handles cancellation server-side. We can't know the booking uid
-                from a public card, so route the user to their email and add
-                a hint here. */}
             <p className="text-xs text-emerald-900/80">
-              Need to cancel? Use the link in your cal.com confirmation email.
+              Need to cancel? Use the link in your confirmation email.
             </p>
           </div>
         ) : (

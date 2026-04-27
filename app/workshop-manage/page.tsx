@@ -77,10 +77,7 @@ interface WorkshopGridProps {
     scheduledAt: string | Date
     durationMinutes: number | null
     registrationLink: string | null
-    // F16: status + calcomEventTypeId surface provisioning state (badge)
-    // and cal.com external link on each manage card.
     status: 'upcoming' | 'in_progress' | 'completed' | 'archived'
-    calcomEventTypeId: string | null
     createdBy: string
     createdAt: string | Date
     updatedAt: string | Date

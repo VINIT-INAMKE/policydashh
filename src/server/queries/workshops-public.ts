@@ -14,10 +14,10 @@
  *     tag keyed on the workshopId, so future Plan 20-04 / Plan 20-06 writes
  *     can invalidate granularly via `revalidateTag(`workshop-spots-${id}`)`.
  *
- * Gating (D-03): only workshops with a non-null `calcomEventTypeId` are
- * returned - the admin-side Inngest cal.com provisioning flow (Plan 20-02)
- * backfills this column asynchronously, so a workshop only surfaces to the
- * public listing AFTER its cal.com event type exists.
+ * Gating (D-03): only workshops with a non-null `googleCalendarEventId` are
+ * returned - every workshop has this populated at create time (NOT NULL after
+ * migration 0032), so the gate is technically vacuous but kept for defensive
+ * forward-compat: only list workshops that have been provisioned end-to-end.
  *
  * Spots-left math (D-07, Plan 20-05 critical corrections):
  *   maxSeats IS NULL  -> no badge (open registration, registeredCount ignored)
@@ -46,12 +46,10 @@ export interface PublicWorkshop {
   scheduledAt: Date
   durationMinutes: number | null
   status: PublicWorkshopStatus
-  calcomEventTypeId: string | null
+  googleCalendarEventId: string
   maxSeats: number | null
-  // F23: external registration override. Surfaced to the card as a fallback
-  // when cal.com is not wired for this workshop. Admins set this on the
-  // create/edit form when they want to route registrations to another
-  // system entirely (e.g. Eventbrite).
+  // F23: external registration override. Admins set this on the create/edit
+  // form when they want to route registrations to another system (e.g. Eventbrite).
   registrationLink: string | null
   // Source-of-truth IANA tz for rendering scheduledAt. Without this the
   // public card formatter would fall back to server tz (UTC on Vercel),
@@ -63,8 +61,8 @@ export interface PublicWorkshop {
 
 /**
  * Per-workshop registered-count lookup. Cached for 60 seconds and tagged so
- * the cal.com webhook handler (BOOKING_CREATED / _CANCELLED / _RESCHEDULED)
- * can `revalidateTag('workshop-spots-${workshopId}')` after writes land.
+ * registration mutations can `revalidateTag('workshop-spots-${workshopId}')`
+ * after writes land.
  *
  * F5: `unstable_cache` options.tags is a static string[] in Next.js 16, so
  * we must build a per-workshopId cache closure on demand rather than sharing
@@ -110,7 +108,7 @@ export function getRegisteredCount(workshopId: string): Promise<number> {
 /**
  * Load all public-visible workshops with spot counts and summary flags.
  * Sectioning (upcoming / live / past) happens in the page component - this
- * helper is status-agnostic and returns everything with a cal.com link.
+ * helper is status-agnostic and returns everything provisioned end-to-end.
  */
 export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {
   const rows = await db
@@ -121,13 +119,13 @@ export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {
       scheduledAt: workshops.scheduledAt,
       durationMinutes: workshops.durationMinutes,
       status: workshops.status,
-      calcomEventTypeId: workshops.calcomEventTypeId,
+      googleCalendarEventId: workshops.googleCalendarEventId,
       maxSeats: workshops.maxSeats,
       registrationLink: workshops.registrationLink,
       timezone: workshops.timezone,
     })
     .from(workshops)
-    .where(isNotNull(workshops.calcomEventTypeId))
+    .where(isNotNull(workshops.googleCalendarEventId))
 
   const results: PublicWorkshop[] = []
   for (const w of rows) {
@@ -149,7 +147,7 @@ export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {
       scheduledAt: w.scheduledAt,
       durationMinutes: w.durationMinutes,
       status: w.status,
-      calcomEventTypeId: w.calcomEventTypeId,
+      googleCalendarEventId: w.googleCalendarEventId,
       maxSeats: w.maxSeats,
       registrationLink: w.registrationLink,
       timezone: w.timezone,

@@ -24,11 +24,8 @@ interface WorkshopData {
   scheduledAt: string | Date
   durationMinutes: number | null
   registrationLink: string | null
-  // F16: status drives the badge, calcomEventTypeId drives the "View on
-  // cal.com" link. Both optional so the type stays compatible with callers
-  // that have not wired the new columns yet.
+  // F16: status drives the provisioning badge.
   status?: 'upcoming' | 'in_progress' | 'completed' | 'archived'
-  calcomEventTypeId?: string | null
   // Per-workshop IANA tz used to render the date string in the workshop's
   // own zone instead of the browser/server runtime tz. Optional for caller
   // compatibility — defaults to Asia/Kolkata in formatWorkshopTime when null.
@@ -120,19 +117,6 @@ export function WorkshopCard({ workshop, canManage }: WorkshopCardProps) {
               <Badge variant="secondary">{workshop.durationMinutes} min</Badge>
             ) : (
               <span />
-            )}
-            {workshop.calcomEventTypeId ? (
-              <Badge
-                variant="secondary"
-                className="bg-emerald-50 text-emerald-800"
-                aria-label="Cal.com event type provisioned"
-              >
-                cal.com linked
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-amber-700" aria-label="cal.com provisioning pending">
-                cal.com pending
-              </Badge>
             )}
             {workshop.registrationLink && (
               <Button
