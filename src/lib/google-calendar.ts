@@ -115,3 +115,85 @@ async function callCalendar(
 }
 
 export const _internal_callCalendar = callCalendar
+
+type CreateWorkshopEventInput = {
+  title: string
+  description: string | null
+  startUtc: Date
+  endUtc: Date
+  timezone: string
+  organizerEmail: string
+  meetingMode: 'auto_meet' | 'manual'
+  manualMeetingUrl?: string
+  reminderMinutesBefore: number[]
+}
+
+type CreateWorkshopEventResult = {
+  eventId: string
+  meetingUrl: string
+  htmlLink: string
+}
+
+export async function createWorkshopEvent(
+  input: CreateWorkshopEventInput,
+): Promise<CreateWorkshopEventResult> {
+  const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary'
+
+  if (input.meetingMode === 'manual' && !input.manualMeetingUrl) {
+    throw new GoogleCalendarError(400, 'meetingMode=manual requires manualMeetingUrl')
+  }
+
+  const body: Record<string, unknown> = {
+    summary: input.title,
+    description: input.description ?? undefined,
+    start: { dateTime: input.startUtc.toISOString(), timeZone: input.timezone },
+    end: { dateTime: input.endUtc.toISOString(), timeZone: input.timezone },
+    organizer: { email: input.organizerEmail },
+    guestsCanInviteOthers: false,
+    guestsCanModify: false,
+    reminders: {
+      useDefault: false,
+      overrides: input.reminderMinutesBefore.map((minutes) => ({ method: 'email', minutes })),
+    },
+  }
+
+  if (input.meetingMode === 'auto_meet') {
+    body.conferenceData = {
+      createRequest: {
+        requestId: `policydash-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        conferenceSolutionKey: { type: 'hangoutsMeet' },
+      },
+    }
+  } else {
+    body.location = input.manualMeetingUrl
+  }
+
+  const res = (await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events`, {
+    method: 'POST',
+    body,
+    query: { conferenceDataVersion: '1', sendUpdates: 'all' },
+  })) as {
+    id: string
+    htmlLink: string
+    hangoutLink?: string
+    conferenceData?: { entryPoints?: Array<{ entryPointType: string; uri: string }> }
+  }
+
+  let meetingUrl: string
+  if (input.meetingMode === 'auto_meet') {
+    meetingUrl =
+      res.hangoutLink ||
+      res.conferenceData?.entryPoints?.find((e) => e.entryPointType === 'video')?.uri ||
+      ''
+    if (!meetingUrl) {
+      throw new GoogleCalendarError(
+        500,
+        `Auto-provisioned Meet link missing in Calendar response (eventId=${res.id})`,
+      )
+    }
+  } else {
+    meetingUrl = input.manualMeetingUrl!
+  }
+
+  return { eventId: res.id, meetingUrl, htmlLink: res.htmlLink }
+}

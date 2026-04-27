@@ -66,3 +66,160 @@ describe('google-calendar — auth', () => {
     await expect(_internal_getAccessToken()).rejects.toBeInstanceOf(GoogleCalendarError)
   })
 })
+
+describe('google-calendar — createWorkshopEvent', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_ID', 'cid')
+    vi.stubEnv('GOOGLE_OAUTH_CLIENT_SECRET', 'cs')
+    vi.stubEnv('GOOGLE_OAUTH_REFRESH_TOKEN', 'rt')
+    vi.stubEnv('GOOGLE_CALENDAR_ID', 'primary')
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ access_token: 't', expires_in: 3600 }),
+    })
+    vi.resetModules()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  it('inserts an event with auto-provisioned Meet conference', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'evt_abc',
+        htmlLink: 'https://calendar.google.com/event?eid=evt_abc',
+        hangoutLink: 'https://meet.google.com/aaa-bbbb-ccc',
+        conferenceData: { entryPoints: [{ entryPointType: 'video', uri: 'https://meet.google.com/aaa-bbbb-ccc' }] },
+      }),
+    })
+    const { createWorkshopEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    const out = await createWorkshopEvent({
+      title: 'Privacy Policy Workshop',
+      description: 'Discuss draft v1',
+      startUtc: new Date('2026-05-01T10:30:00Z'),
+      endUtc: new Date('2026-05-01T11:30:00Z'),
+      timezone: 'Asia/Kolkata',
+      organizerEmail: 'vinit@konma.io',
+      meetingMode: 'auto_meet',
+      reminderMinutesBefore: [1440, 60],
+    })
+    expect(out.eventId).toBe('evt_abc')
+    expect(out.meetingUrl).toBe('https://meet.google.com/aaa-bbbb-ccc')
+    expect(out.htmlLink).toBe('https://calendar.google.com/event?eid=evt_abc')
+
+    const insertCall = fetchMock.mock.calls[1]
+    expect(insertCall[0]).toContain('/calendar/v3/calendars/primary/events')
+    expect(insertCall[0]).toContain('conferenceDataVersion=1')
+    expect(insertCall[0]).toContain('sendUpdates=all')
+    const body = JSON.parse(insertCall[1].body)
+    expect(body.summary).toBe('Privacy Policy Workshop')
+    expect(body.start).toEqual({ dateTime: '2026-05-01T10:30:00.000Z', timeZone: 'Asia/Kolkata' })
+    expect(body.conferenceData.createRequest.conferenceSolutionKey.type).toBe('hangoutsMeet')
+    expect(body.reminders.overrides).toEqual([
+      { method: 'email', minutes: 1440 },
+      { method: 'email', minutes: 60 },
+    ])
+  })
+
+  it('inserts an event with manual meeting link as location', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'evt_xyz',
+        htmlLink: 'https://calendar.google.com/event?eid=evt_xyz',
+      }),
+    })
+    const { createWorkshopEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    const out = await createWorkshopEvent({
+      title: 'Zoom Workshop',
+      description: null,
+      startUtc: new Date('2026-05-01T10:30:00Z'),
+      endUtc: new Date('2026-05-01T11:30:00Z'),
+      timezone: 'Asia/Kolkata',
+      organizerEmail: 'vinit@konma.io',
+      meetingMode: 'manual',
+      manualMeetingUrl: 'https://zoom.us/j/123456789',
+      reminderMinutesBefore: [60],
+    })
+    expect(out.eventId).toBe('evt_xyz')
+    expect(out.meetingUrl).toBe('https://zoom.us/j/123456789')
+
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(body.location).toBe('https://zoom.us/j/123456789')
+    expect(body.conferenceData).toBeUndefined()
+  })
+
+  it('throws GoogleCalendarError(400) when meetingMode=manual but manualMeetingUrl is missing', async () => {
+    const { createWorkshopEvent, GoogleCalendarError, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(
+      createWorkshopEvent({
+        title: 't',
+        description: null,
+        startUtc: new Date('2026-05-01T10:30:00Z'),
+        endUtc: new Date('2026-05-01T11:30:00Z'),
+        timezone: 'Asia/Kolkata',
+        organizerEmail: 'a@b.c',
+        meetingMode: 'manual',
+        reminderMinutesBefore: [],
+      }),
+    ).rejects.toBeInstanceOf(GoogleCalendarError)
+  })
+
+  it('throws GoogleCalendarError on 4xx insert', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      text: async () => 'bad request',
+    })
+    const { createWorkshopEvent, GoogleCalendarError, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(
+      createWorkshopEvent({
+        title: 't',
+        description: null,
+        startUtc: new Date(),
+        endUtc: new Date(Date.now() + 60_000),
+        timezone: 'Asia/Kolkata',
+        organizerEmail: 'a@b.c',
+        meetingMode: 'auto_meet',
+        reminderMinutesBefore: [],
+      }),
+    ).rejects.toBeInstanceOf(GoogleCalendarError)
+  })
+
+  it('throws when auto_meet response is missing hangoutLink and entryPoints', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'evt_no_meet',
+        htmlLink: 'https://calendar.google.com/event?eid=evt_no_meet',
+      }),
+    })
+    const { createWorkshopEvent, GoogleCalendarError, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(
+      createWorkshopEvent({
+        title: 't',
+        description: null,
+        startUtc: new Date('2026-05-01T10:30:00Z'),
+        endUtc: new Date('2026-05-01T11:30:00Z'),
+        timezone: 'Asia/Kolkata',
+        organizerEmail: 'a@b.c',
+        meetingMode: 'auto_meet',
+        reminderMinutesBefore: [],
+      }),
+    ).rejects.toBeInstanceOf(GoogleCalendarError)
+  })
+})
