@@ -24,6 +24,11 @@ import {
 } from '@/src/inngest/events'
 import { revalidateTag } from 'next/cache'
 import { updateCalEventType, CalApiError, DEFAULT_SEATS_PER_TIME_SLOT } from '@/src/lib/calcom'
+import {
+  createWorkshopEvent,
+  cancelEvent,
+  GoogleCalendarError,
+} from '@/src/lib/google-calendar'
 import { wallTimeToUtc } from '@/src/lib/wall-time'
 import { eq, gte, lt, desc, and, count, ne, isNull } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
@@ -113,74 +118,129 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   archived:    ['completed'],
 }
 
+// Input schema for workshop.create. Extracted from the inline .input() call
+// so tests can reference it without going through the full router.
+const createWorkshopInput = z.object({
+  title: z.string().min(2).max(120),
+  description: z.string().max(2000).optional(),
+  // Wall-clock time in the workshop's timezone (NOT UTC). See
+  // wallTimeField above for why we don't accept strict ISO here.
+  scheduledAt: wallTimeField,
+  durationMinutes: z.number().int().min(15).max(480).optional(),
+  registrationLink: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim() : v),
+    z.union([z.url(), z.literal('')]).optional(),
+  ),
+  // Phase 20 WS-07 (D-07): optional per-workshop capacity. NULL in the DB
+  // means "open registration" (no "X spots left" badge on the public
+  // listing). Admins set this on the create form.
+  maxSeats: z.number().int().positive().optional(),
+  // F9: IANA timezone name. Defaults to 'Asia/Kolkata' (project's prior
+  // hardcoded value). B6-4: validated against Intl.DateTimeFormat so typos
+  // can't poison downstream Google Calendar calls.
+  timezone: z.string().optional(),
+  // Google Calendar pivot: admin chooses whether to auto-provision a Meet
+  // link ('auto_meet') or paste their own URL ('manual').
+  meetingMode: z.enum(['auto_meet', 'manual']).default('auto_meet'),
+  manualMeetingUrl: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim() : v),
+    z.url().optional(),
+  ),
+}).refine(
+  (input) => input.meetingMode !== 'manual' || (input.manualMeetingUrl && input.manualMeetingUrl.length > 0),
+  { message: 'manualMeetingUrl is required when meetingMode is manual', path: ['manualMeetingUrl'] },
+)
+
 export const workshopRouter = router({
-  // Create a new workshop event
+  // Create a new workshop event — synchronous Google Calendar integration.
+  // Steps: validate → createWorkshopEvent (GCal) → DB INSERT → Inngest fan-out.
+  // On DB failure: best-effort cancelEvent to undo the GCal side.
   create: requirePermission('workshop:manage')
-    .input(z.object({
-      title: z.string().min(1).max(200),
-      description: z.string().max(2000).optional(),
-      // Wall-clock time in the workshop's timezone (NOT UTC). See
-      // wallTimeField above for why we don't accept strict ISO here.
-      scheduledAt: wallTimeField,
-      durationMinutes: z.number().int().positive().optional(),
-      registrationLink: optionalUrlField,
-      // Phase 20 WS-07 (D-07): optional per-workshop capacity. NULL in the DB
-      // means "open registration" (no "X spots left" badge on the public
-      // listing). Admins set this on the create form.
-      maxSeats: z.number().int().min(1).max(10000).optional(),
-      // F9: IANA timezone name. Defaults to 'Asia/Kolkata' (project's prior
-      // hardcoded value). B6-4: validated against
-      // `Intl.supportedValuesOf('timeZone')` so typos can't poison every
-      // downstream cal.com call for a workshop.
-      timezone: timezoneField.optional(),
-    }))
+    .input(createWorkshopInput)
     .mutation(async ({ ctx, input }) => {
-      const tz = input.timezone ?? 'Asia/Kolkata'
-      const scheduledAtUtc = wallTimeToUtc(input.scheduledAt, tz)
+      const userId = ctx.user.id
+      const tz = input.timezone || 'Asia/Kolkata'
+      if (!isValidTimezone(tz)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: `Invalid IANA timezone: ${tz}` })
+      }
+      const startUtc = wallTimeToUtc(input.scheduledAt, tz)
+      const durationMinutes = input.durationMinutes ?? 60
+      const endUtc = new Date(startUtc.getTime() + durationMinutes * 60_000)
 
-      const [workshop] = await db
-        .insert(workshops)
-        .values({
-          title: input.title,
-          description: input.description ?? null,
-          scheduledAt: scheduledAtUtc,
-          durationMinutes: input.durationMinutes ?? null,
-          registrationLink: input.registrationLink ?? null,
-          maxSeats: input.maxSeats ?? null,
-          timezone: tz,
-          createdBy: ctx.user.id,
-        })
-        .returning()
-
-      writeAuditLog({
-        actorId: ctx.user.id,
-        actorRole: ctx.user.role,
-        action: ACTIONS.WORKSHOP_CREATE,
-        entityType: 'workshop',
-        entityId: workshop.id,
-        payload: { title: input.title },
-      }).catch(console.error)
-
-      // F13: surface Inngest send failures up to the caller instead of
-      // silently swallowing with `.catch(console.error)`. The admin needs
-      // to know cal.com provisioning is degraded so they can reprovision or
-      // notify users. We still insert the row first, but the mutation throws
-      // if the send itself fails (Inngest down / misconfigured).
-      try {
-        await sendWorkshopCreated({
-          workshopId: workshop.id,
-          moderatorId: ctx.user.id,
-        })
-      } catch (err) {
-        console.error('[workshop.create] sendWorkshopCreated failed', err)
+      const organizerEmail = process.env.WORKSHOP_ORGANIZER_EMAIL
+      if (!organizerEmail) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message:
-            'Workshop created, but cal.com provisioning could not be scheduled. Please retry provisioning from the workshop page.',
+          message: 'WORKSHOP_ORGANIZER_EMAIL not configured',
         })
       }
 
-      return workshop
+      // 1) Create Google Calendar event synchronously
+      let gcResult: { eventId: string; meetingUrl: string; htmlLink: string }
+      try {
+        gcResult = await createWorkshopEvent({
+          title: input.title,
+          description: input.description ?? null,
+          startUtc,
+          endUtc,
+          timezone: tz,
+          organizerEmail,
+          meetingMode: input.meetingMode,
+          manualMeetingUrl: input.meetingMode === 'manual' ? input.manualMeetingUrl : undefined,
+          reminderMinutesBefore: [1440, 60],
+        })
+      } catch (err) {
+        if (err instanceof GoogleCalendarError) {
+          const code = err.status >= 500 ? 'BAD_GATEWAY' : 'BAD_REQUEST'
+          throw new TRPCError({ code, message: `Google Calendar: ${err.message}` })
+        }
+        throw err
+      }
+
+      // 2) Insert workshop row
+      let workshopId: string
+      try {
+        const [row] = await db.insert(workshops).values({
+          title: input.title,
+          description: input.description ?? null,
+          scheduledAt: startUtc,
+          durationMinutes,
+          registrationLink: input.registrationLink || null,
+          maxSeats: input.maxSeats ?? null,
+          timezone: tz,
+          googleCalendarEventId: gcResult.eventId,
+          meetingProvisionedBy: input.meetingMode === 'auto_meet' ? 'google_meet' : 'manual',
+          meetingUrl: gcResult.meetingUrl,
+          createdBy: userId,
+        }).returning({ id: workshops.id })
+        workshopId = row.id
+      } catch (dbErr) {
+        // 3) Best-effort Google undo
+        try {
+          await cancelEvent({ eventId: gcResult.eventId })
+        } catch (undoErr) {
+          console.error('[workshop.create] DB INSERT failed AND Google cancel failed — orphan calendar event', {
+            eventId: gcResult.eventId,
+            dbErr,
+            undoErr,
+          })
+        }
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to persist workshop' })
+      }
+
+      // 4) Audit + Inngest reminder fan-out
+      writeAuditLog({
+        actorId: userId,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_CREATE,
+        entityType: 'workshop',
+        entityId: workshopId,
+        payload: { title: input.title },
+      }).catch(console.error)
+
+      await sendWorkshopCreated({ workshopId, moderatorId: userId })
+
+      return { id: workshopId, meetingUrl: gcResult.meetingUrl, htmlLink: gcResult.htmlLink }
     }),
 
   // List workshops with upcoming/past/all filter
@@ -952,31 +1012,27 @@ export const workshopRouter = router({
       return { success: true, fromStatus: existing.status, toStatus: input.toStatus }
     }),
 
-  // M5 (audit 2026-04-27): admin recovery surface for the case where
-  // workshopCreatedFn provisioned the cal.com event-type + booking but
-  // the booking response was missing both `meetingUrl` and `location`,
-  // so `meetingUrl` landed null on the row. Without this mutation the
-  // moderator UI's "join meeting" button stays disabled forever and the
-  // only fix was a manual SQL UPDATE.
+  // M5 / Google Calendar pivot: admin recovery surface to correct or set the
+  // meeting URL after creation. meetingUrl is NOT NULL in the schema since
+  // migration 0032 — every workshop has a meeting URL from creation onward.
+  // This mutation accepts only a valid http(s) URL (no clearing to null).
   setMeetingUrl: requirePermission('workshop:manage')
     .input(z.object({
       workshopId: z.string().uuid(),
-      // Empty string clears the field (admin had a wrong link before and
-      // wants to remove it); non-empty must be a valid URL.
       meetingUrl: z
         .string()
         .trim()
+        .min(1, 'meetingUrl is required')
         .max(2000)
         .refine(
-          (v) => v === '' || /^https?:\/\//i.test(v),
-          { message: 'meetingUrl must be empty or an http(s) URL' },
+          (v) => /^https?:\/\//i.test(v),
+          { message: 'meetingUrl must be an http(s) URL' },
         ),
     }))
     .mutation(async ({ ctx, input }) => {
-      const next = input.meetingUrl === '' ? null : input.meetingUrl
       await db
         .update(workshops)
-        .set({ meetingUrl: next, updatedAt: new Date() })
+        .set({ meetingUrl: input.meetingUrl, updatedAt: new Date() })
         .where(eq(workshops.id, input.workshopId))
 
       writeAuditLog({
@@ -985,10 +1041,10 @@ export const workshopRouter = router({
         action: ACTIONS.WORKSHOP_UPDATE,
         entityType: 'workshop',
         entityId: input.workshopId,
-        payload: { manualMeetingUrl: next ?? null },
+        payload: { manualMeetingUrl: input.meetingUrl },
       }).catch(console.error)
 
-      return { success: true, meetingUrl: next }
+      return { success: true, meetingUrl: input.meetingUrl }
     }),
 
   // Approve a draft artifact (flip reviewStatus from 'draft' to 'approved') - WS-14
