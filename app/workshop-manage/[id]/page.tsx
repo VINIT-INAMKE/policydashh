@@ -17,6 +17,7 @@ import { trpc } from '@/src/trpc/client'
 import { formatWorkshopTime } from '@/src/lib/format-workshop-time'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -27,7 +28,6 @@ import { FeedbackLinkPicker } from './_components/feedback-link-picker'
 import { StatusTransitionButtons } from './_components/status-transition-buttons'
 import { EvidenceChecklist } from './_components/evidence-checklist'
 import { AttendeeList } from './_components/attendee-list'
-import { MissingMeetingUrlAlert } from './_components/missing-meeting-url-alert'
 
 export default function WorkshopDetailPage() {
   const params = useParams<{ id: string }>()
@@ -64,6 +64,16 @@ export default function WorkshopDetailPage() {
     },
   })
 
+  const endWorkshopMutation = trpc.workshop.endWorkshop.useMutation({
+    onSuccess: () => {
+      toast.success('Workshop ended. Feedback emails are on their way.')
+      utils.workshop.getById.invalidate({ workshopId })
+    },
+    onError: (err) => {
+      toast.error(`Couldn't end workshop: ${err.message}`)
+    },
+  })
+
   if (workshopQuery.isLoading) {
     return (
       <div className="flex flex-col gap-6 lg:flex-row">
@@ -88,17 +98,50 @@ export default function WorkshopDetailPage() {
 
   const formattedDate = formatWorkshopTime(workshop.scheduledAt, workshop.timezone)
 
+  // End Workshop CTA is visible 30 minutes before the scheduled start and
+  // while the workshop is still upcoming or in progress.
+  const showEndWorkshop =
+    (workshop.status === 'upcoming' || workshop.status === 'in_progress') &&
+    Date.now() > new Date(workshop.scheduledAt).getTime() - 30 * 60_000
+
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       {/* Left panel */}
       <div className="w-full space-y-4 rounded-lg border-r bg-muted p-4 lg:w-80 lg:shrink-0">
         <h1 className="text-[28px] font-semibold leading-tight">{workshop.title}</h1>
 
+        {/* Meeting source badge */}
+        <Badge
+          variant={workshop.meetingProvisionedBy === 'google_meet' ? 'default' : 'secondary'}
+        >
+          {workshop.meetingProvisionedBy === 'google_meet' ? 'Google Meet' : 'Custom link'}
+        </Badge>
+
         <StatusTransitionButtons
           workshopId={workshopId}
           currentStatus={workshop.status}
           canManage={canManage}
         />
+
+        {/* End Workshop CTA */}
+        {canManage && showEndWorkshop && (
+          <Button
+            variant="default"
+            size="sm"
+            disabled={endWorkshopMutation.isPending}
+            onClick={() => {
+              if (
+                confirm(
+                  'End workshop now? This will send feedback emails to all registered attendees.',
+                )
+              ) {
+                endWorkshopMutation.mutate({ workshopId })
+              }
+            }}
+          >
+            {endWorkshopMutation.isPending ? 'Ending…' : 'End Workshop'}
+          </Button>
+        )}
 
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Calendar className="size-3.5" />
@@ -137,22 +180,21 @@ export default function WorkshopDetailPage() {
           </Button>
         )}
 
-        {/* F17: direct deep-link into cal.com event type management.
-            Cal.com exposes admin event types under /event-types/<id>. */}
-        {workshop.calcomEventTypeId && /^\d+$/.test(workshop.calcomEventTypeId) && (
+        {/* Open in Google Calendar — deep-links to the event in edit mode for the organizer */}
+        {workshop.googleCalendarEventId && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() =>
               window.open(
-                `https://app.cal.com/event-types/${workshop.calcomEventTypeId}`,
+                `https://calendar.google.com/calendar/u/0/r/eventedit/${workshop.googleCalendarEventId}`,
                 '_blank',
                 'noopener,noreferrer',
               )
             }
           >
             <ExternalLink className="size-3.5" />
-            Open in cal.com
+            Open in Google Calendar
           </Button>
         )}
 
@@ -166,15 +208,6 @@ export default function WorkshopDetailPage() {
             Edit
           </Button>
         )}
-
-        {/* M5 (audit 2026-04-27): null meetingUrl after cal.com provisioning
-            succeeded means the booking response shipped without a link.
-            Surface the recovery form so admin can paste manually. */}
-        {canManage &&
-          workshop.calcomBookingUid != null &&
-          workshop.meetingUrl == null && (
-            <MissingMeetingUrlAlert workshopId={workshopId} />
-          )}
 
         {workshop.description && (
           <p className="text-sm text-muted-foreground">{workshop.description}</p>
