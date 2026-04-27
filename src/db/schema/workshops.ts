@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, timestamp, integer, pgEnum, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 import { users } from './users'
 import { policySections } from './documents'
 import { feedbackItems } from './feedback'
@@ -64,6 +65,13 @@ export const workshops = pgTable('workshops', {
   // stored as text so we stay agnostic to locale/locale-changes. Default
   // matches the project's historical hardcoded value for back-compat.
   timezone:            text('timezone').notNull().default('Asia/Kolkata'),
+  // M3: stamped by the cal.com webhook (and the Inngest workshop-completed
+  // function) the first time the post-completion fan-out fires. A retried
+  // MEETING_ENDED webhook re-checks this column under the same status guard
+  // and short-circuits — preventing the prior bug where a status flip that
+  // succeeded but `sendWorkshopCompleted` that failed left the workshop in
+  // `completed` state with no evidence-nudge ever sent.
+  completionPipelineSentAt: timestamp('completion_pipeline_sent_at', { withTimezone: true }),
   createdBy:           uuid('created_by').notNull().references(() => users.id),
   createdAt:           timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:           timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -125,4 +133,12 @@ export const workshopRegistrations = pgTable('workshop_registrations', {
   updatedAt:        timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('workshop_registrations_booking_uid_uniq').on(t.bookingUid),
+  // C2 (audit 2026-04-27, migration 0030): partial unique on
+  // (workshop_id, email_hash) WHERE status != 'cancelled' so a double-clicked
+  // registration form 23505s the second INSERT instead of seating the same
+  // attendee twice on cal.com. Cancelled rows are excluded so a re-register
+  // after cancel is allowed.
+  uniqueIndex('workshop_registrations_unique_email_per_workshop')
+    .on(t.workshopId, t.emailHash)
+    .where(sql`status != 'cancelled'`),
 ])

@@ -1,3 +1,12 @@
+// Sentinel UUID used as `actor_id` for system-driven workflow_transitions
+// rows (e.g. cal.com webhook completing a workshop). Migration 0029 tightened
+// `workflow_transitions.actor_id` from text to uuid; before that the cal
+// webhook stored the literal string `'system:cal-webhook'`, which would now
+// fail the type check. The all-zeros UUID is a valid uuid value and the
+// `listTransitions` LEFT JOIN to `users` simply yields a null name —
+// surfacing as "(system)" in the UI.
+export const SYSTEM_ACTOR_UUID = '00000000-0000-0000-0000-000000000000'
+
 export const ROLES = {
   ADMIN: 'admin',
   POLICY_LEAD: 'policy_lead',

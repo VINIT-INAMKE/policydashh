@@ -1,15 +1,18 @@
 import { createHash } from 'node:crypto'
+import { ZodError } from 'zod'
 import { revalidateTag } from 'next/cache'
-import { and, eq, inArray, desc, like, sql as drizzleSql } from 'drizzle-orm'
+import { and, eq, inArray, desc, like, isNull, sql as drizzleSql } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
 import { workflowTransitions } from '@/src/db/schema/workflow'
+import { processedWebhookEvents } from '@/src/db/schema/processed-webhook-events'
 import { verifyCalSignature } from '@/src/lib/cal-signature'
 import {
   cascadePattern,
   COMPOSITE_BOOKING_UID_DELIMITER,
   UID_SAFE,
 } from '@/src/lib/calcom'
+import { SYSTEM_ACTOR_UUID } from '@/src/lib/constants'
 import {
   sendWorkshopRegistrationReceived,
   sendWorkshopFeedbackInvitesBatch,
@@ -110,6 +113,16 @@ type CalPayload = {
   endTime?: string
   attendees?: CalAttendee[]
   eventTypeId?: number
+  /**
+   * Audit 2026-04-27: cal.com's BOOKING_RESCHEDULED payload may include a
+   * fresh meeting URL (Google Meet rotates the link on reschedule for
+   * seated bookings in some configs). Mirror the createCalBooking() shape
+   * — `meetingUrl` first, fall back to `location`. We refresh
+   * `workshops.meetingUrl` when this lands; today our column was set
+   * exactly once at provision-time and would silently drift.
+   */
+  meetingUrl?: string
+  location?: string
   [k: string]: unknown
 }
 
@@ -208,13 +221,59 @@ export async function POST(req: Request): Promise<Response> {
   const bookingData: CalPayload =
     body.payload ?? (body as unknown as CalPayload)
 
+  // M2 (audit 2026-04-27): replay protection. HMAC verifies authenticity
+  // but not freshness; a captured signature stays valid forever. We
+  // compute a deterministic event id from the payload — booking uid +
+  // triggerEvent + (startTime || endTime || createdAt) — and INSERT into
+  // processed_webhook_events ON CONFLICT DO NOTHING. If RETURNING is
+  // empty the event was already processed; return 200 immediately and
+  // skip the side-effecting branch.
+  const triggerEvent = body.triggerEvent ?? 'unknown'
+  const eventIdSource = [
+    bookingData.uid ?? '',
+    triggerEvent,
+    bookingData.startTime ?? bookingData.endTime ?? '',
+  ].join('|')
+  // SHA-256 hex (64 chars) keeps the PRIMARY KEY bounded and avoids
+  // smuggling `;` or `'` into the column even though drizzle parameterises.
+  const eventId =
+    createHash('sha256').update(eventIdSource).digest('hex')
+  // Skip dedup for events whose source string is fully empty (older
+  // payloads without uid + startTime would all hash to the same value).
+  // The downside: those replay through; but the signature gate already
+  // catches the replay-with-stolen-secret threat for fresh requests.
+  const skipReplayCheck = eventIdSource === '||'
+  if (!skipReplayCheck) {
+    const inserted = await db
+      .insert(processedWebhookEvents)
+      .values({ eventId, triggerEvent })
+      .onConflictDoNothing({ target: processedWebhookEvents.eventId })
+      .returning({ eventId: processedWebhookEvents.eventId })
+    if (inserted.length === 0) {
+      console.info('[cal-webhook] dedup: replay ignored', {
+        eventId, triggerEvent,
+      })
+      return new Response('OK (replay)', { status: 200 })
+    }
+  }
+
   try {
     switch (body.triggerEvent) {
       case 'BOOKING_CREATED': {
-        // No-op: the root seated booking is created server-side by
-        // workshopCreatedFn, and subsequent attendee-adds do NOT fire this
-        // webhook. Return 200 to satisfy cal.com's delivery contract in
-        // case any future shape does fire it.
+        // H4 (audit 2026-04-27): we expect cal.com to NOT fire this
+        // webhook for seat-adds under the seated-booking model. If we
+        // start receiving it, cal.com's behavior has drifted (API version
+        // bump, an admin manually creating a booking via cal.com console,
+        // etc.) and the silent 200 would mean we never create a
+        // workshop_registrations row for that attendee. WARN with the
+        // identifying fields so the operator notices in the dashboard.
+        console.warn(
+          '[cal-webhook] BOOKING_CREATED unexpectedly fired — seat-add semantics may have drifted',
+          {
+            uid: bookingData.uid ?? null,
+            eventTypeId: bookingData.eventTypeId ?? null,
+          },
+        )
         return new Response('OK (ignored in new model)', { status: 200 })
       }
 
@@ -351,11 +410,23 @@ export async function POST(req: Request): Promise<Response> {
           // row already holds newUid (and the children too) simply can't
           // match `booking_uid LIKE '${origUid}:%'` anymore — the whole
           // handler becomes a harmless no-op.
+          //
+          // Audit 2026-04-27 crack #1: refresh `meetingUrl` if the payload
+          // carries one. Cal.com may rotate the Meet link on reschedule
+          // for seated bookings; without this, our stored URL silently
+          // drifts away from what attendees see in their cal.com email.
+          const freshMeetingUrl =
+            typeof bookingData.meetingUrl === 'string'
+              ? bookingData.meetingUrl
+              : typeof bookingData.location === 'string'
+                ? bookingData.location
+                : null
           await db
             .update(workshops)
             .set({
               calcomBookingUid: newUid,
               scheduledAt:      newStart,
+              ...(freshMeetingUrl !== null ? { meetingUrl: freshMeetingUrl } : {}),
               updatedAt:        new Date(),
             })
             .where(eq(workshops.id, workshopIdForRoot))
@@ -427,7 +498,12 @@ export async function POST(req: Request): Promise<Response> {
           return new Response('OK (archived)', { status: 200 })
         }
 
-        // Idempotency: short-circuit if already completed.
+        // Idempotency: short-circuit the status flip + audit row when
+        // we've already moved to completed. The workflow_transitions
+        // insert uses SYSTEM_ACTOR_UUID (not the literal 'system:cal-webhook'
+        // string the prior code used) because migration 0029 tightened
+        // actor_id to uuid; the metadata still carries the human-readable
+        // source label.
         if (
           workshop.status !== 'completed' &&
           (workshop.status === 'upcoming' || workshop.status === 'in_progress')
@@ -438,8 +514,6 @@ export async function POST(req: Request): Promise<Response> {
             .set({ status: 'completed', updatedAt: new Date() })
             .where(eq(workshops.id, workshopId))
 
-          // Phase 17 workflow_transitions audit row. actorId is a text column
-          // so we encode the system actor inline.
           await db
             .insert(workflowTransitions)
             .values({
@@ -447,17 +521,45 @@ export async function POST(req: Request): Promise<Response> {
               entityId: workshopId,
               fromState: prevStatus,
               toState: 'completed',
-              actorId: 'system:cal-webhook',
+              actorId: SYSTEM_ACTOR_UUID,
               metadata: { source: 'cal.com', trigger: 'MEETING_ENDED' },
             })
+        }
 
-          // Fire the Phase 17 workshop.completed pipeline (evidence nudges).
-          await sendWorkshopCompleted({
-            workshopId,
-            moderatorId: workshop.createdBy,
-          }).catch((err) => {
-            console.error('[cal-webhook] sendWorkshopCompleted failed', err)
-          })
+        // M3 (audit 2026-04-27): the post-completion fan-out
+        // (sendWorkshopCompleted) used to live INSIDE the status-flip
+        // guard above. If the flip succeeded but Inngest send failed,
+        // the next webhook redelivery saw status === 'completed' and
+        // skipped the entire branch — Phase 17 evidence-nudge pipeline
+        // never fired. Now we gate on `completionPipelineSentAt` (added
+        // in migration 0030) which is stamped only AFTER a successful
+        // Inngest send. A retry sees the column null and re-fires.
+        // Loose null check (== null) catches both null and undefined so a
+        // future schema change that drops the field from the select still
+        // defaults to "not yet sent" rather than silently skipping the fan-out.
+        if (workshop.completionPipelineSentAt == null) {
+          try {
+            await sendWorkshopCompleted({
+              workshopId,
+              moderatorId: workshop.createdBy,
+            })
+            await db
+              .update(workshops)
+              .set({ completionPipelineSentAt: new Date() })
+              .where(
+                and(
+                  eq(workshops.id, workshopId),
+                  isNull(workshops.completionPipelineSentAt),
+                ),
+              )
+          } catch (err) {
+            // Don't stamp the column — the next redelivery will retry.
+            // Log loudly so operators see persistent failures.
+            console.error(
+              '[cal-webhook] sendWorkshopCompleted failed; will retry on next webhook delivery',
+              { workshopId, err },
+            )
+          }
         }
 
         // Backfill attendance + handle walk-ins.
@@ -561,6 +663,22 @@ export async function POST(req: Request): Promise<Response> {
           })
         }
 
+        // L3 (audit 2026-04-27): cal.com has shipped duplicate-attendee
+        // entries on rare MEETING_ENDED payloads. Without this dedup we'd
+        // double-send feedback invites to the same address. Keep the FIRST
+        // occurrence (preserves the name from the earliest entry).
+        const dedupedFeedbackInvites = (() => {
+          const seen = new Set<string>()
+          const out: typeof feedbackInvites = []
+          for (const e of feedbackInvites) {
+            const key = e.email.toLowerCase().trim()
+            if (seen.has(key)) continue
+            seen.add(key)
+            out.push(e)
+          }
+          return out
+        })()
+
         // B2-10: surface noShow attendees for observability. Attendance is
         // recorded from cal.com's attendee list (attendees absent from the
         // meeting are still marked attended if they were on the booking),
@@ -589,11 +707,10 @@ export async function POST(req: Request): Promise<Response> {
         }
 
         // P3 + B2-9: single batch send for all feedback invites, only when
-        // there is at least one attendee to invite. The Inngest helper
-        // short-circuits on an empty array today but gating here means no
-        // network intent is implied for empty attendee lists.
-        if (feedbackInvites.length > 0) {
-          await sendWorkshopFeedbackInvitesBatch(feedbackInvites).catch((err) => {
+        // there is at least one attendee to invite. L3: dedupe by email
+        // first so duplicate cal.com attendee entries don't double-email.
+        if (dedupedFeedbackInvites.length > 0) {
+          await sendWorkshopFeedbackInvitesBatch(dedupedFeedbackInvites).catch((err) => {
             console.error(
               '[cal-webhook] sendWorkshopFeedbackInvitesBatch failed',
               err,
@@ -616,6 +733,27 @@ export async function POST(req: Request): Promise<Response> {
       }
     }
   } catch (err) {
+    // M4 (audit 2026-04-27): distinguish recoverable from unrecoverable
+    // failures so cal.com doesn't retry forever on a poison-pill payload.
+    // ZodError + SyntaxError + plain TypeError on payload shape are
+    // unrecoverable — no amount of retry will turn a malformed payload
+    // into a valid one — so we 200 + log loudly. Genuinely transient
+    // failures (network blip, Neon timeout) keep the 500 path so cal.com
+    // retries with backoff.
+    if (
+      err instanceof ZodError ||
+      err instanceof SyntaxError ||
+      err instanceof TypeError
+    ) {
+      console.error(
+        '[cal-webhook] unrecoverable payload error — returning 200 to stop retries',
+        {
+          triggerEvent: body.triggerEvent ?? null,
+          err: err instanceof Error ? err.message : String(err),
+        },
+      )
+      return new Response('OK (unrecoverable)', { status: 200 })
+    }
     console.error('[cal-webhook] error:', err)
     return new Response('Internal error', { status: 500 })
   }

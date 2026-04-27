@@ -26,9 +26,18 @@ const mocks = vi.hoisted(() => ({
   dbSelectResults: [] as unknown[][],
   dbInsertCalls: [] as unknown[],
   dbInsertThrow: null as Error | null,
+  // Audit 2026-04-27 C2: lets a test simulate the partial-unique collision
+  // by forcing the in-tx insert to return [] from .returning(...) (the
+  // route reads that as `unique_collision` and emits the orphan event).
+  dbInsertReturnsEmpty: false,
+  // Audit 2026-04-27 C2: pg_advisory_xact_lock SELECT is the first
+  // statement inside db.transaction; just resolve it with an empty array.
+  dbExecuteCalls: [] as unknown[],
   addAttendeeToBooking: vi.fn(),
   createCalBooking: vi.fn(),
   sendWorkshopRegistrationReceived: vi.fn().mockResolvedValue(undefined),
+  sendWorkshopRegistrationOrphan: vi.fn().mockResolvedValue(undefined),
+  revalidateTag: vi.fn(),
   consume: vi.fn().mockReturnValue({ ok: true, resetAt: Date.now() + 60_000 }),
   fetchMock: vi.fn(),
 }))
@@ -60,6 +69,15 @@ vi.mock('@/src/lib/calcom', () => ({
 
 vi.mock('@/src/inngest/events', () => ({
   sendWorkshopRegistrationReceived: mocks.sendWorkshopRegistrationReceived,
+  // Audit 2026-04-27 H1: orphan event helper. Stubbed so tests don't need
+  // a real Inngest client; assertions check call args via the mock fn.
+  sendWorkshopRegistrationOrphan: mocks.sendWorkshopRegistrationOrphan,
+}))
+
+// next/cache → revalidateTag is invoked after every successful insert. The
+// real impl needs a Next.js runtime; stub it here so the call no-ops in tests.
+vi.mock('next/cache', () => ({
+  revalidateTag: mocks.revalidateTag,
 }))
 
 vi.mock('@/src/lib/rate-limit', () => ({
@@ -76,42 +94,77 @@ vi.stubGlobal('fetch', mocks.fetchMock)
 //   - `.from().where().limit(1)` — workshop + already-registered lookups
 //   - `.from().where().orderBy().limit(1)` — already-registered with desc order
 //   - `.from().where()`          — count(*) aggregate for max-seats gate
-vi.mock('@/src/db', () => ({
-  db: {
-    select: vi.fn(() => ({
-      from: () => {
-        const consume = () =>
-          Promise.resolve(mocks.dbSelectResults.shift() ?? [])
-        return {
-          where: () => {
-            const p = consume()
-            return Object.assign(p, {
-              limit: () => p,
-              orderBy: () => Object.assign(consume(), { limit: () => consume() }),
-            })
-          },
-        }
-      },
-    })),
-    insert: vi.fn(() => ({
-      values: (v: unknown) => {
-        mocks.dbInsertCalls.push(v)
-        const handle = () => {
-          if (mocks.dbInsertThrow) return Promise.reject(mocks.dbInsertThrow)
-          // B7-3: drizzle's insert chain resolves to `[]` (or the
-          // returning() result) — NOT to the values payload. Mirroring
-          // that shape keeps the mock honest so routes can `await` the
-          // insert and iterate like they would in production.
-          return Promise.resolve([])
-        }
-        return {
-          onConflictDoNothing: () => handle(),
-          then: (r: (v: unknown) => unknown) => handle().then(r),
-        }
-      },
-    })),
-  },
-}))
+vi.mock('@/src/db', () => {
+  // Build the same shape for `db` and the `tx` passed to
+  // `db.transaction(async tx => …)`. The route calls `tx.execute(sql\`…\`)`
+  // for the advisory lock, then `tx.select(...)` and `tx.insert(...)` —
+  // identical surface to db itself, so we factor a single builder.
+  function buildOps() {
+    return {
+      select: vi.fn(() => ({
+        from: () => {
+          const consume = () =>
+            Promise.resolve(mocks.dbSelectResults.shift() ?? [])
+          return {
+            where: () => {
+              const p = consume()
+              return Object.assign(p, {
+                limit: () => p,
+                orderBy: () => Object.assign(consume(), { limit: () => consume() }),
+              })
+            },
+          }
+        },
+      })),
+      insert: vi.fn(() => ({
+        values: (v: unknown) => {
+          mocks.dbInsertCalls.push(v)
+          const handle = () => {
+            if (mocks.dbInsertThrow) return Promise.reject(mocks.dbInsertThrow)
+            return Promise.resolve([])
+          }
+          // Audit 2026-04-27 C2: the in-tx insert chain is
+          //   .values(...).onConflictDoNothing({ target }).returning({ id })
+          // Mock it so .returning resolves to [{ id }] (success) OR [] when
+          // the test sets dbInsertReturnsEmpty (simulates partial-unique).
+          return {
+            onConflictDoNothing: (_opts?: unknown) => ({
+              returning: (_cols?: unknown) =>
+                mocks.dbInsertThrow
+                  ? Promise.reject(mocks.dbInsertThrow)
+                  : Promise.resolve(
+                      mocks.dbInsertReturnsEmpty
+                        ? []
+                        : [{ id: 'inserted-row-id' }],
+                    ),
+              then: (r: (v: unknown) => unknown) => handle().then(r),
+            }),
+            then: (r: (v: unknown) => unknown) => handle().then(r),
+          }
+        },
+      })),
+      // Advisory_xact_lock SELECT lands here; resolve to [].
+      execute: vi.fn((stmt: unknown) => {
+        mocks.dbExecuteCalls.push(stmt)
+        return Promise.resolve([])
+      }),
+    }
+  }
+  const dbOps = buildOps()
+  return {
+    db: {
+      ...dbOps,
+      // db.transaction(cb) — invoke the callback synchronously with a tx
+      // that has the same surface as db. Good enough for unit tests; the
+      // real Neon-HTTP transaction batches statements server-side, but
+      // the SHAPE is identical from the caller's perspective.
+      transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => {
+        const tx = buildOps()
+        return cb(tx)
+      }),
+    },
+  }
+})
 
 function makeRequest(body: unknown): Request {
   return new Request('http://localhost/api/intake/workshop-register', {
@@ -165,6 +218,8 @@ beforeEach(() => {
   mocks.dbSelectResults = []
   mocks.dbInsertCalls = []
   mocks.dbInsertThrow = null
+  mocks.dbInsertReturnsEmpty = false
+  mocks.dbExecuteCalls = []
   mocks.consume.mockReturnValue({ ok: true, resetAt: Date.now() + 60_000 })
   mocks.fetchMock.mockReset()
 })

@@ -7,6 +7,7 @@ import { evidencePackExportFn } from './evidence-pack-export'
 import { participateIntakeFn } from './participate-intake'
 import { workshopCreatedFn } from './workshop-created'
 import { workshopRegistrationReceivedFn } from './workshop-registration-received'
+import { workshopRegistrationOrphanFn } from './workshop-registration-orphan'
 import { workshopFeedbackInviteFn } from './workshop-feedback-invite'
 import { consultationSummaryGenerateFn } from './consultation-summary-generate'
 import { milestoneReadyFn } from './milestone-ready'
@@ -35,6 +36,7 @@ export const functions = [
   participateIntakeFn,  // Phase 19
   workshopCreatedFn,    // Phase 20 Plan 02 - cal.com event-type provisioning
   workshopRegistrationReceivedFn,  // Phase 20 Plan 04 - Clerk invite (F28: confirmation email dropped)
+  workshopRegistrationOrphanFn,    // Audit 2026-04-27 H1 - admin alert when cal.com seat orphans our DB row
   workshopFeedbackInviteFn,  // Phase 20 Plan 04 - post-workshop feedback JWT deep-link email
   consultationSummaryGenerateFn, // Phase 21 LLM-04/05/06/08 - per-section consultation summary via llama-3.3-70b-versatile
   milestoneReadyFn,     // Phase 23 VERIFY-06 - milestoneReady 5-step Cardano anchor

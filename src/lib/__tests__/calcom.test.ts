@@ -115,6 +115,34 @@ describe('updateCalEventType', () => {
   })
 })
 
+describe('UID_SAFE regression (audit 2026-04-27 H5)', () => {
+  // The webhook handler builds composite booking_uids as `${rootUid}:${attendeeId}`
+  // and routes seat-level cascades via SQL `LIKE '${rootUid}:%'`. If UID_SAFE
+  // ever loosened to allow `:`, the cascade would match the wrong rows
+  // (rootUid `abc` would match seats of `abc:1`, `abc:1:something`, etc.) and
+  // a bug would silently corrupt cancellations across workshops. Lock the
+  // format down so any future relaxation forces the change to revisit the
+  // cascade math.
+  it('rejects ":" so the composite-uid separator stays unambiguous', async () => {
+    const { UID_SAFE } = await import('@/src/lib/calcom')
+    expect(UID_SAFE.test('abc:def')).toBe(false)
+    expect(UID_SAFE.test('1234567890abcdef')).toBe(true)
+    expect(UID_SAFE.test('abc-def_ghi')).toBe(true)
+  })
+
+  it('rejects the % wildcard so LIKE cascades stay scoped', async () => {
+    const { UID_SAFE } = await import('@/src/lib/calcom')
+    expect(UID_SAFE.test('foo%bar')).toBe(false)
+    expect(UID_SAFE.test('foo\\bar')).toBe(false) // backslash is the LIKE escape
+    // Note: `_` is intentionally allowed — cal.com ships uids with
+    // underscores. Drizzle parameterises the LIKE value so the underscore-
+    // as-single-char-wildcard would only widen the pattern marginally,
+    // not cross workshop boundaries (the prefix gate in cascadePattern
+    // pins it to one rootUid).
+    expect(UID_SAFE.test('foo_bar')).toBe(true)
+  })
+})
+
 describe('createCalBooking error paths', () => {
   it('B5-11: throws CalApiError(500) when cal.com ships a uid that fails UID_SAFE', async () => {
     const { createCalBooking, CalApiError } = await import('@/src/lib/calcom')

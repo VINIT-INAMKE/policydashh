@@ -71,11 +71,21 @@ export interface PublicWorkshop {
  * one function with dynamic tags. The outer wrapper below memoizes these
  * closures per workshopId to avoid re-allocating them on every SSR pass.
  */
+// L4 (audit 2026-04-27): bound the closure cache so a long-lived Vercel
+// function process touching many workshop ids doesn't leak unbounded.
+// Map preserves insertion order, so deleting `keys().next().value` evicts
+// the oldest entry — simple LRU that's fine for our scale (~hundreds of
+// workshops over the platform's lifetime).
+const PER_WORKSHOP_CACHE_MAX = 200
 const perWorkshopCountCache = new Map<string, () => Promise<number>>()
 
 export function getRegisteredCount(workshopId: string): Promise<number> {
   let fn = perWorkshopCountCache.get(workshopId)
   if (!fn) {
+    if (perWorkshopCountCache.size >= PER_WORKSHOP_CACHE_MAX) {
+      const oldest = perWorkshopCountCache.keys().next().value
+      if (oldest !== undefined) perWorkshopCountCache.delete(oldest)
+    }
     fn = unstable_cache(
       async () => {
         const [row] = await db

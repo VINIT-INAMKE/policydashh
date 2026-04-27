@@ -356,6 +356,49 @@ export async function sendWorkshopRegistrationReceived(
   await inngest.send(event)
 }
 
+// -- workshop.registration.orphan ----------------------------------------
+// H1 (audit 2026-04-27): cal.com seat creation succeeded but our DB write
+// or post-Cal.com capacity recheck failed — the attendee is seated on
+// cal.com (with the Meet link in their inbox) but our system has no row.
+// This event fan-outs an admin alert email so a human can manually un-seat
+// the orphan attendee on cal.com. Auto-removal is intentionally NOT done
+// because deleting an attendee who legitimately paid is worse than
+// reconciliation by hand.
+
+const workshopRegistrationOrphanSchema = z.object({
+  workshopId:     z.guid(),
+  rootBookingUid: z.string().min(1),
+  attendeeId:     z.number().int().positive(),
+  bookingId:      z.number().int().positive(),
+  email:          z.string().email(),
+  // Why the orphan happened. `db_insert_failed` = unique-constraint
+  // collision or DB write error after the cal.com seat was created;
+  // `capacity_recheck_failed` = cal.com seat was assigned, but our
+  // post-Cal.com locked recheck saw a now-full workshop and rolled back
+  // the INSERT; `unique_collision` = double-click race lost to the
+  // partial unique index.
+  reason: z.enum([
+    'db_insert_failed',
+    'capacity_recheck_failed',
+    'unique_collision',
+  ]),
+})
+
+export const workshopRegistrationOrphanEvent = eventType(
+  'workshop.registration.orphan',
+  { schema: workshopRegistrationOrphanSchema },
+)
+
+export type WorkshopRegistrationOrphanData = z.infer<typeof workshopRegistrationOrphanSchema>
+
+export async function sendWorkshopRegistrationOrphan(
+  data: WorkshopRegistrationOrphanData,
+): Promise<void> {
+  const event = workshopRegistrationOrphanEvent.create(data)
+  await event.validate()
+  await inngest.send(event)
+}
+
 // -- workshop.feedback.invite --------------------------------------------
 // Phase 20 D-16 - MEETING_ENDED handler emits one event per attendee;
 // workshopFeedbackInviteFn sends the Resend email with the signed JWT

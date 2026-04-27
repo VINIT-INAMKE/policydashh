@@ -22,10 +22,18 @@ import {
   sendWorkshopRecordingUploaded,
   sendWorkshopCreated,
 } from '@/src/inngest/events'
-import { updateCalEventType } from '@/src/lib/calcom'
+import { revalidateTag } from 'next/cache'
+import { updateCalEventType, CalApiError, DEFAULT_SEATS_PER_TIME_SLOT } from '@/src/lib/calcom'
 import { wallTimeToUtc } from '@/src/lib/wall-time'
 import { eq, gte, lt, desc, and, count, ne } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
+
+// C1: keep tag prefix in lockstep with the public listing query and the
+// cal.com webhook handler — see `src/server/queries/workshops-public.ts`
+// and `app/api/webhooks/cal/route.ts`.
+function spotsTag(workshopId: string): string {
+  return `workshop-spots-${workshopId}`
+}
 
 // B6-4: validate IANA timezone input against the runtime's zoneinfo
 // database via `Intl.supportedValuesOf('timeZone')`. Cached on first call
@@ -235,7 +243,11 @@ export const workshopRouter = router({
     .query(async ({ input }) => {
       // F17: include calcomEventTypeId + maxSeats + timezone so the detail
       // page can render the cal.com deep-link and the timezone chip
-      // without extra lookups.
+      // without extra lookups. M5 (audit 2026-04-27): also include
+      // meetingUrl + calcomBookingUid so the detail page can show the
+      // "missing meeting URL" warning + manual setMeetingUrl form when
+      // cal.com finished provisioning but the booking response was
+      // missing both meetingUrl and location fields.
       const [workshop] = await db
         .select({
           id: workshops.id,
@@ -246,6 +258,8 @@ export const workshopRouter = router({
           registrationLink: workshops.registrationLink,
           status: workshops.status,
           calcomEventTypeId: workshops.calcomEventTypeId,
+          calcomBookingUid: workshops.calcomBookingUid,
+          meetingUrl: workshops.meetingUrl,
           maxSeats: workshops.maxSeats,
           timezone: workshops.timezone,
           createdBy: workshops.createdBy,
@@ -389,6 +403,50 @@ export const workshopRouter = router({
       // If only scheduledAt changes, use the existing stored tz.
       const effectiveTz = input.timezone ?? existing.timezone ?? 'Asia/Kolkata'
 
+      // C3 (audit 2026-04-27): the cal.com PATCH used to run AFTER the DB
+      // write and silently swallow failures, so a 50→100 capacity bump
+      // could leave our DB at 100 and cal.com still enforcing 50 — the
+      // 51st registrant would pass our gate then 4xx out of cal.com's
+      // addAttendeeToBooking. Capacity is safety-critical, so the cal.com
+      // PATCH for `seatsPerTimeSlot` runs FIRST, throws on failure, and
+      // only then does the DB update land. Non-capacity fields (title /
+      // duration) stay best-effort post-DB so a cal.com hiccup doesn't
+      // block cosmetic edits.
+      const calId = existing.calcomEventTypeId
+      const calNumericId =
+        calId && /^\d+$/.test(calId) ? parseInt(calId, 10) : null
+
+      // C2 (audit 2026-04-27): handle BOTH directions of capacity change
+      // including cleared-cap. Clearing maxSeats (null) is the admin
+      // saying "open registration" — cal.com needs `seatsPerTimeSlot`
+      // reset to DEFAULT (today the prior cap stayed in force, so
+      // attendees N+1 still 4xx'd despite our DB being uncapped).
+      let nextCalSeats: number | null = null
+      if (input.maxSeats !== undefined) {
+        if (input.maxSeats === null && existing.maxSeats !== null) {
+          nextCalSeats = DEFAULT_SEATS_PER_TIME_SLOT
+        } else if (input.maxSeats !== null && input.maxSeats !== existing.maxSeats) {
+          nextCalSeats = input.maxSeats
+        }
+      }
+
+      if (calNumericId !== null && nextCalSeats !== null) {
+        try {
+          await updateCalEventType(calNumericId, { seatsPerTimeSlot: nextCalSeats })
+        } catch (err) {
+          if (err instanceof CalApiError && err.status >= 500) {
+            throw new TRPCError({
+              code: 'BAD_GATEWAY',
+              message: `Cal.com is unreachable for the seat-count update — please retry. Underlying: ${err.message}`,
+            })
+          }
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Cal.com rejected the seat-count update: ${err instanceof Error ? err.message : String(err)}`,
+          })
+        }
+      }
+
       const updateData: Record<string, unknown> = { updatedAt: new Date() }
       if (input.title !== undefined) updateData.title = input.title
       if (input.description !== undefined) updateData.description = input.description
@@ -406,40 +464,26 @@ export const workshopRouter = router({
         .where(eq(workshops.id, input.workshopId))
         .returning()
 
-      // F10: propagate title / duration / seat-count changes to cal.com.
-      // scheduledAt is per-booking (not per-event-type) so cal.com has no
-      // direct endpoint for rescheduling an event type's default time;
-      // reschedules flow in via webhooks instead. Seat-count propagation
-      // (restored 2026-04-23): if the admin raises maxSeats after
-      // creation, the cal.com event type's seatsPerTimeSlot must follow
-      // or addAttendeeToBooking will 4xx for seat N+1.
-      const calId = existing.calcomEventTypeId
-      const calNumericId =
-        calId && /^\d+$/.test(calId) ? parseInt(calId, 10) : null
-      const calPatch: {
-        title?: string
-        lengthInMinutes?: number
-        seatsPerTimeSlot?: number
-      } = {}
-      if (input.title !== undefined) calPatch.title = input.title
+      // C1: bust the spots-left cache when capacity changed (raise/lower
+      // both shift the badge math) so the public /workshops listing
+      // reflects the new cap immediately rather than 60s later.
+      if (input.maxSeats !== undefined) {
+        revalidateTag(spotsTag(input.workshopId), 'max')
+      }
+
+      // Cosmetic fields propagate post-DB; failures are logged but don't
+      // block the admin from seeing their edit persisted on our side.
+      const cosmeticPatch: { title?: string; lengthInMinutes?: number } = {}
+      if (input.title !== undefined) cosmeticPatch.title = input.title
       if (input.durationMinutes !== undefined && input.durationMinutes !== null) {
-        calPatch.lengthInMinutes = input.durationMinutes
+        cosmeticPatch.lengthInMinutes = input.durationMinutes
       }
-      if (
-        input.maxSeats !== undefined &&
-        input.maxSeats !== null &&
-        input.maxSeats !== existing.maxSeats
-      ) {
-        calPatch.seatsPerTimeSlot = input.maxSeats
-      }
-      if (calNumericId !== null && Object.keys(calPatch).length > 0) {
+      if (calNumericId !== null && Object.keys(cosmeticPatch).length > 0) {
         try {
-          await updateCalEventType(calNumericId, calPatch)
+          await updateCalEventType(calNumericId, cosmeticPatch)
         } catch (err) {
-          // Non-fatal: DB row is already updated. Log and continue so the
-          // admin sees their changes persisted even if cal.com is down.
           console.error(
-            '[workshop.update] cal.com PATCH failed (DB update succeeded):',
+            '[workshop.update] cal.com cosmetic PATCH failed (DB update succeeded):',
             err,
           )
         }
@@ -869,6 +913,45 @@ export const workshopRouter = router({
       }
 
       return { success: true, fromStatus: existing.status, toStatus: input.toStatus }
+    }),
+
+  // M5 (audit 2026-04-27): admin recovery surface for the case where
+  // workshopCreatedFn provisioned the cal.com event-type + booking but
+  // the booking response was missing both `meetingUrl` and `location`,
+  // so `meetingUrl` landed null on the row. Without this mutation the
+  // moderator UI's "join meeting" button stays disabled forever and the
+  // only fix was a manual SQL UPDATE.
+  setMeetingUrl: requirePermission('workshop:manage')
+    .input(z.object({
+      workshopId: z.string().uuid(),
+      // Empty string clears the field (admin had a wrong link before and
+      // wants to remove it); non-empty must be a valid URL.
+      meetingUrl: z
+        .string()
+        .trim()
+        .max(2000)
+        .refine(
+          (v) => v === '' || /^https?:\/\//i.test(v),
+          { message: 'meetingUrl must be empty or an http(s) URL' },
+        ),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const next = input.meetingUrl === '' ? null : input.meetingUrl
+      await db
+        .update(workshops)
+        .set({ meetingUrl: next, updatedAt: new Date() })
+        .where(eq(workshops.id, input.workshopId))
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_UPDATE,
+        entityType: 'workshop',
+        entityId: input.workshopId,
+        payload: { manualMeetingUrl: next ?? null },
+      }).catch(console.error)
+
+      return { success: true, meetingUrl: next }
     }),
 
   // Approve a draft artifact (flip reviewStatus from 'draft' to 'approved') - WS-14

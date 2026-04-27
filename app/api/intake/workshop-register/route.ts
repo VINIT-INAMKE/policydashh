@@ -1,9 +1,13 @@
 import { createHash } from 'node:crypto'
+import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
-import { and, desc, eq, ne, count } from 'drizzle-orm'
-import { sendWorkshopRegistrationReceived } from '@/src/inngest/events'
+import { and, desc, eq, ne, count, sql as drizzleSql } from 'drizzle-orm'
+import {
+  sendWorkshopRegistrationReceived,
+  sendWorkshopRegistrationOrphan,
+} from '@/src/inngest/events'
 import {
   addAttendeeToBooking,
   buildCompositeBookingUid,
@@ -11,6 +15,28 @@ import {
 } from '@/src/lib/calcom'
 import { consume, getClientIp } from '@/src/lib/rate-limit'
 import { verifyTurnstile } from '@/src/lib/turnstile'
+
+// Tag must match `src/server/queries/workshops-public.ts` and the cal.com
+// webhook handler — keep all three in lockstep.
+function spotsTag(workshopId: string): string {
+  return `workshop-spots-${workshopId}`
+}
+
+// C2: parse cal.com 429 Retry-After (seconds OR HTTP-date) so we don't
+// hardcode 5s when cal.com tells us how long to back off.
+function parseRetryAfter(err: CalApiError, fallbackSeconds: number): string {
+  const m = /Retry-After:\s*([^\r\n]+)/i.exec(err.message)
+  if (!m) return String(fallbackSeconds)
+  const raw = m[1].trim()
+  // Numeric form: integer seconds.
+  if (/^\d+$/.test(raw)) return raw
+  // HTTP-date form: difference from now in seconds, clamped to >= 1.
+  const epoch = Date.parse(raw)
+  if (!Number.isNaN(epoch)) {
+    return String(Math.max(1, Math.ceil((epoch - Date.now()) / 1000)))
+  }
+  return String(fallbackSeconds)
+}
 
 // B10: body-size cap on public intake. Anything beyond this is a fat-finger
 // or an abuser; short-circuit with 413 before JSON parse.
@@ -88,6 +114,7 @@ export async function POST(req: Request): Promise<Response> {
       calcomEventTypeId: workshops.calcomEventTypeId,
       calcomBookingUid: workshops.calcomBookingUid,
       timezone: workshops.timezone,
+      status: workshops.status,
       createdAt: workshops.createdAt,
     })
     .from(workshops)
@@ -96,6 +123,28 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!workshop) {
     return Response.json({ error: 'Workshop not found' }, { status: 404 })
+  }
+
+  // H3: refuse registration on workshops that are no longer accepting it.
+  // `completed`/`archived` would otherwise accept seats while the cal.com
+  // event-type is still live — confusing the registrant and creating
+  // attendance noise on a workshop that's already past its lifecycle.
+  if (workshop.status === 'completed' || workshop.status === 'archived') {
+    return Response.json(
+      { error: 'This workshop is no longer accepting registrations.' },
+      { status: 410 },
+    )
+  }
+
+  // H2: refuse registration on past-dated workshops. Cal.com itself MAY
+  // accept the seat-add (semantics for seated bookings on past slots are
+  // not documented), so we hard-block at our layer to avoid emailing a
+  // confirmation for an event that already happened.
+  if (workshop.scheduledAt.getTime() < Date.now()) {
+    return Response.json(
+      { error: 'This workshop has already started or finished.' },
+      { status: 410 },
+    )
   }
 
   const cleanEmail = email.toLowerCase().trim()
@@ -151,10 +200,11 @@ export async function POST(req: Request): Promise<Response> {
     )
   }
 
-  // F1: max-seats enforcement. Count non-cancelled registrations and reject
-  // if the cap is hit. Race is acceptable (two requests arriving together
-  // could both pass, and we'd over-book by 1) because cal.com also enforces
-  // seatsPerTimeSlot at the booking layer. This is a courtesy gate.
+  // F1: max-seats courtesy pre-flight. The authoritative gate is the
+  // post-Cal.com transaction below (advisory_xact_lock + recount + insert).
+  // We still check here so we can fail fast without burning a cal.com call
+  // on workshops we already know are full. The race window between this
+  // pre-check and the locked recheck is covered by the orphan-event flow.
   if (workshop.maxSeats !== null) {
     const [countRow] = await db
       .select({ n: count() })
@@ -238,9 +288,11 @@ export async function POST(req: Request): Promise<Response> {
     })
     if (err instanceof CalApiError) {
       if (err.status === 429) {
+        // L2: respect cal.com's actual Retry-After when present, fall
+        // back to 5s. Hardcoded 5s ignored cal.com's real cooldown signal.
         return Response.json(
           { error: 'Too many requests. Try again in a moment.' },
-          { status: 429, headers: { 'Retry-After': '5' } },
+          { status: 429, headers: { 'Retry-After': parseRetryAfter(err, 5) } },
         )
       }
       if (err.status >= 400 && err.status < 500 && /seat|full|capacity/i.test(err.message)) {
@@ -258,37 +310,154 @@ export async function POST(req: Request): Promise<Response> {
     attendee.id,
   )
 
+  // C2 (audit 2026-04-27): atomic capacity gate. Wrap the recount + INSERT
+  // in a single transaction guarded by a workshop-keyed advisory lock so
+  // two concurrent registrants for the last seat can't both pass the
+  // pre-flight count + double-insert. Cal.com itself stays OUTSIDE this
+  // block because neon-http batches the transaction's statements into one
+  // HTTP request and can't pause for the cal.com call.
+  //
+  // Three failure modes route to the orphan handler — cal.com seated the
+  // attendee but our row never landed:
+  //   - capacity recheck fails (workshop filled between pre-flight + here)
+  //   - INSERT throws unique violation (double-click race lost to the
+  //     partial unique index from migration 0030)
+  //   - INSERT throws any other error (DB outage)
+  // In all three the cal.com seat is real; an admin alert email goes out
+  // via `workshopRegistrationOrphanFn` so a human can manually clean up.
+  type OrphanReason = 'db_insert_failed' | 'capacity_recheck_failed' | 'unique_collision'
+  // Sentinel error subclass — the in-tx callback throws one of these so the
+  // catch block can route by `instanceof` instead of relying on TS being
+  // able to see assignments to a let-captured variable across an async
+  // callback boundary (it can't; cf. TS issue around control-flow + async
+  // arrow funcs that closed over outer state).
+  class OrphanThrow extends Error {
+    constructor(public readonly reason: OrphanReason) {
+      super(reason)
+      this.name = 'OrphanThrow'
+    }
+  }
+  let inserted = false
+
   try {
-    await db
-      .insert(workshopRegistrations)
-      .values({
-        workshopId,
-        bookingUid:       compositeBookingUid,
-        email:            cleanEmail,
-        emailHash,
-        name:             cleanName || null,
-        bookingStartTime: workshop.scheduledAt,
-        status:           'registered',
-      })
-      .onConflictDoNothing()
+    await db.transaction(async (tx) => {
+      // Workshop-scoped advisory lock — auto-released at COMMIT/ROLLBACK.
+      // hashtext(text) → int4; pg_advisory_xact_lock takes a single bigint
+      // (or two int4s). The hashtext call collides only across very
+      // different workshop ids, which would only delay one another by ~ms.
+      await tx.execute(
+        drizzleSql`SELECT pg_advisory_xact_lock(hashtext(${`workshop-register:${workshopId}`}))`,
+      )
+
+      if (workshop.maxSeats !== null) {
+        const [countRow] = await tx
+          .select({ n: count() })
+          .from(workshopRegistrations)
+          .where(
+            and(
+              eq(workshopRegistrations.workshopId, workshopId),
+              ne(workshopRegistrations.status, 'cancelled'),
+            ),
+          )
+        const registered = Number(countRow?.n ?? 0)
+        if (registered >= workshop.maxSeats) {
+          // Throw to roll back the lock-holding tx; the catch below routes
+          // to the orphan handler via OrphanThrow.reason.
+          throw new OrphanThrow('capacity_recheck_failed')
+        }
+      }
+
+      // Insert. The partial unique index `(workshop_id, email_hash)
+      // WHERE status != 'cancelled'` (migration 0030) raises 23505 on
+      // double-click. We catch that as `unique_collision` orphan reason.
+      const result = await tx
+        .insert(workshopRegistrations)
+        .values({
+          workshopId,
+          bookingUid:       compositeBookingUid,
+          email:            cleanEmail,
+          emailHash,
+          name:             cleanName || null,
+          bookingStartTime: workshop.scheduledAt,
+          status:           'registered',
+        })
+        .onConflictDoNothing({ target: workshopRegistrations.bookingUid })
+        .returning({ id: workshopRegistrations.id })
+
+      if (result.length === 0) {
+        // bookingUid already existed (replay or partial-unique on email
+        // both mask as "no row inserted" once onConflictDoNothing trims
+        // the bookingUid case). Treat as unique_collision so the orphan
+        // alert fires; the cal.com seat is still live.
+        throw new OrphanThrow('unique_collision')
+      }
+      inserted = true
+    })
   } catch (err) {
-    // ORPHAN: attendee is already seated on cal.com but we could not
-    // persist the tracking row. Log every identifier a human would need
-    // to find the stray seat and remove it manually. B3-8: raw email is
-    // included here (and ONLY here) because a human needs to grep the
-    // cal.com attendee list for it — `pii: true` flags it for the log
-    // redaction policy so it's never forwarded to long-term storage.
-    console.error('[workshop-register] ORPHAN: DB insert failed after cal.com seat creation', {
+    // The advisory_xact_lock is auto-released by ROLLBACK regardless of
+    // why we threw. Use OrphanThrow.reason when present; everything else
+    // (DB outage, neon-http timeout, unique-on-bookingUid via 23505) is a
+    // generic db_insert_failed.
+    const finalReason: OrphanReason =
+      err instanceof OrphanThrow ? err.reason : 'db_insert_failed'
+    console.error('[workshop-register] ORPHAN: post-Cal.com DB step failed', {
       workshopId,
       rootBookingUid: workshop.calcomBookingUid,
       attendeeId:     attendee.id,
       bookingId:      attendee.bookingId,
       email:          cleanEmail,
       pii:            true,
+      reason:         finalReason,
       err:            err instanceof Error ? err.message : String(err),
     })
+    // Fire the admin-alert event. Best-effort — if Inngest is down we've
+    // already logged the orphan above and will catch it at log-review time.
+    try {
+      await sendWorkshopRegistrationOrphan({
+        workshopId,
+        rootBookingUid: workshop.calcomBookingUid,
+        attendeeId:     attendee.id,
+        bookingId:      attendee.bookingId,
+        email:          cleanEmail,
+        reason:         finalReason,
+      })
+    } catch (orphanErr) {
+      console.error(
+        '[workshop-register] Inngest orphan-alert send failed (orphan still logged above)',
+        { workshopId, err: orphanErr instanceof Error ? orphanErr.message : String(orphanErr) },
+      )
+    }
+    // Map the user-facing response based on reason.
+    if (finalReason === 'capacity_recheck_failed') {
+      return Response.json(
+        { error: 'This workshop just filled up. Please try a different session.' },
+        { status: 409 },
+      )
+    }
+    if (finalReason === 'unique_collision') {
+      // Same-email double-click. The first request wins; this one races.
+      // 409 lets the form recover — the user is effectively registered
+      // (their first request seated them on cal.com).
+      return Response.json(
+        { error: 'You are already registered for this workshop.' },
+        { status: 409 },
+      )
+    }
     return Response.json({ error: 'Registration failed' }, { status: 500 })
   }
+
+  if (!inserted) {
+    // Defensive: should be unreachable since the inner throw bubbles to
+    // the catch above, but if neon-http ever returns silently we don't
+    // want to claim success.
+    return Response.json({ error: 'Registration failed' }, { status: 500 })
+  }
+
+  // C1: bust the public spots-left cache so the badge reflects the new
+  // seat within the next request, not 60s later. Crucial for back-to-back
+  // registrants who would otherwise all see "X spots left" until the cache
+  // TTL expires.
+  revalidateTag(spotsTag(workshopId), 'max')
 
   try {
     await sendWorkshopRegistrationReceived({

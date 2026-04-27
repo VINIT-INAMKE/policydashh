@@ -27,6 +27,7 @@ import { FeedbackLinkPicker } from './_components/feedback-link-picker'
 import { StatusTransitionButtons } from './_components/status-transition-buttons'
 import { EvidenceChecklist } from './_components/evidence-checklist'
 import { AttendeeList } from './_components/attendee-list'
+import { MissingMeetingUrlAlert } from './_components/missing-meeting-url-alert'
 
 export default function WorkshopDetailPage() {
   const params = useParams<{ id: string }>()
@@ -165,6 +166,15 @@ export default function WorkshopDetailPage() {
             Edit
           </Button>
         )}
+
+        {/* M5 (audit 2026-04-27): null meetingUrl after cal.com provisioning
+            succeeded means the booking response shipped without a link.
+            Surface the recovery form so admin can paste manually. */}
+        {canManage &&
+          workshop.calcomBookingUid != null &&
+          workshop.meetingUrl == null && (
+            <MissingMeetingUrlAlert workshopId={workshopId} />
+          )}
 
         {workshop.description && (
           <p className="text-sm text-muted-foreground">{workshop.description}</p>

@@ -48,6 +48,10 @@ const mocks = vi.hoisted(() => ({
   sendWorkshopFeedbackInvitesBatch: vi.fn().mockResolvedValue(undefined),
   sendWorkshopCompleted: vi.fn().mockResolvedValue(undefined),
   revalidateTag: vi.fn(),
+  // Audit 2026-04-27 M2: when true, the processed_webhook_events insert
+  // returns [] from .returning(...) — the handler short-circuits to 200
+  // (replay). Default false so existing tests see "fresh event, proceed".
+  processedWebhookReplay: false,
 }))
 
 vi.mock('next/cache', () => ({
@@ -133,8 +137,24 @@ vi.mock('@/src/db', () => {
     return {
       values: (values: unknown) => {
         mocks.dbInsertCalls.push({ table: tName, values })
+        // Audit 2026-04-27 M2: handler now uses
+        //   .insert(processedWebhookEvents).values(...)
+        //     .onConflictDoNothing({ target }).returning({ eventId })
+        // for replay protection. Returning [] = replay (handler short-
+        // circuits to 200). Default to [{eventId}] so existing tests see
+        // "fresh event, proceed". Tests that want to assert the replay
+        // path should set `mocks.processedWebhookReplay = true`.
         return {
-          onConflictDoNothing: () => Promise.resolve(undefined),
+          onConflictDoNothing: (_opts?: unknown) => ({
+            returning: (_cols?: unknown) =>
+              Promise.resolve(
+                mocks.processedWebhookReplay && tName === 'processed_webhook_events'
+                  ? []
+                  : [{ eventId: 'fresh-event' }],
+              ),
+            then: (r: (v: unknown) => unknown) =>
+              Promise.resolve(undefined).then(r),
+          }),
           onConflictDoUpdate: () => Promise.resolve(undefined),
           catch: (_fn: unknown) => Promise.resolve(undefined),
           then: (r: (v: unknown) => unknown) => Promise.resolve(undefined).then(r),
@@ -403,22 +423,37 @@ describe('POST /api/webhooks/cal', () => {
     const wsUpdate = mocks.dbUpdateCalls.find(c => c.table === 'workshops')
     expect(wsUpdate).toBeDefined()
     expect((wsUpdate!.set as Record<string, unknown>).status).toBe('completed')
-    // workflow_transitions INSERT with actorId='system:cal-webhook'
+    // workflow_transitions INSERT with actorId=SYSTEM_ACTOR_UUID. Migration
+    // 0029 tightened actor_id from text to uuid; the prior 'system:cal-webhook'
+    // string would now fail the type check, so we use the all-zeros sentinel
+    // (see src/lib/constants.ts SYSTEM_ACTOR_UUID).
     const auditInsert = mocks.dbInsertCalls.find(c => c.table === 'workflow_transitions')
     expect(auditInsert).toBeDefined()
     const auditValues = auditInsert!.values as Record<string, unknown>
     expect(auditValues.entityType).toBe('workshop')
     expect(auditValues.fromState).toBe('upcoming')
     expect(auditValues.toState).toBe('completed')
-    expect(auditValues.actorId).toBe('system:cal-webhook')
+    expect(auditValues.actorId).toBe('00000000-0000-0000-0000-000000000000')
     // Phase 17 workshop-completed chain fired
     expect(mocks.sendWorkshopCompleted).toHaveBeenCalledTimes(1)
   })
 
-  it('T13: MEETING_ENDED on already-completed workshop short-circuits (no duplicate transition)', async () => {
+  it('T13: MEETING_ENDED on already-completed workshop with fan-out sent short-circuits (no duplicate transition)', async () => {
     expect(POST).not.toBeNull()
     mocks.dbSelectResults.push([{ id: 'ws-3' }])
-    mocks.dbSelectResults.push([{ id: 'ws-3', status: 'completed', createdBy: 'mod-3', scheduledAt: new Date('2026-05-01T10:00:00Z') }])
+    // Audit 2026-04-27 M3: a fully-processed workshop has BOTH
+    // status='completed' AND completionPipelineSentAt set. The status
+    // guard short-circuits the audit insert; the new
+    // completionPipelineSentAt guard short-circuits the fan-out. A
+    // workshow row with status='completed' but completionPipelineSentAt
+    // NULL is the "resume" scenario covered separately.
+    mocks.dbSelectResults.push([{
+      id: 'ws-3',
+      status: 'completed',
+      createdBy: 'mod-3',
+      scheduledAt: new Date('2026-05-01T10:00:00Z'),
+      completionPipelineSentAt: new Date('2026-05-01T11:30:00Z'),
+    }])
     const body = JSON.stringify({
       triggerEvent: 'MEETING_ENDED',
       payload: { uid: 'm', eventTypeId: 999, attendees: [] },
@@ -429,6 +464,38 @@ describe('POST /api/webhooks/cal', () => {
     const auditInsert = mocks.dbInsertCalls.find(c => c.table === 'workflow_transitions')
     expect(auditInsert).toBeUndefined()
     expect(mocks.sendWorkshopCompleted).not.toHaveBeenCalled()
+  })
+
+  it('M3 (audit 2026-04-27): MEETING_ENDED resume — completed workshop with NULL completionPipelineSentAt re-fires fan-out', async () => {
+    expect(POST).not.toBeNull()
+    mocks.dbSelectResults.push([{ id: 'ws-resume' }])
+    // The "transient Inngest send failure" scenario: status was flipped
+    // to completed (audit row written) but sendWorkshopCompleted threw
+    // and completionPipelineSentAt never landed. A redelivered MEETING_ENDED
+    // should NOT re-flip status (already completed) but SHOULD re-fire
+    // sendWorkshopCompleted so the evidence-nudge pipeline isn't dropped.
+    mocks.dbSelectResults.push([{
+      id: 'ws-resume',
+      status: 'completed',
+      createdBy: 'mod-r',
+      scheduledAt: new Date('2026-05-01T10:00:00Z'),
+      completionPipelineSentAt: null,
+    }])
+    const body = JSON.stringify({
+      triggerEvent: 'MEETING_ENDED',
+      payload: { uid: 'm-resume', eventTypeId: 9001, attendees: [] },
+    })
+    const res = await POST!(makeReq(body, signBody(body)))
+    expect(res.status).toBe(200)
+    // No status flip (status was already completed) — only the
+    // completionPipelineSentAt stamp UPDATE happens after the resume.
+    const wsUpdates = mocks.dbUpdateCalls.filter(c => c.table === 'workshops')
+    const flipUpdate = wsUpdates.find(
+      u => (u.set as Record<string, unknown>).status === 'completed',
+    )
+    expect(flipUpdate).toBeUndefined()
+    // Fan-out re-fired so the Phase 17 evidence pipeline doesn't drop.
+    expect(mocks.sendWorkshopCompleted).toHaveBeenCalledTimes(1)
   })
 
   it('T14: MEETING_ENDED backfills attendedAt + attendanceSource for matched attendee', async () => {
