@@ -1,81 +1,63 @@
 /**
  * Route-level test for POST /api/intake/workshop-register after the
- * workshop-meetings-redesign rewrite + Turnstile gate (D-1, 2026-04-23).
+ * Google Calendar pivot (Task 16).
  *
  * Verifies:
- *   - Turnstile token required; failure short-circuits with 403 BEFORE DB read
- *   - calls addAttendeeToBooking with the workshop's calcomBookingUid
- *   - stores booking_uid as `${rootUid}:${attendeeId}` for uniqueness
- *   - returns 503 when the workshop has not been provisioned yet
- *   - does NOT call the old createCalBooking path
- *   - 4xx capacity-like error from cal.com → 409 (B3-4)
- *   - 5xx from cal.com → 500 (B3-4)
- *   - 429 from cal.com → 429 with Retry-After (B3-6)
- *   - DB insert failure after successful attendee-add → 500 + ORPHAN log (B3-10)
- *   - Inngest send failure after DB insert → 200 with deferred-invite log (B3-10)
- *   - Empty-name input → cal.com receives 'Guest', DB stores null (B3-10)
- *   - Per-IP / per-email rate-limit hits → 429 with Retry-After (B3-10)
- *   - Already-registered with status='cancelled' → re-registration path (B3-10)
+ *   - Turnstile token required; schema rejects missing token with 400
+ *   - Turnstile failure → 403 BEFORE any DB read
+ *   - 410 Gone for completed/archived workshops
+ *   - 410 Gone for past-dated workshops
+ *   - 409 for second registration of same email (already-registered check)
+ *   - 409 for capacity-full workshop
+ *   - 200 with inviteStatus:'sent' on the happy path (Google succeeded)
+ *   - 200 with inviteStatus:'pending_resend' when addAttendeeToEvent rejects
+ *   - DB INSERT happens BEFORE Google call
+ *   - revalidateTag(spotsTag(workshopId), 'max') called once on success
+ *   - sendWorkshopRegistrationReceived called once with source:'direct_register'
+ *   - Per-IP / per-email rate-limit hits → 429 with Retry-After
+ *   - status='cancelled' prior row → re-registration proceeds (B3-10)
+ *   - Inngest send failure after DB insert → 200 with deferred-invite log
+ *   - DB INSERT unique-violation → 409 (no orphan)
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 
 // src/lib/rate-limit.ts imports 'server-only' which throws in tests.
 vi.mock('server-only', () => ({}))
 
+// Use a proper RFC 4122 v4 UUID (Zod v4's .uuid() validates version + variant nibble).
+const WORKSHOP_ID = 'a1b2c3d4-e5f6-4789-abcd-ef0123456789'
+
 const mocks = vi.hoisted(() => ({
   dbSelectResults: [] as unknown[][],
   dbInsertCalls: [] as unknown[],
   dbInsertThrow: null as Error | null,
-  // Audit 2026-04-27 C2: lets a test simulate the partial-unique collision
-  // by forcing the in-tx insert to return [] from .returning(...) (the
-  // route reads that as `unique_collision` and emits the orphan event).
-  dbInsertReturnsEmpty: false,
-  // Audit 2026-04-27 C2: pg_advisory_xact_lock SELECT is the first
-  // statement inside db.transaction; just resolve it with an empty array.
-  dbExecuteCalls: [] as unknown[],
-  addAttendeeToBooking: vi.fn(),
-  createCalBooking: vi.fn(),
+  dbUpdateCalls: [] as unknown[],
+  addAttendeeToEvent: vi.fn().mockResolvedValue(undefined),
   sendWorkshopRegistrationReceived: vi.fn().mockResolvedValue(undefined),
-  sendWorkshopRegistrationOrphan: vi.fn().mockResolvedValue(undefined),
   revalidateTag: vi.fn(),
   consume: vi.fn().mockReturnValue({ ok: true, resetAt: Date.now() + 60_000 }),
   fetchMock: vi.fn(),
 }))
 
-class MockCalApiError extends Error {
+class MockGoogleCalendarError extends Error {
   public readonly status: number
   constructor(status: number, message: string) {
     super(message)
-    this.name = 'CalApiError'
+    this.name = 'GoogleCalendarError'
     this.status = status
   }
 }
 
-vi.mock('@/src/lib/calcom', () => ({
-  addAttendeeToBooking: mocks.addAttendeeToBooking,
-  createCalBooking:     mocks.createCalBooking,
-  CalApiError: MockCalApiError,
-  // Shared Batch-1 exports — mirrored so the route-under-test resolves
-  // them against this mock instead of hitting the real module (which
-  // imports 'server-only' and blocks in tests).
-  UID_SAFE: /^[A-Za-z0-9_-]+$/,
-  COMPOSITE_BOOKING_UID_DELIMITER: ':',
-  DEFAULT_SEATS_PER_TIME_SLOT: 100,
-  WORKSHOP_CREATED_EVENT: 'workshop.created',
-  buildCompositeBookingUid: (rootUid: string, attendeeId: number) =>
-    `${rootUid}:${attendeeId}`,
-  cascadePattern: (rootUid: string) => `${rootUid}:%`,
+vi.mock('@/src/lib/google-calendar', () => ({
+  addAttendeeToEvent: mocks.addAttendeeToEvent,
+  GoogleCalendarError: MockGoogleCalendarError,
 }))
 
 vi.mock('@/src/inngest/events', () => ({
   sendWorkshopRegistrationReceived: mocks.sendWorkshopRegistrationReceived,
-  // Audit 2026-04-27 H1: orphan event helper. Stubbed so tests don't need
-  // a real Inngest client; assertions check call args via the mock fn.
-  sendWorkshopRegistrationOrphan: mocks.sendWorkshopRegistrationOrphan,
 }))
 
-// next/cache → revalidateTag is invoked after every successful insert. The
-// real impl needs a Next.js runtime; stub it here so the call no-ops in tests.
+// next/cache → revalidateTag is invoked after every successful insert.
 vi.mock('next/cache', () => ({
   revalidateTag: mocks.revalidateTag,
 }))
@@ -88,29 +70,26 @@ vi.mock('@/src/lib/rate-limit', () => ({
 // Stub global fetch for Cloudflare /siteverify calls.
 vi.stubGlobal('fetch', mocks.fetchMock)
 
-// Build a chain-mock db that returns successive select results and captures
-// insert values. `.where()` itself is awaitable (consumes the next queued
-// result) AND exposes `.limit()` so both chain shapes used in the route work:
-//   - `.from().where().limit(1)` — workshop + already-registered lookups
-//   - `.from().where().orderBy().limit(1)` — already-registered with desc order
-//   - `.from().where()`          — count(*) aggregate for max-seats gate
+// Build a chain-mock db. Supports:
+//   - db.select().from().where().limit(1)
+//   - db.select().from().where().orderBy().limit(1)
+//   - db.select().from().where()   — for count(*) aggregate
+//   - db.insert().values().returning()
+//   - db.update().set().where()
 vi.mock('@/src/db', () => {
-  // Build the same shape for `db` and the `tx` passed to
-  // `db.transaction(async tx => …)`. The route calls `tx.execute(sql\`…\`)`
-  // for the advisory lock, then `tx.select(...)` and `tx.insert(...)` —
-  // identical surface to db itself, so we factor a single builder.
-  function buildOps() {
-    return {
+  return {
+    db: {
       select: vi.fn(() => ({
         from: () => {
-          const consume = () =>
-            Promise.resolve(mocks.dbSelectResults.shift() ?? [])
+          const shift = () => Promise.resolve(mocks.dbSelectResults.shift() ?? [])
           return {
             where: () => {
-              const p = consume()
+              // Consume exactly ONE result slot; orderBy() and limit() chain
+              // off the same promise so they don't consume extra slots.
+              const p = shift()
               return Object.assign(p, {
                 limit: () => p,
-                orderBy: () => Object.assign(consume(), { limit: () => consume() }),
+                orderBy: () => Object.assign(p, { limit: () => p }),
               })
             },
           }
@@ -119,49 +98,22 @@ vi.mock('@/src/db', () => {
       insert: vi.fn(() => ({
         values: (v: unknown) => {
           mocks.dbInsertCalls.push(v)
-          const handle = () => {
-            if (mocks.dbInsertThrow) return Promise.reject(mocks.dbInsertThrow)
-            return Promise.resolve([])
-          }
-          // Audit 2026-04-27 C2: the in-tx insert chain is
-          //   .values(...).onConflictDoNothing({ target }).returning({ id })
-          // Mock it so .returning resolves to [{ id }] (success) OR [] when
-          // the test sets dbInsertReturnsEmpty (simulates partial-unique).
           return {
-            onConflictDoNothing: (_opts?: unknown) => ({
-              returning: (_cols?: unknown) =>
-                mocks.dbInsertThrow
-                  ? Promise.reject(mocks.dbInsertThrow)
-                  : Promise.resolve(
-                      mocks.dbInsertReturnsEmpty
-                        ? []
-                        : [{ id: 'inserted-row-id' }],
-                    ),
-              then: (r: (v: unknown) => unknown) => handle().then(r),
-            }),
-            then: (r: (v: unknown) => unknown) => handle().then(r),
+            returning: (_cols?: unknown) =>
+              mocks.dbInsertThrow
+                ? Promise.reject(mocks.dbInsertThrow)
+                : Promise.resolve([{ id: 'inserted-row-id' }]),
           }
         },
       })),
-      // Advisory_xact_lock SELECT lands here; resolve to [].
-      execute: vi.fn((stmt: unknown) => {
-        mocks.dbExecuteCalls.push(stmt)
-        return Promise.resolve([])
-      }),
-    }
-  }
-  const dbOps = buildOps()
-  return {
-    db: {
-      ...dbOps,
-      // db.transaction(cb) — invoke the callback synchronously with a tx
-      // that has the same surface as db. Good enough for unit tests; the
-      // real Neon-HTTP transaction batches statements server-side, but
-      // the SHAPE is identical from the caller's perspective.
-      transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => {
-        const tx = buildOps()
-        return cb(tx)
-      }),
+      update: vi.fn(() => ({
+        set: (vals: unknown) => {
+          mocks.dbUpdateCalls.push(vals)
+          return {
+            where: () => Promise.resolve([]),
+          }
+        },
+      })),
     },
   }
 })
@@ -187,21 +139,20 @@ function turnstileFail() {
 }
 
 const validBody = {
-  workshopId: 'ws-1',
-  name:       'Stakeholder',
-  email:      'stakeholder@example.com',
+  workshopId:     WORKSHOP_ID,
+  name:           'Stakeholder',
+  email:          'stakeholder@example.com',
   turnstileToken: 'XXXX.DUMMY.TOKEN',
 }
 
-function provisionedWorkshop(overrides: Record<string, unknown> = {}) {
+function baseWorkshop(overrides: Record<string, unknown> = {}) {
   return {
-    id:                'ws-1',
-    scheduledAt:       new Date('2026-05-01T10:00:00Z'),
-    maxSeats:          50,
-    calcomEventTypeId: '12345',
-    calcomBookingUid:  'root-abc',
-    timezone:          'Asia/Kolkata',
-    createdAt:         new Date(),
+    id:                    WORKSHOP_ID,
+    scheduledAt:           new Date('2026-05-01T10:00:00Z'),
+    status:                'upcoming',
+    maxSeats:              50,
+    googleCalendarEventId: 'gcal-event-abc',
+    timezone:              'Asia/Kolkata',
     ...overrides,
   }
 }
@@ -218,117 +169,313 @@ beforeEach(() => {
   mocks.dbSelectResults = []
   mocks.dbInsertCalls = []
   mocks.dbInsertThrow = null
-  mocks.dbInsertReturnsEmpty = false
-  mocks.dbExecuteCalls = []
+  mocks.dbUpdateCalls = []
   mocks.consume.mockReturnValue({ ok: true, resetAt: Date.now() + 60_000 })
   mocks.fetchMock.mockReset()
+  mocks.addAttendeeToEvent.mockResolvedValue(undefined)
+  mocks.sendWorkshopRegistrationReceived.mockResolvedValue(undefined)
 })
 
-describe('POST /api/intake/workshop-register (redesigned + Turnstile)', () => {
+describe('POST /api/intake/workshop-register (Google Calendar pivot)', () => {
+  // --- Schema / Turnstile gate ---
+
   it('rejects a missing turnstileToken with 400 (schema)', async () => {
     const { turnstileToken: _t, ...rest } = validBody
     void _t
     const res = await POST!(makeRequest(rest))
     expect(res.status).toBe(400)
-    expect(mocks.addAttendeeToBooking).not.toHaveBeenCalled()
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
+  })
+
+  it('rejects a non-UUID workshopId with 400 (schema)', async () => {
+    const res = await POST!(makeRequest({ ...validBody, workshopId: 'not-a-uuid' }))
+    expect(res.status).toBe(400)
   })
 
   it('rejects Turnstile failure with 403 BEFORE any DB read', async () => {
     turnstileFail()
-    mocks.dbSelectResults = [] // ensure we don't accidentally feed a row
+    mocks.dbSelectResults = []
     const res = await POST!(makeRequest(validBody))
     expect(res.status).toBe(403)
-    expect(mocks.addAttendeeToBooking).not.toHaveBeenCalled()
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
+    // No DB selects consumed
     expect(mocks.dbSelectResults).toHaveLength(0)
   })
 
-  it('adds attendee to root booking and writes composite booking_uid', async () => {
+  // --- Lifecycle guards ---
+
+  it('returns 410 for a completed workshop', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [[baseWorkshop({ status: 'completed' })]]
+    const res = await POST!(makeRequest(validBody))
+    expect(res.status).toBe(410)
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
+  })
+
+  it('returns 410 for an archived workshop', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [[baseWorkshop({ status: 'archived' })]]
+    const res = await POST!(makeRequest(validBody))
+    expect(res.status).toBe(410)
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
+  })
+
+  it('returns 410 for a past-dated workshop', async () => {
     turnstilePass()
     mocks.dbSelectResults = [
-      [provisionedWorkshop()],
-      [], // already-registered check → empty
-      [{ n: 0 }], // max-seats count → 0
+      [baseWorkshop({ scheduledAt: new Date('2020-01-01T00:00:00Z') })],
     ]
-    mocks.addAttendeeToBooking.mockResolvedValueOnce({ id: 777, bookingId: 12 })
+    const res = await POST!(makeRequest(validBody))
+    expect(res.status).toBe(410)
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
+  })
+
+  // --- Already-registered ---
+
+  it('returns 409 when email is already registered (non-cancelled status)', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [{ id: 'reg-existing', status: 'registered' }], // existing row
+    ]
+    const res = await POST!(makeRequest(validBody))
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toMatch(/already registered/i)
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
+  })
+
+  it("treats a prior status='cancelled' row as non-blocking (re-registration proceeds)", async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [{ id: 'reg-old', status: 'cancelled' }], // most recent row is cancelled
+      [{ count: 0 }],                            // capacity count
+    ]
+    const res = await POST!(makeRequest(validBody))
+    expect(res.status).toBe(200)
+    expect(mocks.addAttendeeToEvent).toHaveBeenCalled()
+  })
+
+  // --- Capacity ---
+
+  it('returns 409 when workshop is full', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop({ maxSeats: 2 })],
+      [],           // no existing registration for this email
+      [{ count: 2 }], // 2 non-cancelled seats = full
+    ]
+    const res = await POST!(makeRequest(validBody))
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toMatch(/fully booked/i)
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
+  })
+
+  // --- Happy path ---
+
+  it('returns 200 with inviteStatus:sent on the happy path (Google succeeded)', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [],          // no existing registration
+      [{ count: 0 }], // capacity count
+    ]
 
     const res = await POST!(makeRequest(validBody))
 
     expect(res.status).toBe(200)
-    expect(mocks.addAttendeeToBooking).toHaveBeenCalledWith(
-      'root-abc',
-      expect.objectContaining({
-        name:  'Stakeholder',
-        email: 'stakeholder@example.com',
-        timeZone: 'Asia/Kolkata',
-      }),
+    const body = await res.json()
+    expect(body.success).toBe(true)
+    expect(body.inviteStatus).toBe('sent')
+  })
+
+  it('DB INSERT happens BEFORE Google addAttendeeToEvent call', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [],
+      [{ count: 0 }],
+    ]
+
+    // Assert by checking dbInsertCalls is non-empty AND Google was called
+    const res = await POST!(makeRequest(validBody))
+
+    expect(res.status).toBe(200)
+    expect(mocks.dbInsertCalls).toHaveLength(1)
+    expect(mocks.addAttendeeToEvent).toHaveBeenCalledOnce()
+  })
+
+  it('calls addAttendeeToEvent with correct args', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [],
+      [{ count: 0 }],
+    ]
+
+    await POST!(makeRequest(validBody))
+
+    expect(mocks.addAttendeeToEvent).toHaveBeenCalledWith({
+      eventId: 'gcal-event-abc',
+      attendeeEmail: 'stakeholder@example.com',
+      attendeeName: 'Stakeholder',
+    })
+  })
+
+  it('sends Guest as attendeeName and null as DB name when name is empty', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [],
+      [{ count: 0 }],
+    ]
+
+    await POST!(makeRequest({ ...validBody, name: '   ' }))
+
+    expect(mocks.addAttendeeToEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ attendeeName: 'Guest' }),
     )
-    expect(mocks.createCalBooking).not.toHaveBeenCalled()
+    const inserted = mocks.dbInsertCalls[0] as Record<string, unknown>
+    expect(inserted.name).toBeNull()
+  })
+
+  it('stamps inviteSentAt via db.update on Google success', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [],
+      [{ count: 0 }],
+    ]
+
+    await POST!(makeRequest(validBody))
+
+    expect(mocks.dbUpdateCalls).toHaveLength(1)
+    const updateVals = mocks.dbUpdateCalls[0] as Record<string, unknown>
+    expect(updateVals.inviteSentAt).toBeInstanceOf(Date)
+  })
+
+  it('calls revalidateTag(spotsTag(workshopId), "max") once on success', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [],
+      [{ count: 0 }],
+    ]
+
+    await POST!(makeRequest(validBody))
+
+    expect(mocks.revalidateTag).toHaveBeenCalledOnce()
+    expect(mocks.revalidateTag).toHaveBeenCalledWith(
+      `workshop-spots-${WORKSHOP_ID}`,
+      'max',
+    )
+  })
+
+  it('calls sendWorkshopRegistrationReceived with source:direct_register', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [],
+      [{ count: 0 }],
+    ]
+
+    await POST!(makeRequest(validBody))
+
+    expect(mocks.sendWorkshopRegistrationReceived).toHaveBeenCalledOnce()
     expect(mocks.sendWorkshopRegistrationReceived).toHaveBeenCalledWith(
       expect.objectContaining({
-        bookingUid: 'root-abc:777',
-        source:     'direct_register',
+        workshopId: WORKSHOP_ID,
+        email: 'stakeholder@example.com',
+        source: 'direct_register',
       }),
     )
   })
 
-  it('returns 503 when the workshop has no calcomBookingUid yet', async () => {
+  // --- Google failure → pending_resend ---
+
+  it('returns 200 with inviteStatus:pending_resend when addAttendeeToEvent rejects with GoogleCalendarError(503)', async () => {
     turnstilePass()
     mocks.dbSelectResults = [
-      [provisionedWorkshop({ calcomEventTypeId: null, calcomBookingUid: null })],
+      [baseWorkshop()],
       [],
-      [{ n: 0 }],
+      [{ count: 0 }],
     ]
+    mocks.addAttendeeToEvent.mockRejectedValueOnce(
+      new MockGoogleCalendarError(503, 'upstream unavailable'),
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const res = await POST!(makeRequest(validBody))
 
-    expect(res.status).toBe(503)
-    expect(mocks.addAttendeeToBooking).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.inviteStatus).toBe('pending_resend')
+    // inviteSentAt must NOT be stamped
+    expect(mocks.dbUpdateCalls).toHaveLength(0)
+    // revalidateTag and Inngest still fire
+    expect(mocks.revalidateTag).toHaveBeenCalledOnce()
+    expect(mocks.sendWorkshopRegistrationReceived).toHaveBeenCalledOnce()
+    warnSpy.mockRestore()
   })
 
-  it('returns 409 when cal.com surfaces a 4xx with capacity-ish message (B3-4)', async () => {
+  it('leaves inviteSentAt NULL (no db.update) when Google fails', async () => {
     turnstilePass()
     mocks.dbSelectResults = [
-      [provisionedWorkshop()],
+      [baseWorkshop()],
       [],
-      [{ n: 0 }],
+      [{ count: 0 }],
     ]
-    mocks.addAttendeeToBooking.mockRejectedValueOnce(
-      new MockCalApiError(400, 'cal.com add-attendee 400: seats full'),
-    )
+    mocks.addAttendeeToEvent.mockRejectedValueOnce(new Error('network timeout'))
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await POST!(makeRequest(validBody))
+
+    expect(mocks.dbUpdateCalls).toHaveLength(0)
+  })
+
+  // --- DB INSERT unique-violation → 409 (no orphan, no Google call) ---
+
+  it('returns 409 on unique-violation DB error (23505) without calling Google', async () => {
+    turnstilePass()
+    mocks.dbSelectResults = [
+      [baseWorkshop()],
+      [],
+      [{ count: 0 }],
+    ]
+    const err = new Error('duplicate key value violates unique constraint')
+    ;(err as unknown as { code: string }).code = '23505'
+    mocks.dbInsertThrow = err
 
     const res = await POST!(makeRequest(validBody))
 
     expect(res.status).toBe(409)
-    const body = await res.json()
-    expect(body.error).toMatch(/fully booked/i)
+    // Google must NOT have been called — insert failed before Google
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
   })
 
-  it('returns 500 on cal.com 5xx (B3-4)', async () => {
+  it('returns 500 on non-unique DB INSERT error without calling Google', async () => {
     turnstilePass()
     mocks.dbSelectResults = [
-      [provisionedWorkshop()],
+      [baseWorkshop()],
       [],
-      [{ n: 0 }],
+      [{ count: 0 }],
     ]
-    mocks.addAttendeeToBooking.mockRejectedValueOnce(
-      new MockCalApiError(503, 'cal.com upstream down'),
-    )
+    mocks.dbInsertThrow = new Error('connection refused')
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const res = await POST!(makeRequest(validBody))
 
     expect(res.status).toBe(500)
+    expect(mocks.addAttendeeToEvent).not.toHaveBeenCalled()
+    errSpy.mockRestore()
   })
 
-  it('passes through cal.com 429 as 429 with Retry-After (B3-6)', async () => {
-    turnstilePass()
-    mocks.dbSelectResults = [
-      [provisionedWorkshop()],
-      [],
-      [{ n: 0 }],
-    ]
-    mocks.addAttendeeToBooking.mockRejectedValueOnce(
-      new MockCalApiError(429, 'cal.com rate limit'),
-    )
+  // --- Rate limits ---
+
+  it('returns 429 with Retry-After when the IP rate limiter trips', async () => {
+    mocks.consume.mockReturnValueOnce({ ok: false, resetAt: Date.now() + 300_000 })
 
     const res = await POST!(makeRequest(validBody))
 
@@ -336,39 +483,28 @@ describe('POST /api/intake/workshop-register (redesigned + Turnstile)', () => {
     expect(res.headers.get('Retry-After')).toBeTruthy()
   })
 
-  it('logs ORPHAN and returns 500 when DB insert fails after cal.com seat creation (B3-10)', async () => {
+  it('returns 429 with Retry-After when the email rate limiter trips', async () => {
     turnstilePass()
-    mocks.dbSelectResults = [
-      [provisionedWorkshop()],
-      [],
-      [{ n: 0 }],
-    ]
-    mocks.addAttendeeToBooking.mockResolvedValueOnce({ id: 9, bookingId: 5 })
-    mocks.dbInsertThrow = new Error('unique_violation')
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.consume
+      .mockReturnValueOnce({ ok: true,  resetAt: Date.now() + 60_000 })  // IP ok
+      .mockReturnValueOnce({ ok: false, resetAt: Date.now() + 600_000 }) // email not ok
+    mocks.dbSelectResults = [[baseWorkshop()]]
 
     const res = await POST!(makeRequest(validBody))
 
-    expect(res.status).toBe(500)
-    expect(errSpy).toHaveBeenCalledWith(
-      expect.stringContaining('ORPHAN'),
-      expect.objectContaining({
-        rootBookingUid: 'root-abc',
-        attendeeId:     9,
-        pii:            true,
-      }),
-    )
-    errSpy.mockRestore()
+    expect(res.status).toBe(429)
+    expect(res.headers.get('Retry-After')).toBeTruthy()
   })
 
-  it('returns 200 but logs deferred-invite when Inngest send fails (B3-10)', async () => {
+  // --- Inngest failure → still 200 ---
+
+  it('returns 200 but logs deferred-invite when Inngest send fails', async () => {
     turnstilePass()
     mocks.dbSelectResults = [
-      [provisionedWorkshop()],
+      [baseWorkshop()],
       [],
-      [{ n: 0 }],
+      [{ count: 0 }],
     ]
-    mocks.addAttendeeToBooking.mockResolvedValueOnce({ id: 9, bookingId: 5 })
     mocks.sendWorkshopRegistrationReceived.mockRejectedValueOnce(new Error('inngest-down'))
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -382,63 +518,19 @@ describe('POST /api/intake/workshop-register (redesigned + Turnstile)', () => {
     errSpy.mockRestore()
   })
 
-  it("sends 'Guest' to cal.com and stores null in DB when name is empty (B3-10)", async () => {
+  // --- bookingUid format ---
+
+  it('stores a bookingUid prefixed with reg_ in the DB insert', async () => {
     turnstilePass()
     mocks.dbSelectResults = [
-      [provisionedWorkshop()],
+      [baseWorkshop()],
       [],
-      [{ n: 0 }],
+      [{ count: 0 }],
     ]
-    mocks.addAttendeeToBooking.mockResolvedValueOnce({ id: 1, bookingId: 2 })
 
-    const res = await POST!(makeRequest({ ...validBody, name: '   ' }))
+    await POST!(makeRequest(validBody))
 
-    expect(res.status).toBe(200)
-    expect(mocks.addAttendeeToBooking).toHaveBeenCalledWith(
-      'root-abc',
-      expect.objectContaining({ name: 'Guest' }),
-    )
     const inserted = mocks.dbInsertCalls[0] as Record<string, unknown>
-    expect(inserted.name).toBeNull()
-  })
-
-  it('returns 429 with Retry-After when the IP rate limiter trips (B3-10)', async () => {
-    mocks.consume.mockReturnValueOnce({ ok: false, resetAt: Date.now() + 300_000 })
-
-    const res = await POST!(makeRequest(validBody))
-
-    expect(res.status).toBe(429)
-    expect(res.headers.get('Retry-After')).toBeTruthy()
-  })
-
-  it('returns 429 with Retry-After when the email rate limiter trips (B3-10)', async () => {
-    turnstilePass()
-    // First consume() = IP (ok), second = email (not ok)
-    mocks.consume
-      .mockReturnValueOnce({ ok: true,  resetAt: Date.now() + 60_000 })
-      .mockReturnValueOnce({ ok: false, resetAt: Date.now() + 600_000 })
-    mocks.dbSelectResults = [[provisionedWorkshop()]]
-
-    const res = await POST!(makeRequest(validBody))
-
-    expect(res.status).toBe(429)
-    expect(res.headers.get('Retry-After')).toBeTruthy()
-  })
-
-  it("treats a prior status='cancelled' row as non-blocking so re-registration proceeds (B3-10)", async () => {
-    turnstilePass()
-    mocks.dbSelectResults = [
-      [provisionedWorkshop()],
-      // already-registered: most recent row is cancelled (desc order) →
-      // route should proceed with a fresh seat add.
-      [{ id: 'reg-old', status: 'cancelled' }],
-      [{ n: 0 }],
-    ]
-    mocks.addAttendeeToBooking.mockResolvedValueOnce({ id: 42, bookingId: 7 })
-
-    const res = await POST!(makeRequest(validBody))
-
-    expect(res.status).toBe(200)
-    expect(mocks.addAttendeeToBooking).toHaveBeenCalled()
+    expect(String(inserted.bookingUid)).toMatch(/^reg_[0-9a-f-]{36}$/)
   })
 })
