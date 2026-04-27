@@ -20,6 +20,8 @@ const ask = (q) => new Promise((res) => rl.question(q, res))
 
 const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID || (await ask('Client ID: '))
 const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET || (await ask('Client Secret: '))
+const organizerEmail =
+  process.env.WORKSHOP_ORGANIZER_EMAIL || (await ask('Organizer email (the Google account being authorized): '))
 
 const consentUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
 consentUrl.searchParams.set('client_id', clientId)
@@ -53,6 +55,13 @@ const code = await new Promise((resolve, reject) => {
     server.close()
     resolve(c)
   })
+  server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+      reject(new Error(`Port ${REDIRECT_PORT} is already in use. Stop the dev server and re-run.`))
+    } else {
+      reject(e)
+    }
+  })
   server.listen(REDIRECT_PORT)
 })
 
@@ -74,11 +83,17 @@ if (!tokenRes.ok) {
 }
 
 const json = await tokenRes.json()
+if (!json.refresh_token) {
+  console.error(
+    'No refresh_token in response. Revoke the app at https://myaccount.google.com/permissions and re-run.',
+  )
+  process.exit(1)
+}
 console.log('\n✔ Refresh token obtained. Drop this into .env.local:\n')
 console.log(`GOOGLE_OAUTH_CLIENT_ID=${clientId}`)
 console.log(`GOOGLE_OAUTH_CLIENT_SECRET=${clientSecret}`)
 console.log(`GOOGLE_OAUTH_REFRESH_TOKEN=${json.refresh_token}`)
-console.log(`WORKSHOP_ORGANIZER_EMAIL=vinit@konma.io`)
+console.log(`WORKSHOP_ORGANIZER_EMAIL=${organizerEmail}`)
 console.log(`GOOGLE_CALENDAR_ID=primary`)
 
 rl.close()

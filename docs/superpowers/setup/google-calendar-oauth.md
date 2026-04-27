@@ -17,7 +17,7 @@ create workshop calendar events and invite attendees.
    - Copy the Client ID + Client Secret
 5. Run the bootstrap script (it will open a consent URL and capture the code):
 
-   ```
+   ```bash
    GOOGLE_OAUTH_CLIENT_ID=... GOOGLE_OAUTH_CLIENT_SECRET=... \
      node scripts/google-oauth-bootstrap.mjs
    ```
