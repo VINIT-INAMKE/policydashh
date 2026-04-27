@@ -41,41 +41,24 @@ export const workshops = pgTable('workshops', {
   durationMinutes:     integer('duration_minutes'),
   registrationLink:    text('registration_link'),
   status:              workshopStatusEnum('status').notNull().default('upcoming'),
-  calcomEventTypeId:   text('calcom_event_type_id'),
-  // Root seated booking + shared Google Meet link, backfilled by workshopCreatedFn
-  // after cal.com provisioning completes. Nullable because creation is async
-  // (mirrors the calcomEventTypeId null-until-backfilled pattern).
-  //
-  // COMPOSITE CONTRACT (B6-3): when a public attendee registers via
-  // `/api/intake/workshop-register`, their row on `workshop_registrations`
-  // stores `booking_uid` as `${calcomBookingUid}:${attendeeId}` (see
-  // `buildCompositeBookingUid` in `src/lib/calcom.ts`). Every webhook
-  // cascade branch (BOOKING_CANCELLED / BOOKING_RESCHEDULED root-uid
-  // match → LIKE `${uid}:%`) relies on this prefix contract. Changing
-  // the separator or prefix shape requires a data migration across every
-  // stored `workshop_registrations.booking_uid`.
-  //
-  // Indexed via a WHERE-NOT-NULL partial index in migration 0027 to keep
-  // the per-webhook cascade lookup O(log n) instead of O(n).
-  calcomBookingUid:    text('calcom_booking_uid'),
-  meetingUrl:          text('meeting_url'),
+  // Google Calendar event id, populated by sync workshop.create. NOT NULL —
+  // every workshop has a backing calendar event from creation onward.
+  googleCalendarEventId: text('google_calendar_event_id').notNull(),
+  // 'google_meet' (auto-provisioned) or 'manual' (admin-pasted URL).
+  // CHECK constraint defined in 0032 migration.
+  meetingProvisionedBy: text('meeting_provisioned_by').notNull(),
+  // NOT NULL since 0032 — auto-Meet path stores hangoutLink, manual path
+  // stores admin-pasted URL.
+  meetingUrl:          text('meeting_url').notNull(),
   maxSeats:            integer('max_seats'),
-  // F9: per-workshop timezone used when creating cal.com bookings (attendee
-  // `timeZone`) and when rendering absolute-time emails. IANA tz string -
-  // stored as text so we stay agnostic to locale/locale-changes. Default
-  // matches the project's historical hardcoded value for back-compat.
   timezone:            text('timezone').notNull().default('Asia/Kolkata'),
-  // M3: stamped by the cal.com webhook (and the Inngest workshop-completed
-  // function) the first time the post-completion fan-out fires. A retried
-  // MEETING_ENDED webhook re-checks this column under the same status guard
-  // and short-circuits — preventing the prior bug where a status flip that
-  // succeeded but `sendWorkshopCompleted` that failed left the workshop in
-  // `completed` state with no evidence-nudge ever sent.
+  // Stamped by workshop.endWorkshop the first time fan-out fires. Re-runs
+  // are no-ops via the existing guard.
   completionPipelineSentAt: timestamp('completion_pipeline_sent_at', { withTimezone: true }),
   createdBy:           uuid('created_by').notNull().references(() => users.id),
   createdAt:           timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:           timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  milestoneId:         uuid('milestone_id'),  // FK to milestones - constraint in SQL migration only (avoids circular import)
+  milestoneId:         uuid('milestone_id'),
 })
 
 export const workshopArtifacts = pgTable('workshop_artifacts', {
@@ -112,10 +95,6 @@ export const workshopEvidenceChecklist = pgTable('workshop_evidence_checklist', 
   uniqueIndex('workshop_evidence_checklist_uniq').on(t.workshopId, t.slot),
 ])
 
-// Phase 20 - cal.com-driven workshop registrations. One row per cal.com booking
-// (unique on bookingUid) plus synthetic walk-in rows created when MEETING_ENDED
-// reports an attendee email with no prior booking. Attendance is surfaced via
-// `attendedAt IS NOT NULL` - no separate attendance table (D-10).
 export const workshopRegistrations = pgTable('workshop_registrations', {
   id:               uuid('id').primaryKey().defaultRandom(),
   workshopId:       uuid('workshop_id').notNull().references(() => workshops.id, { onDelete: 'cascade' }),
@@ -129,15 +108,14 @@ export const workshopRegistrations = pgTable('workshop_registrations', {
   attendedAt:       timestamp('attended_at', { withTimezone: true }),
   attendanceSource: attendanceSourceEnum('attendance_source'),
   bookingStartTime: timestamp('booking_start_time', { withTimezone: true }).notNull(),
+  // NULL = Google `addAttendeeToEvent` failed at registration time. Admin
+  // can click "Resend invite" in the Attendees tab to retry; success stamps
+  // this column.
+  inviteSentAt:     timestamp('invite_sent_at', { withTimezone: true }),
   createdAt:        timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:        timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('workshop_registrations_booking_uid_uniq').on(t.bookingUid),
-  // C2 (audit 2026-04-27, migration 0030): partial unique on
-  // (workshop_id, email_hash) WHERE status != 'cancelled' so a double-clicked
-  // registration form 23505s the second INSERT instead of seating the same
-  // attendee twice on cal.com. Cancelled rows are excluded so a re-register
-  // after cancel is allowed.
   uniqueIndex('workshop_registrations_unique_email_per_workshop')
     .on(t.workshopId, t.emailHash)
     .where(sql`status != 'cancelled'`),
