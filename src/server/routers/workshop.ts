@@ -29,10 +29,14 @@ import {
   createWorkshopEvent,
   cancelEvent,
   rescheduleEvent,
+  addAttendeeToEvent,
+  removeAttendeeFromEvent,
   GoogleCalendarError,
 } from '@/src/lib/google-calendar'
+import { sha256Hex } from '@/src/lib/hashing'
+import { randomUUID } from 'node:crypto'
 import { wallTimeToUtc } from '@/src/lib/wall-time'
-import { eq, gte, lt, desc, and, count, ne, isNull } from 'drizzle-orm'
+import { eq, gte, lt, desc, and, count, ne, isNull, sql } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 // C1: keep tag prefix in lockstep with the public listing query and the
@@ -1111,39 +1115,257 @@ export const workshopRouter = router({
       return { alreadyCompleted: false, registrantsNotified: registrants.length }
     }),
 
-  // M5 / Google Calendar pivot: admin recovery surface to correct or set the
-  // meeting URL after creation. meetingUrl is NOT NULL in the schema since
-  // migration 0032 — every workshop has a meeting URL from creation onward.
-  // This mutation accepts only a valid http(s) URL (no clearing to null).
-  setMeetingUrl: requirePermission('workshop:manage')
+  // Task 15: Mark a single registration as attended or not attended.
+  markAttendance: requirePermission('workshop:manage')
     .input(z.object({
       workshopId: z.string().uuid(),
-      meetingUrl: z
-        .string()
-        .trim()
-        .min(1, 'meetingUrl is required')
-        .max(2000)
-        .refine(
-          (v) => /^https?:\/\//i.test(v),
-          { message: 'meetingUrl must be an http(s) URL' },
-        ),
+      registrationId: z.string().uuid(),
+      attended: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await db
-        .update(workshops)
-        .set({ meetingUrl: input.meetingUrl, updatedAt: new Date() })
-        .where(eq(workshops.id, input.workshopId))
+      const now = new Date()
+      await db.update(workshopRegistrations).set({
+        attendedAt: input.attended ? now : null,
+        attendanceSource: input.attended ? 'manual' : null,
+        updatedAt: now,
+      }).where(eq(workshopRegistrations.id, input.registrationId))
 
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
-        action: ACTIONS.WORKSHOP_UPDATE,
-        entityType: 'workshop',
-        entityId: input.workshopId,
-        payload: { manualMeetingUrl: input.meetingUrl },
+        action: ACTIONS.WORKSHOP_MARK_ATTENDANCE,
+        entityType: 'workshop_registration',
+        entityId: input.registrationId,
+        payload: { workshopId: input.workshopId, attended: input.attended },
       }).catch(console.error)
 
-      return { success: true, meetingUrl: input.meetingUrl }
+      return { ok: true as const }
+    }),
+
+  // Task 15: Bulk-mark all non-cancelled, not-yet-attended registrants as present.
+  markAllPresent: requirePermission('workshop:manage')
+    .input(z.object({ workshopId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const now = new Date()
+      const result = await db.update(workshopRegistrations).set({
+        attendedAt: now,
+        attendanceSource: 'manual',
+        updatedAt: now,
+      }).where(
+        and(
+          eq(workshopRegistrations.workshopId, input.workshopId),
+          ne(workshopRegistrations.status, 'cancelled'),
+          sql`${workshopRegistrations.attendedAt} IS NULL`,
+        ),
+      ).returning({ id: workshopRegistrations.id })
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_MARK_ALL_PRESENT,
+        entityType: 'workshop',
+        entityId: input.workshopId,
+        payload: { affected: result.length },
+      }).catch(console.error)
+
+      return { affected: result.length }
+    }),
+
+  // Task 15: Register a walk-in attendee who didn't pre-register via cal.com.
+  // Does NOT call addAttendeeToEvent — the workshop has already happened.
+  // On email collision with an existing non-cancelled row: stamps attendance
+  // instead of inserting a duplicate.
+  addWalkIn: requirePermission('workshop:manage')
+    .input(z.object({
+      workshopId: z.string().uuid(),
+      email: z.string().email(),
+      name: z.string().min(1).max(120),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const emailNorm = input.email.toLowerCase().trim()
+      const emailHash = sha256Hex(emailNorm)
+      const now = new Date()
+
+      // Check for existing non-cancelled registration with the same email.
+      const [existing] = await db
+        .select({ id: workshopRegistrations.id })
+        .from(workshopRegistrations)
+        .where(
+          and(
+            eq(workshopRegistrations.workshopId, input.workshopId),
+            eq(workshopRegistrations.emailHash, emailHash),
+            ne(workshopRegistrations.status, 'cancelled'),
+          ),
+        )
+        .limit(1)
+
+      if (existing) {
+        await db.update(workshopRegistrations).set({
+          attendedAt: now,
+          attendanceSource: 'manual',
+          updatedAt: now,
+        }).where(eq(workshopRegistrations.id, existing.id))
+
+        writeAuditLog({
+          actorId: ctx.user.id,
+          actorRole: ctx.user.role,
+          action: ACTIONS.WORKSHOP_ADD_WALK_IN,
+          entityType: 'workshop_registration',
+          entityId: existing.id,
+          payload: { workshopId: input.workshopId, collisionExisting: true },
+        }).catch(console.error)
+
+        return { added: false as const, attendanceMarked: true, registrationId: existing.id }
+      }
+
+      // No existing row — fetch workshop for bookingStartTime, then insert.
+      const [workshop] = await db
+        .select({ scheduledAt: workshops.scheduledAt })
+        .from(workshops)
+        .where(eq(workshops.id, input.workshopId))
+        .limit(1)
+      if (!workshop) throw new TRPCError({ code: 'NOT_FOUND' })
+
+      const [inserted] = await db.insert(workshopRegistrations).values({
+        workshopId: input.workshopId,
+        bookingUid: `walkin_${randomUUID()}`,
+        email: emailNorm,
+        emailHash,
+        name: input.name,
+        status: 'registered',
+        attendedAt: now,
+        attendanceSource: 'manual',
+        bookingStartTime: workshop.scheduledAt,
+        inviteSentAt: null,
+      }).returning({ id: workshopRegistrations.id })
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_ADD_WALK_IN,
+        entityType: 'workshop_registration',
+        entityId: inserted.id,
+        payload: { workshopId: input.workshopId, collisionExisting: false },
+      }).catch(console.error)
+
+      return { added: true as const, registrationId: inserted.id }
+    }),
+
+  // Task 15: Retry sending a Google Calendar invite to a registrant whose
+  // initial invite failed at registration time (inviteSentAt IS NULL).
+  resendInvite: requirePermission('workshop:manage')
+    .input(z.object({
+      workshopId: z.string().uuid(),
+      registrationId: z.string().uuid(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const [reg] = await db
+        .select()
+        .from(workshopRegistrations)
+        .where(eq(workshopRegistrations.id, input.registrationId))
+        .limit(1)
+      if (!reg) throw new TRPCError({ code: 'NOT_FOUND', message: 'Registration not found' })
+      if (reg.inviteSentAt) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invite already sent' })
+      }
+
+      const [w] = await db
+        .select({ googleCalendarEventId: workshops.googleCalendarEventId })
+        .from(workshops)
+        .where(eq(workshops.id, input.workshopId))
+        .limit(1)
+      if (!w?.googleCalendarEventId) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Workshop event missing' })
+      }
+
+      try {
+        await addAttendeeToEvent({
+          eventId: w.googleCalendarEventId,
+          attendeeEmail: reg.email,
+          attendeeName: reg.name ?? '',
+        })
+      } catch (err) {
+        if (err instanceof GoogleCalendarError) {
+          throw new TRPCError({
+            code: err.status >= 500 ? 'BAD_GATEWAY' : 'BAD_REQUEST',
+            message: `Resend failed: ${err.message}`,
+          })
+        }
+        throw err
+      }
+
+      const now = new Date()
+      await db.update(workshopRegistrations).set({
+        inviteSentAt: now,
+        updatedAt: now,
+      }).where(eq(workshopRegistrations.id, input.registrationId))
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_RESEND_INVITE,
+        entityType: 'workshop_registration',
+        entityId: input.registrationId,
+        payload: { workshopId: input.workshopId },
+      }).catch(console.error)
+
+      return { ok: true as const }
+    }),
+
+  // Task 15: Cancel a single registration. When notify=true, removes the
+  // attendee from the Google Calendar event (best-effort — errors are logged
+  // but never block the DB cancel). Busts the spots-left cache tag.
+  cancelRegistration: requirePermission('workshop:manage')
+    .input(z.object({
+      workshopId: z.string().uuid(),
+      registrationId: z.string().uuid(),
+      notify: z.boolean(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const [reg] = await db
+        .select()
+        .from(workshopRegistrations)
+        .where(eq(workshopRegistrations.id, input.registrationId))
+        .limit(1)
+      if (!reg) throw new TRPCError({ code: 'NOT_FOUND', message: 'Registration not found' })
+
+      if (input.notify) {
+        const [w] = await db
+          .select({ googleCalendarEventId: workshops.googleCalendarEventId })
+          .from(workshops)
+          .where(eq(workshops.id, input.workshopId))
+          .limit(1)
+        if (w?.googleCalendarEventId) {
+          try {
+            await removeAttendeeFromEvent({
+              eventId: w.googleCalendarEventId,
+              attendeeEmail: reg.email,
+            })
+          } catch (err) {
+            console.error('[cancelRegistration] Google removeAttendee failed (non-blocking)', err)
+          }
+        }
+      }
+
+      const now = new Date()
+      await db.update(workshopRegistrations).set({
+        status: 'cancelled',
+        cancelledAt: now,
+        updatedAt: now,
+      }).where(eq(workshopRegistrations.id, input.registrationId))
+
+      revalidateTag(spotsTag(input.workshopId), 'max')
+
+      writeAuditLog({
+        actorId: ctx.user.id,
+        actorRole: ctx.user.role,
+        action: ACTIONS.WORKSHOP_CANCEL_REGISTRATION,
+        entityType: 'workshop_registration',
+        entityId: input.registrationId,
+        payload: { workshopId: input.workshopId, notify: input.notify },
+      }).catch(console.error)
+
+      return { ok: true as const }
     }),
 
   // Approve a draft artifact (flip reviewStatus from 'draft' to 'approved') - WS-14
