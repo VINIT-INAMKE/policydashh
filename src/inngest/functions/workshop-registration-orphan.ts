@@ -29,6 +29,11 @@ export const workshopRegistrationOrphanFn = inngest.createFunction(
     id: 'workshop-registration-orphan',
     name: 'Workshop registration orphan - alert admin',
     retries: 3,
+    // M-7 (audit 2026-04-27 wide review): cap orphan-alert rate so a
+    // sustained DB outage doesn't hammer the operator's inbox. 5 alerts
+    // per workshop per hour is plenty to flag the issue without burying
+    // them in duplicates from the same broken state.
+    rateLimit: { key: 'event.data.workshopId', limit: 5, period: '1h' },
     triggers: [{ event: 'workshop.registration.orphan' }],
   },
   async ({ event, step }) => {

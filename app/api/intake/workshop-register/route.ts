@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
-import { and, desc, eq, ne, count, sql as drizzleSql } from 'drizzle-orm'
+import { and, desc, eq, ne, count } from 'drizzle-orm'
 import {
   sendWorkshopRegistrationReceived,
   sendWorkshopRegistrationOrphan,
@@ -13,6 +13,7 @@ import {
   buildCompositeBookingUid,
   CalApiError,
 } from '@/src/lib/calcom'
+import { sendWorkshopOrphanSeatAlert } from '@/src/lib/email'
 import { consume, getClientIp } from '@/src/lib/rate-limit'
 import { verifyTurnstile } from '@/src/lib/turnstile'
 
@@ -310,96 +311,92 @@ export async function POST(req: Request): Promise<Response> {
     attendee.id,
   )
 
-  // C2 (audit 2026-04-27): atomic capacity gate. Wrap the recount + INSERT
-  // in a single transaction guarded by a workshop-keyed advisory lock so
-  // two concurrent registrants for the last seat can't both pass the
-  // pre-flight count + double-insert. Cal.com itself stays OUTSIDE this
-  // block because neon-http batches the transaction's statements into one
-  // HTTP request and can't pause for the cal.com call.
+  // C2 (audit 2026-04-27, revised after wide-review found `db.transaction`
+  // throws unconditionally on neon-http — `node_modules/drizzle-orm/neon-http/
+  // session.js:151-158`). The atomic gate has to be sequential statements,
+  // not a real Postgres transaction. The race-window guarantees we keep:
+  //
+  //   1. The partial unique index `(workshop_id, email_hash) WHERE status
+  //      != 'cancelled'` (migration 0030) eliminates the same-email
+  //      double-click race entirely — the second INSERT 23505s.
+  //   2. The post-Cal.com recount catches the "different-email last-seat"
+  //      race for `maxSeats !== null` workshops. Two concurrent registrants
+  //      can both pass the recount under READ COMMITTED, but the window is
+  //      now narrowed to a single SELECT-then-INSERT (~milliseconds) instead
+  //      of the prior pre-flight-then-Cal.com-then-insert (~seconds). Any
+  //      residual oversell-by-one is mopped up by cal.com's own
+  //      `seatsPerTimeSlot` enforcement at addAttendeeToBooking time
+  //      (which has already happened by the time we reach this block — so
+  //      if cal.com seated the attendee, capacity was free at that moment).
   //
   // Three failure modes route to the orphan handler — cal.com seated the
   // attendee but our row never landed:
   //   - capacity recheck fails (workshop filled between pre-flight + here)
-  //   - INSERT throws unique violation (double-click race lost to the
-  //     partial unique index from migration 0030)
+  //   - partial unique on (workshop_id, email_hash) fires 23505
   //   - INSERT throws any other error (DB outage)
   // In all three the cal.com seat is real; an admin alert email goes out
   // via `workshopRegistrationOrphanFn` so a human can manually clean up.
   type OrphanReason = 'db_insert_failed' | 'capacity_recheck_failed' | 'unique_collision'
-  // Sentinel error subclass — the in-tx callback throws one of these so the
-  // catch block can route by `instanceof` instead of relying on TS being
-  // able to see assignments to a let-captured variable across an async
-  // callback boundary (it can't; cf. TS issue around control-flow + async
-  // arrow funcs that closed over outer state).
-  class OrphanThrow extends Error {
-    constructor(public readonly reason: OrphanReason) {
-      super(reason)
-      this.name = 'OrphanThrow'
-    }
-  }
   let inserted = false
+  let orphanReason: OrphanReason | null = null
 
   try {
-    await db.transaction(async (tx) => {
-      // Workshop-scoped advisory lock — auto-released at COMMIT/ROLLBACK.
-      // hashtext(text) → int4; pg_advisory_xact_lock takes a single bigint
-      // (or two int4s). The hashtext call collides only across very
-      // different workshop ids, which would only delay one another by ~ms.
-      await tx.execute(
-        drizzleSql`SELECT pg_advisory_xact_lock(hashtext(${`workshop-register:${workshopId}`}))`,
-      )
-
-      if (workshop.maxSeats !== null) {
-        const [countRow] = await tx
-          .select({ n: count() })
-          .from(workshopRegistrations)
-          .where(
-            and(
-              eq(workshopRegistrations.workshopId, workshopId),
-              ne(workshopRegistrations.status, 'cancelled'),
-            ),
-          )
-        const registered = Number(countRow?.n ?? 0)
-        if (registered >= workshop.maxSeats) {
-          // Throw to roll back the lock-holding tx; the catch below routes
-          // to the orphan handler via OrphanThrow.reason.
-          throw new OrphanThrow('capacity_recheck_failed')
-        }
+    if (workshop.maxSeats !== null) {
+      const [countRow] = await db
+        .select({ n: count() })
+        .from(workshopRegistrations)
+        .where(
+          and(
+            eq(workshopRegistrations.workshopId, workshopId),
+            ne(workshopRegistrations.status, 'cancelled'),
+          ),
+        )
+      const registered = Number(countRow?.n ?? 0)
+      if (registered >= workshop.maxSeats) {
+        orphanReason = 'capacity_recheck_failed'
+        throw new Error('CAPACITY_RECHECK_FAILED')
       }
+    }
 
-      // Insert. The partial unique index `(workshop_id, email_hash)
-      // WHERE status != 'cancelled'` (migration 0030) raises 23505 on
-      // double-click. We catch that as `unique_collision` orphan reason.
-      const result = await tx
-        .insert(workshopRegistrations)
-        .values({
-          workshopId,
-          bookingUid:       compositeBookingUid,
-          email:            cleanEmail,
-          emailHash,
-          name:             cleanName || null,
-          bookingStartTime: workshop.scheduledAt,
-          status:           'registered',
-        })
-        .onConflictDoNothing({ target: workshopRegistrations.bookingUid })
-        .returning({ id: workshopRegistrations.id })
+    // INSERT. The partial unique index `(workshop_id, email_hash) WHERE
+    // status != 'cancelled'` (migration 0030) raises 23505 on double-click,
+    // which neon-http surfaces as a thrown error caught below. The
+    // bookingUid unique index handles webhook replays via onConflictDoNothing.
+    const result = await db
+      .insert(workshopRegistrations)
+      .values({
+        workshopId,
+        bookingUid:       compositeBookingUid,
+        email:            cleanEmail,
+        emailHash,
+        name:             cleanName || null,
+        bookingStartTime: workshop.scheduledAt,
+        status:           'registered',
+      })
+      .onConflictDoNothing({ target: workshopRegistrations.bookingUid })
+      .returning({ id: workshopRegistrations.id })
 
-      if (result.length === 0) {
-        // bookingUid already existed (replay or partial-unique on email
-        // both mask as "no row inserted" once onConflictDoNothing trims
-        // the bookingUid case). Treat as unique_collision so the orphan
-        // alert fires; the cal.com seat is still live.
-        throw new OrphanThrow('unique_collision')
-      }
-      inserted = true
-    })
+    if (result.length === 0) {
+      // bookingUid already existed (replay) — uncommon but safe to treat
+      // as a collision. cal.com seat is still real, fire the orphan alert.
+      orphanReason = 'unique_collision'
+      throw new Error('UNIQUE_COLLISION')
+    }
+    inserted = true
   } catch (err) {
-    // The advisory_xact_lock is auto-released by ROLLBACK regardless of
-    // why we threw. Use OrphanThrow.reason when present; everything else
-    // (DB outage, neon-http timeout, unique-on-bookingUid via 23505) is a
-    // generic db_insert_failed.
-    const finalReason: OrphanReason =
-      err instanceof OrphanThrow ? err.reason : 'db_insert_failed'
+    // Distinguish:
+    //   - the synthetic throws above (capacity_recheck_failed / unique_collision)
+    //   - Postgres 23505 from the partial unique index on (workshop_id, email_hash)
+    //   - any other DB error
+    const errMsg = err instanceof Error ? err.message : String(err)
+    let finalReason: OrphanReason
+    if (orphanReason !== null) {
+      finalReason = orphanReason
+    } else if (/23505|duplicate key|unique_email_per_workshop/i.test(errMsg)) {
+      finalReason = 'unique_collision'
+    } else {
+      finalReason = 'db_insert_failed'
+    }
     console.error('[workshop-register] ORPHAN: post-Cal.com DB step failed', {
       workshopId,
       rootBookingUid: workshop.calcomBookingUid,
@@ -410,8 +407,10 @@ export async function POST(req: Request): Promise<Response> {
       reason:         finalReason,
       err:            err instanceof Error ? err.message : String(err),
     })
-    // Fire the admin-alert event. Best-effort — if Inngest is down we've
-    // already logged the orphan above and will catch it at log-review time.
+    // Fire the admin-alert event. M-1 (audit 2026-04-27 wide review): if
+    // Inngest is also down, fall back to a direct Resend call so the
+    // operator still gets the alert. The orphan log above remains the
+    // last-resort observability surface.
     try {
       await sendWorkshopRegistrationOrphan({
         workshopId,
@@ -423,9 +422,25 @@ export async function POST(req: Request): Promise<Response> {
       })
     } catch (orphanErr) {
       console.error(
-        '[workshop-register] Inngest orphan-alert send failed (orphan still logged above)',
+        '[workshop-register] Inngest orphan-alert send failed — falling back to direct email',
         { workshopId, err: orphanErr instanceof Error ? orphanErr.message : String(orphanErr) },
       )
+      try {
+        await sendWorkshopOrphanSeatAlert({
+          workshopId,
+          workshopTitle: 'unknown (Inngest down — fallback path)',
+          rootBookingUid: workshop.calcomBookingUid,
+          attendeeId:     attendee.id,
+          bookingId:      attendee.bookingId,
+          email:          cleanEmail,
+          reason:         finalReason,
+        })
+      } catch (mailErr) {
+        console.error(
+          '[workshop-register] Direct orphan-alert email also failed (orphan still logged)',
+          { workshopId, err: mailErr instanceof Error ? mailErr.message : String(mailErr) },
+        )
+      }
     }
     // Map the user-facing response based on reason.
     if (finalReason === 'capacity_recheck_failed') {

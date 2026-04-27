@@ -25,7 +25,7 @@ import {
 import { revalidateTag } from 'next/cache'
 import { updateCalEventType, CalApiError, DEFAULT_SEATS_PER_TIME_SLOT } from '@/src/lib/calcom'
 import { wallTimeToUtc } from '@/src/lib/wall-time'
-import { eq, gte, lt, desc, and, count, ne } from 'drizzle-orm'
+import { eq, gte, lt, desc, and, count, ne, isNull } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 // C1: keep tag prefix in lockstep with the public listing query and the
@@ -348,6 +348,10 @@ export const workshopRouter = router({
         .select({
           createdBy: workshops.createdBy,
           calcomEventTypeId: workshops.calcomEventTypeId,
+          // Flow-3 (audit 2026-04-27): selected so the scheduledAt-edit
+          // guard below can refuse reschedules on already-provisioned
+          // workshops (where cal.com is the source of truth for the time).
+          calcomBookingUid: workshops.calcomBookingUid,
           title: workshops.title,
           description: workshops.description,
           scheduledAt: workshops.scheduledAt,
@@ -394,6 +398,31 @@ export const workshopRouter = router({
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: `Cannot lower maxSeats to ${input.maxSeats}: ${registered} attendee(s) are already registered. Cancel registrations first.`,
+          })
+        }
+      }
+
+      // Flow-3 (audit 2026-04-27 wide review): refuse scheduledAt edits on
+      // provisioned workshops. cal.com's event-type doesn't reschedule via
+      // PATCH; the only correct path is cal.com's own reschedule flow,
+      // which fires BOOKING_RESCHEDULED back to our webhook (which DOES
+      // atomically rewrite our row). If we accept the edit here, our DB
+      // and cal.com diverge silently — attendees show up at the old time.
+      if (input.scheduledAt !== undefined && existing.calcomBookingUid != null) {
+        const existingIso =
+          existing.scheduledAt instanceof Date
+            ? existing.scheduledAt.toISOString()
+            : (existing.scheduledAt as unknown as string)
+        // Compute the proposed UTC for comparison so a no-op edit (admin
+        // saved the form without changing the time) doesn't trip the guard.
+        const tzForCompare =
+          input.timezone ?? existing.timezone ?? 'Asia/Kolkata'
+        const proposedIso = wallTimeToUtc(input.scheduledAt, tzForCompare).toISOString()
+        if (existingIso !== proposedIso) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'To reschedule a workshop after cal.com provisioning, use the "Open in cal.com" button on the workshop detail page — that reschedule flow notifies all registered attendees automatically. Direct edits here would diverge our records from cal.com.',
           })
         }
       }
@@ -910,6 +939,21 @@ export const workshopRouter = router({
           workshopId: input.workshopId,
           moderatorId: ctx.user.id,
         })
+        // H-1 (audit 2026-04-27 wide review): stamp completionPipelineSentAt
+        // here so a subsequent MEETING_ENDED webhook delivery doesn't see
+        // the column null and re-fire `sendWorkshopCompleted` (which would
+        // double-send the evidence-nudge emails). Single canonical writer
+        // shared between this admin transition path and the cal.com
+        // webhook handler.
+        await db
+          .update(workshops)
+          .set({ completionPipelineSentAt: new Date() })
+          .where(
+            and(
+              eq(workshops.id, input.workshopId),
+              isNull(workshops.completionPipelineSentAt),
+            ),
+          )
       }
 
       return { success: true, fromStatus: existing.status, toStatus: input.toStatus }

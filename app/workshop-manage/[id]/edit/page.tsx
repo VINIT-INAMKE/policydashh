@@ -200,18 +200,20 @@ export default function EditWorkshopPage() {
               />
             </div>
 
+            {/* H-4 (audit 2026-04-27 wide review): timezone is locked to
+                Asia/Kolkata via the create form (parity here so an edit
+                doesn't silently drift away from IST). The schema allows
+                any IANA tz for legacy rows; we display the stored value
+                read-only so admins editing a non-IST legacy workshop can
+                see what's there but can't accidentally change it. */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="workshop-timezone">Timezone</Label>
-              <Input
-                id="workshop-timezone"
-                placeholder="Asia/Kolkata"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                maxLength={64}
-              />
+              <Label>Timezone</Label>
+              <div className="rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground">
+                {timezone || 'Asia/Kolkata'}
+              </div>
               <p className="text-xs text-muted-foreground">
-                IANA timezone (e.g. Asia/Kolkata, America/New_York). Applied to
-                new cal.com bookings and email timestamps.
+                Workshops are stored in IST. Cal.com converts to each
+                attendee&apos;s local timezone at booking time.
               </p>
             </div>
 

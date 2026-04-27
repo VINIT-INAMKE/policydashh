@@ -46,8 +46,10 @@ export function MissingMeetingUrlAlert({
       <p className="mb-2 font-medium">Meeting URL missing</p>
       <p className="mb-2 text-xs leading-relaxed">
         Cal.com provisioned this workshop but didn&apos;t return a Meet link
-        in its booking response. Open the cal.com event in a new tab, copy
-        the meeting URL, and paste it below so attendees can join.
+        in its booking response. Pasting one below updates only what we show
+        on PolicyDash — attendees still rely on the link in their cal.com
+        invitation email. If that link is also broken, fix it on cal.com
+        directly so reschedule emails carry the right URL.
       </p>
       <div className="flex items-center gap-2">
         <Input

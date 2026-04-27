@@ -160,7 +160,11 @@ function seatCandidates(p: CalPayload): string[] {
 async function findWorkshopByCalEventTypeId(
   eventTypeId: number | string | undefined,
 ): Promise<string | null> {
-  if (eventTypeId === undefined || eventTypeId === null) return null
+  // M-4 (audit 2026-04-27 wide review): use loose null check so legitimate
+  // eventTypeId === 0 (theoretically valid in cal.com's id space) doesn't
+  // get coerced to "no workshop". Strict `=== undefined || === null` was
+  // fine in practice but the loose check is more defensible.
+  if (eventTypeId == null) return null
   const [row] = await db
     .select({ id: workshops.id })
     .from(workshops)
@@ -229,8 +233,17 @@ export async function POST(req: Request): Promise<Response> {
   // empty the event was already processed; return 200 immediately and
   // skip the side-effecting branch.
   const triggerEvent = body.triggerEvent ?? 'unknown'
+  // H-6 (audit 2026-04-27 wide review): include seat-level identifiers so
+  // BOOKING_RESCHEDULED variants (cal.com payload may carry only seatUid /
+  // seatReferenceUid / rescheduleUid, not always uid) get distinct hashes.
+  // Without this, two seat-level reschedules of the same root booking with
+  // the same startTime would collide in the dedup hash and the second
+  // delivery would be misclassified as a replay.
   const eventIdSource = [
     bookingData.uid ?? '',
+    bookingData.seatUid ?? '',
+    bookingData.seatReferenceUid ?? '',
+    bookingData.rescheduleUid ?? '',
     triggerEvent,
     bookingData.startTime ?? bookingData.endTime ?? '',
   ].join('|')
@@ -238,11 +251,14 @@ export async function POST(req: Request): Promise<Response> {
   // smuggling `;` or `'` into the column even though drizzle parameterises.
   const eventId =
     createHash('sha256').update(eventIdSource).digest('hex')
-  // Skip dedup for events whose source string is fully empty (older
-  // payloads without uid + startTime would all hash to the same value).
+  // Skip dedup for events whose source string is fully empty (no uid /
+  // seatUid / seatReferenceUid / rescheduleUid + no startTime/endTime).
   // The downside: those replay through; but the signature gate already
   // catches the replay-with-stolen-secret threat for fresh requests.
-  const skipReplayCheck = eventIdSource === '||'
+  // Count empties from the join: 6 segments + 5 separators = 11 chars
+  // when ALL primary fields are empty (only the trigger string remains).
+  const skipReplayCheck = eventIdSource.replace(/[^|]/g, '').length === 5 &&
+    eventIdSource.split('|').every((seg, i) => i === 4 || seg === '')
   if (!skipReplayCheck) {
     const inserted = await db
       .insert(processedWebhookEvents)
