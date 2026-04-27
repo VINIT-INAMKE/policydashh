@@ -271,3 +271,49 @@ export async function sendWorkshopFeedbackInviteEmail(
     html,
   })
 }
+
+/**
+ * Send a pre-workshop reminder email to a registered attendee.
+ *
+ * Called from the reminder Inngest function at 24 h and 1 h before the
+ * workshop's scheduled start time. `meetingUrl` is the Google Meet link;
+ * `windowLabel` is pre-formatted by the caller ("in 24 hours" / "in 1 hour").
+ *
+ * Same silent-no-op semantics as sibling helpers: returns immediately when
+ * RESEND_API_KEY is unset or `to` is null/undefined. Errors bubble as plain
+ * Error so the Inngest send-email step retries via Inngest's retry budget.
+ */
+export async function sendWorkshopReminderEmail(
+  to: string | null | undefined,
+  data: {
+    name?: string | null
+    workshopTitle: string
+    meetingUrl: string
+    /** Pre-formatted "Friday, May 1, 2026, 2:00 PM IST". */
+    scheduledAtLabel: string
+    /** "in 24 hours" or "in 1 hour". */
+    windowLabel: string
+  },
+): Promise<void> {
+  const resend = getResend()
+  if (!resend || !to) return
+
+  const { renderWorkshopReminderEmail } = await import(
+    './email-templates/workshop-reminder'
+  )
+  const html = await renderWorkshopReminderEmail({
+    name: data.name ?? null,
+    workshopTitle: data.workshopTitle,
+    meetingUrl: data.meetingUrl,
+    scheduledAtLabel: data.scheduledAtLabel,
+    windowLabel: data.windowLabel,
+  })
+
+  await resend.emails.send({
+    from: getFromAddress(),
+    replyTo: getReplyToAddress(),
+    to,
+    subject: `Reminder: ${data.workshopTitle} starts ${data.windowLabel}`,
+    html,
+  })
+}
