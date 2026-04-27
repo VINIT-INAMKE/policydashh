@@ -23,7 +23,13 @@ function scramble(target: string, settledChars: number): string {
 export function CryptoSeal() {
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [hash, setHash] = useState(() => scramble(HASH_DISPLAY, 0))
+  // Initialise the hash deterministically (HASH_DISPLAY itself) instead of
+  // randomising during render. Math.random() at render time produces a
+  // different string on the server vs the first client render, which makes
+  // React's hydration diff see mismatched text in the `{hash}` slot and
+  // throw error #418 in production. The scramble animation still kicks in
+  // from the IntersectionObserver effect below.
+  const [hash, setHash] = useState(HASH_DISPLAY)
   const [revealed, setRevealed] = useState(false)
 
   // Trigger scramble on intersect
@@ -107,6 +113,11 @@ export function CryptoSeal() {
       const rect = canvas.getBoundingClientRect()
       const w = rect.width
       const h = rect.height
+      // On first paint the canvas can momentarily be 0×0 (before
+      // ResizeObserver fires), which would make every derived radius
+      // negative and CanvasRenderingContext2D.arc() throw IndexSizeError.
+      // Bail out cleanly until the layout settles.
+      if (w <= 0 || h <= 0) return
       ctx.clearRect(0, 0, w, h)
 
       const cx = w / 2
@@ -138,12 +149,16 @@ export function CryptoSeal() {
         ctx.stroke()
       }
 
-      // Inner verification disc
-      ctx.beginPath()
-      ctx.arc(cx, cy, baseR - 8, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(0, 33, 71, 0.35)'
-      ctx.lineWidth = 0.5
-      ctx.stroke()
+      // Inner verification disc - clamp radius to 0 so a tiny canvas
+      // (baseR < 8 means the seal is rendered <29px wide) can't throw.
+      const innerR = Math.max(baseR - 8, 0)
+      if (innerR > 0) {
+        ctx.beginPath()
+        ctx.arc(cx, cy, innerR, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(0, 33, 71, 0.35)'
+        ctx.lineWidth = 0.5
+        ctx.stroke()
+      }
 
       // Center accent dot - green tertiary-fixed-dim
       const pulse = 0.65 + Math.sin(t * 0.0025) * 0.2
