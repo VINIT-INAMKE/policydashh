@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { router, requirePermission, publicProcedure } from '@/src/trpc/init'
-import { listPublicWorkshops, workshopDetailTag } from '@/src/server/queries/workshops-public'
+import { listPublicWorkshops, workshopDetailTag, spotsTag as publicSpotsTag } from '@/src/server/queries/workshops-public'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'
@@ -653,6 +653,11 @@ export const workshopRouter = router({
       await db.delete(workshops).where(eq(workshops.id, input.workshopId))
       // ON DELETE CASCADE handles workshop_registrations rows.
 
+      // I11: bust public listing caches so deleted workshop disappears immediately
+      // rather than serving a stale row for up to 60s from unstable_cache.
+      revalidateTag(publicSpotsTag(input.workshopId), 'max')
+      revalidateTag(workshopDetailTag(input.workshopId), 'max')
+
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
@@ -1133,11 +1138,20 @@ export const workshopRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const now = new Date()
-      await db.update(workshopRegistrations).set({
+      // M10: validate registrationId belongs to workshopId to prevent cross-workshop drift.
+      const result = await db.update(workshopRegistrations).set({
         attendedAt: input.attended ? now : null,
         attendanceSource: input.attended ? 'manual' : null,
         updatedAt: now,
-      }).where(eq(workshopRegistrations.id, input.registrationId))
+      }).where(
+        and(
+          eq(workshopRegistrations.id, input.registrationId),
+          eq(workshopRegistrations.workshopId, input.workshopId),
+        ),
+      ).returning({ id: workshopRegistrations.id })
+      if (result.length === 0) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Registration not found for this workshop' })
+      }
 
       writeAuditLog({
         actorId: ctx.user.id,
@@ -1308,10 +1322,16 @@ export const workshopRouter = router({
       registrationId: z.string().uuid(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // M11: validate registrationId belongs to workshopId to prevent cross-workshop drift.
       const [reg] = await db
         .select()
         .from(workshopRegistrations)
-        .where(eq(workshopRegistrations.id, input.registrationId))
+        .where(
+          and(
+            eq(workshopRegistrations.id, input.registrationId),
+            eq(workshopRegistrations.workshopId, input.workshopId),
+          ),
+        )
         .limit(1)
       if (!reg) throw new TRPCError({ code: 'NOT_FOUND', message: 'Registration not found' })
       if (reg.inviteSentAt) {
@@ -1371,10 +1391,16 @@ export const workshopRouter = router({
       notify: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // M11: validate registrationId belongs to workshopId to prevent cross-workshop drift.
       const [reg] = await db
         .select()
         .from(workshopRegistrations)
-        .where(eq(workshopRegistrations.id, input.registrationId))
+        .where(
+          and(
+            eq(workshopRegistrations.id, input.registrationId),
+            eq(workshopRegistrations.workshopId, input.workshopId),
+          ),
+        )
         .limit(1)
       if (!reg) throw new TRPCError({ code: 'NOT_FOUND', message: 'Registration not found' })
 

@@ -310,7 +310,7 @@ export async function cancelEvent(input: { eventId: string }): Promise<void> {
       },
     )
   } catch (err) {
-    if (err instanceof GoogleCalendarError && err.status === 404) {
+    if (err instanceof GoogleCalendarError && (err.status === 404 || err.status === 410)) {
       return
     }
     throw err

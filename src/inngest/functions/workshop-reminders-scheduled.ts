@@ -1,4 +1,5 @@
 import { eq, and, ne } from 'drizzle-orm'
+import { createHash } from 'node:crypto'
 import { inngest } from '../client'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
@@ -62,24 +63,15 @@ async function loadActiveRegistrations(workshopId: string) {
     )
 }
 
-async function sendBatch(
-  args: { workshopId: string; windowLabel: string },
-  snap: { title: string; scheduledAt: Date; timezone: string; meetingUrl: string },
-) {
-  const recipients = await loadActiveRegistrations(args.workshopId)
-  for (const r of recipients) {
-    try {
-      await sendWorkshopReminderEmail(r.email, {
-        name: r.name,
-        workshopTitle: snap.title,
-        meetingUrl: snap.meetingUrl,
-        scheduledAtLabel: formatWorkshopTime(snap.scheduledAt, snap.timezone),
-        windowLabel: args.windowLabel,
-      })
-    } catch (err) {
-      console.error('[reminders] send failed', { email: r.email, err })
-    }
-  }
+/**
+ * I8: Hash email address to a short, safe step id segment.
+ * Inngest memoizes step.run results by id — giving each email its own
+ * step.run means a retry only re-executes the failing step, not all
+ * previously-sent emails. SHA-256 first 16 hex chars is collision-safe
+ * for the ~hundreds of recipients per workshop we expect.
+ */
+function stepKey(email: string): string {
+  return createHash('sha256').update(email).digest('hex').slice(0, 16)
 }
 
 export async function _internal_handler(args: ReminderHandlerArgs) {
@@ -110,9 +102,30 @@ export async function _internal_handler(args: ReminderHandlerArgs) {
       return fresh
     })
     if (at24h) {
-      await args.step.run('send-24h-batch', async () => {
-        await sendBatch({ workshopId, windowLabel: 'in 24 hours' }, at24h)
-      })
+      // I8: load recipients as a memoized step so we don't re-query on retry.
+      const recipients24 = await args.step.run('load-recipients-24h', async () =>
+        loadActiveRegistrations(workshopId)
+      )
+      // I8: each email gets its own memoized step so Inngest retries skip
+      // already-sent emails (memoized by step id = prefix + hash(email)).
+      for (const r of recipients24) {
+        await args.step.run(`send-24h-${stepKey(r.email)}`, async () => {
+          try {
+            await sendWorkshopReminderEmail(r.email, {
+              name: r.name,
+              workshopTitle: at24h.title,
+              meetingUrl: at24h.meetingUrl,
+              scheduledAtLabel: formatWorkshopTime(at24h.scheduledAt, at24h.timezone),
+              windowLabel: 'in 24 hours',
+            })
+          } catch (err) {
+            console.error('[reminders] 24h send failed', { email: r.email, err })
+            // Swallow per-recipient failures so other recipients still get their
+            // step.run memoized successfully on this run, and a retry only
+            // re-fires the failing step rather than the entire batch.
+          }
+        })
+      }
     }
   }
 
@@ -126,9 +139,25 @@ export async function _internal_handler(args: ReminderHandlerArgs) {
       return fresh
     })
     if (at1h) {
-      await args.step.run('send-1h-batch', async () => {
-        await sendBatch({ workshopId, windowLabel: 'in 1 hour' }, at1h)
-      })
+      // I8: same per-email step pattern as the 24h block.
+      const recipients1h = await args.step.run('load-recipients-1h', async () =>
+        loadActiveRegistrations(workshopId)
+      )
+      for (const r of recipients1h) {
+        await args.step.run(`send-1h-${stepKey(r.email)}`, async () => {
+          try {
+            await sendWorkshopReminderEmail(r.email, {
+              name: r.name,
+              workshopTitle: at1h.title,
+              meetingUrl: at1h.meetingUrl,
+              scheduledAtLabel: formatWorkshopTime(at1h.scheduledAt, at1h.timezone),
+              windowLabel: 'in 1 hour',
+            })
+          } catch (err) {
+            console.error('[reminders] 1h send failed', { email: r.email, err })
+          }
+        })
+      }
     }
   }
 }

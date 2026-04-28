@@ -383,8 +383,7 @@ export async function isViewerRegistered(
 }
 
 // Re-export the tag builder so router files can import from one place without
-// a circular dep. The spots tag is intentionally local to this file and the
-// router — callers should use workshopDetailTag for full-workshop mutations.
-function spotsTag(workshopId: string): string {
+// a circular dep.
+export function spotsTag(workshopId: string): string {
   return `workshop-spots-${workshopId}`
 }

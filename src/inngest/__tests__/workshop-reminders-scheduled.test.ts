@@ -214,4 +214,64 @@ describe('workshopRemindersScheduledFn', () => {
       expect.objectContaining({ workshopTitle: 'Privacy', windowLabel: 'in 1 hour' }),
     )
   })
+
+  it("per-email steps memoize so retries don't double-send", async () => {
+    const startsAt = new Date('2026-05-10T10:00:00Z')
+    const workshopRow = {
+      id: 'wks1',
+      title: 'Privacy',
+      scheduledAt: startsAt,
+      timezone: 'Asia/Kolkata',
+      meetingUrl: 'https://meet.google.com/abc',
+      status: 'upcoming',
+    }
+    const registrants = [
+      { email: 'a@x.com', name: 'Alice' },
+      { email: 'b@x.com', name: 'Bob' },
+    ]
+    const dbModule = await import('@/src/db')
+    ;(dbModule.db as any).select = vi.fn((cols?: any) => {
+      const isRegQuery = cols && Object.keys(cols).join(',') === 'email,name'
+      if (isRegQuery) {
+        return {
+          from: vi.fn(() => ({
+            where: vi.fn(async () => registrants),
+          })),
+        }
+      }
+      return {
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: vi.fn(async () => [workshopRow]),
+          })),
+        })),
+      }
+    })
+
+    const emailModule = await import('@/src/lib/email')
+
+    // Simulate Inngest memoization: first call executes fn(), subsequent calls
+    // with the same id return the cached result without re-running fn().
+    const memo = new Map<string, unknown>()
+    const mockStep = {
+      run: vi.fn(async (id: string, fn: () => unknown) => {
+        if (memo.has(id)) return memo.get(id)
+        const result = await fn()
+        memo.set(id, result)
+        return result
+      }),
+      sleepUntil: vi.fn().mockResolvedValue(undefined),
+    }
+
+    const { _internal_handler } = await import('../functions/workshop-reminders-scheduled')
+
+    // First invocation — all steps execute, 4 emails sent (2 recipients × 24h + 1h)
+    await _internal_handler({ event: { data: { workshopId: 'wks1' } }, step: mockStep as any })
+    expect(emailModule.sendWorkshopReminderEmail).toHaveBeenCalledTimes(4)
+
+    // Second invocation (simulating a retry) — all step ids already memoized,
+    // fn() is never called again, so email count stays at 4 not 8.
+    await _internal_handler({ event: { data: { workshopId: 'wks1' } }, step: mockStep as any })
+    expect(emailModule.sendWorkshopReminderEmail).toHaveBeenCalledTimes(4)
+  })
 })

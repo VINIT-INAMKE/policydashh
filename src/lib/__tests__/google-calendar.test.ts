@@ -373,6 +373,17 @@ describe('google-calendar — patch operations', () => {
     await expect(cancelEvent({ eventId: 'evt_gone' })).resolves.toBeUndefined()
   })
 
+  it('cancelEvent treats 410 Gone as already-cancelled (no throw)', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 410,
+      text: async () => 'gone',
+    })
+    const { cancelEvent, _internal_resetTokenCache } = await import('../google-calendar')
+    _internal_resetTokenCache()
+    await expect(cancelEvent({ eventId: 'evt_gone' })).resolves.toBeUndefined()
+  })
+
   it('cancelEvent propagates non-404 errors', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: false,

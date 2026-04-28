@@ -228,6 +228,8 @@ describe('workshop.markAttendance', () => {
     const caller = getCaller()
     if (!caller) return
 
+    // M10: updateReturning must be non-empty so the NOT_FOUND guard doesn't fire.
+    await rebuildDbMock({ updateReturning: [{ id: REGISTRATION_ID }] })
     const { db } = await import('@/src/db')
     const result = await caller.markAttendance({
       workshopId: WORKSHOP_ID,
@@ -252,6 +254,8 @@ describe('workshop.markAttendance', () => {
     const caller = getCaller()
     if (!caller) return
 
+    // M10: updateReturning must be non-empty so the NOT_FOUND guard doesn't fire.
+    await rebuildDbMock({ updateReturning: [{ id: REGISTRATION_ID }] })
     const { db } = await import('@/src/db')
     const result = await caller.markAttendance({
       workshopId: WORKSHOP_ID,
@@ -276,6 +280,7 @@ describe('workshop.markAttendance', () => {
     const caller = getCaller()
     if (!caller) return
 
+    await rebuildDbMock({ updateReturning: [{ id: REGISTRATION_ID }] })
     await caller.markAttendance({
       workshopId: WORKSHOP_ID,
       registrationId: REGISTRATION_ID,
@@ -857,5 +862,29 @@ describe('workshop.cancelRegistration', () => {
         payload: expect.objectContaining({ notify: false }),
       }),
     )
+  })
+
+  it('M11: throws NOT_FOUND when registration belongs to a different workshop', async () => {
+    // Simulate: registration exists in DB but for a different workshopId.
+    // The WHERE clause (registrationId AND workshopId) returns no rows.
+    const caller = getCaller()
+    if (!caller) return
+
+    // mock SELECT returns [] — registration exists but belongs to a different workshop
+    await rebuildDbMock({ selectResults: [[]] })
+
+    let caught: any
+    await caller.cancelRegistration({
+      workshopId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+      registrationId: REGISTRATION_ID,
+      notify: false,
+    }).catch((e: any) => { caught = e })
+
+    expect(caught).toBeDefined()
+    expect(caught.code).toBe('NOT_FOUND')
+    // The google removeAttendee and revalidateTag must NOT have been called
+    expect(mocks.removeAttendeeFromEvent).not.toHaveBeenCalled()
+    const { revalidateTag } = await import('next/cache')
+    expect(revalidateTag as any).not.toHaveBeenCalled()
   })
 })
