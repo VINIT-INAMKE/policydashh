@@ -22,6 +22,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { auth } from '@clerk/nextjs/server'
+import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { Calendar, Clock, Globe, ExternalLink, Video, Link2, FileText } from 'lucide-react'
 import { db } from '@/src/db'
@@ -84,8 +85,15 @@ export default async function PublicWorkshopDetailPage({
     ? can(viewerUser.role as Parameters<typeof can>[0], 'workshop:manage')
     : false
 
+  // C5: compute email hash for the defensive emailHash fallback in
+  // isViewerRegistered — catches registrations made before the user row
+  // existed in our DB (userId=null on the registration row).
+  const viewerEmailHash = viewerUser?.email
+    ? createHash('sha256').update(viewerUser.email.toLowerCase().trim()).digest('hex')
+    : undefined
+
   const isRegistered = viewerUser
-    ? await isViewerRegistered(id, viewerUser.id)
+    ? await isViewerRegistered(id, viewerUser.id, viewerEmailHash)
     : false
 
   const showMeetingUrl = isRegistered || canManage

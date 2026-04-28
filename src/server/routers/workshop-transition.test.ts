@@ -31,9 +31,16 @@ vi.mock('@/src/lib/calcom', () => ({
 }))
 
 const mocks = vi.hoisted(() => {
-  // db.select().from().where().limit() chain
+  // db.select().from().where().limit() chain.
+  // The registrants query awaits .where() directly (no .limit()), so we make
+  // the where result both a thenable (resolves to []) and expose .limit().
   const limitMock = vi.fn()
-  const whereMock = vi.fn().mockReturnValue({ limit: limitMock })
+  const whereMock = vi.fn().mockImplementation(() => {
+    // Default: resolve to empty array when awaited directly.
+    // Tests that need specific rows set limitMock themselves.
+    const p = Promise.resolve([] as unknown[])
+    return Object.assign(p, { limit: limitMock })
+  })
   const fromMock = vi.fn().mockReturnValue({ where: whereMock })
   const selectMock = vi.fn().mockReturnValue({ from: fromMock })
 
@@ -51,6 +58,7 @@ const mocks = vi.hoisted(() => {
     updateMock, updateSetMock, updateWhereMock,
     insertMock, insertValuesMock,
     sendWorkshopCompletedMock: vi.fn().mockResolvedValue(undefined),
+    sendWorkshopFeedbackInvitesBatchMock: vi.fn().mockResolvedValue(undefined),
     writeAuditLogMock: vi.fn().mockResolvedValue(undefined),
   }
 })
@@ -65,8 +73,12 @@ vi.mock('@/src/db', () => ({
 
 vi.mock('@/src/inngest/events', () => ({
   sendWorkshopCompleted: mocks.sendWorkshopCompletedMock,
+  // I1: transition→completed now also fires the feedback batch
+  sendWorkshopFeedbackInvitesBatch: mocks.sendWorkshopFeedbackInvitesBatchMock,
   // Re-export other names that workshop.ts may import
+  sendWorkshopCreated: vi.fn().mockResolvedValue(undefined),
   sendWorkshopRecordingUploaded: vi.fn().mockResolvedValue(undefined),
+  sendWorkshopRemindersRescheduled: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/src/lib/audit', () => ({

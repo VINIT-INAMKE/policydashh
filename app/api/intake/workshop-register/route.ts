@@ -2,8 +2,10 @@ import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import crypto from 'node:crypto'
 import { and, desc, eq, ne, sql } from 'drizzle-orm'
+import { auth } from '@clerk/nextjs/server'
 import { db } from '@/src/db'
 import { workshops, workshopRegistrations } from '@/src/db/schema/workshops'
+import { users } from '@/src/db/schema/users'
 import { addAttendeeToEvent, GoogleCalendarError } from '@/src/lib/google-calendar'
 import { sendWorkshopRegistrationReceived } from '@/src/inngest/events'
 import { sha256Hex } from '@/src/lib/hashing'
@@ -147,56 +149,68 @@ export async function POST(req: Request): Promise<Response> {
     )
   }
 
-  // F1: max-seats courtesy pre-flight.
-  if (workshop.maxSeats !== null) {
-    const [{ count: seatCount }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(workshopRegistrations)
-      .where(
-        and(
-          eq(workshopRegistrations.workshopId, workshopId),
-          ne(workshopRegistrations.status, 'cancelled'),
-        ),
-      )
-    if (seatCount >= workshop.maxSeats) {
-      return Response.json(
-        { error: 'This workshop is fully booked.' },
-        { status: 409 },
-      )
-    }
+  // C5: look up internal userId for logged-in stakeholders so isViewerRegistered
+  // can match on userId (not just emailHash) and the meeting URL is shown after
+  // registration. Anonymous callers get userId=null — that's fine.
+  let viewerInternalUserId: string | null = null
+  const { userId: clerkUserId } = await auth()
+  if (clerkUserId) {
+    const [u] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.clerkId, clerkUserId))
+      .limit(1)
+    viewerInternalUserId = u?.id ?? null
   }
 
-  // INSERT registration row first — Google is the outermost side effect.
-  // On unique-violation (23505) → 409. Other DB error → 500.
+  // C1: atomic capacity-gated INSERT. The SELECT subquery counts non-cancelled
+  // rows; the entire row materializes only when count < maxSeats (or maxSeats
+  // is null, meaning open registration). This replaces the racy count+INSERT
+  // two-step — concurrent requests can no longer both see "1 spot left" and
+  // both succeed. The existing partial unique index handles double-click defense.
   const bookingUid = `reg_${crypto.randomUUID()}`
   let registrationId: string
   try {
-    const [row] = await db
-      .insert(workshopRegistrations)
-      .values({
-        workshopId,
-        bookingUid,
-        email: cleanEmail,
-        emailHash,
-        name: cleanName || null,
-        status: 'registered',
-        bookingStartTime: workshop.scheduledAt,
-        inviteSentAt: null,
-      })
-      .returning({ id: workshopRegistrations.id })
-    registrationId = row.id
+    const inserted = await db.execute(sql`
+      INSERT INTO workshop_registrations
+        (workshop_id, booking_uid, email, email_hash, name, user_id, status, booking_start_time, invite_sent_at)
+      SELECT
+        ${workshopId}::uuid,
+        ${bookingUid},
+        ${cleanEmail},
+        ${emailHash},
+        ${cleanName || null},
+        ${viewerInternalUserId}::uuid,
+        'registered',
+        ${workshop.scheduledAt.toISOString()}::timestamptz,
+        NULL
+      WHERE
+        ${workshop.maxSeats === null ? sql`TRUE` : sql`(
+          SELECT COUNT(*)::int FROM workshop_registrations
+          WHERE workshop_id = ${workshopId}::uuid AND status != 'cancelled'
+        ) < ${workshop.maxSeats}`}
+      RETURNING id
+    `)
+    // neon-http driver returns rows on `inserted.rows`; guard both shapes.
+    // Cast through unknown first so TS doesn't complain about the NeonHttpQueryResult
+    // type not overlapping with our narrower expected shapes.
+    const insertedAny = inserted as unknown
+    const rows =
+      (insertedAny as { rows?: Array<{ id: string }> }).rows ??
+      (insertedAny as Array<{ id: string }>)
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return Response.json({ error: 'This workshop is fully booked.' }, { status: 409 })
+    }
+    registrationId = rows[0].id
   } catch (err: unknown) {
-    const errMsg = err instanceof Error ? err.message : String(err)
-    if (
-      (err as { code?: string })?.code === '23505' ||
-      /duplicate key|unique_email_per_workshop/i.test(errMsg)
-    ) {
+    const errAny = err as { code?: string; message?: string }
+    if (errAny?.code === '23505' || /duplicate key/i.test(String(errAny?.message))) {
       return Response.json(
         { error: 'You are already registered for this workshop.' },
         { status: 409 },
       )
     }
-    console.error('[workshop-register] DB INSERT failed', { workshopId, emailHash, err: errMsg })
+    console.error('[workshop-register] DB INSERT failed', { workshopId, emailHash, err: String(err) })
     return Response.json({ error: 'Registration failed' }, { status: 500 })
   }
 

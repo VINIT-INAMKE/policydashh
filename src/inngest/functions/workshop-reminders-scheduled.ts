@@ -89,34 +89,47 @@ export async function _internal_handler(args: ReminderHandlerArgs) {
   if (!initial || initial.status === 'archived') return
   const scheduledAtAtSchedule = initial.scheduledAt.toISOString()
 
+  // C6: 30-minute safety buffer. When scheduledAt is too close to now, the
+  // target sleep time is already in the past — sleepUntil would resolve
+  // immediately and fire reminder emails with a stale/wrong window label.
+  // Skip each reminder individually so a workshop scheduled 2h out still
+  // gets its 1h reminder even though 24h is skipped.
+  // Workshops with <30min lead get NO reminders — acceptable for ad-hoc events.
+  const SAFETY_BUFFER_MS = 30 * 60_000
+  const now = Date.now()
   const t24 = new Date(initial.scheduledAt.getTime() - 24 * 60 * 60 * 1000)
-  await args.step.sleepUntil('sleep-24h', t24)
+  const t1 = new Date(initial.scheduledAt.getTime() - 60 * 60 * 1000)
 
-  const at24h = await args.step.run('check-and-send-24h', async () => {
-    const fresh = await loadWorkshop(workshopId)
-    if (!fresh || fresh.status === 'archived') return null
-    if (fresh.scheduledAt.toISOString() !== scheduledAtAtSchedule) return null
-    return fresh
-  })
-  if (at24h) {
-    await args.step.run('send-24h-batch', async () => {
-      await sendBatch({ workshopId, windowLabel: 'in 24 hours' }, at24h)
+  // 24h reminder — only if t24 is at least SAFETY_BUFFER_MS in the future
+  if (t24.getTime() > now + SAFETY_BUFFER_MS) {
+    await args.step.sleepUntil('sleep-24h', t24)
+    const at24h = await args.step.run('check-and-send-24h', async () => {
+      const fresh = await loadWorkshop(workshopId)
+      if (!fresh || fresh.status === 'archived') return null
+      if (fresh.scheduledAt.toISOString() !== scheduledAtAtSchedule) return null
+      return fresh
     })
+    if (at24h) {
+      await args.step.run('send-24h-batch', async () => {
+        await sendBatch({ workshopId, windowLabel: 'in 24 hours' }, at24h)
+      })
+    }
   }
 
-  const t1 = new Date(initial.scheduledAt.getTime() - 60 * 60 * 1000)
-  await args.step.sleepUntil('sleep-1h', t1)
-
-  const at1h = await args.step.run('check-and-send-1h', async () => {
-    const fresh = await loadWorkshop(workshopId)
-    if (!fresh || fresh.status === 'archived') return null
-    if (fresh.scheduledAt.toISOString() !== scheduledAtAtSchedule) return null
-    return fresh
-  })
-  if (at1h) {
-    await args.step.run('send-1h-batch', async () => {
-      await sendBatch({ workshopId, windowLabel: 'in 1 hour' }, at1h)
+  // 1h reminder — only if t1 is at least SAFETY_BUFFER_MS in the future
+  if (t1.getTime() > now + SAFETY_BUFFER_MS) {
+    await args.step.sleepUntil('sleep-1h', t1)
+    const at1h = await args.step.run('check-and-send-1h', async () => {
+      const fresh = await loadWorkshop(workshopId)
+      if (!fresh || fresh.status === 'archived') return null
+      if (fresh.scheduledAt.toISOString() !== scheduledAtAtSchedule) return null
+      return fresh
     })
+    if (at1h) {
+      await args.step.run('send-1h-batch', async () => {
+        await sendBatch({ workshopId, windowLabel: 'in 1 hour' }, at1h)
+      })
+    }
   }
 }
 

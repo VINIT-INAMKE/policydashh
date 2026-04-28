@@ -133,6 +133,34 @@ describe('workshopRemindersScheduledFn', () => {
     expect(mockStep.sleepUntil).not.toHaveBeenCalled()
   })
 
+  it('skips both reminders when scheduledAt is less than 30 min away', async () => {
+    // 10 minutes from now — both t24 and t1 are already in the past
+    const startsAt = new Date(Date.now() + 10 * 60_000)
+    const workshopRow = {
+      id: 'wks-short',
+      title: 'Ad-hoc',
+      scheduledAt: startsAt,
+      timezone: 'Asia/Kolkata',
+      meetingUrl: 'https://meet.google.com/x',
+      status: 'upcoming',
+    }
+    const dbModule = await import('@/src/db')
+    ;(dbModule.db as any).select = vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(async () => [workshopRow]),
+        })),
+      })),
+    }))
+    const mockStep = {
+      run: vi.fn(async (_id: string, fn: () => unknown) => fn()),
+      sleepUntil: vi.fn(),
+    }
+    const { _internal_handler } = await import('../functions/workshop-reminders-scheduled')
+    await _internal_handler({ event: { data: { workshopId: 'wks-short' } }, step: mockStep as any })
+    expect(mockStep.sleepUntil).not.toHaveBeenCalled()
+  })
+
   it('sends reminder email to each non-cancelled registration at the 24h wake', async () => {
     const startsAt = new Date('2026-05-10T10:00:00Z')
     const workshopRow = {

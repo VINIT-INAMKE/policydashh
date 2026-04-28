@@ -257,10 +257,31 @@ describe('workshop.endWorkshop', () => {
     expect(batchArg[0]).toMatchObject({ workshopId: WORKSHOP_ID, email: 'user0@example.com' })
   })
 
-  it('is a no-op when status is already completed and completionPipelineSentAt is set', async () => {
+  it('is a no-op when completionPipelineSentAt is set (regardless of status)', async () => {
+    // I1/C3: idempotency guard gates purely on completionPipelineSentAt now —
+    // status being 'completed' is no longer required. This prevents re-firing
+    // when status was set via transition but this column was also stamped.
     expect(workshopRouterModule?.workshopRouter).toBeDefined()
     await rebuildDbMock(
       upcomingWorkshop({ status: 'completed', completionPipelineSentAt: new Date() }),
+      [],
+    )
+
+    const caller = workshopRouterModule.workshopRouter.createCaller(makeCtx())
+    const result = await caller.endWorkshop({ workshopId: WORKSHOP_ID })
+
+    expect(result).toEqual({ alreadyCompleted: true, registrantsNotified: 0 })
+    expect(mocks.sendWorkshopCompleted).not.toHaveBeenCalled()
+    expect(mocks.sendWorkshopFeedbackInvitesBatch).not.toHaveBeenCalled()
+  })
+
+  it('is a no-op when completionPipelineSentAt is set even if status is not completed', async () => {
+    // I1: the column alone is the gate — a transient status discrepancy
+    // (e.g. DB write of status failed after column was stamped) must not
+    // cause a re-fire of the fan-out pipeline.
+    expect(workshopRouterModule?.workshopRouter).toBeDefined()
+    await rebuildDbMock(
+      upcomingWorkshop({ status: 'upcoming', completionPipelineSentAt: new Date() }),
       [],
     )
 
@@ -309,7 +330,10 @@ describe('workshop.endWorkshop', () => {
     expect(mocks.sendWorkshopFeedbackInvitesBatch).toHaveBeenCalledWith([])
   })
 
-  it('re-runs completion pipeline when status is completed but completionPipelineSentAt is null', async () => {
+  it('runs completion pipeline when status is completed but completionPipelineSentAt is null', async () => {
+    // I1/C3: completionPipelineSentAt=null means the fan-out was never fired
+    // (e.g. transition path stamped status but the column write failed).
+    // endWorkshop must proceed and fire the pipeline in this case.
     expect(workshopRouterModule?.workshopRouter).toBeDefined()
     await rebuildDbMock(
       upcomingWorkshop({ status: 'completed', completionPipelineSentAt: null }),

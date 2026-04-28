@@ -452,7 +452,13 @@ export const workshopRouter = router({
 
       // Switching meeting mode mid-workshop is not supported — registrants
       // would get conflicting calendar invites. Force admin to delete + recreate.
-      if (input.meetingMode && input.meetingMode !== existing.meetingProvisionedBy) {
+      // A1: normalize DB value ('google_meet' | 'manual') to the input enum
+      // ('auto_meet' | 'manual') before comparing — they share the same
+      // 'manual' literal but differ on the auto-Meet arm, so a raw comparison
+      // would always see 'auto_meet' !== 'google_meet' and block every no-op save.
+      const existingMode: 'auto_meet' | 'manual' =
+        existing.meetingProvisionedBy === 'google_meet' ? 'auto_meet' : 'manual'
+      if (input.meetingMode && input.meetingMode !== existingMode) {
         const [registeredRow] = await db
           .select({ n: count() })
           .from(workshopRegistrations)
@@ -957,6 +963,7 @@ export const workshopRouter = router({
           id: workshops.id,
           status: workshops.status,
           createdBy: workshops.createdBy,
+          completionPipelineSentAt: workshops.completionPipelineSentAt,
         })
         .from(workshops)
         .where(eq(workshops.id, input.workshopId))
@@ -1021,6 +1028,35 @@ export const workshopRouter = router({
               isNull(workshops.completionPipelineSentAt),
             ),
           )
+
+        // I1: also fire the feedback-invite batch when transitioning to
+        // 'completed' — mirror what endWorkshop does. Guard on the column
+        // being null BEFORE the stamp above so idempotent re-runs (e.g.
+        // admin clicks "Mark Completed" twice) don't double-send.
+        if (!existing.completionPipelineSentAt) {
+          const registrants = await db
+            .select({
+              email: workshopRegistrations.email,
+              name: workshopRegistrations.name,
+              userId: workshopRegistrations.userId,
+            })
+            .from(workshopRegistrations)
+            .where(
+              and(
+                eq(workshopRegistrations.workshopId, input.workshopId),
+                ne(workshopRegistrations.status, 'cancelled'),
+              ),
+            )
+
+          await sendWorkshopFeedbackInvitesBatch(
+            registrants.map((r) => ({
+              workshopId: input.workshopId,
+              email: r.email,
+              name: r.name ?? '',
+              attendeeUserId: r.userId ?? null,
+            })),
+          )
+        }
       }
 
       return { success: true, fromStatus: existing.status, toStatus: input.toStatus }
@@ -1044,8 +1080,11 @@ export const workshopRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Workshop not found' })
       }
 
-      // Idempotent re-run: already completed AND pipeline already fired.
-      if (existing.status === 'completed' && existing.completionPipelineSentAt != null) {
+      // Idempotent re-run: pipeline already fired — gate purely on the column,
+      // not on status. If status flipped via `transition` but this column is
+      // set, the fan-out already happened and we must not re-fire it.
+      // I1/C3: column is the single source of truth for "fan-out fired".
+      if (existing.completionPipelineSentAt != null) {
         return { alreadyCompleted: true, registrantsNotified: 0 }
       }
 

@@ -25,7 +25,7 @@
  *   registeredCount   -> COUNT(workshop_registrations WHERE status != 'cancelled')
  */
 import { unstable_cache } from 'next/cache'
-import { and, eq, ne, isNotNull, count } from 'drizzle-orm'
+import { and, eq, ne, or, isNotNull, count } from 'drizzle-orm'
 import { db } from '@/src/db'
 import {
   workshops,
@@ -345,22 +345,32 @@ export async function getPublicWorkshopById(
 }
 
 /**
- * Check whether a given internal user id has an active (non-cancelled)
- * registration for the workshop. Used server-side to gate meeting URL display.
- * Not cached — called per-request after auth() resolves.
+ * Check whether a given internal user id (or email hash) has an active
+ * (non-cancelled) registration for the workshop. Used server-side to gate
+ * meeting URL display. Not cached — called per-request after auth() resolves.
+ *
+ * C5: accept an optional viewerEmailHash so registrations made before the
+ * user row existed in our DB (userId=null) still resolve correctly. Either
+ * condition matching is sufficient — OR semantics.
  */
 export async function isViewerRegistered(
   workshopId: string,
   viewerUserId: string | undefined,
+  viewerEmailHash?: string,
 ): Promise<boolean> {
-  if (!viewerUserId) return false
+  if (!viewerUserId && !viewerEmailHash) return false
+  const idMatch = viewerUserId ? eq(workshopRegistrations.userId, viewerUserId) : undefined
+  const emailMatch = viewerEmailHash ? eq(workshopRegistrations.emailHash, viewerEmailHash) : undefined
+  const identityClause = idMatch && emailMatch
+    ? or(idMatch, emailMatch)
+    : (idMatch ?? emailMatch)
   const [row] = await db
     .select({ id: workshopRegistrations.id })
     .from(workshopRegistrations)
     .where(
       and(
         eq(workshopRegistrations.workshopId, workshopId),
-        eq(workshopRegistrations.userId, viewerUserId),
+        identityClause,
         ne(workshopRegistrations.status, 'cancelled'),
       ),
     )
