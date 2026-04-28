@@ -1,19 +1,29 @@
 import { NonRetriableError } from 'inngest'
 import { clerkClient } from '@clerk/nextjs/server'
 import { isClerkAPIResponseError } from '@clerk/shared/error'
+import { eq } from 'drizzle-orm'
 import { inngest } from '../client'
+import { db } from '@/src/db'
+import { users } from '@/src/db/schema/users'
 
 /**
  * workshopRegistrationReceivedFn - Clerk invitation for workshop registrants.
  *
- * Triggered by `workshop.registration.received` events emitted by:
- *   - app/api/webhooks/cal/route.ts (Plan 20-03) on BOOKING_CREATED and
- *     MEETING_ENDED walk-in synthesis paths.
- *   - app/api/intake/workshop-register/route.ts for direct registrations.
+ * Triggered by `workshop.registration.received` events emitted by
+ * `app/api/intake/workshop-register/route.ts` (post-pivot 2026-04-28). Walk-in
+ * additions via `workshop.addWalkIn` do NOT fire this event — admins enter
+ * walk-ins after-the-fact and don't need a platform invite chain.
  *
- * Only sends the Clerk invitation. The cal.com calendar invite covers the
- * booking confirmation - we deliberately do NOT send a separate Resend
- * confirmation email to avoid the multi-email confusion the user reported.
+ * Existing-user guard: if the registrant already has a row in our `users`
+ * table (either created via Clerk webhook or seeded manually), skip the
+ * Clerk invite entirely. They already have platform access. Without this
+ * guard, every workshop registration spams returning users with a "join
+ * PolicyDash" invitation email, which is exactly the duplication this fn
+ * was meant to avoid.
+ *
+ * Only sends the Clerk invitation when the email is genuinely new to the
+ * platform. The Google Calendar invite covers booking confirmation — we
+ * deliberately do NOT send a separate Resend confirmation email.
  *
  * Error policy:
  *   - Clerk 5xx → plain Error → Inngest retries (up to `retries: 3`).
@@ -49,7 +59,25 @@ export const workshopRegistrationReceivedFn = inngest.createFunction(
       emailHash: string
       name: string
       bookingUid: string
-      source: 'cal_booking' | 'walk_in' | 'direct_register'
+      source: 'walk_in' | 'direct_register'
+    }
+
+    const emailNorm = email.toLowerCase().trim()
+
+    // Skip the invite if this email is already a platform user. Without this
+    // guard, returning users get a "join PolicyDash" invitation every time
+    // they register for a workshop.
+    const userAlreadyOnPlatform = await step.run('check-platform-user', async () => {
+      const [existing] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, emailNorm))
+        .limit(1)
+      return !!existing
+    })
+
+    if (userAlreadyOnPlatform) {
+      return { email, workshopId, ok: true, skipped: 'already-on-platform' as const }
     }
 
     await step.run('create-clerk-invitation', async () => {
