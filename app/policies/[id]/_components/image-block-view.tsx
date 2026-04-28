@@ -181,11 +181,16 @@ export function ImageBlockView({ node, updateAttributes }: NodeViewProps) {
 
       {uploadState === 'uploaded' && src && (
         <div className="flex flex-col items-center">
+          {/* Cap inline images at ~2/3 of the editor's 768px content
+              column so they read as supporting illustrations rather than
+              full-width hero blocks. The img is centered by the parent
+              flex column; smaller images render at their natural size
+              up to this cap. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
             alt={alt || ''}
-            className="max-w-full rounded-md border border-border"
+            className="h-auto max-w-full rounded-md border border-border sm:max-w-lg"
           />
           {!alt && (
             <span className="mt-1 flex items-center gap-1 text-xs text-amber-600">

@@ -337,6 +337,22 @@
   margin: 8px 0;
 }
 
+/* Cap inline images at ~2/3 of the editor's content column so they read
+   as supporting illustrations rather than full-width hero blocks. The
+   ImageBlockView NodeView (image-block-view.tsx) sets the same cap on
+   the editing surface; this rule covers the read-only view (which uses
+   tiptap's default Image render: a bare <img>) and any markdown-style
+   surface that picks up `.prose-policy`. 32rem ≈ 512px. */
+.ProseMirror img,
+.prose-policy img {
+  max-width: min(100%, 32rem);
+  height: auto;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 6px;
+}
+
 .ProseMirror th {
   background: var(--muted);
   font-size: 12px;
