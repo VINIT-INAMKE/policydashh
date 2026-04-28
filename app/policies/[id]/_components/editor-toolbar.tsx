@@ -5,6 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   newPendingUploadId,
   registerPendingImageUpload,
 } from './pending-image-uploads'
@@ -26,6 +32,7 @@ import {
   Table2,
   ImageIcon,
   ChevronDown,
+  Check,
   Type,
   Heading1,
   Heading2,
@@ -159,33 +166,47 @@ export function EditorToolbar({ editor, onLinkClick }: EditorToolbarProps) {
           --muted (#ebeef0) is only one hex digit off the body (#f7fafc)
           — the toolbar appeared to vanish post-theme-refactor. */}
       <div className="sticky top-0 z-20 flex h-10 items-center gap-0.5 border-b border-border bg-card px-2 shadow-sm backdrop-blur">
-        {/* Block type dropdown */}
-        <div className="relative">
-          <Tooltip>
-            <TooltipTrigger
-              render={(props) => (
-                <Button
-                  {...props}
-                  variant="outline"
-                  size="sm"
-                  className="w-[120px] justify-between text-xs"
-                  disabled={isDisabled}
-                  onClick={() => {
-                    // Cycle through block types
-                    if (!editor) return
-                    const idx = blockTypes.findIndex((bt) => bt.name === currentBlockName)
-                    const next = blockTypes[(idx + 1) % blockTypes.length]
-                    setBlockType(next)
-                  }}
+        {/* Block-type dropdown — opens a real menu so users can pick the
+            target block type. The previous version cycled through types
+            on each click, which was unusable past three options. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={(props) => (
+              <Button
+                {...props}
+                variant="outline"
+                size="sm"
+                className="w-[120px] justify-between text-xs"
+                disabled={isDisabled}
+                aria-label={`Block type: ${currentBlockName}`}
+              >
+                {currentBlockName}
+                <ChevronDown className="size-3" aria-hidden="true" />
+              </Button>
+            )}
+          />
+          <DropdownMenuContent align="start" className="w-[180px]">
+            {blockTypes.map((bt) => {
+              const ItemIcon = bt.icon
+              const isCurrent = bt.name === currentBlockName
+              return (
+                <DropdownMenuItem
+                  key={bt.name}
+                  onClick={() => setBlockType(bt)}
+                  className="flex items-center justify-between gap-2"
                 >
-                  {currentBlockName}
-                  <ChevronDown className="size-3" />
-                </Button>
-              )}
-            />
-            <TooltipContent>Block type</TooltipContent>
-          </Tooltip>
-        </div>
+                  <span className="flex items-center gap-2">
+                    <ItemIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>{bt.name}</span>
+                  </span>
+                  {isCurrent && (
+                    <Check className="size-3.5 text-foreground" aria-hidden="true" />
+                  )}
+                </DropdownMenuItem>
+              )
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Separator orientation="vertical" className="mx-1 h-4" />
 
