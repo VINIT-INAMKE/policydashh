@@ -6,9 +6,11 @@ import { feedbackReviewedEvent } from '../events'
 import { buildFeedbackReviewedCopy } from '../lib/feedback-reviewed-copy'
 import { buildAutoDraftCRContent } from '../lib/auto-draft-cr-content'
 import { createDraftCRFromFeedback } from '../lib/create-draft-cr'
+import { and } from 'drizzle-orm'
 import { db } from '@/src/db'
 import { feedbackItems } from '@/src/db/schema/feedback'
 import { policySections } from '@/src/db/schema/documents'
+import { documentVersions } from '@/src/db/schema/changeRequests'
 import { users } from '@/src/db/schema/users'
 import { notifications } from '@/src/db/schema/notifications'
 import { sendFeedbackReviewedEmail } from '@/src/lib/email'
@@ -126,32 +128,64 @@ export const feedbackReviewedFn = inngest.createFunction(
       })
     }
 
-    // Step 6: auto-draft a CR for accept / partially_accept.
+    // Step 6: auto-draft a CR for accept / partially_accept — but ONLY
+    // when the document already has at least one published version.
+    //
+    // 2026-04-28 (Option A): pre-publish, the policy lead is editing the
+    // live working copy directly, so an auto-drafted CR is junk that
+    // clutters the change-request list. CRs are useful as formal change
+    // records once a published baseline exists; before that, the lead
+    // simply opens the section editor and fixes the paragraph. The user
+    // can still create CRs manually if they want to formalize a change.
     if (decision === 'accept' || decision === 'partially_accept') {
-      const draftCr = await step.run('auto-draft-change-request', async () => {
-        const content = buildAutoDraftCRContent({
-          feedback: {
-            readableId: feedback.readableId,
-            title: feedback.title,
-            body: feedback.body,
-          },
-          decision,
-          rationale,
+      const hasPublished = await step.run(
+        'check-has-published-version',
+        async () => {
+          const [row] = await db
+            .select({ id: documentVersions.id })
+            .from(documentVersions)
+            .where(and(
+              eq(documentVersions.documentId, feedback.documentId),
+              eq(documentVersions.isPublished, true),
+            ))
+            .limit(1)
+          return !!row
+        },
+      )
+
+      if (hasPublished) {
+        const draftCr = await step.run('auto-draft-change-request', async () => {
+          const content = buildAutoDraftCRContent({
+            feedback: {
+              readableId: feedback.readableId,
+              title: feedback.title,
+              body: feedback.body,
+            },
+            decision,
+            rationale,
+          })
+          return await createDraftCRFromFeedback({
+            documentId: feedback.documentId,
+            sectionId: feedback.sectionId,
+            feedbackId: feedback.id,
+            ownerId: reviewedByUserId,
+            title: content.title,
+            description: content.description,
+          })
         })
-        return await createDraftCRFromFeedback({
-          documentId: feedback.documentId,
-          sectionId: feedback.sectionId,
+
+        return {
           feedbackId: feedback.id,
-          ownerId: reviewedByUserId,
-          title: content.title,
-          description: content.description,
-        })
-      })
+          decision,
+          autoDraftedCR: draftCr,
+        }
+      }
 
       return {
         feedbackId: feedback.id,
         decision,
-        autoDraftedCR: draftCr,
+        autoDraftedCR: null,
+        skippedAutoDraftReason: 'no-published-version' as const,
       }
     }
 

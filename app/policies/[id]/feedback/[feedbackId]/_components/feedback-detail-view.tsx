@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -114,8 +114,20 @@ export function FeedbackDetailView({ documentId, feedbackId }: FeedbackDetailVie
   const canTriage = role === 'admin' || role === 'policy_lead'
   // evidence:upload - admin, policy_lead, research_lead, workshop_moderator, stakeholder
   const canAddEvidence = role === 'admin' || role === 'policy_lead' || role === 'research_lead' || role === 'workshop_moderator' || role === 'stakeholder'
+  // section:manage - admin, policy_lead. Same set as canTriage today, but
+  // checked separately because the editor is gated on `section:manage`,
+  // not `feedback:review`.
+  const canEditSection = role === 'admin' || role === 'policy_lead'
 
   const backHref = `/policies/${documentId}/feedback`
+  // Deep-link to the section editor pre-loaded with the feedback id so
+  // the editor can render a contextual banner ("Editing in response to
+  // FB-014") and the lead's edit lands tied to the originating feedback
+  // for auditability.
+  const editSectionHref =
+    feedbackQuery.data?.sectionId
+      ? `/policies/${documentId}?section=${feedbackQuery.data.sectionId}&fromFeedback=${feedbackId}`
+      : null
 
   return (
     <div className="min-h-screen bg-background">
@@ -226,6 +238,26 @@ export function FeedbackDetailView({ documentId, feedbackId }: FeedbackDetailVie
                   status={feedback.status as FeedbackStatus}
                   onStatusChange={handleStatusChange}
                 />
+                {/* Edit-in-response shortcut. Visible to anyone with
+                    section:manage so they can jump straight from the
+                    feedback into the editor with the originating
+                    feedback id carried in the URL. */}
+                {canEditSection && editSectionHref && (
+                  <div className="mt-6 flex items-center justify-between rounded-md border border-border bg-muted/40 px-4 py-3">
+                    <div className="text-sm">
+                      <p className="font-medium">Address this feedback in the editor</p>
+                      <p className="text-xs text-muted-foreground">
+                        Opens the section editor with this feedback&apos;s context.
+                      </p>
+                    </div>
+                    <Link href={editSectionHref}>
+                      <Button size="sm">
+                        <Pencil className="mr-1 size-3.5" aria-hidden="true" />
+                        Edit section
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
           </div>

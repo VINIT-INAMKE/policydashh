@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -33,14 +33,33 @@ interface SectionContentViewProps {
   section: Section
   canEdit: boolean
   documentId: string
+  /**
+   * When true, automatically open the editor on mount / on section
+   * change. Set by the parent when ?fromFeedback= is present so the
+   * lead lands directly in edit mode for the section the feedback
+   * is about.
+   */
+  autoEnterEditMode?: boolean
 }
 
 export function SectionContentView({
   section,
   canEdit,
   documentId,
+  autoEnterEditMode,
 }: SectionContentViewProps) {
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(canEdit && !!autoEnterEditMode)
+  // Auto-edit fires only on the FIRST section we mount with the prop —
+  // subsequent sidebar clicks are treated as exploration, not addressing
+  // feedback. Once the user clicks "Done editing" or selects a different
+  // section, we don't keep forcing the editor open.
+  const autoEnteredRef = useRef(canEdit && !!autoEnterEditMode)
+  useEffect(() => {
+    if (canEdit && autoEnterEditMode && !autoEnteredRef.current) {
+      autoEnteredRef.current = true
+      setIsEditing(true)
+    }
+  }, [canEdit, autoEnterEditMode])
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [isFlushing, setIsFlushing] = useState(false)
   // A10: ref the parent uses to tell BlockEditor to flush its pending

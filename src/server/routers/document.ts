@@ -12,19 +12,17 @@ import { ACTIONS } from '@/src/lib/constants'
 import { can } from '@/src/lib/permissions'
 import { TRPCError } from '@trpc/server'
 
-// B4: helper used by mutation procs that modify section content or structure.
-// Returns true when ANY version of the document is already published — edits
-// must then go through a CR + new version, not direct mutation.
-async function hasPublishedVersion(documentId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ n: count() })
-    .from(documentVersions)
-    .where(and(
-      eq(documentVersions.documentId, documentId),
-      eq(documentVersions.isPublished, true),
-    ))
-  return Number(row?.n ?? 0) > 0
-}
+// 2026-04-28 (Option A relaxation): the previous design gated EVERY
+// section mutation to FORBIDDEN once any version was published, which
+// created an impossibility loop — published policies could not be edited
+// at all because CRs had no working copy to stage proposed content. We
+// now treat `policy_sections` as the always-editable working copy
+// ("main branch") and treat published `documentVersions` rows as
+// immutable release tags. Non-editor reads in `getSections` resolve
+// from the latest published snapshot so post-publish in-progress edits
+// never leak to stakeholders / auditors before the next publish. The
+// auto-CR drafter in `src/inngest/functions/feedback-reviewed.ts` runs
+// its own published-version check; no shared helper needed here.
 
 // D23: naive in-memory throttle for section-content edit audit entries.
 // Autosave fires every ~1.5s while editing, so we emit at most one
@@ -163,36 +161,178 @@ export const documentRouter = router({
       return doc
     }),
 
-  // Get all sections for a document, ordered by orderIndex. Non-privileged
-  // roles only see sections they are assigned to via sectionAssignments;
-  // the inArray subquery narrows the result set without changing the row
-  // shape (in contrast to an innerJoin, which would return a joined row).
+  // Get all sections for a document.
+  //
+  // Read-source by role (Option A, 2026-04-28):
+  //   - `section:manage` (admin / policy_lead): live `policy_sections` —
+  //     the working copy with any in-flight unpublished edits. This is
+  //     what they edit and what the diff/draft indicator compares against
+  //     the latest published snapshot.
+  //   - everyone else (auditor / stakeholder / research_lead / etc.):
+  //     latest published `documentVersions.sectionsSnapshot`. This means
+  //     non-editor reads NEVER see in-progress post-publish edits — they
+  //     stay on the most recently published snapshot until a new version
+  //     is cut.
+  //
+  // Section-assignment scoping (sectionAssignments) still applies to
+  // non-`document:read_all` roles in either branch.
   getSections: requirePermission('document:read')
     .input(z.object({ documentId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
+      const canEdit = can(ctx.user.role, 'section:manage')
       const canReadAll = can(ctx.user.role, 'document:read_all')
 
-      const baseWhere = eq(policySections.documentId, input.documentId)
-      const whereClause = canReadAll
-        ? baseWhere
-        : and(
-            baseWhere,
-            inArray(
-              policySections.id,
-              db
-                .select({ id: sectionAssignments.sectionId })
-                .from(sectionAssignments)
-                .where(eq(sectionAssignments.userId, ctx.user.id)),
-            ),
-          )
+      // Edit role -> live working copy.
+      if (canEdit) {
+        const baseWhere = eq(policySections.documentId, input.documentId)
+        const whereClause = canReadAll
+          ? baseWhere
+          : and(
+              baseWhere,
+              inArray(
+                policySections.id,
+                db
+                  .select({ id: sectionAssignments.sectionId })
+                  .from(sectionAssignments)
+                  .where(eq(sectionAssignments.userId, ctx.user.id)),
+              ),
+            )
 
-      const sections = await db
-        .select()
+        const sections = await db
+          .select()
+          .from(policySections)
+          .where(whereClause)
+          .orderBy(asc(policySections.orderIndex))
+
+        return sections
+      }
+
+      // Non-edit role -> read from the latest published snapshot. No
+      // published version means no readable content for this audience —
+      // mirrors the `getById` behavior, which already returns NOT_FOUND
+      // for non-`document:read_all` callers when nothing is published.
+      const [latestPublished] = await db
+        .select({
+          id: documentVersions.id,
+          sectionsSnapshot: documentVersions.sectionsSnapshot,
+        })
+        .from(documentVersions)
+        .where(and(
+          eq(documentVersions.documentId, input.documentId),
+          eq(documentVersions.isPublished, true),
+        ))
+        .orderBy(desc(documentVersions.publishedAt))
+        .limit(1)
+
+      if (!latestPublished) return []
+
+      // Snapshot shape: { sectionId, title, orderIndex, content }[]
+      // (see src/server/services/version.service.ts:snapshotSections)
+      const snapshotSections = (latestPublished.sectionsSnapshot ?? []) as Array<{
+        sectionId: string
+        title: string
+        orderIndex: number
+        content: Record<string, unknown>
+      }>
+
+      // Optional section-assignment scoping for callers without
+      // `document:read_all`. We resolve the allowed sectionIds once and
+      // filter the snapshot in memory; the row count per document is
+      // small (low double digits in practice) so the in-memory filter is
+      // cheaper than a SQL roundtrip per read.
+      let allowedSectionIds: Set<string> | null = null
+      if (!canReadAll) {
+        const assignments = await db
+          .select({ id: sectionAssignments.sectionId })
+          .from(sectionAssignments)
+          .where(eq(sectionAssignments.userId, ctx.user.id))
+        allowedSectionIds = new Set(assignments.map((a) => a.id))
+      }
+
+      // Project snapshot shape onto the same row schema the live branch
+      // returns so the client doesn't have to special-case. The fields
+      // not present in the snapshot (createdAt, updatedAt) get sensible
+      // surrogates — readers don't act on those for snapshotted content.
+      const snapshotAsRows = snapshotSections
+        .filter(
+          (s) =>
+            allowedSectionIds === null || allowedSectionIds.has(s.sectionId),
+        )
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((s) => ({
+          id: s.sectionId,
+          documentId: input.documentId,
+          title: s.title,
+          orderIndex: s.orderIndex,
+          content: s.content,
+          createdAt: new Date(0),
+          updatedAt: new Date(0),
+        }))
+
+      return snapshotAsRows
+    }),
+
+  // Returns whether this document has unpublished edits relative to its
+  // latest published version, plus a pointer to that version. Used by the
+  // policy detail header to show a "X unpublished edits since v0.4" hint
+  // for editors. Pre-publish documents return `hasUnpublishedChanges: true`
+  // (everything in the working copy is still pending) with `latestPublished`
+  // null.
+  //
+  // Cheap to compute: one indexed read of the latest publish + one max
+  // updatedAt scan over `policy_sections`. Skips the diff math; the UI
+  // just needs the boolean + label.
+  getDraftStatus: requirePermission('document:read')
+    .input(z.object({ documentId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const [latestPublished] = await db
+        .select({
+          id: documentVersions.id,
+          versionLabel: documentVersions.versionLabel,
+          publishedAt: documentVersions.publishedAt,
+        })
+        .from(documentVersions)
+        .where(and(
+          eq(documentVersions.documentId, input.documentId),
+          eq(documentVersions.isPublished, true),
+        ))
+        .orderBy(desc(documentVersions.publishedAt))
+        .limit(1)
+
+      if (!latestPublished) {
+        // Nothing published yet — every section in the working copy is
+        // an unpublished change by definition.
+        return {
+          hasUnpublishedChanges: true,
+          latestPublished: null,
+        } as const
+      }
+
+      // Did any live section get touched after the most recent publish?
+      // We compare the max(policy_sections.updated_at) for this doc to
+      // the publishedAt timestamp; structural changes (create/delete/
+      // reorder) all bump section updatedAt so this catches them too.
+      const [maxRow] = await db
+        .select({
+          maxUpdated: sql<Date>`max(${policySections.updatedAt})`,
+        })
         .from(policySections)
-        .where(whereClause)
-        .orderBy(asc(policySections.orderIndex))
+        .where(eq(policySections.documentId, input.documentId))
 
-      return sections
+      const lastEdit = maxRow?.maxUpdated
+      const hasUnpublishedChanges =
+        lastEdit !== null &&
+        lastEdit !== undefined &&
+        new Date(lastEdit).getTime() > new Date(latestPublished.publishedAt!).getTime()
+
+      return {
+        hasUnpublishedChanges,
+        latestPublished: {
+          id: latestPublished.id,
+          versionLabel: latestPublished.versionLabel,
+          publishedAt: latestPublished.publishedAt,
+        },
+      } as const
     }),
 
   // Create a new policy document
@@ -369,21 +509,19 @@ export const documentRouter = router({
       return { success: true }
     }),
 
-  // Create a new section within a document. B4: blocked once any version is
-  // published — structural changes must go through a change request.
+  // Create a new section within a document.
+  //
+  // Option A (2026-04-28): post-publish lock removed. `policy_sections` is
+  // the always-editable working copy; published `documentVersions` rows are
+  // immutable snapshots. Non-editor reads in `getSections` resolve from the
+  // latest published snapshot, so a new section added here is invisible to
+  // stakeholders until the next publish.
   createSection: requirePermission('section:manage')
     .input(z.object({
       documentId: z.string().uuid(),
       title: z.string().min(1).max(200),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (await hasPublishedVersion(input.documentId)) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'This policy has a published version; add new sections through a change request.',
-        })
-      }
-
       // Get the max orderIndex for this document
       const [maxResult] = await db
         .select({ maxOrder: sql<number>`coalesce(max(${policySections.orderIndex}), -1)` })
@@ -420,7 +558,9 @@ export const documentRouter = router({
       return section
     }),
 
-  // Rename a section. B4: blocked once any version is published.
+  // Rename a section. Always allowed for `section:manage`; the latest
+  // published snapshot continues to surface the previous title to readers
+  // until a new version is published.
   renameSection: requirePermission('section:manage')
     .input(z.object({
       id: z.string().uuid(),
@@ -428,13 +568,6 @@ export const documentRouter = router({
       title: z.string().min(1).max(200),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (await hasPublishedVersion(input.documentId)) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'This policy has a published version; rename the section through a change request.',
-        })
-      }
-
       const [updated] = await db
         .update(policySections)
         .set({ title: input.title, updatedAt: new Date() })
@@ -468,11 +601,16 @@ export const documentRouter = router({
 
   // Update section content (Tiptap JSON).
   //
-  // B4: blocked once any version is published — content edits must go through
-  // a CR. D23: record a coarse audit trail (one entry per section per 60s
-  // window) so we have visibility into who edited what, without flooding the
-  // audit table on every autosave. Precise per-save content lives in the
-  // version snapshots.
+  // Option A (2026-04-28): post-publish lock removed. Content edits land in
+  // the live `policy_sections.content` (the working copy). Non-editor reads
+  // resolve from the latest published snapshot until a new version is
+  // published, so a typo fix here is invisible to stakeholders until the
+  // next publish.
+  //
+  // D23: record a coarse audit trail (one entry per section per 60s window)
+  // so we have visibility into who edited what, without flooding the audit
+  // table on every autosave. Precise per-save content lives in the version
+  // snapshots.
   updateSectionContent: requirePermission('section:manage')
     .input(z.object({
       id: z.string().uuid(),
@@ -480,13 +618,6 @@ export const documentRouter = router({
       content: z.record(z.string(), z.unknown()),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (await hasPublishedVersion(input.documentId)) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'This policy has a published version; edit this section through a change request.',
-        })
-      }
-
       const [updated] = await db
         .update(policySections)
         .set({ content: input.content, updatedAt: new Date() })
@@ -514,20 +645,15 @@ export const documentRouter = router({
       return updated
     }),
 
-  // Delete a section. B4: blocked once any version is published.
+  // Delete a section. Removes the live row only — published snapshots that
+  // still reference this sectionId remain intact (they store content
+  // inline) so historical versions continue to render correctly.
   deleteSection: requirePermission('section:manage')
     .input(z.object({
       id: z.string().uuid(),
       documentId: z.string().uuid(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (await hasPublishedVersion(input.documentId)) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'This policy has a published version; remove the section through a change request.',
-        })
-      }
-
       const [deleted] = await db
         .delete(policySections)
         .where(and(
@@ -558,24 +684,17 @@ export const documentRouter = router({
       return { success: true }
     }),
 
-  // Reorder sections within a document. B4 / A3: blocked once any version
-  // is published — reordering rewrites the canonical section order, which
-  // would break the immutability contract of published snapshots. If a
-  // lead wants to reorder after publish they have to raise a change
-  // request just like for rename / content edits.
+  // Reorder sections within a document. The reorder rewrites the live
+  // ordering only; published snapshots retain their own frozen ordering
+  // (snapshotSections captures orderIndex per section), so historical
+  // versions render in their original order regardless of subsequent
+  // reorders to the live working copy.
   reorderSections: requirePermission('section:manage')
     .input(z.object({
       documentId: z.string().uuid(),
       orderedSectionIds: z.array(z.string().uuid()),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (await hasPublishedVersion(input.documentId)) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'This policy has a published version; reorder sections through a change request.',
-        })
-      }
-
       // KNOWN LIMITATION: Sequential updates without a transaction.
       // The Neon HTTP driver does not support db.transaction(), so concurrent
       // reorder requests could interleave and produce inconsistent orderIndex values.
