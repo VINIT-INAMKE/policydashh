@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { FeedbackCard, type FeedbackItem } from './feedback-card'
 import { FilterPanel, EMPTY_FILTERS, type FilterState } from './filter-panel'
-import { FeedbackDetailSheet } from './feedback-detail-sheet'
 
 interface FeedbackInboxProps {
   documentId: string
@@ -66,16 +65,13 @@ export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // Initial state is read from the URL so refresh preserves filters
-  // (R11) and the preselected item (?selected=, R25).
-  const initialSelected = searchParams.get('selected')
+  // Initial state is read from the URL so refresh preserves filters (R11).
   const initialFilters = useMemo(
     () => parseFiltersFromParams(new URLSearchParams(searchParams.toString())),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
   const [filters, setFiltersState] = useState<FilterState>(initialFilters)
-  const [selectedFeedbackId, setSelectedFeedbackIdState] = useState<string | null>(initialSelected)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   // R11: sync filter state into the URL via router.replace so the URL
@@ -85,17 +81,6 @@ export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
     const base = new URLSearchParams(searchParams.toString())
     const merged = serializeFilters(next, base)
     const qs = merged.toString()
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-  }, [router, pathname, searchParams])
-
-  // R25: writing `?selected=` on card click lets a reviewer share a
-  // specific item, not just the filter view. Passing null clears the
-  // param instead of leaving a stale id behind.
-  const setSelectedFeedbackId = useCallback((nextId: string | null) => {
-    setSelectedFeedbackIdState(nextId)
-    const next = new URLSearchParams(searchParams.toString())
-    if (nextId) next.set('selected', nextId); else next.delete('selected')
-    const qs = next.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }, [router, pathname, searchParams])
 
@@ -230,23 +215,12 @@ export function FeedbackInbox({ documentId }: FeedbackInboxProps) {
               <FeedbackCard
                 key={item.id}
                 feedback={item as FeedbackItem}
-                onClick={() => setSelectedFeedbackId(item.id)}
-                isActive={selectedFeedbackId === item.id}
+                onClick={() => router.push(`/policies/${documentId}/feedback/${item.id}`)}
               />
             ))
           )}
         </div>
       </div>
-
-      {/* Feedback detail sheet. R7: pass documentId so the tRPC lookup is
-          scoped to this policy -- a crafted ?selected=<id from another
-          policy> returns NOT_FOUND instead of cross-leaking the row. */}
-      <FeedbackDetailSheet
-        feedbackId={selectedFeedbackId}
-        documentId={documentId}
-        open={!!selectedFeedbackId}
-        onOpenChange={(o) => { if (!o) setSelectedFeedbackId(null) }}
-      />
 
       {/* Mobile filter sheet */}
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>

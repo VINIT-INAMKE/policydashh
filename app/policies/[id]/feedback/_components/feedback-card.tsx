@@ -29,7 +29,6 @@ export interface FeedbackItem {
 interface FeedbackCardProps {
   feedback: FeedbackItem
   onClick: () => void
-  isActive: boolean
 }
 
 const priorityStyles: Record<string, string> = {
@@ -42,16 +41,13 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ')
 }
 
-export function FeedbackCard({ feedback, onClick, isActive }: FeedbackCardProps) {
+export function FeedbackCard({ feedback, onClick }: FeedbackCardProps) {
   const date = new Date(feedback.createdAt)
   const timeAgo = formatDistanceToNow(date, { addSuffix: true })
 
   return (
     <Card
-      className={cn(
-        'cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm',
-        isActive && 'border-primary'
-      )}
+      className="cursor-pointer transition-all hover:border-primary/20 hover:shadow-sm"
       onClick={onClick}
     >
       <CardHeader className="gap-2">
