@@ -356,7 +356,7 @@ describe('POST /api/intake/workshop-register (Google Calendar pivot)', () => {
     expect(updateVals.inviteSentAt).toBeInstanceOf(Date)
   })
 
-  it('calls revalidateTag(spotsTag(workshopId), "max") once on success', async () => {
+  it('calls revalidateTag(spotsTag(workshopId), "max") and revalidateTag(workshopDetailTag(workshopId), "max") on success', async () => {
     turnstilePass()
     mocks.dbSelectResults = [
       [baseWorkshop()],
@@ -366,9 +366,13 @@ describe('POST /api/intake/workshop-register (Google Calendar pivot)', () => {
 
     await POST!(makeRequest(validBody))
 
-    expect(mocks.revalidateTag).toHaveBeenCalledOnce()
+    expect(mocks.revalidateTag).toHaveBeenCalledTimes(2)
     expect(mocks.revalidateTag).toHaveBeenCalledWith(
       `workshop-spots-${WORKSHOP_ID}`,
+      'max',
+    )
+    expect(mocks.revalidateTag).toHaveBeenCalledWith(
+      `workshop:${WORKSHOP_ID}`,
       'max',
     )
   })
@@ -414,8 +418,8 @@ describe('POST /api/intake/workshop-register (Google Calendar pivot)', () => {
     expect(body.inviteStatus).toBe('pending_resend')
     // inviteSentAt must NOT be stamped
     expect(mocks.dbUpdateCalls).toHaveLength(0)
-    // revalidateTag and Inngest still fire
-    expect(mocks.revalidateTag).toHaveBeenCalledOnce()
+    // revalidateTag (spots + detail) and Inngest still fire
+    expect(mocks.revalidateTag).toHaveBeenCalledTimes(2)
     expect(mocks.sendWorkshopRegistrationReceived).toHaveBeenCalledOnce()
     warnSpy.mockRestore()
   })

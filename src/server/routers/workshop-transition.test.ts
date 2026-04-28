@@ -73,6 +73,8 @@ vi.mock('@/src/lib/audit', () => ({
   writeAuditLog: mocks.writeAuditLogMock,
 }))
 
+vi.mock('next/cache', () => ({ revalidateTag: vi.fn() }))
+
 let workshopRouterModule: { workshopRouter?: unknown } | null = null
 
 beforeAll(async () => {

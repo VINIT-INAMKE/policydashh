@@ -31,7 +31,19 @@ import {
   workshops,
   workshopRegistrations,
   workshopArtifacts,
+  workshopSectionLinks,
 } from '@/src/db/schema/workshops'
+import { evidenceArtifacts } from '@/src/db/schema/evidence'
+import { policySections, policyDocuments } from '@/src/db/schema/documents'
+
+/**
+ * Tag for per-workshop detail cache. Workshop mutations call
+ * `revalidateTag(workshopDetailTag(id), 'max')` to bust this.
+ * Keep in lockstep with every call site that mutates workshops.
+ */
+export function workshopDetailTag(workshopId: string): string {
+  return `workshop:${workshopId}`
+}
 
 export type PublicWorkshopStatus =
   | 'upcoming'
@@ -156,4 +168,209 @@ export async function listPublicWorkshops(): Promise<PublicWorkshop[]> {
     })
   }
   return results
+}
+
+// ---------------------------------------------------------------------------
+// Public workshop detail (single-workshop permalink)
+// ---------------------------------------------------------------------------
+
+export type PublicWorkshopDetail = {
+  id: string
+  title: string
+  description: string | null
+  scheduledAt: Date
+  durationMinutes: number | null
+  status: 'upcoming' | 'in_progress' | 'completed' | 'archived'
+  timezone: string
+  maxSeats: number | null
+  registrationLink: string | null
+  meetingUrl: string
+  meetingProvisionedBy: 'google_meet' | 'manual'
+  googleCalendarEventId: string
+  registeredCount: number
+  hasApprovedSummary: boolean
+  /** Approved summary artifact text, promoted to top-level, or null if none. */
+  summary: string | null
+  sections: Array<{
+    sectionId: string
+    sectionTitle: string
+    documentId: string
+    documentTitle: string
+  }>
+  artifacts: Array<{
+    id: string
+    title: string
+    artifactType: 'promo' | 'recording' | 'transcript' | 'summary' | 'attendance' | 'other'
+    /** Direct URL from evidenceArtifacts.url — null if missing. */
+    downloadUrl: string | null
+  }>
+}
+
+/**
+ * Fetch a single public-safe workshop detail row. Cached per-workshopId and
+ * tagged with both the spots tag (busted by registration changes) and the
+ * workshop detail tag (busted by any workshop mutation).
+ *
+ * Returns null when the workshop is not found or has no googleCalendarEventId
+ * (not provisioned end-to-end).
+ */
+export async function getPublicWorkshopById(
+  workshopId: string,
+): Promise<PublicWorkshopDetail | null> {
+  // Use a closure-per-workshopId pattern (same as getRegisteredCount) so the
+  // unstable_cache tags array is statically knowable at build time.
+  const cached = unstable_cache(
+    async () => {
+      // 1. Core workshop row
+      const [row] = await db
+        .select({
+          id: workshops.id,
+          title: workshops.title,
+          description: workshops.description,
+          scheduledAt: workshops.scheduledAt,
+          durationMinutes: workshops.durationMinutes,
+          status: workshops.status,
+          timezone: workshops.timezone,
+          maxSeats: workshops.maxSeats,
+          registrationLink: workshops.registrationLink,
+          meetingUrl: workshops.meetingUrl,
+          meetingProvisionedBy: workshops.meetingProvisionedBy,
+          googleCalendarEventId: workshops.googleCalendarEventId,
+        })
+        .from(workshops)
+        .where(
+          and(
+            eq(workshops.id, workshopId),
+            isNotNull(workshops.googleCalendarEventId),
+          ),
+        )
+
+      if (!row) return null
+
+      // 2. Registered count (non-cancelled)
+      const registeredCount = await getRegisteredCount(workshopId)
+
+      // 3. Linked sections -> policyDocuments for nav URL
+      const sectionRows = await db
+        .select({
+          sectionId: workshopSectionLinks.sectionId,
+          sectionTitle: policySections.title,
+          documentId: policySections.documentId,
+          documentTitle: policyDocuments.title,
+        })
+        .from(workshopSectionLinks)
+        .innerJoin(policySections, eq(workshopSectionLinks.sectionId, policySections.id))
+        .innerJoin(policyDocuments, eq(policySections.documentId, policyDocuments.id))
+        .where(eq(workshopSectionLinks.workshopId, workshopId))
+
+      // 4. Approved artifacts only (defense in depth — filter in SQL)
+      const artifactRows = await db
+        .select({
+          id: evidenceArtifacts.id,
+          title: evidenceArtifacts.title,
+          artifactType: workshopArtifacts.artifactType,
+          url: evidenceArtifacts.url,
+        })
+        .from(workshopArtifacts)
+        .innerJoin(evidenceArtifacts, eq(workshopArtifacts.artifactId, evidenceArtifacts.id))
+        .where(
+          and(
+            eq(workshopArtifacts.workshopId, workshopId),
+            eq(workshopArtifacts.reviewStatus, 'approved'),
+            ne(workshopArtifacts.artifactType, 'summary'),
+          ),
+        )
+
+      // 5. Approved summary artifact — find the most recent one by id
+      // (UUIDs are v4 random, so we just take any one; in practice there
+      // should be at most one approved summary per workshop).
+      const [summaryRow] = await db
+        .select({
+          url: evidenceArtifacts.url,
+          content: evidenceArtifacts.content,
+        })
+        .from(workshopArtifacts)
+        .innerJoin(evidenceArtifacts, eq(workshopArtifacts.artifactId, evidenceArtifacts.id))
+        .where(
+          and(
+            eq(workshopArtifacts.workshopId, workshopId),
+            eq(workshopArtifacts.artifactType, 'summary'),
+            eq(workshopArtifacts.reviewStatus, 'approved'),
+          ),
+        )
+        .limit(1)
+
+      // Summary: prefer the text `content` field on the artifact; fall back
+      // to the url string so callers can at least check truthiness.
+      const summary: string | null =
+        summaryRow?.content ?? summaryRow?.url ?? null
+
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        scheduledAt: row.scheduledAt,
+        durationMinutes: row.durationMinutes,
+        status: row.status,
+        timezone: row.timezone,
+        maxSeats: row.maxSeats,
+        registrationLink: row.registrationLink,
+        meetingUrl: row.meetingUrl,
+        meetingProvisionedBy: row.meetingProvisionedBy as 'google_meet' | 'manual',
+        googleCalendarEventId: row.googleCalendarEventId,
+        registeredCount,
+        hasApprovedSummary: !!summary,
+        summary,
+        sections: sectionRows.map((s) => ({
+          sectionId: s.sectionId,
+          sectionTitle: s.sectionTitle,
+          documentId: s.documentId,
+          documentTitle: s.documentTitle,
+        })),
+        artifacts: artifactRows.map((a) => ({
+          id: a.id,
+          title: a.title,
+          artifactType: a.artifactType as PublicWorkshopDetail['artifacts'][number]['artifactType'],
+          downloadUrl: a.url ?? null,
+        })),
+      } satisfies PublicWorkshopDetail
+    },
+    ['public-workshop-detail', workshopId],
+    {
+      revalidate: 60,
+      tags: [spotsTag(workshopId), workshopDetailTag(workshopId)],
+    },
+  )
+  return cached()
+}
+
+/**
+ * Check whether a given internal user id has an active (non-cancelled)
+ * registration for the workshop. Used server-side to gate meeting URL display.
+ * Not cached — called per-request after auth() resolves.
+ */
+export async function isViewerRegistered(
+  workshopId: string,
+  viewerUserId: string | undefined,
+): Promise<boolean> {
+  if (!viewerUserId) return false
+  const [row] = await db
+    .select({ id: workshopRegistrations.id })
+    .from(workshopRegistrations)
+    .where(
+      and(
+        eq(workshopRegistrations.workshopId, workshopId),
+        eq(workshopRegistrations.userId, viewerUserId),
+        ne(workshopRegistrations.status, 'cancelled'),
+      ),
+    )
+    .limit(1)
+  return !!row
+}
+
+// Re-export the tag builder so router files can import from one place without
+// a circular dep. The spots tag is intentionally local to this file and the
+// router — callers should use workshopDetailTag for full-workshop mutations.
+function spotsTag(workshopId: string): string {
+  return `workshop-spots-${workshopId}`
 }

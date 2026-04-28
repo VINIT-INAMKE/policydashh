@@ -15,6 +15,11 @@ function spotsTag(workshopId: string): string {
   return `workshop-spots-${workshopId}`
 }
 
+// Tag must match `workshopDetailTag` in `src/server/queries/workshops-public.ts`.
+function workshopDetailTag(workshopId: string): string {
+  return `workshop:${workshopId}`
+}
+
 // B10: body-size cap on public intake. Anything beyond this is a fat-finger
 // or an abuser; short-circuit with 413 before JSON parse.
 const MAX_BODY_BYTES = 16 * 1024 // 16 KB
@@ -219,8 +224,9 @@ export async function POST(req: Request): Promise<Response> {
     })
   }
 
-  // C1: bust the public spots-left cache.
+  // C1: bust the public spots-left cache and the detail page cache.
   revalidateTag(spotsTag(workshopId), 'max')
+  revalidateTag(workshopDetailTag(workshopId), 'max')
 
   try {
     await sendWorkshopRegistrationReceived({

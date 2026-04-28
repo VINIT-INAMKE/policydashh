@@ -10,6 +10,7 @@
  * query `listPublicWorkshops` gates on `googleCalendarEventId IS NOT NULL`
  * so every card reaching this component is provisioned end-to-end.
  */
+import Link from 'next/link'
 import { Calendar } from 'lucide-react'
 import {
   Card,
@@ -63,7 +64,9 @@ export function WorkshopCard({
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-semibold leading-snug">
-            {workshop.title}
+            <Link href={`/workshops/${workshop.id}`} className="hover:underline">
+              {workshop.title}
+            </Link>
           </CardTitle>
           <CardDescription className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
@@ -93,7 +96,9 @@ export function WorkshopCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-base font-semibold leading-snug">
-          {workshop.title}
+          <Link href={`/workshops/${workshop.id}`} className="hover:underline">
+            {workshop.title}
+          </Link>
         </CardTitle>
         <CardDescription className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">

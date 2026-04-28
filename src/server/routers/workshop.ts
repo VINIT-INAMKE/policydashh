@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { router, requirePermission, publicProcedure } from '@/src/trpc/init'
-import { listPublicWorkshops } from '@/src/server/queries/workshops-public'
+import { listPublicWorkshops, workshopDetailTag } from '@/src/server/queries/workshops-public'
 import { writeAuditLog } from '@/src/lib/audit'
 import { ACTIONS } from '@/src/lib/constants'
 import { db } from '@/src/db'
@@ -561,6 +561,8 @@ export const workshopRouter = router({
       if (input.maxSeats !== undefined) {
         revalidateTag(spotsTag(input.workshopId), 'max')
       }
+      // Also bust the public detail page cache on any workshop update.
+      revalidateTag(workshopDetailTag(input.workshopId), 'max')
 
       // D13: capture the full before/after diff of every mutable field.
       // Evidence-pack reviewers rely on this log to reconstruct the
@@ -775,6 +777,8 @@ export const workshopRouter = router({
           ),
         )
 
+      revalidateTag(workshopDetailTag(input.workshopId), 'max')
+
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
@@ -845,6 +849,8 @@ export const workshopRouter = router({
         .values({ workshopId: input.workshopId, sectionId: input.sectionId })
         .onConflictDoNothing()
 
+      revalidateTag(workshopDetailTag(input.workshopId), 'max')
+
       writeAuditLog({
         actorId: ctx.user.id,
         actorRole: ctx.user.role,
@@ -872,6 +878,8 @@ export const workshopRouter = router({
             eq(workshopSectionLinks.sectionId, input.sectionId),
           ),
         )
+
+      revalidateTag(workshopDetailTag(input.workshopId), 'max')
 
       writeAuditLog({
         actorId: ctx.user.id,
@@ -1097,6 +1105,8 @@ export const workshopRouter = router({
           attendeeUserId: r.userId ?? null,
         })),
       )
+
+      revalidateTag(workshopDetailTag(input.workshopId), 'max')
 
       writeAuditLog({
         actorId:    ctx.user.id,
@@ -1350,6 +1360,7 @@ export const workshopRouter = router({
       }).where(eq(workshopRegistrations.id, input.registrationId))
 
       revalidateTag(spotsTag(input.workshopId), 'max')
+      revalidateTag(workshopDetailTag(input.workshopId), 'max')
 
       writeAuditLog({
         actorId: ctx.user.id,
@@ -1379,6 +1390,8 @@ export const workshopRouter = router({
             eq(workshopArtifacts.workshopId, input.workshopId),
           ),
         )
+
+      revalidateTag(workshopDetailTag(input.workshopId), 'max')
 
       writeAuditLog({
         actorId: ctx.user.id,

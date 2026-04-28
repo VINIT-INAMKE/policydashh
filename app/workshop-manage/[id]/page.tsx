@@ -108,7 +108,17 @@ export default function WorkshopDetailPage() {
     <div className="flex flex-col gap-6 lg:flex-row">
       {/* Left panel */}
       <div className="w-full space-y-4 rounded-lg border-r bg-muted p-4 lg:w-80 lg:shrink-0">
-        <h1 className="text-[28px] font-semibold leading-tight">{workshop.title}</h1>
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-[28px] font-semibold leading-tight">{workshop.title}</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => window.open(`/workshops/${workshopId}`, '_blank')}
+          >
+            Public preview ↗
+          </Button>
+        </div>
 
         {/* Meeting source badge */}
         <Badge
