@@ -200,7 +200,7 @@ export function ParticipateForm() {
             <Label htmlFor="name">Full name</Label>
             <Input
               id="name"
-              placeholder="Dr. Priya Sharma"
+              placeholder=""
               value={state.name}
               onChange={(e) => update('name', e.target.value)}
               aria-invalid={!!errors.name}
@@ -215,7 +215,7 @@ export function ParticipateForm() {
             <Input
               id="email"
               type="email"
-              placeholder="priya@ministry.gov.in"
+              placeholder=""
               value={state.email}
               onChange={(e) => update('email', e.target.value)}
               aria-invalid={!!errors.email}
@@ -236,7 +236,7 @@ export function ParticipateForm() {
             <Label htmlFor="designation">Title / Designation</Label>
             <Input
               id="designation"
-              placeholder="e.g. Partner, Fintech Practice  /  Research Fellow  /  Policy Officer"
+              placeholder=""
               value={state.designation}
               onChange={(e) => update('designation', e.target.value)}
               aria-invalid={!!errors.designation}
@@ -272,7 +272,7 @@ export function ParticipateForm() {
             <Label htmlFor="orgName">Organization name</Label>
             <Input
               id="orgName"
-              placeholder="Ministry of Electronics and IT"
+              placeholder=""
               value={state.orgName}
               onChange={(e) => update('orgName', e.target.value)}
               aria-invalid={!!errors.orgName}
@@ -294,7 +294,7 @@ export function ParticipateForm() {
             <Textarea
               id="expertise"
               rows={4}
-              placeholder="Describe your relevant background, research focus, or policy areas you work in\u2026"
+              placeholder=""
               value={state.expertise}
               onChange={(e) => update('expertise', e.target.value)}
               aria-invalid={!!errors.expertise}
