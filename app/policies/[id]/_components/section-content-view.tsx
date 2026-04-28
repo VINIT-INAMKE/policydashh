@@ -163,10 +163,17 @@ export function SectionContentView({
         </div>
       )}
 
-      {/* Content area -- no max-width here so CommentPanel can expand into flex layout */}
+      {/* Content area -- no max-width here so CommentPanel can expand into flex layout.
+          `key={section.id}` on both editors forces a full unmount/remount
+          when the user switches sections. Without it, ReadOnlyEditor
+          (whose `useEditor` has no deps) reuses the same editor instance
+          and keeps showing the previous section's content; BlockEditor
+          would also race with its own [section.id] dep on the underlying
+          tiptap useEditor. */}
       {canEdit && isEditing ? (
         <div className="mt-4 overflow-visible">
           <BlockEditor
+            key={section.id}
             section={{ ...section, documentId }}
             onSaveStateChange={handleSaveStateChange}
             flushRef={flushRef}
@@ -180,7 +187,7 @@ export function SectionContentView({
               {canEdit ? 'Click "Edit section" to start writing.' : ''}
             </p>
           ) : (
-            <ReadOnlyEditor content={section.content} />
+            <ReadOnlyEditor key={section.id} content={section.content} />
           )}
         </div>
       )}

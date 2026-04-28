@@ -132,6 +132,7 @@ export default function BlockEditor({ section, onSaveStateChange, flushRef }: Bl
     [onSaveStateChange],
   )
 
+  const utils = trpc.useUtils()
   const mutation = trpc.document.updateSectionContent.useMutation({
     onMutate: () => {
       updateSaveState('saving')
@@ -157,6 +158,27 @@ export default function BlockEditor({ section, onSaveStateChange, flushRef }: Bl
 
   const debouncedSave = useDebouncedCallback(
     (content: Record<string, unknown>) => {
+      // Optimistic cache update — write the new section content into the
+      // tRPC cache BEFORE firing the mutation. This guarantees the new
+      // content is in the cache even if this component unmounts before
+      // the mutation's onSuccess can fire (which happens when the user
+      // adds an image and immediately switches sections — the mutation
+      // request goes out, server saves, but `onSuccess` may not run on
+      // the unmounted component, so the cache would otherwise stay
+      // stale and re-visiting the section would show pre-image content).
+      // No revert path on error: the editor's working copy is still the
+      // source of truth in-session; the toast prompts the user to retry.
+      utils.document.getSections.setData(
+        { documentId: section.documentId },
+        (old) => {
+          if (!old) return old
+          return old.map((s) =>
+            s.id === section.id
+              ? { ...s, content, updatedAt: new Date().toISOString() }
+              : s,
+          )
+        },
+      )
       mutation.mutate({
         id: section.id,
         documentId: section.documentId,
@@ -398,15 +420,29 @@ export default function BlockEditor({ section, onSaveStateChange, flushRef }: Bl
   // Cleanup timeouts + clear pending flag when the editor unmounts so a
   // left-behind marker doesn't block future "Create Version" clicks.
   //
-  // A2: ALSO cancel any pending debounced save. Without this, switching
-  // sections mid-debounce would fire the save for the *old* section's
-  // content after the new section had already mounted, silently writing
-  // cross-wire edits through `document.updateSectionContent`.
+  // A2 / 2026-04-29: previously this CANCELED any pending debounced save,
+  // which meant uploading an image and immediately switching sections
+  // silently lost the image's `src` (image upload finished, called
+  // `updateAttributes`, started the 1.5s debounce — debounce got
+  // canceled on unmount before firing). The original concern was
+  // cross-wire writes (a debounce firing after the new section had
+  // mounted, writing OLD content to NEW section). With `key={section.id}`
+  // on the BlockEditor in section-content-view.tsx, switching sections
+  // forces a full unmount of the old instance — the closure inside the
+  // OLD `debouncedSave` captures OLD section, so flushing it on cleanup
+  // fires the save for the right (old) section without cross-wire risk.
+  // The mutation request goes out before the new instance mounts; even
+  // if onSuccess never fires (component gone), the server-side row is
+  // saved correctly.
   useEffect(() => {
     const sectionId = section.id
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      debouncedSave.cancel()
+      if (isDirtyRef.current) {
+        debouncedSave.flush()
+      } else {
+        debouncedSave.cancel()
+      }
       markSectionFlushed(sectionId)
     }
   }, [section.id, debouncedSave])
