@@ -9,6 +9,10 @@
  * Register CTA is always enabled for upcoming/live workshops — the server
  * query `listPublicWorkshops` gates on `googleCalendarEventId IS NOT NULL`
  * so every card reaching this component is provisioned end-to-end.
+ *
+ * Redesign (breathing-room pass): wider container in page.tsx, accent bar at
+ * top of upcoming/live cards, register form separated from browsing content
+ * via border-t CardFooter, reduced line-clamp, tighter already-registered block.
  */
 import Link from 'next/link'
 import { Calendar } from 'lucide-react'
@@ -21,6 +25,7 @@ import {
   CardDescription,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import { RegisterForm } from './register-form'
 import { SpotsLeftBadge } from './spots-left-badge'
 import { formatWorkshopTime } from '@/src/lib/format-workshop-time'
@@ -61,8 +66,11 @@ export function WorkshopCard({
 
   if (variant === 'past') {
     return (
-      <Link href={`/workshops/${workshop.id}`} className="block transition-colors hover:bg-muted/30 rounded-lg">
-        <Card className="h-full hover:border-foreground/30 transition-colors">
+      <Link
+        href={`/workshops/${workshop.id}`}
+        className="block rounded-lg transition-colors hover:bg-muted/30"
+      >
+        <Card className="h-full transition-all duration-150 hover:border-foreground/30 hover:shadow-sm">
           <CardHeader>
             <CardTitle className="text-base font-semibold leading-snug">
               {workshop.title}
@@ -104,10 +112,23 @@ export function WorkshopCard({
   const disabled = isFullyBooked
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base font-semibold leading-snug">
-          <Link href={`/workshops/${workshop.id}`} className="hover:underline">
+    <Card className="relative overflow-hidden transition-all duration-150 hover:shadow-md">
+      {/* Status accent bar — 4px band at the very top of the card */}
+      <div
+        className={cn(
+          'absolute inset-x-0 top-0 h-1',
+          variant === 'live' ? 'bg-emerald-500' : 'bg-slate-200',
+        )}
+        aria-hidden="true"
+      />
+
+      {/* Push content below the accent bar */}
+      <CardHeader className="pt-6">
+        <CardTitle className="text-lg font-semibold leading-snug">
+          <Link
+            href={`/workshops/${workshop.id}`}
+            className="hover:underline decoration-foreground/40 underline-offset-2"
+          >
             {workshop.title}
           </Link>
         </CardTitle>
@@ -132,7 +153,7 @@ export function WorkshopCard({
 
       <CardContent className="flex flex-col gap-3">
         {workshop.description ? (
-          <p className="text-sm text-muted-foreground line-clamp-3">
+          <p className="text-sm text-muted-foreground line-clamp-2">
             {workshop.description}
           </p>
         ) : null}
@@ -146,11 +167,12 @@ export function WorkshopCard({
         ) : null}
       </CardContent>
 
-      <CardFooter>
+      {/* Action zone — visually separated from browsing content */}
+      <CardFooter className="border-t pt-4">
         {alreadyRegistered ? (
-          <div className="flex w-full flex-col items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="flex w-full flex-col gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
             <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-4 w-4 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
               <p className="text-sm font-medium text-emerald-800">
@@ -160,6 +182,12 @@ export function WorkshopCard({
             <p className="text-xs text-emerald-900/80">
               Need to cancel? Use the link in your confirmation email.
             </p>
+            <Link
+              href={`/workshops/${workshop.id}`}
+              className="text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
+            >
+              View details →
+            </Link>
           </div>
         ) : (
           <div className="flex w-full flex-col gap-2">
@@ -170,16 +198,14 @@ export function WorkshopCard({
               prefillName={currentUser?.name}
               prefillEmail={currentUser?.email}
             />
-            {/* F23: external registration link fallback. Admins can set this
-                when they want to route attendees to another system (e.g.
-                Eventbrite); we surface it as a secondary action below the
-                primary register button. */}
+            {/* F23: external registration link fallback. Right-aligned inline
+                with the form footer so it doesn't stack awkwardly below. */}
             {workshop.registrationLink ? (
               <a
                 href={workshop.registrationLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-center text-xs text-muted-foreground underline decoration-dotted hover:text-foreground"
+                className="text-right text-xs text-muted-foreground underline decoration-dotted hover:text-foreground"
               >
                 Or register via external link
               </a>

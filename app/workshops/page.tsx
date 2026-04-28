@@ -108,22 +108,24 @@ export default async function WorkshopsPage() {
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto max-w-3xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16">
-        <header className="mb-8 text-center sm:mb-12">
+      <main className="mx-auto max-w-6xl px-4 pt-16 pb-16 sm:px-6 sm:pt-24">
+        <header className="mb-12 text-center sm:mb-16">
           <h1
             className="text-[28px] font-semibold leading-[1.2] text-[var(--cl-on-surface)]"
             style={{ fontFamily: 'var(--font-cl-headline, Newsreader, serif)' }}
           >
             Register for a Workshop
           </h1>
-          <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
             Join a live consultation session and share your expertise directly with the policy team.
           </p>
         </header>
 
         {isEmpty ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <CalendarX className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
+          <div className="flex flex-col items-center gap-4 py-24 text-center">
+            <div className="rounded-full bg-muted p-4">
+              <CalendarX className="h-12 w-12 text-muted-foreground" aria-hidden="true" />
+            </div>
             <p className="text-base font-semibold text-[var(--cl-on-surface)]">
               No workshops scheduled yet
             </p>
@@ -134,11 +136,19 @@ export default async function WorkshopsPage() {
         ) : (
           <>
             {upcoming.length > 0 ? (
-              <section className="mb-12">
-                <h2 className="mb-4 text-xl font-semibold leading-[1.2] text-[var(--cl-on-surface)]">
-                  Upcoming Workshops
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <section className="mb-16">
+                <div className="mb-6 flex items-baseline justify-between">
+                  <h2
+                    className="text-2xl font-semibold leading-[1.15] text-[var(--cl-on-surface)]"
+                    style={{ fontFamily: 'var(--font-cl-headline, Newsreader, serif)' }}
+                  >
+                    Upcoming Workshops
+                  </h2>
+                  <span className="text-sm text-muted-foreground">
+                    {upcoming.length} {upcoming.length === 1 ? 'session' : 'sessions'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
                   {upcoming.map((w) => (
                     <WorkshopCard key={w.id} workshop={w} variant="upcoming" currentUser={currentUser} alreadyRegistered={registeredWorkshopIds.has(w.id)} />
                   ))}
@@ -147,11 +157,19 @@ export default async function WorkshopsPage() {
             ) : null}
 
             {live.length > 0 ? (
-              <section className="mb-12">
-                <h2 className="mb-4 text-xl font-semibold leading-[1.2] text-[var(--cl-on-surface)]">
-                  Live Now
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <section className="mb-16">
+                <div className="mb-6 flex items-baseline justify-between">
+                  <h2
+                    className="text-2xl font-semibold leading-[1.15] text-[var(--cl-on-surface)]"
+                    style={{ fontFamily: 'var(--font-cl-headline, Newsreader, serif)' }}
+                  >
+                    Live Now
+                  </h2>
+                  <span className="text-sm text-muted-foreground">
+                    {live.length} {live.length === 1 ? 'session' : 'sessions'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
                   {live.map((w) => (
                     <WorkshopCard key={w.id} workshop={w} variant="live" currentUser={currentUser} alreadyRegistered={registeredWorkshopIds.has(w.id)} />
                   ))}
@@ -161,10 +179,18 @@ export default async function WorkshopsPage() {
 
             {past.length > 0 ? (
               <section>
-                <h2 className="mb-4 text-xl font-semibold leading-[1.2] text-[var(--cl-on-surface)]">
-                  Past Workshops
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="mb-6 flex items-baseline justify-between">
+                  <h2
+                    className="text-2xl font-semibold leading-[1.15] text-[var(--cl-on-surface)]"
+                    style={{ fontFamily: 'var(--font-cl-headline, Newsreader, serif)' }}
+                  >
+                    Past Workshops
+                  </h2>
+                  <span className="text-sm text-muted-foreground">
+                    {past.length} {past.length === 1 ? 'session' : 'sessions'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
                   {past.map((w) => (
                     <WorkshopCard key={w.id} workshop={w} variant="past" currentUser={currentUser} />
                   ))}
