@@ -216,8 +216,12 @@ export async function POST(request: NextRequest) {
   }
 
   const key = generateStorageKey(category, fileName)
-  // SECURITY: Pass fileSize as ContentLength and force attachment Content-Disposition
-  const uploadUrl = await getUploadUrl(key, contentType, fileSize)
+  // SECURITY: Pass fileSize as ContentLength. Force `Content-Disposition:
+  // attachment` for non-image categories so uploaded HTML/PDF cannot be
+  // served inline. Images skip the header so they render in the editor and
+  // published pages — SVG is already blocked above via BANNED_EXTENSIONS.
+  const inline = category === 'image'
+  const uploadUrl = await getUploadUrl(key, contentType, fileSize, undefined, inline)
   const publicUrl = getPublicUrl(key)
 
   return NextResponse.json({ uploadUrl, publicUrl, key })

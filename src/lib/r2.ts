@@ -50,16 +50,31 @@ export const r2Client = new S3Client({
 
 /**
  * Generate a presigned PUT URL for uploading a file to R2.
- * SECURITY: ContentLength enforces server-side file size validation.
- * ContentDisposition: attachment prevents inline rendering (XSS via SVG etc).
+ *
+ * SECURITY:
+ * - ContentLength enforces server-side file size validation.
+ * - For non-image categories, ContentDisposition: attachment forces the
+ *   browser to download rather than render inline, blocking XSS via
+ *   uploaded HTML/PDF/etc. We intentionally OMIT this header for images:
+ *   images must render inline in the editor and published pages, and SVG
+ *   (the only inline-XSS image vector) is already blocked at upload time
+ *   by the BANNED_EXTENSIONS list in app/api/upload/route.ts.
+ *
+ * Pass `inline: true` for image uploads.
  */
-export async function getUploadUrl(key: string, contentType: string, contentLength?: number, expiresIn = 3600) {
+export async function getUploadUrl(
+  key: string,
+  contentType: string,
+  contentLength?: number,
+  expiresIn = 3600,
+  inline = false,
+) {
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: key,
     ContentType: contentType,
     ...(contentLength ? { ContentLength: contentLength } : {}),
-    ContentDisposition: 'attachment',
+    ...(inline ? {} : { ContentDisposition: 'attachment' }),
   })
   return getSignedUrl(r2Client, command, { expiresIn })
 }

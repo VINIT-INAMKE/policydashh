@@ -3,6 +3,7 @@
 import { useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import {
   newPendingUploadId,
   registerPendingImageUpload,
@@ -62,14 +63,23 @@ function ToolbarButton({
         render={(props) => (
           <Button
             {...props}
-            variant={isActive ? 'secondary' : 'ghost'}
+            variant="ghost"
             size="icon"
-            className="size-8"
+            // Active state uses a subtle muted fill over the white toolbar
+            // background. The shadcn `secondary` variant points to
+            // `--cl-secondary` (#565f70) post-theme-refactor, which renders
+            // as a dark slate slug — too heavy for an active-toggle hint.
+            className={cn(
+              'size-8',
+              isActive && 'bg-muted text-foreground hover:bg-muted',
+            )}
             disabled={isDisabled}
             onClick={onClick}
             aria-label={label}
             aria-pressed={isActive}
-          />
+          >
+            <Icon className="size-4" />
+          </Button>
         )}
       />
       <TooltipContent>
@@ -143,7 +153,12 @@ export function EditorToolbar({ editor, onLinkClick }: EditorToolbarProps) {
 
   return (
     <TooltipProvider>
-      <div className="sticky top-0 z-10 flex h-9 items-center gap-0.5 border-b bg-muted/50 px-2 backdrop-blur">
+      {/* Toolbar surface: white card over the editor body (which sits on
+          --cl-surface, an off-white). Without an explicit `bg-card` the
+          previous `bg-muted/50` collapsed against the body since the new
+          --muted (#ebeef0) is only one hex digit off the body (#f7fafc)
+          — the toolbar appeared to vanish post-theme-refactor. */}
+      <div className="sticky top-0 z-20 flex h-10 items-center gap-0.5 border-b border-border bg-card px-2 shadow-sm backdrop-blur">
         {/* Block type dropdown */}
         <div className="relative">
           <Tooltip>
@@ -284,11 +299,23 @@ export function EditorToolbar({ editor, onLinkClick }: EditorToolbarProps) {
             if (!file.type.startsWith('image/')) return
             const uploadId = newPendingUploadId()
             registerPendingImageUpload(uploadId, file)
+            // A16-fix: chaining `setImage({src: ''}).updateAttributes(...)`
+            // doesn't work — `setImage` moves the cursor PAST the inserted
+            // image, so the trailing `updateAttributes('image', ...)` runs
+            // against an empty selection and never tags the node with the
+            // pending upload id. ImageBlockView then sees no
+            // pendingUploadId, the auto-upload never fires, and the user
+            // sees a permanent "Drop image here" placeholder.
+            //
+            // Use `insertContent` with attrs in a single command — the same
+            // pattern the drop/paste handlers in block-editor.tsx use.
             editor
               .chain()
               .focus()
-              .setImage({ src: '' })
-              .updateAttributes('image', { pendingUploadId: uploadId })
+              .insertContent({
+                type: 'image',
+                attrs: { src: '', pendingUploadId: uploadId },
+              })
               .run()
           }}
         />

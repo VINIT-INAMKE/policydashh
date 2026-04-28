@@ -147,9 +147,22 @@ function renderNode(node: TiptapNode): string {
     }
 
     case 'fileAttachment': {
-      const href = escapeHtml(sanitizeHref(String(node.attrs?.href ?? '')))
-      const name = escapeHtml(String(node.attrs?.name ?? node.attrs?.filename ?? 'Attachment'))
-      const size = node.attrs?.size ? ` <span class="file-size">(${escapeHtml(String(node.attrs.size))})</span>` : ''
+      // The fileAttachment node's attribute schema is `url`/`filename`/
+      // `filesize` (see src/lib/tiptap-extensions/file-attachment-node.ts).
+      // The previous renderer read `href`/`name`/`size` and dropped every
+      // file link in published HTML / PDF exports — kept the legacy keys
+      // as fallbacks in case any older saved doc used them.
+      const href = escapeHtml(
+        sanitizeHref(String(node.attrs?.url ?? node.attrs?.href ?? '')),
+      )
+      const name = escapeHtml(
+        String(node.attrs?.filename ?? node.attrs?.name ?? 'Attachment'),
+      )
+      const sizeAttr = node.attrs?.filesize ?? node.attrs?.size
+      const size =
+        sizeAttr != null
+          ? ` <span class="file-size">(${escapeHtml(String(sizeAttr))})</span>`
+          : ''
       return `<div class="file-attachment"><a href="${href}" rel="noopener noreferrer">${name}</a>${size}</div>`
     }
 

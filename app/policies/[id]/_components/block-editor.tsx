@@ -257,7 +257,13 @@ export default function BlockEditor({ section, onSaveStateChange, flushRef }: Bl
               component = null
               return true
             }
-            return (component?.ref as SlashCommandMenuRef)?.onKeyDown?.(props) ?? false
+            // Cache the imperative handle through a typed local; the
+            // `component.ref` type is `unknown` and the previous `as`-cast
+            // skipped the null check, silently dropping the first key
+            // event when the menu component had not yet mounted its
+            // forwardRef.
+            const handle = component?.ref as SlashCommandMenuRef | null | undefined
+            return handle?.onKeyDown?.(props) ?? false
           },
           onExit: () => {
             component?.destroy()

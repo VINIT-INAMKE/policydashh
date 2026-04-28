@@ -180,8 +180,11 @@ function renderNode(node: TiptapNode, index: number): React.ReactNode {
       )
 
     case 'fileAttachment': {
-      const href = safeSrc(String(node.attrs?.href ?? ''))
-      const name = String(node.attrs?.name ?? node.attrs?.filename ?? 'Attachment')
+      // Match the `url`/`filename` attribute schema declared by the
+      // fileAttachment node. Legacy `href`/`name` kept as fallbacks for
+      // older saved docs.
+      const href = safeSrc(String(node.attrs?.url ?? node.attrs?.href ?? ''))
+      const name = String(node.attrs?.filename ?? node.attrs?.name ?? 'Attachment')
       return (
         <Link key={index} src={href}>
           <Text style={s.attachment}>{`📎 ${name}`}</Text>

@@ -78,6 +78,14 @@ export function ImageBlockView({ node, updateAttributes }: NodeViewProps) {
   // auto-start the upload. Without this, the File was silently dropped
   // and the user saw a dead placeholder they had to click to re-pick
   // the image.
+  //
+  // The "attempted" guard fires AFTER `takePendingImageUpload` consumes
+  // the registry entry — once consumed there's nothing left to retry, so
+  // setting the ref earlier (e.g. before takePending...) would block a
+  // legitimate re-mount of the NodeView from picking up a still-pending
+  // upload. We DON'T set the ref before the try{} inside handleFiles;
+  // a transient network error there is recoverable via the click-to-pick
+  // retry path on the error placeholder.
   useEffect(() => {
     if (autoUploadAttemptedRef.current) return
     if (!pendingUploadId) return
