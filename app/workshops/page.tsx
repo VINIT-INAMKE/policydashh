@@ -78,13 +78,31 @@ export default async function WorkshopsPage() {
     }
   }
 
+  // Buffer for "the workshop has clearly ended even if admin hasn't clicked End"
+  const STALE_BUFFER_MS = 30 * 60_000  // 30 min after estimated end
+
+  const isStale = (w: typeof all[number]): boolean => {
+    const endTime = w.scheduledAt.getTime() + (w.durationMinutes ?? 60) * 60_000
+    return endTime + STALE_BUFFER_MS < now
+  }
+
   const upcoming = all.filter(
     (w) => w.status === 'upcoming' && w.scheduledAt.getTime() > now,
   )
-  const live = all.filter((w) => w.status === 'in_progress')
-  const past = all.filter(
-    (w) => w.status === 'completed' && w.scheduledAt.getTime() < now,
+  const live = all.filter(
+    (w) => w.status === 'in_progress' && !isStale(w),
   )
+  // "Past" catches: explicitly-completed workshops, plus upcoming/in_progress
+  // workshops where the admin forgot to click "End Workshop" and the scheduled
+  // end time has clearly passed.
+  const past = all
+    .filter((w) => {
+      if (w.status === 'archived') return false  // hidden by design
+      if (w.status === 'completed') return true
+      return isStale(w)
+    })
+    // Sort most recent first so users see the newest past workshop on top
+    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime())
 
   const isEmpty = upcoming.length === 0 && live.length === 0 && past.length === 0
 

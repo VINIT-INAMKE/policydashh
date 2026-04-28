@@ -61,26 +61,37 @@ export function WorkshopCard({
 
   if (variant === 'past') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold leading-snug">
-            <Link href={`/workshops/${workshop.id}`} className="hover:underline">
+      <Link href={`/workshops/${workshop.id}`} className="block transition-colors hover:bg-muted/30 rounded-lg">
+        <Card className="h-full hover:border-foreground/30 transition-colors">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold leading-snug">
               {workshop.title}
-            </Link>
-          </CardTitle>
-          <CardDescription className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-            {formattedDate}
-          </CardDescription>
-        </CardHeader>
-        {workshop.hasApprovedSummary ? (
-          <CardFooter>
-            <span className="text-sm text-muted-foreground">
-              Summary available on request
+            </CardTitle>
+            <CardDescription className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
+              {formattedDate}
+            </CardDescription>
+          </CardHeader>
+          {workshop.description ? (
+            <CardContent>
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {workshop.description}
+              </p>
+            </CardContent>
+          ) : null}
+          <CardFooter className="flex items-center justify-between">
+            {workshop.hasApprovedSummary ? (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                Summary available
+              </span>
+            ) : <span />}
+            <span className="text-sm font-medium text-foreground">
+              View details →
             </span>
           </CardFooter>
-        ) : null}
-      </Card>
+        </Card>
+      </Link>
     )
   }
 
