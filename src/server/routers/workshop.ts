@@ -391,13 +391,6 @@ export const workshopRouter = router({
       // attendees. B6-4: validate against IANA so typos can't poison
       // downstream GCal calls (matches the create-path behaviour).
       timezone: timezoneField.optional(),
-      // Google Calendar pivot: allow switching meeting mode on update.
-      // Blocked server-side when non-cancelled registrations exist.
-      meetingMode: z.enum(['auto_meet', 'manual']).optional(),
-      manualMeetingUrl: z.preprocess(
-        (v) => (typeof v === 'string' ? v.trim() : v),
-        z.url().optional(),
-      ),
     }))
     .mutation(async ({ ctx, input }) => {
       // Fetch workshop for ownership check + existing Google fields.
@@ -449,34 +442,6 @@ export const workshopRouter = router({
       const scheduledAtChanged =
         newScheduledAt.getTime() !== existing.scheduledAt.getTime()
       const timezoneChanged = tz !== existing.timezone
-
-      // Switching meeting mode mid-workshop is not supported — registrants
-      // would get conflicting calendar invites. Force admin to delete + recreate.
-      // A1: normalize DB value ('google_meet' | 'manual') to the input enum
-      // ('auto_meet' | 'manual') before comparing — they share the same
-      // 'manual' literal but differ on the auto-Meet arm, so a raw comparison
-      // would always see 'auto_meet' !== 'google_meet' and block every no-op save.
-      const existingMode: 'auto_meet' | 'manual' =
-        existing.meetingProvisionedBy === 'google_meet' ? 'auto_meet' : 'manual'
-      if (input.meetingMode && input.meetingMode !== existingMode) {
-        const [registeredRow] = await db
-          .select({ n: count() })
-          .from(workshopRegistrations)
-          .where(
-            and(
-              eq(workshopRegistrations.workshopId, input.workshopId),
-              ne(workshopRegistrations.status, 'cancelled'),
-            ),
-          )
-        const registered = Number(registeredRow?.n ?? 0)
-        if (registered > 0) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message:
-              'Cannot switch meeting mode after registrations exist — delete and recreate the workshop',
-          })
-        }
-      }
 
       // B5-8: refuse to lower maxSeats below the current registered headcount.
       if (
@@ -1262,6 +1227,46 @@ export const workshopRouter = router({
         return { added: false as const, attendanceMarked: true, registrationId: existing.id }
       }
 
+      // C4: Cancelled-row reactivation. When Alice registered, then cancelled,
+      // then walks in: the non-cancelled lookup above misses her row, and a
+      // naive INSERT would create a duplicate. Instead, find and reactivate the
+      // most-recently-cancelled row so audit lineage is preserved and admins
+      // don't see duplicate emails in listRegistrations.
+      const [cancelled] = await db
+        .select({ id: workshopRegistrations.id, name: workshopRegistrations.name })
+        .from(workshopRegistrations)
+        .where(
+          and(
+            eq(workshopRegistrations.workshopId, input.workshopId),
+            eq(workshopRegistrations.emailHash, emailHash),
+            eq(workshopRegistrations.status, 'cancelled'),
+          ),
+        )
+        .orderBy(desc(workshopRegistrations.cancelledAt))
+        .limit(1)
+
+      if (cancelled) {
+        await db.update(workshopRegistrations).set({
+          status: 'registered',
+          cancelledAt: null,
+          attendedAt: now,
+          attendanceSource: 'manual',
+          name: input.name || cancelled.name,
+          updatedAt: now,
+        }).where(eq(workshopRegistrations.id, cancelled.id))
+
+        writeAuditLog({
+          actorId: ctx.user.id,
+          actorRole: ctx.user.role,
+          action: ACTIONS.WORKSHOP_ADD_WALK_IN,
+          entityType: 'workshop_registration',
+          entityId: cancelled.id,
+          payload: { workshopId: input.workshopId, reactivatedCancelled: true },
+        }).catch(console.error)
+
+        return { added: false as const, reactivated: true, registrationId: cancelled.id }
+      }
+
       // No existing row — fetch workshop for bookingStartTime, then insert.
       const [workshop] = await db
         .select({ scheduledAt: workshops.scheduledAt })
@@ -1373,6 +1378,7 @@ export const workshopRouter = router({
         .limit(1)
       if (!reg) throw new TRPCError({ code: 'NOT_FOUND', message: 'Registration not found' })
 
+      let googleSyncFailed = false
       if (input.notify) {
         const [w] = await db
           .select({ googleCalendarEventId: workshops.googleCalendarEventId })
@@ -1387,6 +1393,7 @@ export const workshopRouter = router({
             })
           } catch (err) {
             console.error('[cancelRegistration] Google removeAttendee failed (non-blocking)', err)
+            googleSyncFailed = true
           }
         }
       }
@@ -1410,7 +1417,7 @@ export const workshopRouter = router({
         payload: { workshopId: input.workshopId, notify: input.notify },
       }).catch(console.error)
 
-      return { ok: true as const }
+      return { ok: true as const, googleSyncFailed }
     }),
 
   // Approve a draft artifact (flip reviewStatus from 'draft' to 'approved') - WS-14

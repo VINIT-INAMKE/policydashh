@@ -64,10 +64,6 @@ export default async function PublicWorkshopDetailPage({
 }) {
   const { id } = await params
 
-  // Fetch workshop data first — notFound() early if missing
-  const workshop = await getPublicWorkshopById(id)
-  if (!workshop) notFound()
-
   // Auth — auth() returns { userId: null } for anonymous; no throw
   const { userId: clerkUserId } = await auth()
 
@@ -96,7 +92,12 @@ export default async function PublicWorkshopDetailPage({
     ? await isViewerRegistered(id, viewerUser.id, viewerEmailHash)
     : false
 
-  const showMeetingUrl = isRegistered || canManage
+  const viewerHasMeetingAccess = isRegistered || canManage
+
+  // C7: load workshop with auth flag baked in so meetingUrl is stripped
+  // server-side rather than filtered in the render tree.
+  const workshop = await getPublicWorkshopById(id, { viewerHasMeetingAccess })
+  if (!workshop) notFound()
 
   const formattedDate = formatWorkshopTime(workshop.scheduledAt, workshop.timezone)
 
@@ -203,7 +204,7 @@ export default async function PublicWorkshopDetailPage({
         )}
 
         {/* ── Meeting URL (registered + manage only) ── */}
-        {showMeetingUrl && (
+        {workshop.meetingUrl && (
           <div className="mb-8">
             <MeetingUrlPanel meetingUrl={workshop.meetingUrl} />
           </div>

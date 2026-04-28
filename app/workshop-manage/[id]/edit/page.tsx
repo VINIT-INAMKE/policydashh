@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { utcToWallTime } from '@/src/lib/wall-time'
 
@@ -33,16 +33,6 @@ export default function EditWorkshopPage() {
 
   const workshopQuery = trpc.workshop.getById.useQuery({ workshopId })
 
-  // Load registrations to determine mode-switch lock. Enabled only once we
-  // know the user has permission (avoids a 403 flash before role check fires).
-  const registrationsQuery = trpc.workshop.listRegistrations.useQuery(
-    { workshopId },
-    { enabled: canManageWorkshops },
-  )
-  const activeRegistrationCount =
-    registrationsQuery.data?.filter((r) => r.status !== 'cancelled').length ?? 0
-  const modeSwitchLocked = activeRegistrationCount > 0
-
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
@@ -50,8 +40,6 @@ export default function EditWorkshopPage() {
   // F11: maxSeats editable on the update path. F9: timezone editable too.
   const [maxSeats, setMaxSeats] = useState('')
   const [timezone, setTimezone] = useState('')
-  const [meetingMode, setMeetingMode] = useState<'auto_meet' | 'manual'>('auto_meet')
-  const [manualMeetingUrl, setManualMeetingUrl] = useState('')
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
@@ -68,13 +56,6 @@ export default function EditWorkshopPage() {
       setDurationMinutes(w.durationMinutes ? String(w.durationMinutes) : '')
       setMaxSeats(w.maxSeats != null ? String(w.maxSeats) : '')
       setTimezone(tz)
-      // Translate meetingProvisionedBy ('google_meet' | 'manual') → meetingMode
-      // ('auto_meet' | 'manual'). The column stores the provisioning result;
-      // the input enum names the requested source.
-      setMeetingMode(w.meetingProvisionedBy === 'manual' ? 'manual' : 'auto_meet')
-      setManualMeetingUrl(
-        w.meetingProvisionedBy === 'manual' ? (w.meetingUrl ?? '') : '',
-      )
       setInitialized(true)
     }
   }, [workshopQuery.data, initialized])
@@ -122,11 +103,9 @@ export default function EditWorkshopPage() {
       durationMinutes: dur && dur > 0 ? dur : null,
       maxSeats: seats === null ? null : seats > 0 ? seats : null,
       timezone: tz,
-      meetingMode,
       // registrationLink is not exposed in the edit UI (Task 18 cleanup);
       // pass undefined so the server keeps the existing value unchanged.
       registrationLink: undefined,
-      manualMeetingUrl: meetingMode === 'manual' ? manualMeetingUrl : undefined,
     })
   }
 
@@ -140,12 +119,7 @@ export default function EditWorkshopPage() {
     )
   }
 
-  // Derive display-time URL editability from provisioning state + registrant count.
-  // Switching mode is gated by modeSwitchLocked; editing a URL within the same
-  // manual mode is allowed only when there are no active registrations.
-  const existingProvisionedBy = workshopQuery.data?.meetingProvisionedBy
-  const manualUrlEditable =
-    existingProvisionedBy === 'manual' && activeRegistrationCount === 0
+  const existing = workshopQuery.data
 
   return (
     <div className="mx-auto max-w-[640px]">
@@ -252,72 +226,22 @@ export default function EditWorkshopPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="space-y-2">
               <Label>Meeting source</Label>
-              <RadioGroup
-                value={meetingMode}
-                onValueChange={(v) => !modeSwitchLocked && setMeetingMode(v as 'auto_meet' | 'manual')}
-                className="flex flex-col gap-2"
-                disabled={modeSwitchLocked}
-              >
+              <div className="rounded-lg border bg-muted/30 px-3 py-2.5 text-sm">
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="auto_meet" id="mode-auto" />
-                  <Label htmlFor="mode-auto" className="font-normal cursor-pointer">
-                    Auto-provision Google Meet
-                  </Label>
+                  <Badge variant={existing?.meetingProvisionedBy === 'google_meet' ? 'default' : 'secondary'}>
+                    {existing?.meetingProvisionedBy === 'google_meet' ? 'Auto-provisioned Google Meet' : 'Custom link'}
+                  </Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="manual" id="mode-manual" />
-                  <Label htmlFor="mode-manual" className="font-normal cursor-pointer">
-                    Use my own meeting link
-                  </Label>
-                </div>
-              </RadioGroup>
-              {modeSwitchLocked && (
-                <p className="text-xs text-muted-foreground">
-                  Cannot switch meeting mode after registrations exist — delete and recreate the workshop.
-                </p>
-              )}
-            </div>
-
-            {meetingMode === 'manual' && (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="manual-meeting-url">Meeting URL</Label>
-                {manualUrlEditable ? (
-                  <Input
-                    id="manual-meeting-url"
-                    type="url"
-                    placeholder="https://zoom.us/j/123456789"
-                    value={manualMeetingUrl}
-                    onChange={(e) => setManualMeetingUrl(e.target.value)}
-                    required
-                  />
-                ) : (
-                  <>
-                    <div className="rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground break-all">
-                      {manualMeetingUrl || '—'}
-                    </div>
-                    {existingProvisionedBy === 'manual' && activeRegistrationCount > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Meeting URL is locked while registrations exist.
-                      </p>
-                    )}
-                  </>
+                {existing?.meetingProvisionedBy === 'manual' && (
+                  <p className="mt-2 break-all text-xs text-muted-foreground">{existing.meetingUrl}</p>
                 )}
-              </div>
-            )}
-
-            {meetingMode === 'auto_meet' && workshopQuery.data?.meetingUrl && (
-              <div className="flex flex-col gap-2">
-                <Label>Google Meet link</Label>
-                <div className="rounded-md border border-input bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground break-all">
-                  {workshopQuery.data.meetingUrl}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Managed by Google — update via Google Calendar directly.
+                <p className="mt-2 text-xs text-muted-foreground">
+                  To change the meeting source, delete this workshop and create a new one.
                 </p>
               </div>
-            )}
+            </div>
           </CardContent>
           <CardFooter>
             <div className="flex w-full items-center justify-end gap-2">

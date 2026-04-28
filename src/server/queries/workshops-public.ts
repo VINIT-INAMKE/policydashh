@@ -184,7 +184,7 @@ export type PublicWorkshopDetail = {
   timezone: string
   maxSeats: number | null
   registrationLink: string | null
-  meetingUrl: string
+  meetingUrl: string | null  // nullable: hidden from unauthorized viewers
   meetingProvisionedBy: 'google_meet' | 'manual'
   googleCalendarEventId: string
   registeredCount: number
@@ -216,7 +216,11 @@ export type PublicWorkshopDetail = {
  */
 export async function getPublicWorkshopById(
   workshopId: string,
+  opts?: { viewerHasMeetingAccess?: boolean },
 ): Promise<PublicWorkshopDetail | null> {
+  // C7: separate cache lanes for authorized vs anonymous viewers so a cached
+  // auth=true response never leaks meetingUrl to an unauthorized request.
+  const accessFlag = opts?.viewerHasMeetingAccess ? 'auth' : 'anon'
   // Use a closure-per-workshopId pattern (same as getRegisteredCount) so the
   // unstable_cache tags array is statically knowable at build time.
   const cached = unstable_cache(
@@ -315,7 +319,7 @@ export async function getPublicWorkshopById(
         timezone: row.timezone,
         maxSeats: row.maxSeats,
         registrationLink: row.registrationLink,
-        meetingUrl: row.meetingUrl,
+        meetingUrl: opts?.viewerHasMeetingAccess ? row.meetingUrl : null,
         meetingProvisionedBy: row.meetingProvisionedBy as 'google_meet' | 'manual',
         googleCalendarEventId: row.googleCalendarEventId,
         registeredCount,
@@ -335,7 +339,7 @@ export async function getPublicWorkshopById(
         })),
       } satisfies PublicWorkshopDetail
     },
-    ['public-workshop-detail', workshopId],
+    ['public-workshop-detail', workshopId, accessFlag],
     {
       revalidate: 60,
       tags: [spotsTag(workshopId), workshopDetailTag(workshopId)],

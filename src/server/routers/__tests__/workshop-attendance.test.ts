@@ -106,7 +106,14 @@ async function rebuildDbMock(opts: {
           const rows = selects[selectIdx++] ?? []
           return Promise.resolve(rows)
         }),
-        orderBy: vi.fn().mockResolvedValue([]),
+        // orderBy().limit() chain — consume one slot from selects (same as
+        // the plain limit() path so cancelled-row lookups work correctly).
+        orderBy: vi.fn().mockImplementation(() => ({
+          limit: vi.fn().mockImplementation(() => {
+            const rows = selects[selectIdx++] ?? []
+            return Promise.resolve(rows)
+          }),
+        })),
       })),
     })),
   }))
@@ -359,10 +366,12 @@ describe('workshop.addWalkIn', () => {
     const caller = getCaller()
     if (!caller) return
 
-    // First select: no collision; second select: workshop row
+    // First select: no non-cancelled collision; second select: no cancelled row;
+    // third select: workshop row
     await rebuildDbMock({
       selectResults: [
-        [],                              // collision check → none
+        [],                              // non-cancelled collision check → none
+        [],                              // cancelled row check → none
         [makeWorkshop()],                // workshop lookup
       ],
       insertReturning: [{ id: REGISTRATION_ID }],
@@ -382,7 +391,7 @@ describe('workshop.addWalkIn', () => {
     if (!caller) return
 
     await rebuildDbMock({
-      selectResults: [[], [makeWorkshop()]],
+      selectResults: [[], [], [makeWorkshop()]],
       insertReturning: [{ id: REGISTRATION_ID }],
     })
 
@@ -451,7 +460,8 @@ describe('workshop.addWalkIn', () => {
 
     await rebuildDbMock({
       selectResults: [
-        [],   // no collision
+        [],   // no non-cancelled collision
+        [],   // no cancelled row
         [],   // workshop not found
       ],
     })
@@ -465,6 +475,49 @@ describe('workshop.addWalkIn', () => {
 
     expect(caught).toBeDefined()
     expect(caught.code).toBe('NOT_FOUND')
+  })
+
+  it('C4: reactivates a cancelled row instead of inserting a duplicate', async () => {
+    const caller = getCaller()
+    if (!caller) return
+
+    const CANCELLED_REG_ID = 'reg-old-cancelled-uuid'
+
+    await rebuildDbMock({
+      selectResults: [
+        [],                                                    // non-cancelled lookup → none
+        [{ id: CANCELLED_REG_ID, name: 'Alice' }],            // cancelled row found
+      ],
+    })
+
+    const { db } = await import('@/src/db')
+    const result = await caller.addWalkIn({
+      workshopId: WORKSHOP_ID,
+      email: 'alice@example.com',
+      name: 'Alice',
+    })
+
+    // Returns reactivated=true, NOT added=true
+    expect(result).toEqual({
+      added: false,
+      reactivated: true,
+      registrationId: CANCELLED_REG_ID,
+    })
+
+    // db.update called with reactivation fields
+    const allUpdateCalls = (db.update as any).mock.results
+      .map((r: any) => r?.value?.set?.mock?.calls?.[0]?.[0])
+      .filter((args: any) => args && !('lastActivityAt' in args))
+    const setArgs = allUpdateCalls[0]
+    expect(setArgs).toMatchObject({
+      status: 'registered',
+      cancelledAt: null,
+      attendedAt: expect.any(Date),
+      attendanceSource: 'manual',
+    })
+
+    // db.insert must NOT have been called
+    expect(db.insert as any).not.toHaveBeenCalled()
   })
 })
 
@@ -684,7 +737,7 @@ describe('workshop.cancelRegistration', () => {
       notify: true,
     })
 
-    expect(result).toEqual({ ok: true })
+    expect(result).toEqual({ ok: true, googleSyncFailed: false })
     expect(mocks.removeAttendeeFromEvent).toHaveBeenCalledWith({
       eventId: GCAL_EVENT_ID,
       attendeeEmail: 'attendee@example.com',
@@ -713,7 +766,7 @@ describe('workshop.cancelRegistration', () => {
       notify: false,
     })
 
-    expect(result).toEqual({ ok: true })
+    expect(result).toEqual({ ok: true, googleSyncFailed: false })
     expect(mocks.removeAttendeeFromEvent).not.toHaveBeenCalled()
   })
 
@@ -730,14 +783,22 @@ describe('workshop.cancelRegistration', () => {
       ],
     })
 
-    // Should resolve successfully despite the Google error
+    // Should resolve successfully despite the Google error, with googleSyncFailed=true
     const result = await caller.cancelRegistration({
       workshopId: WORKSHOP_ID,
       registrationId: REGISTRATION_ID,
       notify: true,
     })
 
-    expect(result).toEqual({ ok: true })
+    expect(result).toEqual({ ok: true, googleSyncFailed: true })
+
+    // DB update must still have happened
+    const { db } = await import('@/src/db')
+    const allUpdateCalls = (db.update as any).mock.results
+      .map((r: any) => r?.value?.set?.mock?.calls?.[0]?.[0])
+      .filter((args: any) => args && !('lastActivityAt' in args))
+    const setArgs = allUpdateCalls[0]
+    expect(setArgs).toMatchObject({ status: 'cancelled', cancelledAt: expect.any(Date) })
   })
 
   it('throws NOT_FOUND when registration does not exist', async () => {

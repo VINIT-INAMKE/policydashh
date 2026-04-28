@@ -120,11 +120,6 @@ export function AttendeeList({ workshopId }: AttendeeListProps) {
   })
 
   const cancelRegistrationMutation = trpc.workshop.cancelRegistration.useMutation({
-    onSuccess: () => {
-      toast.success('Registration cancelled.')
-      setCancelTarget(null)
-      utils.workshop.listRegistrations.invalidate({ workshopId })
-    },
     onError: (err) => {
       toast.error(`Could not cancel registration: ${err.message}`)
     },
@@ -395,11 +390,26 @@ export function AttendeeList({ workshopId }: AttendeeListProps) {
                 disabled={cancelRegistrationMutation.isPending}
                 onClick={() => {
                   if (!cancelTarget) return
-                  cancelRegistrationMutation.mutate({
-                    workshopId,
-                    registrationId: cancelTarget.id,
-                    notify: cancelNotify,
-                  })
+                  cancelRegistrationMutation.mutate(
+                    {
+                      workshopId,
+                      registrationId: cancelTarget.id,
+                      notify: cancelNotify,
+                    },
+                    {
+                      onSuccess: (result) => {
+                        setCancelTarget(null)
+                        utils.workshop.listRegistrations.invalidate({ workshopId })
+                        if (result.googleSyncFailed) {
+                          toast.warning(
+                            'Registration cancelled. Google Calendar sync failed — the attendee may still see reminders. Remove them manually from the event in Google Calendar.',
+                          )
+                        } else {
+                          toast.success('Registration cancelled.')
+                        }
+                      },
+                    },
+                  )
                 }}
               >
                 Cancel registration
