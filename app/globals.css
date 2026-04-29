@@ -337,14 +337,20 @@
   margin: 8px 0;
 }
 
-/* Cap inline images at ~2/3 of the editor's content column so they read
-   as supporting illustrations rather than full-width hero blocks. The
-   ImageBlockView NodeView (image-block-view.tsx) sets the same cap on
-   the editing surface; this rule covers the read-only view (which uses
-   tiptap's default Image render: a bare <img>) and any markdown-style
-   surface that picks up `.prose-policy`. 32rem ≈ 512px. */
+/* Cap inline images at ~2/3 of the editor's content column so they
+   read as supporting illustrations rather than full-width hero blocks.
+   Surfaces covered:
+   - `.ProseMirror`  -> the live editor (block-editor.tsx editorProps)
+   - `.prose-policy` -> read-only-editor.tsx wrapper
+   - `.prose`        -> all Tailwind Typography surfaces, which includes
+     the public portal (app/portal/[policyId]/_components/public-policy-content.tsx)
+     and the framework route that reuses the same component.
+   The ImageBlockView NodeView (image-block-view.tsx) sets the same cap
+   directly on the <img> for the editing-with-NodeView path. 32rem ≈ 512px.
+   `not-prose` opt-out is still respected by Tailwind's own scope. */
 .ProseMirror img,
-.prose-policy img {
+.prose-policy img,
+.prose img {
   max-width: min(100%, 32rem);
   height: auto;
   display: block;
