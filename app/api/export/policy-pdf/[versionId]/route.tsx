@@ -96,44 +96,53 @@ export async function GET(
 
   const styles = StyleSheet.create({
     page: {
-      padding: 40,
+      paddingTop: 50,
+      paddingBottom: 60,
+      paddingHorizontal: 50,
       fontSize: 11,
       fontFamily: 'Helvetica',
     },
     title: {
-      fontSize: 20,
+      fontSize: 24,
       fontFamily: 'Helvetica-Bold',
-      marginBottom: 4,
+      marginBottom: 6,
     },
     subtitle: {
       fontSize: 11,
       color: '#666',
-      marginBottom: 24,
+      marginBottom: 28,
     },
     sectionTitle: {
-      fontSize: 14,
+      fontSize: 18,
       fontFamily: 'Helvetica-Bold',
-      marginTop: 16,
-      marginBottom: 6,
+      marginTop: 24,
+      marginBottom: 10,
     },
     sectionContent: {
       fontSize: 11,
       lineHeight: 1.6,
-      marginBottom: 12,
+      marginBottom: 16,
     },
     divider: {
       borderBottomWidth: 0.5,
       borderBottomColor: '#ccc',
-      marginVertical: 12,
+      marginVertical: 16,
     },
     footer: {
       position: 'absolute',
-      bottom: 25,
-      left: 40,
-      right: 40,
+      bottom: 30,
+      left: 50,
+      right: 50,
       fontSize: 8,
       color: '#999',
       textAlign: 'center',
+    },
+    pageNumber: {
+      position: 'absolute',
+      bottom: 30,
+      right: 50,
+      fontSize: 8,
+      color: '#999',
     },
   })
 
@@ -153,7 +162,12 @@ export async function GET(
 
         {sortedSections.map((section, idx) => (
           <View key={section.sectionId}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            {/* minPresenceAhead keeps the section title with at least
+                some of its content — without it, a title can land alone
+                at the bottom of a page and look orphaned. */}
+            <Text style={styles.sectionTitle} minPresenceAhead={80}>
+              {section.title}
+            </Text>
             <View style={styles.sectionContent}>
               {renderTiptapToPdf(section.content)}
             </View>
@@ -161,9 +175,16 @@ export async function GET(
           </View>
         ))}
 
-        <Text style={styles.footer}>
-          Generated {new Date().toISOString().split('T')[0]} -- Civilization Lab Published Policy Export
+        <Text fixed style={styles.footer}>
+          Generated {new Date().toISOString().split('T')[0]} — Civilization Lab Published Policy Export
         </Text>
+        <Text
+          fixed
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) =>
+            `${pageNumber} / ${totalPages}`
+          }
+        />
       </Page>
     </Document>
   )
