@@ -161,17 +161,16 @@ export async function GET(
         </Text>
 
         {sortedSections.map((section, idx) => (
-          <View key={section.sectionId}>
-            {/* minPresenceAhead keeps the section title with at least
-                some of its content — without it, a title can land alone
-                at the bottom of a page and look orphaned. */}
-            <Text style={styles.sectionTitle} minPresenceAhead={80}>
-              {section.title}
-            </Text>
+          // `break` on every section after the first forces a page
+          // break before that section so each section starts at the
+          // top of a fresh page. The first section flows directly
+          // after the title block so we don't waste a page on a
+          // mostly-empty cover.
+          <View key={section.sectionId} break={idx > 0}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
             <View style={styles.sectionContent}>
               {renderTiptapToPdf(section.content)}
             </View>
-            {idx < sortedSections.length - 1 && <View style={styles.divider} />}
           </View>
         ))}
 
