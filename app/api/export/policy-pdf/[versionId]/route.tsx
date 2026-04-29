@@ -5,9 +5,14 @@ import { eq } from 'drizzle-orm'
 import { renderTiptapToPdf } from '@/src/lib/tiptap-pdf-renderer'
 import type { SectionSnapshot } from '@/src/server/services/version.service'
 
-// NO auth() -- this is a public route, whitelisted in proxy.ts
-// B1: Gate on policyDocuments.isPublicDraft AND documentVersions.isPublished
-// AND apply per-IP rate limit to protect against abuse.
+// NO auth() -- this is a public route, whitelisted in proxy.ts.
+// Gate: documentVersions.isPublished must be true. The previous gate also
+// required policyDocuments.isPublicDraft, but that flag is the opt-in for
+// the SEPARATE /framework consultation surface (drafts under public review).
+// The portal page (/portal/[policyId]) shows ANY published version regardless
+// of isPublicDraft — so the PDF download must too, otherwise the portal
+// renders the "Download PDF" button against a 404. (User-reported 2026-04-29.)
+// Per-IP rate limit still applies.
 
 // --- In-memory per-IP rate limit (global to the route module) -----------
 // Single-process best-effort limiter: 10 requests per 60s rolling window.
@@ -67,15 +72,16 @@ export async function GET(
     return new Response('Not found', { status: 404 })
   }
 
-  // Get policy title + public-draft flag. The policy must be opted into the
-  // public draft programme for the PDF to be served over the unauth'd route.
+  // Get policy title. The PDF is served whenever the version is published —
+  // the portal already exposes the same content without the public-draft
+  // flag, so we mirror its behavior here.
   const [policy] = await db
-    .select({ title: policyDocuments.title, isPublicDraft: policyDocuments.isPublicDraft })
+    .select({ title: policyDocuments.title })
     .from(policyDocuments)
     .where(eq(policyDocuments.id, version.documentId))
     .limit(1)
 
-  if (!policy || !policy.isPublicDraft) {
+  if (!policy) {
     return new Response('Not found', { status: 404 })
   }
 
@@ -162,7 +168,22 @@ export async function GET(
     </Document>
   )
 
-  const buffer = await renderToBuffer(PolicyPDF)
+  let buffer: Buffer
+  try {
+    buffer = await renderToBuffer(PolicyPDF)
+  } catch (err) {
+    // Render failures used to surface as opaque 500s with no clue what
+    // crashed. Log the version + error so the operator can find the bad
+    // node in the snapshot. Common causes: unsupported image format
+    // (@react-pdf/renderer accepts JPEG/PNG, struggles with WebP), or
+    // a Tiptap node shape the renderer doesn't expect.
+    console.error('[policy-pdf] renderToBuffer failed', {
+      versionId,
+      documentId: version.documentId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return new Response('PDF generation failed', { status: 500 })
+  }
 
   const slug = documentTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50)
   const filename = `${slug}-${version.versionLabel}.pdf`

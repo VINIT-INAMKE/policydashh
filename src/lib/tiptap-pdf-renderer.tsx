@@ -2,7 +2,7 @@
  * Renders Tiptap JSON to @react-pdf/renderer components.
  * Preserves headings, bold, italic, lists, blockquotes, code blocks.
  */
-import { Text, View, StyleSheet, Link } from '@react-pdf/renderer'
+import { Text, View, StyleSheet, Link, Image } from '@react-pdf/renderer'
 
 // Extract a single style value type from the styles object created by StyleSheet.create
 type StyleValue = (typeof s)[keyof typeof s]
@@ -24,6 +24,8 @@ const s = StyleSheet.create({
   italic: { fontStyle: 'italic' },
   code: { fontFamily: 'Courier', fontSize: 10, backgroundColor: '#f0f0f0' },
   blockquote: { borderLeftWidth: 2, borderLeftColor: '#ccc', paddingLeft: 8, marginVertical: 6 },
+  image: { marginVertical: 8, alignSelf: 'center' as const, maxWidth: '70%' },
+  imageCaption: { fontSize: 9, color: '#57606a', textAlign: 'center' as const, marginTop: 2 },
   listItem: { flexDirection: 'row' as const, marginBottom: 3 },
   bullet: { width: 14, fontSize: 11 },
   codeBlock: { backgroundColor: '#f5f5f5', padding: 8, marginVertical: 6, borderRadius: 4 },
@@ -150,6 +152,29 @@ function renderNode(node: TiptapNode, index: number): React.ReactNode {
 
     case 'horizontalRule':
       return <View key={index} style={s.hr} />
+
+    case 'image': {
+      // @react-pdf/renderer's <Image> accepts http(s) URLs and fetches
+      // them server-side at render time. Empty src would crash so we
+      // skip the node — this matches the editor's autosave sanitizer
+      // (stripEmptyImageNodes in block-editor.tsx) which removes
+      // src="" nodes before they ever reach the snapshot, but we
+      // guard defensively in case an old snapshot has one.
+      const src = String(node.attrs?.src ?? '').trim()
+      if (!src) return null
+      const caption = node.attrs?.title ? String(node.attrs.title) : null
+      const alt = node.attrs?.alt ? String(node.attrs.alt) : null
+      return (
+        <View key={index} style={{ marginVertical: 8 }}>
+          <Image src={src} style={s.image} />
+          {caption ? (
+            <Text style={s.imageCaption}>{caption}</Text>
+          ) : alt ? (
+            <Text style={s.imageCaption}>{alt}</Text>
+          ) : null}
+        </View>
+      )
+    }
 
     case 'table':
       return (
